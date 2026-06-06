@@ -89,9 +89,7 @@ Table of Contents
      1.2.  Core Principle
      1.3.  Relationship to Other Specifications
    2.  Conventions and Definitions
-   3.  Overview
-     3.1.  Layering
-     3.2.  When to Use This Profile Versus Offline Attenuation
+   3.  When to Use This Profile Versus Offline Attenuation
    4.  The Identity Continuation Assertion
      4.1.  Token Type and Media Type
      4.2.  Claims
@@ -113,7 +111,7 @@ Table of Contents
      11.1.  Sender Constraint and Proof of Possession
      11.2.  Short Lifetime and Replay
      11.3.  Root Authentication Context
-     11.4.  Monotonic Attenuation and Bounded Depth
+     11.4.  Envelope Enforcement and Offline Attenuation
      11.5.  Trust in the Chain Authority
      11.6.  Actor Chain Integrity
      11.7.  Token, Type, and Algorithm Confusion
@@ -265,24 +263,20 @@ Table of Contents
       continuation.
 
    Chain Authority:  The party trusted by the Continuation Authorization
-      Server to assert chain evidence for a given tenant and chain class
-      and to issue Identity Continuation Assertions.  The Chain
-      Authority is not the authority for resolving the target audience's
-      user subject identifier.
+      Server to assert chain evidence for a given tenant and to issue
+      Identity Continuation Assertions.  The Chain Authority is not the
+      authority for resolving the target audience's user subject
+      identifier.
 
    Current actor (presenting actor):  The workload that presents the
       Identity Continuation Assertion and the Token Exchange request to
       the IdP.  It is identified by the outermost act claim and
       authenticated by the actor_token.
 
-   Tenant and chain class:  A tenant is the administrative boundary (for
-      example, an enterprise customer of the IdP) within which a chain
-      is established and trust in a Chain Authority is configured.  A
-      chain class is a deployment-defined category of chains (for
-      example, by application, sensitivity, or policy) that an IdP can
-      use to scope which Chain Authorities it trusts and which
-      continuations it permits.  Both are deployment-defined and
-      otherwise out of scope for this document.
+   Tenant:  The administrative boundary (for example, an enterprise
+      customer of the IdP) within which a chain is established and trust
+      in a Chain Authority is configured.  How a tenant is determined is
+      deployment-defined and otherwise out of scope for this document.
 
    Chain Identifier (chain_id):  An opaque, unguessable, IdP-generated
       identifier for the root delegation context; see Section 5.
@@ -305,23 +299,7 @@ Table of Contents
       Authorization Servers MAY name the same user with different
       identifiers; only the IdP holds the map between them.
 
-3.  Overview
-
-3.1.  Layering
-
-   This profile occupies one layer of a larger identity stack.  Each
-   layer answers a distinct question and composes with the others:
-
-   Workload identity (WIMSE):       who the calling workload/agent is
-   Intra-domain delegation:         offline attenuated fan-out within
-                                    one trust domain (a Waffles- or
-                                    AAT-style stack)
-   Identity Continuation Assertion: cross-boundary evidence to the IdP
-   ID-JAG:                          onward grant issued by the IdP
-
-   An Identity Continuation Assertion goes in; an ID-JAG comes out.
-
-3.2.  When to Use This Profile Versus Offline Attenuation
+3.  When to Use This Profile Versus Offline Attenuation
 
    The deciding question is subject resolution, not cost.
 
@@ -395,8 +373,8 @@ Table of Contents
 
    iss:  REQUIRED.  The Chain Authority that issued the assertion.  The
       IdP MUST verify that this issuer is a trusted Chain Authority for
-      this tenant and chain class and that the assertion was signed with
-      a key authorized for that issuer.
+      this tenant and that the assertion was signed with a key
+      authorized for that issuer.
 
    aud:  REQUIRED.  It MUST be a single string containing the issuer
       identifier of the Continuation Authorization Server being asked to
@@ -821,8 +799,7 @@ Table of Contents
 
    5.   the assertion aud exactly matches the IdP's issuer identifier;
 
-   6.   the assertion iss is a trusted Chain Authority for this tenant
-        and chain class;
+   6.   the assertion iss is a trusted Chain Authority for this tenant;
 
    7.   chain_id is known, active, unexpired, and eligible for
         continuation;
@@ -966,30 +943,33 @@ Table of Contents
    refresh that context, and the IdP MUST copy it unchanged into an
    onward ID-JAG when the output profile requires those claims.
 
-11.4.  Monotonic Attenuation and Bounded Depth
+11.4.  Envelope Enforcement and Offline Attenuation
+
+   The IdP MUST require the requested audience and resource pair to
+   match one authorized target entry in the root-chain envelope, and
+   MUST require every requested scope to be permitted by that same entry
+   and by IdP policy for the current actor (Section 9).  This prevents a
+   compromised intermediate actor from broadening the chain beyond what
+   the root delegation authorized.
 
    Where an offline attenuated delegation stack (Waffles [WAFFLES] or
    AAT [I-D.niyikiza-oauth-attenuating-agent-tokens]) feeds an Identity
-   Continuation Assertion, authority MUST narrow monotonically along
-   that offline segment, delegation depth MUST be bounded, and the actor
-   chain SHOULD be cryptographically parent-hash linked rather than
-   merely descriptive.  The IdP MUST require the requested audience and
-   resource pair to match one authorized target entry in the root-chain
-   envelope, and MUST require every requested scope to be permitted by
-   that same entry and by IdP policy for the current actor (Section 9).
-   This prevents a compromised intermediate actor from broadening the
-   chain beyond what the root delegation authorized.
+   Continuation Assertion, monotonic attenuation, bounded delegation
+   depth, and parent-hash linkage along that offline segment are
+   provided and verified by that stack's own specification.  The Chain
+   Authority validates the segment before issuing (Section 4.5); the IdP
+   itself enforces only the root-chain envelope described above.
 
 11.5.  Trust in the Chain Authority
 
    The IdP MUST accept assertions only from Chain Authorities it trusts
-   for the relevant tenant and chain class (Section 9).  A compromised
-   Chain Authority can request continuations within the envelope of
-   chains it is trusted for.  Deployments SHOULD scope Chain Authority
-   trust as narrowly as practical and SHOULD monitor for anomalous
-   continuation patterns.  Because the IdP enforces the root-chain
-   envelope, a compromised Chain Authority cannot request a target or
-   scope outside its authorized target entries.
+   for the relevant tenant (Section 9).  A compromised Chain Authority
+   can request continuations within the envelope of chains it is trusted
+   for.  Deployments SHOULD scope Chain Authority trust as narrowly as
+   practical and SHOULD monitor for anomalous continuation patterns.
+   Because the IdP enforces the root-chain envelope, a compromised Chain
+   Authority cannot request a target or scope outside its authorized
+   target entries.
 
 11.6.  Actor Chain Integrity
 
@@ -1311,16 +1291,16 @@ A.2.  Why Not a Profile of a Transaction Token
    Transaction Tokens [I-D.ietf-oauth-transaction-tokens] are the
    closest neighbor (a short-lived signed JWT carrying delegation
    context, often issued by a service that could also act as the Chain
-   Authority), but they sit at a different layer (Section 3.1).  A
-   Transaction Token is an _intra-domain_ object: its aud identifies a
-   trust domain and it "MUST NOT be accepted outside" it, it is consumed
-   by workloads inside the domain and re-minted as it propagates, and
-   its sub is domain-local.  An Identity Continuation Assertion instead
-   crosses to the IdP: its aud is the IdP, it is consumed only there, it
-   is single-use, and it carries neither the target subject (the IdP
-   resolves it) nor the request context (tctx, rctx, scope) a
-   Transaction Token carries.  It is therefore _derived from_ a
-   Transaction Token at the boundary, not a profile of one.
+   Authority), but they sit at a different layer.  A Transaction Token
+   is an _intra-domain_ object: its aud identifies a trust domain and it
+   "MUST NOT be accepted outside" it, it is consumed by workloads inside
+   the domain and re-minted as it propagates, and its sub is domain-
+   local.  An Identity Continuation Assertion instead crosses to the
+   IdP: its aud is the IdP, it is consumed only there, it is single-use,
+   and it carries neither the target subject (the IdP resolves it) nor
+   the request context (tctx, rctx, scope) a Transaction Token carries.
+   It is therefore _derived from_ a Transaction Token at the boundary,
+   not a profile of one.
 
 A.3.  Why Not a Cross-Domain Propagation Token
 
@@ -1329,7 +1309,7 @@ A.3.  Why Not a Cross-Domain Propagation Token
    propagation token") consumed directly by the next domain with no IdP
    round-trip.  This profile does use offline propagation between hops
    wherever it is sound: that is the Waffles and AAT layer, used when
-   the subject does not change (Section 3.2).  It cannot serve the
+   the subject does not change (Section 3).  It cannot serve the
    boundary where the subject changes, for four reasons:
 
    1.  *Subject resolution.* A propagation token is minted by the source
