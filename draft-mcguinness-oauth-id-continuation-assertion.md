@@ -1169,22 +1169,22 @@ and signatures are omitted. The values are consistent with the examples in
 
 The participants and values used throughout:
 
-* User: the human, authenticated once at the IdP.
-* IdP: `https://idp.example/`.
-* ExpenseApp: `expense-app`, the user-facing application.
-* ExpenseSaaS: `https://expenses.example/`.
-* ExpenseService: `expense-service`, the ExpenseSaaS workload that calls
-  TravelSaaS.
-* ExpenseRAS: `https://ras.expenses.example/`.
-* ExpenseAPI: `https://api.expenses.example/`.
-* TravelSaaS: `https://travel.example/`.
-* TravelService: `travel-service`, the workload calling TravelAPI.
-* TravelRAS: `https://ras.travel.example/`.
-* TravelAPI: `https://api.travel.example/`.
-* Chain Authority: `https://ca.expenses.example/`.
-* `chain_id`: `01JZ8F4J9J8Y3NDK5WQ4P9K7Q2`.
-* Subjects: `expense-local-subject` at ExpenseRAS and
-  `travel-local-subject` at TravelRAS.
+| Name | Value | Description |
+|------|-------|-------------|
+| User | (none) | The human, authenticated once at the IdP. |
+| IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
+| ExpenseApp | `expense-app` | User-facing application; first-hop client. |
+| ExpenseSaaS | `https://expenses.example/` | First SaaS the user invokes. |
+| ExpenseService | `expense-service` | ExpenseSaaS workload that calls TravelSaaS. |
+| ExpenseRAS | `https://ras.expenses.example/` | Resource Authorization Server for ExpenseAPI. |
+| ExpenseAPI | `https://api.expenses.example/` | Protected resource behind ExpenseRAS. |
+| TravelSaaS | `https://travel.example/` | Downstream SaaS. |
+| TravelService | `travel-service` | TravelSaaS workload that calls TravelAPI. |
+| TravelRAS | `https://ras.travel.example/` | Resource Authorization Server for TravelAPI. |
+| TravelAPI | `https://api.travel.example/` | Protected resource behind TravelRAS. |
+| Chain Authority | `https://ca.expenses.example/` | Issues the Identity Continuation Assertion for the chain. |
+| `chain_id` | `01JZ8F4J9J8Y3NDK5WQ4P9K7Q2` | Root-delegation correlation handle. |
+| Subjects | `expense-local-subject`, `travel-local-subject` | The user's pairwise subject at ExpenseRAS and TravelRAS, respectively. |
 
 At a glance, the message flow is:
 
