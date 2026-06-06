@@ -118,16 +118,16 @@ ExpenseApp -> ExpenseSaaS/ExpenseRAS -> TravelSaaS/TravelRAS
 
 The user authenticates once at the enterprise IdP and is never redirected
 through a new interactive flow merely because TravelSaaS must call BookingSaaS
-to complete the original request. The IdP remains the trust anchor and the
-sole issuer of onward authorization grants. Each onward grant is
-audience-scoped and carries the subject identifier appropriate for its target
-RAS.
+to complete the original request. The IdP remains the trust anchor, and each
+onward grant is audience-scoped and carries the subject identifier appropriate
+for its target RAS.
 
 ## Why a New Input Is Needed {#motivation}
 
 The first hop is an ordinary identity assertion exchange: ExpenseApp holds a
 credential for the authenticated user (for example, an ID Token or refresh
-token) and exchanges it at the IdP for an ID-JAG, exactly as in
+token) and exchanges it at the IdP for an Identity Assertion JWT Authorization
+Grant (ID-JAG), exactly as in
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}. Every subsequent hop is
 different. By the time TravelSaaS must call BookingSaaS, the user is no longer
 present and TravelSaaS holds no end-user credential it could present to the
@@ -151,9 +151,7 @@ why the IdP remains the sole issuer at every cross-boundary hop: no downstream
 party and no offline authority can mint a correct onward `sub`.
 
 The Identity Continuation Assertion is a Token Exchange subject token used to
-obtain an onward ID-JAG. The Identity Assertion JWT
-Authorization Grant (ID-JAG) {{I-D.ietf-oauth-identity-assertion-authz-grant}}
-is the output profile of this document.
+obtain an onward ID-JAG, the output profile of this document.
 
 This document defines the evidence format, Token Exchange parameters,
 validation rules, and IANA registrations needed for that exchange. It does not
@@ -164,7 +162,7 @@ Authority to name the user for the target audience.
 ## Relationship to Other Specifications
 
 This profile builds directly on OAuth 2.0 Token Exchange {{RFC8693}} and JSON
-Web Tokens {{RFC7519}}. It extends the cross-domain model of OAuth Identity and
+Web Tokens (JWTs) {{RFC7519}}. It extends the cross-domain model of OAuth Identity and
 Authorization Chaining Across Domains
 {{I-D.ietf-oauth-identity-chaining}} and uses the ID-JAG
 {{I-D.ietf-oauth-identity-assertion-authz-grant}} as its onward grant
@@ -218,6 +216,11 @@ Chain Authority:
   Continuation Assertions. The Chain Authority is not the authority for
   resolving the target audience's user subject identifier.
 
+Current actor (presenting actor):
+: The workload that presents the Identity Continuation Assertion and the Token
+  Exchange request to the IdP. It is identified by the outermost `act` claim
+  and authenticated by the `actor_token`.
+
 Tenant and chain class:
 : A tenant is the administrative boundary (for example, an enterprise customer
   of the IdP) within which a chain is established and trust in a Chain
@@ -234,12 +237,14 @@ Chain Identifier (`chain_id`):
 Root-chain envelope:
 : The set of constraints the IdP records when it establishes a chain at root
   issuance and evaluates every continuation against: the authenticated user,
-  the authentication context (`auth_time`, `acr`, `amr`), the audiences and
-  resources the chain may target, the maximum scope the chain may request, the
-  maximum actor-chain depth, and the chain's expiry. The envelope is derived
-  from the user's authentication and consent and from IdP policy; how it is
-  determined is out of scope for this document. See {{validation}} and
-  {{lifecycle}}.
+  the authentication context (`auth_time`, `acr`, `amr`), a set of authorized
+  target entries, the maximum actor-chain depth, and the chain's expiry. Each
+  target entry binds one audience and resource to the scopes that may be
+  requested for that target. The envelope is derived from the user's
+  authentication and consent and from IdP policy; how those inputs establish
+  its target entries is out of scope for this document. A continuation cannot
+  add a target or scope that was not authorized when the root-chain envelope
+  was established. See {{validation}} and {{lifecycle}}.
 
 Audience-local (pairwise) subject:
 : The subject identifier under which a particular RAS names the user. Distinct
@@ -318,7 +323,11 @@ claim set:
     "sub": "travel-service",
     "act": {
       "iss": "https://expenses.example/",
-      "sub": "expense-app"
+      "sub": "expense-service",
+      "act": {
+        "iss": "https://expenses.example/",
+        "sub": "expense-app"
+      }
     }
   },
 
@@ -340,9 +349,11 @@ The claims have the following meanings and requirements:
   and that the assertion was signed with a key authorized for that issuer.
 
 `aud`:
-: REQUIRED. It MUST identify the Continuation Authorization Server being asked
-  to issue the onward grant. The IdP MUST validate `aud` using exact audience
-  matching against one of its configured issuer or token endpoint identifiers.
+: REQUIRED. It MUST be a single string containing the issuer identifier of the
+  Continuation Authorization Server being asked to issue the onward grant. The
+  IdP MUST validate `aud` using exact string matching against its issuer
+  identifier. A token endpoint URL that differs from the issuer identifier MUST
+  NOT be used as this claim's value.
 
 `chain_id`:
 : REQUIRED. The authoritative binding to the root delegation and user. The IdP
@@ -674,7 +685,8 @@ BookingRAS).
               scope, cnf
     and returns chain_id as a Token Exchange response parameter.
     IdP records the root-chain envelope: chain_id -> { user,
-        auth_time/acr/amr, permitted audiences/resources, max scope,
+        auth_time/acr/amr,
+        authorized targets [(audience, resource, permitted scopes)],
         max depth, expiry }.
     (chain_id is not a claim inside the ExpenseRAS ID-JAG.)
 
@@ -684,8 +696,9 @@ BookingRAS).
     control-plane channel associated with the request. chain_id is
     not carried in the ID-JAG or AT1.
 
-5.  ExpenseSaaS propagates authenticated, confidential, and
-    integrity-protected chain context to TravelService:
+5.  ExpenseService, the ExpenseSaaS workload handling the request,
+    propagates authenticated, confidential, and integrity-protected
+    chain context to TravelService:
       chain_id; verified actor lineage.
     (No hop-local subject is propagated across the SaaS boundary by
      default. Local fan-out inside a domain MAY use an offline
@@ -724,48 +737,60 @@ BookingRAS).
 Before issuing an onward ID-JAG, the IdP MUST reject the Token Exchange request
 unless all of the following hold:
 
-1. the JOSE `typ` header value is `oauth-identity-continuation+jwt`;
+1. the request contains exactly one each of `grant_type`, `subject_token`,
+   `subject_token_type`, `requested_token_type`, `actor_token`, and
+   `actor_token_type`; the `grant_type` is
+   `urn:ietf:params:oauth:grant-type:token-exchange`, and the
+   `subject_token_type` is
+   `urn:ietf:params:oauth:token-type:identity-continuation`;
 
-2. the assertion signature validates using a key authorized for the assertion
+2. the request contains exactly one `audience` parameter and exactly one
+   `resource` parameter;
+
+3. the assertion is a JWT containing exactly one value for each required claim
+   defined in {{assertion-claims}}; `iss`, `aud`, `chain_id`, and `jti` are
+   non-empty strings; `act` and `cnf` are JSON objects; `iat` and `exp` are
+   JSON numbers representing NumericDate values; and the JOSE `typ` header
+   value is `oauth-identity-continuation+jwt`;
+
+4. the assertion signature validates using a key authorized for the assertion
    issuer, and the JOSE `alg` is an asymmetric signature algorithm on the IdP's
    configured allowlist (the `none` algorithm MUST be rejected; see
    {{security-alg}});
 
-3. the assertion `aud` identifies the IdP;
+5. the assertion `aud` exactly matches the IdP's issuer identifier;
 
-4. the assertion `iss` is a trusted Chain Authority for this tenant and chain
+6. the assertion `iss` is a trusted Chain Authority for this tenant and chain
    class;
 
-5. `chain_id` is known, active, unexpired, and eligible for continuation;
+7. `chain_id` is known, active, unexpired, and eligible for continuation;
 
-6. the assertion does not contain a top-level `sub`, `auth_time`, `acr`, or
+8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`, or
    `amr` claim;
 
-7. the `act` chain is present, identifies the current actor as the outermost
+9. the `act` chain is present, identifies the current actor as the outermost
    actor, contains only identity claims, and is acceptable and within max-depth
    policy;
 
-8. the `actor_token` authenticates the current actor, that actor is the
+10. the `actor_token` authenticates the current actor, that actor is the
    outermost actor in the `act` chain, and the actor is permitted by IdP policy
    to continue this chain;
 
-9. the request proves possession of the key confirmed by `cnf` (a DPoP proof
+11. the request proves possession of the key confirmed by `cnf` (a DPoP proof
    {{RFC9449}} matching `cnf.jkt`, or a client certificate {{RFC8705}} matching
    `cnf.x5t#S256`), and the `actor_token` is sender-constrained to that same
    key ({{sender-constrained-presentation}});
 
-10. `jti` has not been successfully consumed before for the assertion issuer;
+12. `jti` has not been successfully consumed before for the assertion issuer;
 
-11. `iat` and `exp` are valid NumericDate values, `iat` is not in the future
+13. `iat` and `exp` are valid NumericDate values, `iat` is not in the future
     beyond the IdP's permitted clock skew, `exp` is after `iat`, the assertion
     has not expired, and the assertion lifetime is no more than 300 seconds;
 
-12. the requested `audience` is permitted by the root-chain envelope;
-
-13. the requested `resource` is permitted by the root-chain envelope;
-
-14. the requested `scope` is within the root-chain envelope and IdP policy for
-    the current actor;
+14. the root-chain envelope contains an authorized target entry whose
+    `audience` and `resource` exactly match the requested values, and every
+    requested scope is permitted by that same target entry and by IdP policy
+    for the current actor;
 
 15. the requested output token type is
     `urn:ietf:params:oauth:token-type:id-jag`; and
@@ -788,10 +813,11 @@ a `chain_id` claim.
 
 If validation fails, the IdP MUST return an OAuth error response as defined by
 {{RFC8693}} and {{RFC6749}}. The IdP SHOULD use `invalid_request` for malformed
-or internally inconsistent requests, `invalid_target` for a requested
-`audience` or `resource` outside the root-chain envelope, and `invalid_scope`
-for a requested `scope` outside the root-chain envelope or IdP policy for the
-current actor.
+or internally inconsistent requests, including requests with unsupported
+parameter cardinality or the wrong `subject_token_type`; `invalid_target` for
+a requested audience and resource pair absent from the root-chain envelope;
+and `invalid_scope` for a requested scope not permitted by that target entry or
+by IdP policy for the current actor.
 
 # Onward ID-JAG {#onward-id-jag}
 
@@ -817,7 +843,11 @@ IdP:
     "sub": "travel-service",
     "act": {
       "iss": "https://expenses.example/",
-      "sub": "expense-app"
+      "sub": "expense-service",
+      "act": {
+        "iss": "https://expenses.example/",
+        "sub": "expense-app"
+      }
     }
   },
 
@@ -877,8 +907,9 @@ Where an offline attenuated delegation stack (Waffles {{WAFFLES}} or AAT
 Assertion, authority MUST narrow monotonically along that offline segment,
 delegation depth MUST be bounded, and the actor chain SHOULD be
 cryptographically parent-hash linked rather than merely descriptive. The IdP
-MUST enforce that the requested `audience`, `resource`, and `scope` are within
-the root-chain envelope and within IdP policy for the current actor
+MUST require the requested audience and resource pair to match one authorized
+target entry in the root-chain envelope, and MUST require every requested scope
+to be permitted by that same entry and by IdP policy for the current actor
 ({{validation}}). This prevents a compromised intermediate actor from
 broadening the chain beyond what the root delegation authorized.
 
@@ -889,8 +920,8 @@ relevant tenant and chain class ({{validation}}). A compromised Chain
 Authority can request continuations within the envelope of chains it is trusted
 for. Deployments SHOULD scope Chain Authority trust as narrowly as practical
 and SHOULD monitor for anomalous continuation patterns. Because the IdP
-enforces the root-chain envelope, a compromised Chain Authority cannot exceed
-the original delegation's audiences, resources, or scopes.
+enforces the root-chain envelope, a compromised Chain Authority cannot request
+a target or scope outside its authorized target entries.
 
 ## Actor Chain Integrity
 
@@ -912,19 +943,28 @@ MUST reject an assertion whose JOSE `alg` header is `none`, and MUST restrict
 accepted algorithms to a configured allowlist of asymmetric signature
 algorithms. Symmetric (MAC) algorithms MUST NOT be accepted. The IdP MUST
 select the verification key from its trust configuration for the assertion
-`iss`, and MUST NOT trust key material or key references carried in the
-assertion header to choose that key. General OAuth security guidance in
-{{RFC9700}} applies.
+`iss`. A `kid` header parameter MAY select among verification keys already
+configured for that issuer. The IdP MUST NOT use an untrusted `jku`, `x5u`,
+embedded `jwk`, or other assertion-supplied key material to establish trust or
+retrieve a verification key. General OAuth security guidance in {{RFC9700}}
+applies.
 
 # Privacy Considerations {#privacy}
 
 The `chain_id` is the primary cross-hop correlation handle, and the rules in
 {{chain-id}} are designed to keep it out of the data plane. Because `chain_id`
 MUST NOT appear in any ID-JAG or access token consumed by a Resource Server,
-and because each RAS sees only its own pairwise subject, no Resource Server can
-correlate the user across SaaS boundaries using tokens it receives. End-to-end
-correlation is possible only at the IdP, which is the trust anchor and already
-holds the full map.
+and because each RAS sees only its own pairwise subject, a Resource Server or
+RAS that receives only its audience-local data-plane tokens cannot directly
+correlate the user across SaaS boundaries from those tokens.
+
+This property does not make the complete chain unlinkable. The IdP necessarily
+correlates the chain, and workloads, Chain Authorities, or other control-plane
+participants that receive the same `chain_id` can correlate their observations
+of that delegation. Actor identifiers and other request context can also
+provide indirect correlation. Deployments MUST limit disclosure of
+`chain_id` to participants that require it to continue or administer the
+chain.
 
 `chain_id` MUST NOT contain user-identifying information and MUST carry at least
 128 bits of entropy ({{chain-id}}, rule 2), so that possession of a `chain_id`
@@ -1081,12 +1121,12 @@ opposite roles, so neither can be a profile of the other:
   Continuation Assertion's `aud` is the IdP. The two are validated by different
   parties under different rules.
 
-* An ID-JAG MUST carry the user's resolved per-audience subject; an Identity
-  Continuation Assertion MUST NOT carry a top-level `sub`
-  ({{assertion-claims}}). Profiling ID-JAG would force a `sub` to mean
-  precisely what this profile forbids.
+* An ID-JAG carries the user's resolved per-audience subject; an Identity
+  Continuation Assertion does not carry a top-level `sub` ({{assertion-claims}}).
+  Profiling ID-JAG would force a `sub` to mean precisely what this profile
+  forbids.
 
-* `chain_id` MUST NOT appear in any ID-JAG ({{chain-id}}, rule 4), yet it is the
+* `chain_id` is excluded from every ID-JAG ({{chain-id}}, rule 4), yet it is the
   defining claim of an Identity Continuation Assertion. "An ID-JAG carrying
   `chain_id`" is self-contradictory.
 
@@ -1155,9 +1195,10 @@ the pairwise-subject, per-boundary-trust case this profile addresses.
 # Worked Example (Same-IdP, Two Hops) {#example}
 
 This appendix is non-normative. It walks the canonical flow of {{flow}}
-end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and ExpenseSaaS
-calls TravelSaaS, whose TravelService must call TravelAPI to finish the
-request. All parties trust one enterprise IdP at `https://idp.example/`.
+end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
+ExpenseService, the workload handling that request, calls TravelSaaS, whose
+TravelService must call TravelAPI to finish the request. All parties trust one
+enterprise IdP at `https://idp.example/`.
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in
 {{assertion-claims}}, {{response-param}}, and {{onward-id-jag}}.
@@ -1168,6 +1209,8 @@ The participants and values used throughout:
 * IdP: `https://idp.example/`.
 * ExpenseApp: `expense-app`, the user-facing application.
 * ExpenseSaaS: `https://expenses.example/`.
+* ExpenseService: `expense-service`, the ExpenseSaaS workload that calls
+  TravelSaaS.
 * ExpenseRAS: `https://ras.expenses.example/`.
 * ExpenseAPI: `https://api.expenses.example/`.
 * TravelSaaS: `https://travel.example/`.
@@ -1190,7 +1233,7 @@ ExpenseApp -> ExpenseRAS: (3) ID-JAG
 ExpenseRAS -> ExpenseApp: (4) AT1
 ExpenseApp -> ExpenseSaaS: (5) API request + chain_id
 
-ExpenseSaaS -> TravelSaaS: protected request + chain context
+ExpenseService -> TravelSaaS: protected request + chain context
 TravelSaaS -> TravelService: verified chain context
 
 TravelService -> CA: (6) request assertion
@@ -1227,9 +1270,23 @@ actor_token=<sender-constrained expense-app credential>
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
-The IdP authenticates the user from the ID Token, verifies that ExpenseApp's
-actor credential is constrained to the DPoP key, records the root-chain
-envelope keyed by a freshly generated `chain_id`, and responds:
+The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
+actor credential is constrained to the DPoP key. For this example, existing
+user consent and enterprise policy authorize both the immediate Expense target
+and the later Travel target. The IdP records the following target entries in
+the root-chain envelope keyed by a freshly generated `chain_id`:
+
+~~~
+(https://ras.expenses.example/, https://api.expenses.example/)
+    permitted scopes: expenses.read
+
+(https://ras.travel.example/, https://api.travel.example/)
+    permitted scopes: trips.read
+~~~
+
+The root exchange does not authorize either target merely by requesting the
+other. Both entries must already be supported by the authentication, consent,
+and policy from which the IdP constructs the envelope. The IdP then responds:
 
 ~~~ json
 {
@@ -1248,13 +1305,19 @@ The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local subject:
   "iss": "https://idp.example/",
   "aud": "https://ras.expenses.example/",
   "sub": "expense-local-subject",
+
   "client_id": "expense-app",
   "resource": "https://api.expenses.example/",
   "scope": "expenses.read",
+
   "auth_time": 1710000000,
   "acr": "urn:example:loa:2",
   "amr": ["pwd", "mfa"],
-  "cnf": { "jkt": "base64url-expense-app-key-thumbprint" },
+
+  "cnf": {
+    "jkt": "base64url-expense-app-key-thumbprint"
+  },
+
   "iat": 1710000005,
   "exp": 1710000305,
   "jti": "idjag-expense-01"
@@ -1270,19 +1333,19 @@ The `chain_id` does not appear in the ID-JAG or AT1.
 
 ## Crossing the Boundary into TravelSaaS {#example-context}
 
-To complete the request, ExpenseSaaS calls TravelSaaS, propagating the chain
-context to TravelService over an authenticated, confidential, and
+To complete the request, ExpenseService calls TravelSaaS, propagating the
+chain context to TravelService over an authenticated, confidential, and
 integrity-protected channel:
 
 ~~~
 chain_id   = 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
-actor chain = expense-app (ExpenseSaaS)
+actor chain = expense-service (ExpenseSaaS) <- expense-app
 ~~~
 
 The user's ExpenseRAS-local subject (`expense-local-subject`) is not propagated
 across the boundary. The IdP retains the authoritative authentication context
-and scope envelope; those values are not supplied by TravelService or repeated
-in the Identity Continuation Assertion.
+and root-chain envelope; those values are not supplied by TravelService or
+repeated in the Identity Continuation Assertion.
 
 ## Obtaining the Identity Continuation Assertion {#example-ica}
 
@@ -1320,9 +1383,9 @@ The `subject_token_type` value above is
 `urn:ietf:params:oauth:token-type:identity-continuation`. The IdP runs the
 checks of {{validation}}: the DPoP key matches both the assertion's `cnf.jkt`
 and the actor token's key confirmation, `travel-service` is the outermost
-actor, the `chain_id` is active and within the root-chain envelope, and the
-requested `audience`, `resource`, and `scope` are permitted. It then resolves
-the user's TravelRAS-local subject and returns:
+actor, the `chain_id` is active, and the requested TravelRAS, TravelAPI, and
+`trips.read` values match the Travel target entry in the root-chain envelope.
+It then resolves the user's TravelRAS-local subject and returns:
 
 ~~~ json
 {
