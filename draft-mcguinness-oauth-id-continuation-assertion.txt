@@ -3,7 +3,7 @@
 
 
 Web Authorization Protocol                                 K. McGuinness
-Internet-Draft                                              ConductorOne
+Internet-Draft                                               Independent
 Intended status: Standards Track                             6 June 2026
 Expires: 8 December 2026
 
@@ -1082,7 +1082,7 @@ Table of Contents
       Macintosh file type code(s): N/A
 
    Person & email address to contact for further information:  Karl
-      McGuinness (karl.mcguinness@conductorone.com)
+      McGuinness (public@karlmcguinness.com)
 
    Intended usage:  COMMON
 
@@ -1646,5 +1646,5 @@ Acknowledgments
 Author's Address
 
    Karl McGuinness
-   ConductorOne
-   Email: karl.mcguinness@conductorone.com
+   Independent
+   Email: public@karlmcguinness.com
