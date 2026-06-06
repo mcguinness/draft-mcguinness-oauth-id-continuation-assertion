@@ -1,0 +1,3210 @@
+<!DOCTYPE html>
+<html lang="en" class="Internet-Draft">
+<head>
+<meta charset="utf-8">
+<meta content="Common,Latin" name="scripts">
+<meta content="initial-scale=1.0" name="viewport">
+<title>Identity Continuation Assertion for OAuth 2.0 Token Exchange</title>
+<meta content="Karl McGuinness" name="author">
+<meta content="
+       This document profiles OAuth 2.0 Token Exchange to define the Identity
+Continuation Assertion: a short-lived, sender-constrained JWT that carries
+verifiable evidence of a delegation chain into a Token Exchange request. A
+Continuation Authorization Server can then issue an onward authorization grant
+without subjecting the user to a new interactive authentication. The primary
+use case is same-Identity-Provider (same-IdP) SaaS-to-SaaS chaining, in which
+several Resource Authorization Servers trust a single enterprise IdP and each
+names the user under its own audience-local (pairwise) subject identifier.
+Because only the IdP holds the map from a root delegation to each audience's
+subject, the IdP remains the sole issuer of the onward Identity Assertion JWT
+Authorization Grant (ID-JAG) at every cross-boundary hop. The assertion is the
+evidence carried into the exchange; the resulting grant is the authority. This
+profile complements, and does not replace, offline attenuated delegation,
+which is appropriate for intra-domain fan-out that does not change the user's
+subject identifier. 
+    " name="description">
+<meta content="xml2rfc 3.33.0" name="generator">
+<meta content="oauth" name="keyword">
+<meta content="token exchange" name="keyword">
+<meta content="identity chaining" name="keyword">
+<meta content="delegation" name="keyword">
+<meta content="id-jag" name="keyword">
+<meta content="draft-mcguinness-oauth-id-continuation-assertion-00" name="ietf.draft">
+<!-- Generator version information:
+  xml2rfc 3.33.0
+    Python 3.12.13
+    ConfigArgParse 1.7
+    google-i18n-address 3.1.1
+    intervaltree 3.2.1
+    Jinja2 3.1.6
+    lxml 6.0.2
+    platformdirs 4.9.6
+    pycountry 24.6.1
+    PyYAML 6.0.3
+    requests 2.33.1
+    wcwidth 0.7.0
+-->
+<link href="draft-mcguinness-oauth-id-continuation-assertion.xml" rel="alternate" type="application/rfc+xml">
+<link href="#copyright" rel="license">
+<style type="text/css">@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: italic;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Italic'), local('Lora-Italic'), url('https://martinthomson.github.io/rfc-css/fonts/lora-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Lora Regular'), local('Lora-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/lora-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C88, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-cyrillic.woff2') format('woff2');
+  unicode-range: U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-vietnamese.woff2') format('woff2');
+  unicode-range: U+0102-0103, U+0110-0111, U+1EA0-1EF9, U+20AB;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-024F, U+0259, U+1E00-1EFF, U+2020, U+20A0-20AB, U+20AD-20CF, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: local('Lora Bold'), local('Lora-Bold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-bold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Lora';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: local('Lora SemiBold'), local('Lora-SemiBold'), url('https://martinthomson.github.io/rfc-css/fonts/lora-semibold-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Oxygen Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Oxygen Mono'), local('OxygenMono-Regular'), url('https://martinthomson.github.io/rfc-css/fonts/oxygenmono-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+}
+
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: italic;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-italic-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic-ext.woff2') format('woff2');
+  unicode-range: U+0460-052F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-greek.woff2') format('woff2');
+  unicode-range: U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin-ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Sofia Sans Semi Condensed';
+  font-style: normal;
+  font-weight: 1 1000;
+  src: url('https://martinthomson.github.io/rfc-css/fonts/sofiasanssemicondensed-regular-latin.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+:root {
+  color-scheme: light dark;
+  --background-color: #fff;
+  --text-color: #222;
+  --title-color: #191919;
+  --link-color: #2a6496;
+  --highlight-color: #f9f9f9;
+  --line-color: #eee;
+  --pilcrow-weak: #ddd;
+  --pilcrow-strong: #bbb;
+  --small-font-size: 14.5px;
+  --font-mono: 'Oxygen Mono', monospace;
+  --font-title: "Sofia Sans Semi Condensed", sans-serif;
+  scrollbar-color: #bbb #eee;
+}
+body {
+  max-width: 600px;
+  margin: 75px auto;
+  padding: 0 5px;
+  color: var(--text-color);
+  background-color: var(--background-color);
+  font: 16px/22px "Lora", serif;
+  scroll-behavior: smooth;
+}
+
+.ears {
+  display: none;
+}
+
+/* headings */
+section {
+  clear: both;
+}
+.section-number {
+  padding-right: 0.5em;
+}
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-title);
+  font-weight: 680;
+  margin: 0.8em 0 0.3em;
+  font-size-adjust: 0.5;
+  color: var(--title-color);
+}
+h1 {
+  &#title {
+    font-size: 32px;
+    line-height: 40px;
+    clear: both;
+    margin: 1.5em 0 0.2em;
+  }
+  &#rfcnum {
+    margin: 1.5em 0 0.2em;
+    & + h1#title {
+      margin: 0.2em 0;
+    }
+  }
+}
+
+h1, h2, h3 {
+  font-size: 22px;
+  line-height: 27px;
+}
+h4, h5, h6 {
+  font-size: 20px;
+  line-height: 24px;
+}
+
+/* general structure */
+.author {
+  padding-bottom: 0.3em;
+  vertical-align: top;
+}
+#abstract+p {
+  font-size: 18px;
+  line-height: 24px;
+  & code, & samp, & tt {
+    font-size: 16px;
+    line-height: 0;
+  }
+}
+
+p {
+  padding: 0;
+  margin: 0.5em 0;
+  text-align: left;
+}
+div {
+  margin: 0;
+}
+.alignRight {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    margin: 0;
+    float: right;
+    clear: both;
+  }
+  & > *:nth-child(2) {
+    clear: both;
+    display: block;
+    border: none;
+  }
+}
+svg {
+  display: block;
+  /* font-family isn't space-separated, but =~ will have to do */
+  &[font-family~="monospace" i], & [font-family~="monospace" i] {
+    font-family: var(--font-mono);
+  }
+}
+.alignCenter {
+  margin: 1em 0;
+  &.art-text {
+    background-color: var(--highlight-color);
+    border: 1px solid var(--line-color);
+    border-radius: 3px;
+    padding: 0.5em 1em 0;
+    margin-bottom: 0.5em;
+    & pre {
+      padding: 0;
+      width: auto;
+    }
+  }
+  & > *:first-child {
+    border: none;
+    /* this isn't optimal, but it's an existence proof.  PrinceXML doesn't
+       support flexbox yet.
+    */
+    display: table;
+    margin: 0 auto;
+  }
+}
+
+/* lists */
+ol, ul {
+  padding: 0;
+  margin: 0 0 0.5em 2em;
+  & :is(ol, ul) {
+    margin-left: 1em;
+  }
+}
+li {
+  margin: 0 0 0.25em 0;
+}
+ul.empty, .ulEmpty {
+  list-style-type: none;
+  & li {
+    margin-top: 0.5em;
+  }
+}
+:is(ul, ol).compact, .ulCompact, .olCompact {
+  margin: 0 0 0 2em;
+  & li {
+    margin: 0;
+    & :first-child { margin-top: 0; }
+    & :last-child { margin-bottom: 0; }
+  }
+}
+
+/* definition lists */
+dl {
+  clear: left;
+  --indent: 3ch;
+  /* --indent: attr(indent ch); not supported in any browser, but we can dream */
+  &.olPercent {
+    --indent: 5ch;
+    & > dt {
+      min-width: calc(var(--indent) - 2ch);
+      float: none;
+    }
+  }
+
+  dl > dd > & {
+    margin-top: 0.5em;
+    margin-bottom: 0;
+  }
+
+  &:not(.dlNewline) > dt {
+    float: left;
+    margin-right: 2ch;
+    min-width: 8ch;
+  }
+  & > dd {
+    margin-bottom: .8em;
+    margin-left: var(--indent) !important; /* stupid element overrides */
+    min-height: 2ex;
+  }
+}
+:is(dl.compact, .dlCompact) > dd {
+  margin-bottom: 0;
+  & > :is(:first-child, .break:first-child + *) {
+    margin-top: 0;
+  }
+  & > :is(:last-child) {
+    margin-bottom: 0;
+  }
+}
+:is(dd, span).break {
+  display: none;
+}
+
+/* links */
+a {
+  text-decoration: none;
+  &[href] {
+    color: var(--link-color);
+    &:hover { text-decoration: underline; }
+    &.selfRef {
+      color: var(--text-color);
+      &:hover {
+        text-decoration: none;
+        background-color: var(--highlight-color);
+      }
+    }
+  }
+}
+.iref + a[href].internal {
+  color: var(--text-color);
+}
+a.xref:is(.cite, .auto), :is(#status-of-memo, #copyright) a {
+  white-space: nowrap;
+}
+
+/* Figures */
+tt, code, pre {
+  background-color: var(--highlight-color);
+  font: 14px/22px var(--font-mono);
+}
+tt, code {
+  /* changing the font for inline elements leads to different ascender
+     and descender heights; as we want to retain baseline alignment,
+     remove leading to avoid altering the final height of lines
+     note: this fails if these blocks take an entire line,
+     a different solution would be great */
+  line-height: 0;
+}
+:is(h1, h2, h3, h4, h5, h6) :is(tt, code) {
+  font-size: 84%;
+}
+pre {
+  border: 1px solid var(--line-color);
+  font-size: 13.5px;
+  line-height: 16px;
+  letter-spacing: -0.2px;
+  margin: 5px;
+  padding: 5px;
+}
+img {
+  max-width: 100%;
+}
+figure {
+  margin: 0.5em 0;
+  padding: 0;
+  & blockquote {
+    margin: 0.8em 0.4em 0.4em;
+  }
+}
+figcaption, caption {
+  font-style: italic;
+  margin: 0.5em 1.5em;
+  text-align: left;
+  caption-side: bottom;
+}
+@media screen {
+  /* Auto-collapse boilerplate. */
+  :is(#status-of-memo, #copyright) {
+    & p {
+      margin: -2px 0;
+      max-height: 0;
+      transition: max-height 2s ease, margin 0.5s ease 0.5s;
+      overflow: hidden;
+    }
+    &:hover p,
+    & h2:target ~ p {
+      margin: 0.5em 0;
+      max-height: 500px;
+      overflow: auto;
+    }
+  }
+  pre, svg {
+    display: inline-block;
+    /* In the horizontal direction, sometimes people make over-sized figures.
+       Scrollbars for those is therefore necessary: auto adds them as necessary..
+       In the vertical direction, the line-height can combine with the font
+       asender/descender height to produce scrollbars: hidden avoids that. */
+    overflow: auto hidden;
+  }
+  pre {
+    max-width: 100%;
+    width: calc(100% - 22px - 1em);
+  }
+  svg {
+    max-width: calc(100% - 22px - 1em);
+  }
+  figure pre {
+    display: block;
+    width: calc(100% - 25px);
+  }
+  :is(pre, svg) + .pilcrow {
+    display: inline-block;
+    vertical-align: text-bottom;
+    padding-bottom: 8px;
+  }
+}
+
+/* aside, blockquote */
+aside, blockquote {
+  margin-left: 0;
+  padding: 0 2em;
+  font-style: italic;
+}
+blockquote {
+  margin: 1em 0;
+  border-left: 2px var(--pilcrow-strong) solid;
+}
+cite {
+  display: block;
+  text-align: right;
+  font-style: italic;
+}
+
+/* tables */
+table {
+  width: auto;
+  max-width: 100%;
+  margin: 0 0 1em;
+  border-collapse: collapse;
+  &.right { margin-left: auto; }
+  &.center { margin-left: auto; margin-right: auto; }
+  &.left { margin-right: auto; }
+  & .text-left { text-align: left; }
+  & .text-center { text-align: center; }
+  & .text-right { text-align: right; }
+  & caption {
+    margin: 0;
+    padding: 3px 0 3px 1em;
+  }
+  & p { margin: 0; }
+}
+
+thead, tbody {
+  border: 1px solid var(--line-color);
+}
+th, td {
+  text-align: left;
+  vertical-align: top;
+  padding: 5px 10px;
+}
+th {
+  background-color: var(--line-color);
+}
+:is(tr:nth-child(2n), thead+tbody > tr:nth-child(2n+1)) > td {
+  background-color: var(--background-color);
+}
+:is(tr:nth-child(2n+1), thead+tbody > tr:nth-child(2n)) > td {
+  background-color: var(--highlight-color);
+}
+
+/* pilcrow */
+a.pilcrow {
+  margin-left: 3px;
+  opacity: 0.2;
+  user-select: none;
+  &[href] {
+    color: var(--pilcrow-weak);
+    &:hover { text-decoration: none; }
+  }
+  @media not print {
+    :hover > &, &:focus {
+      opacity: 1;
+    }
+    &[href]:hover {
+      color: var(--pilcrow-strong);
+      background-color: transparent;
+    }
+  }
+  @media print {
+    display: none;
+  }
+}
+
+/* misc */
+hr {
+  border: 0;
+  border-top: 1px solid var(--line-color);
+}
+.bcp14 {
+  font-variant: small-caps;
+  font-weight: 600;
+  font-size: var(--small-font-size);
+}
+.role {
+  font-variant: all-small-caps;
+}
+sub, sup {
+  line-height: 1;
+  font-size: 80%;
+}
+
+/* info block */
+#identifiers {
+  margin: 0;
+  font-size: var(--small-font-size);
+  line-height: 18px;
+  --identifier-width: 15ch;
+  & dt {
+    width: var(--identifier-width);
+    min-width: var(--identifier-width);
+    clear: left;
+    float: left;
+    text-align: right;
+    margin-right: 1ch;
+  }
+  & dd {
+    margin: 0;
+    margin-left: calc(1em + var(--identifier-width)) !important;
+    min-width: 5em;
+  }
+  & .authors {
+    & .author {
+      display: inline-block;
+      margin-right: 1.5em;
+    }
+    & .org {
+      font-style: italic;
+    }
+  }
+}
+
+/* The prepared/rendered info at the very bottom of the page */
+.docInfo {
+  color: #999;
+  font-size: 0.9em;
+  font-style: italic;
+  margin-top: 2em;
+  & .prepared {
+    float: right;
+  }
+}
+
+/* table of contents */
+#toc {
+  padding: 0.75em 0 2em 0;
+  margin-bottom: 1em;
+
+  & nav {
+    & ul {
+      margin: 0 0.5em 0 0;
+      padding: 0;
+      list-style: none;
+    }
+    & li {
+      line-height: 1.3em;
+      margin: 2px 0;
+      padding-left: 1.2em;
+      text-indent: -1.2em;
+    }
+  }
+  & a.xref {
+    white-space: normal;
+  }
+}
+
+.references {
+  & > dt {
+    text-align: right;
+    font-weight: bold;
+    min-width: 10ch;
+    margin-right: 1.5ch;
+    &:target::before {
+      content: "⇒";
+      margin: 0 10px 0 -25px;
+    }
+  }
+  & > dd {
+    margin-left: 12ch !important;
+    overflow: visible;
+    & .refInstance {
+      margin-bottom: 0.8em;
+    }
+    & .ascii {
+      margin-bottom: 0.25em;
+    }
+  }
+}
+
+#rfc\.index\.index + ul {
+  margin-left: 0;
+}
+
+/* authors */
+address.vcard {
+  font-style: normal;
+  max-width: 20em;
+  margin: 1em auto 1em 0;
+
+  & .nameRole {
+    font-weight: 700;
+    margin-left: 0;
+  }
+  & .label {
+    margin: 0.5em 0;
+  }
+  & .type {
+    display: none;
+  }
+  & .alternative-contact {
+    margin: 0.5em 0 0.25em 0;
+  }
+  & .non-ascii {
+    margin: 0 0 0 2em;
+  }
+  & div.left {
+    text-align: left;
+  }
+  & div.right {
+    text-align: right;
+  }
+}
+
+hr.addr {
+  border-top: 1px dashed;
+  margin: 0;
+  color: #ddd;
+  max-width: calc(100% - 16px);
+}
+@media (min-width: 500px) {
+  #authors-addresses {
+    & > section {
+      column-count: 2;
+      column-gap: 20px;
+    }
+    & > section > h2 {
+      column-span: all;
+    }
+    /* hack for break-inside: avoid-column */
+    & address {
+      display: inline-block;
+      break-inside: avoid-column;
+    }
+  }
+}
+
+/* Comments */
+.rfcEditorRemove {
+  & p:first-of-type {
+    font-style: italic;
+  }
+}
+.cref {
+  background-color: rgba(249, 232, 105, 0.3);
+  padding: 2px 4px;
+}
+.crefSource {
+  font-style: italic;
+}
+
+@media screen {
+  #toc {
+    & nav {
+      font-family: var(--font-title);
+      font-weight: 360;
+      & > ul { margin-bottom: 2em; }
+      & ul {
+        margin: 0 0 0 4px;
+        & :is(p, li) {
+          margin: 2px 0;
+        }
+      }
+    }
+    & a.toplink {
+      float: right;
+    }
+  }
+}
+@media not screen {
+  #toc a.toplink {
+    display: none;
+  }
+}
+
+
+/* TOC layout for smaller screens */
+@media screen and (max-width: 929px) {
+  #toc {
+    position: fixed;
+    z-index: 2;
+    top: 0;
+    right: 0;
+    padding: 1px 0 0 0;
+    margin: 0;
+    border-bottom: 1px solid #ccc;
+    opacity: 0.6;
+    & h2 {
+      margin: 0;
+      padding: 2px 0 2px 6px;
+      padding-right: 1em;
+      font-size: 18px;
+      line-height: 24px;
+      min-width: 190px;
+      text-align: right;
+      background-color: #444;
+      color: white;
+      cursor: pointer;
+      &::before { /* css hamburger */
+        float: right;
+        position: relative;
+        width: 1em;
+        height: 1px;
+        left: -164px;
+        margin: 8px 0 0 0;
+        background: white none repeat scroll 0 0;
+        box-shadow: 0 4px 0 0 white, 0 8px 0 0 white;
+        content: "";
+      }
+    }
+    & nav {
+      display: none;
+      background-color: var(--background-color);
+      padding: 0.5em 1em 1em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      height: calc(100vh - 48px);
+      border-left: 1px solid #ddd;
+    }
+    &.active {
+      opacity: 1;
+      & nav { display: block; }
+    }
+    /* Make the collapsed ToC header render white on gray also when it's a link */
+    & h2 a,
+    & h2 a:is(:link, :focus, :hover),
+    & a.toplink,
+    & a.toplink:hover {
+      color: white;
+      background-color: #444;
+      text-decoration: none;
+    }
+    & a.toplink {
+      margin: 2px 0.5em 0;
+    }
+  }
+}
+
+/* TOC layout for wide screens */
+@media screen and (min-width: 930px) {
+  body {
+    padding-right: 360px;
+    padding-right: calc(min(180px + 20%, 500px));
+  }
+  #toc {
+    position: fixed;
+    bottom: 0;
+    right: 0;
+    right: calc(50vw - 480px);
+    width: 312px;
+    margin: 0;
+    padding: 0;
+    z-index: 1;
+    & h2 {
+      margin: 0;
+      padding: 0.25em 1em 1em 0;
+    }
+    & nav {
+      display: block;
+      height: calc(90vh - 84px);
+      bottom: 0;
+      padding: 0.5em 0 2em;
+      overflow: auto;
+      overscroll-behavior: contain;
+      scrollbar-width: thin;
+    }
+    & a.toplink {
+      margin: 8px 0.5em 0;
+    }
+  }
+  img { /* future proofing */
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* pagination */
+@media print {
+  body {
+    width: 100%;
+  }
+  p {
+    orphans: 3;
+    widows: 3;
+  }
+  #n-copyright-notice {
+    border-bottom: none;
+  }
+  #toc {
+    page-break-before: always;
+    border-top: none;
+    padding-top: 0;
+  }
+  #n-introduction {
+    page-break-before: always;
+  }
+  figure, pre, .vcard {
+    page-break-inside: avoid;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    page-break-after: avoid;
+  }
+  :is(h2, h3, h4, h5, h6)+*, dd {
+    page-break-before: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 10pt;
+  }
+  table {
+    border: 1px solid #ddd;
+  }
+  td {
+    border-top: 1px solid #ddd;
+  }
+}
+
+@page :first {
+  padding-top: 0;
+  @top-left {
+    content: normal;
+    border: none;
+  }
+  @top-center {
+    content: normal;
+    border: none;
+  }
+  @top-right {
+    content: normal;
+    border: none;
+  }
+}
+
+@page {
+  size: A4;
+  margin-bottom: 45mm;
+  padding-top: 20px;
+}
+
+/* Dark mode. */
+@media (prefers-color-scheme: dark) {
+:root {
+  --background-color: #121212;
+  --text-color: #f0f0f0;
+  --title-color: #fff;
+  --link-color: #4da4f0;
+  --highlight-color: #282828;
+  --line-color: #444;
+  --pilcrow-weak: #444;
+  --pilcrow-strong: #666;
+  scrollbar-color: #777 #333;
+}
+}
+
+/* SVG Trick: a prefix match works because only black and white are allowed */
+svg {
+  & :is([stroke="black"], [stroke^="#000"]) {
+    stroke: var(--text-color);
+  }
+  & :is([stroke="white"], [stroke^="#fff"]) {
+    stroke: var(--background-color);
+  }
+  & :is([fill="black"], [fill^="#000"], :not([fill])) {
+    fill: var(--text-color);
+  }
+  & :is([fill="white"], [fill^="#fff"]) {
+    fill: var(--background-color);
+  }
+}
+</style>
+
+</head>
+<body class="xml2rfc">
+<table class="ears">
+<thead><tr>
+<td class="left">Internet-Draft</td>
+<td class="center">Identity Continuation Assertion</td>
+<td class="right">June 2026</td>
+</tr></thead>
+<tfoot><tr>
+<td class="left">McGuinness</td>
+<td class="center">Expires 8 December 2026</td>
+<td class="right">[Page]</td>
+</tr></tfoot>
+</table>
+<div id="external-metadata" class="document-information"></div>
+<div id="internal-metadata" class="document-information">
+<dl id="identifiers">
+<dt class="label-workgroup">Workgroup:</dt>
+<dd class="workgroup">Web Authorization Protocol</dd>
+<dt class="label-internet-draft">Internet-Draft:</dt>
+<dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-00</dd>
+<dt class="label-published">Published:</dt>
+<dd class="published">
+<time datetime="2026-06-06" class="published">6 June 2026</time>
+    </dd>
+<dt class="label-intended-status">Intended Status:</dt>
+<dd class="intended-status">Standards Track</dd>
+<dt class="label-expires">Expires:</dt>
+<dd class="expires"><time datetime="2026-12-08">8 December 2026</time></dd>
+<dt class="label-authors">Author:</dt>
+<dd class="authors">
+<div class="author">
+      <div class="author-name">K. McGuinness</div>
+<div class="org">ConductorOne</div>
+</div>
+</dd>
+</dl>
+</div>
+<h1 id="title">Identity Continuation Assertion for OAuth 2.0 Token Exchange</h1>
+<section id="section-abstract">
+      <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
+<p id="section-abstract-1">This document profiles OAuth 2.0 Token Exchange to define the Identity
+Continuation Assertion: a short-lived, sender-constrained JWT that carries
+verifiable evidence of a delegation chain into a Token Exchange request. A
+Continuation Authorization Server can then issue an onward authorization grant
+without subjecting the user to a new interactive authentication. The primary
+use case is same-Identity-Provider (same-IdP) SaaS-to-SaaS chaining, in which
+several Resource Authorization Servers trust a single enterprise IdP and each
+names the user under its own audience-local (pairwise) subject identifier.
+Because only the IdP holds the map from a root delegation to each audience's
+subject, the IdP remains the sole issuer of the onward Identity Assertion JWT
+Authorization Grant (ID-JAG) at every cross-boundary hop. The assertion is the
+evidence carried into the exchange; the resulting grant is the authority. This
+profile complements, and does not replace, offline attenuated delegation,
+which is appropriate for intra-domain fan-out that does not change the user's
+subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+</section>
+<section class="note rfcEditorRemove" id="section-note.1">
+      <h2 id="name-about-this-document">
+<a href="#name-about-this-document" class="section-name selfRef">About This Document</a>
+      </h2>
+<p id="section-note.1-1">This note is to be removed before publishing as an RFC.<a href="#section-note.1-1" class="pilcrow">¶</a></p>
+<p id="section-note.1-2">
+        The latest revision of this draft can be found at <span><a href="https://mcguinness.github.io/draft-mcguinness-oauth-id-continuation-assertion/draft-mcguinness-oauth-id-continuation-assertion.html">https://mcguinness.github.io/draft-mcguinness-oauth-id-continuation-assertion/draft-mcguinness-oauth-id-continuation-assertion.html</a></span>.
+        Status information for this document may be found at <span><a href="https://datatracker.ietf.org/doc/draft-mcguinness-oauth-id-continuation-assertion/">https://datatracker.ietf.org/doc/draft-mcguinness-oauth-id-continuation-assertion/</a></span>.<a href="#section-note.1-2" class="pilcrow">¶</a></p>
+<p id="section-note.1-3">
+        Discussion of this document takes place on the
+        Web Authorization Protocol Working Group mailing list (<span><a href="mailto:oauth@ietf.org">mailto:oauth@ietf.org</a></span>),
+        which is archived at <span><a href="https://datatracker.ietf.org/wg/oauth/about/">https://datatracker.ietf.org/wg/oauth/about/</a></span>.
+        Subscribe at <span><a href="https://www.ietf.org/mailman/listinfo/oauth/">https://www.ietf.org/mailman/listinfo/oauth/</a></span>.<a href="#section-note.1-3" class="pilcrow">¶</a></p>
+<p id="section-note.1-4">Source for this draft and an issue tracker can be found at
+        <span><a href="https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion">https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion</a></span>.<a href="#section-note.1-4" class="pilcrow">¶</a></p>
+</section>
+<div id="status-of-memo">
+<section id="section-boilerplate.1">
+        <h2 id="name-status-of-this-memo">
+<a href="#name-status-of-this-memo" class="section-name selfRef">Status of This Memo</a>
+        </h2>
+<p id="section-boilerplate.1-1">
+        This Internet-Draft is submitted in full conformance with the
+        provisions of BCP 78 and BCP 79.<a href="#section-boilerplate.1-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-2">
+        Internet-Drafts are working documents of the Internet Engineering Task
+        Force (IETF). Note that other groups may also distribute working
+        documents as Internet-Drafts. The list of current Internet-Drafts is
+        at <span><a href="https://datatracker.ietf.org/drafts/current/">https://datatracker.ietf.org/drafts/current/</a></span>.<a href="#section-boilerplate.1-2" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-3">
+        Internet-Drafts are draft documents valid for a maximum of six months
+        and may be updated, replaced, or obsoleted by other documents at any
+        time. It is inappropriate to use Internet-Drafts as reference
+        material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.1-4">
+        This Internet-Draft will expire on 8 December 2026.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="copyright">
+<section id="section-boilerplate.2">
+        <h2 id="name-copyright-notice">
+<a href="#name-copyright-notice" class="section-name selfRef">Copyright Notice</a>
+        </h2>
+<p id="section-boilerplate.2-1">
+            Copyright (c) 2026 IETF Trust and the persons identified as the
+            document authors. All rights reserved.<a href="#section-boilerplate.2-1" class="pilcrow">¶</a></p>
+<p id="section-boilerplate.2-2">
+            This document is subject to BCP 78 and the IETF Trust's Legal
+            Provisions Relating to IETF Documents
+            (<span><a href="https://trustee.ietf.org/license-info">https://trustee.ietf.org/license-info</a></span>) in effect on the date of
+            publication of this document. Please review these documents
+            carefully, as they describe your rights and restrictions with
+            respect to this document. Code Components extracted from this
+            document must include Revised BSD License text as described in
+            Section 4.e of the Trust Legal Provisions and are provided without
+            warranty as described in the Revised BSD License.<a href="#section-boilerplate.2-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="toc">
+<section id="section-toc.1">
+        <a href="#" onclick="scroll(0,0)" class="toplink">▲</a><h2 id="name-table-of-contents">
+<a href="#name-table-of-contents" class="section-name selfRef">Table of Contents</a>
+        </h2>
+<nav class="toc"><ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1">
+            <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-why-a-new-input-is-needed" class="internal xref">Why a New Input Is Needed</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-core-principle" class="internal xref">Core Principle</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-relationship-to-other-speci" class="internal xref">Relationship to Other Specifications</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.2">
+            <p id="section-toc.1-1.2.1"><a href="#section-2" class="auto internal xref">2</a>.  <a href="#name-conventions-and-definitions" class="internal xref">Conventions and Definitions</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.3">
+            <p id="section-toc.1-1.3.1"><a href="#section-3" class="auto internal xref">3</a>.  <a href="#name-when-to-use-this-profile-ve" class="internal xref">When to Use This Profile Versus Offline Attenuation</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4">
+            <p id="section-toc.1-1.4.1"><a href="#section-4" class="auto internal xref">4</a>.  <a href="#name-the-identity-continuation-a" class="internal xref">The Identity Continuation Assertion</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.1">
+                <p id="section-toc.1-1.4.2.1.1"><a href="#section-4.1" class="auto internal xref">4.1</a>.  <a href="#name-token-type-and-media-type" class="internal xref">Token Type and Media Type</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.2">
+                <p id="section-toc.1-1.4.2.2.1"><a href="#section-4.2" class="auto internal xref">4.2</a>.  <a href="#name-claims" class="internal xref">Claims</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.3">
+                <p id="section-toc.1-1.4.2.3.1"><a href="#section-4.3" class="auto internal xref">4.3</a>.  <a href="#name-claims-that-are-deliberatel" class="internal xref">Claims That Are Deliberately Excluded</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.4">
+                <p id="section-toc.1-1.4.2.4.1"><a href="#section-4.4" class="auto internal xref">4.4</a>.  <a href="#name-assertion-issuance-and-key-" class="internal xref">Assertion Issuance and Key Binding</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.4.2.5">
+                <p id="section-toc.1-1.4.2.5.1"><a href="#section-4.5" class="auto internal xref">4.5</a>.  <a href="#name-chain-context-provenance" class="internal xref">Chain-Context Provenance</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5">
+            <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-chain-identifier-chain_id" class="internal xref">Chain Identifier (<code>chain_id</code>)</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-stronger-privacy-mode" class="internal xref">Stronger Privacy Mode</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6">
+            <p id="section-toc.1-1.6.1"><a href="#section-6" class="auto internal xref">6</a>.  <a href="#name-chain-lifetime-and-revocati" class="internal xref">Chain Lifetime and Revocation</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7">
+            <p id="section-toc.1-1.7.1"><a href="#section-7" class="auto internal xref">7</a>.  <a href="#name-token-exchange-profile" class="internal xref">Token Exchange Profile</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.1">
+                <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-direct-id-jag-request" class="internal xref">Direct ID-JAG Request</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-chained-id-jag-request" class="internal xref">Chained ID-JAG Request</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-sender-constrained-presenta" class="internal xref">Sender-Constrained Presentation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-the-chain_id-response-param" class="internal xref">The <code>chain_id</code> Response Parameter</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8">
+            <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-same-idp-core-flow" class="internal xref">Same-IdP Core Flow</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9">
+            <p id="section-toc.1-1.9.1"><a href="#section-9" class="auto internal xref">9</a>.  <a href="#name-idp-validation-for-id-jag-o" class="internal xref">IdP Validation for ID-JAG Output</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.10">
+            <p id="section-toc.1-1.10.1"><a href="#section-10" class="auto internal xref">10</a>. <a href="#name-onward-id-jag" class="internal xref">Onward ID-JAG</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11">
+            <p id="section-toc.1-1.11.1"><a href="#section-11" class="auto internal xref">11</a>. <a href="#name-security-considerations" class="internal xref">Security Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.1">
+                <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-sender-constraint-and-proof" class="internal xref">Sender Constraint and Proof of Possession</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-short-lifetime-and-replay" class="internal xref">Short Lifetime and Replay</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-root-authentication-context" class="internal xref">Root Authentication Context</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-envelope-enforcement-and-of" class="internal xref">Envelope Enforcement and Offline Attenuation</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.5">
+                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-trust-in-the-chain-authorit" class="internal xref">Trust in the Chain Authority</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6">
+                <p id="section-toc.1-1.11.2.6.1"><a href="#section-11.6" class="auto internal xref">11.6</a>.  <a href="#name-actor-chain-integrity" class="internal xref">Actor Chain Integrity</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.7">
+                <p id="section-toc.1-1.11.2.7.1"><a href="#section-11.7" class="auto internal xref">11.7</a>.  <a href="#name-token-type-and-algorithm-co" class="internal xref">Token, Type, and Algorithm Confusion</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.12">
+            <p id="section-toc.1-1.12.1"><a href="#section-12" class="auto internal xref">12</a>. <a href="#name-privacy-considerations" class="internal xref">Privacy Considerations</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13">
+            <p id="section-toc.1-1.13.1"><a href="#section-13" class="auto internal xref">13</a>. <a href="#name-iana-considerations" class="internal xref">IANA Considerations</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
+                <p id="section-toc.1-1.13.2.1.1"><a href="#section-13.1" class="auto internal xref">13.1</a>.  <a href="#name-oauth-uri-registration" class="internal xref">OAuth URI Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
+                <p id="section-toc.1-1.13.2.2.1"><a href="#section-13.2" class="auto internal xref">13.2</a>.  <a href="#name-media-type-registration" class="internal xref">Media Type Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.3">
+                <p id="section-toc.1-1.13.2.3.1"><a href="#section-13.3" class="auto internal xref">13.3</a>.  <a href="#name-json-web-token-claims-regis" class="internal xref">JSON Web Token Claims Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.4">
+                <p id="section-toc.1-1.13.2.4.1"><a href="#section-13.4" class="auto internal xref">13.4</a>.  <a href="#name-oauth-parameters-registrati" class="internal xref">OAuth Parameters Registration</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14">
+            <p id="section-toc.1-1.14.1"><a href="#section-14" class="auto internal xref">14</a>. <a href="#name-references" class="internal xref">References</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.1">
+                <p id="section-toc.1-1.14.2.1.1"><a href="#section-14.1" class="auto internal xref">14.1</a>.  <a href="#name-normative-references" class="internal xref">Normative References</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.2">
+                <p id="section-toc.1-1.14.2.2.1"><a href="#section-14.2" class="auto internal xref">14.2</a>.  <a href="#name-informative-references" class="internal xref">Informative References</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15">
+            <p id="section-toc.1-1.15.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.1">
+                <p id="section-toc.1-1.15.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-why-not-a-profile-of-id-jag" class="internal xref">Why Not a Profile of ID-JAG</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.2">
+                <p id="section-toc.1-1.15.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-why-not-a-profile-of-a-tran" class="internal xref">Why Not a Profile of a Transaction Token</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.15.2.3">
+                <p id="section-toc.1-1.15.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-why-not-a-cross-domain-prop" class="internal xref">Why Not a Cross-Domain Propagation Token</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
+            <p id="section-toc.1-1.16.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-worked-example-same-idp-two" class="internal xref">Worked Example (Same-IdP, Two Hops)</a></p>
+<ul class="compact toc ulBare ulEmpty">
+<li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.1">
+                <p id="section-toc.1-1.16.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-first-hop-direct-id-jag-for" class="internal xref">First Hop: Direct ID-JAG for ExpenseRAS</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.2">
+                <p id="section-toc.1-1.16.2.2.1"><a href="#appendix-B.2" class="auto internal xref">B.2</a>.  <a href="#name-crossing-the-boundary-into-" class="internal xref">Crossing the Boundary into TravelSaaS</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.3">
+                <p id="section-toc.1-1.16.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-obtaining-the-identity-cont" class="internal xref">Obtaining the Identity Continuation Assertion</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.4">
+                <p id="section-toc.1-1.16.2.4.1"><a href="#appendix-B.4" class="auto internal xref">B.4</a>.  <a href="#name-chained-exchange-for-the-tr" class="internal xref">Chained Exchange for the TravelRAS ID-JAG</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.5">
+                <p id="section-toc.1-1.16.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-using-the-travelras-id-jag" class="internal xref">Using the TravelRAS ID-JAG</a></p>
+</li>
+            </ul>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
+            <p id="section-toc.1-1.17.1"><a href="#appendix-C" class="auto internal xref"></a><a href="#name-acknowledgments" class="internal xref">Acknowledgments</a></p>
+</li>
+          <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
+            <p id="section-toc.1-1.18.1"><a href="#appendix-D" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+</li>
+        </ul>
+</nav>
+</section>
+</div>
+<div id="introduction">
+<section id="section-1">
+      <h2 id="name-introduction">
+<a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
+      </h2>
+<p id="section-1-1">Modern enterprise software-as-a-service (SaaS) deployments increasingly chain
+calls across application boundaries on behalf of a single human user. A user
+authenticates once at an enterprise Identity Provider (IdP) and invokes an
+application; completing the user's request requires that application to call a
+second application, which in turn must call a third. Each application exposes
+an API protected by its own Resource Authorization Server (RAS), and all of
+these Resource Authorization Servers trust the same enterprise IdP for single
+sign-on (SSO), for delegation continuity, and for resolving the user's
+identity into an audience-local subject identifier.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">The key use case addressed by this document is therefore:<a href="#section-1-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-1-3">
+<pre>
+ExpenseSaaS calls TravelSaaS. TravelSaaS must call BookingSaaS.
+Each SaaS API is protected by its own Resource Authorization Server.
+All Resource Authorization Servers trust the same enterprise IdP for
+SSO, delegation continuity, and audience-local subject resolution.
+</pre><a href="#section-1-3" class="pilcrow">¶</a>
+</div>
+<div class="alignLeft art-text artwork" id="section-1-4">
+<pre>
+ExpenseApp -&gt; ExpenseSaaS/ExpenseRAS -&gt; TravelSaaS/TravelRAS
+           -&gt; BookingSaaS/BookingRAS
+</pre><a href="#section-1-4" class="pilcrow">¶</a>
+</div>
+<p id="section-1-5">The user authenticates once at the enterprise IdP and is never redirected
+through a new interactive flow for an onward hop. The IdP remains the trust
+anchor, and each onward grant is audience-scoped and carries the subject
+identifier appropriate for its target RAS.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<div id="motivation">
+<section id="section-1.1">
+        <h3 id="name-why-a-new-input-is-needed">
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-why-a-new-input-is-needed" class="section-name selfRef">Why a New Input Is Needed</a>
+        </h3>
+<p id="section-1.1-1">The first hop is an ordinary identity assertion exchange: ExpenseApp holds a
+credential for the authenticated user (for example, an ID Token or refresh
+token) and exchanges it at the IdP for an Identity Assertion JWT Authorization
+Grant (ID-JAG), exactly as in
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. Every subsequent hop is
+different. By the time TravelSaaS must call BookingSaaS, the user is no longer
+present and TravelSaaS holds no end-user credential it could present to the
+IdP; the only thing that crossed the ExpenseSaaS-to-TravelSaaS boundary is
+chain context. TravelSaaS therefore cannot perform a normal identity assertion
+exchange to obtain the next grant, even though the same IdP could mint it.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">This document defines the missing input. An Identity Continuation Assertion is a
+short-lived, sender-constrained, verifiable statement about the in-flight
+delegation chain that a service presents to the IdP in place of an end-user
+credential, so that the IdP can resolve the next audience's subject and issue
+the next onward grant. It is the evidence; the ID-JAG that comes back is the
+authority.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="core-principle">
+<section id="section-1.2">
+        <h3 id="name-core-principle">
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-core-principle" class="section-name selfRef">Core Principle</a>
+        </h3>
+<p id="section-1.2-1">The IdP is the only party that can name the user to each RAS, because each RAS
+resolves the user under its own (pairwise) subject identifier and only the IdP
+holds the map from the root delegation to those per-audience subjects. That is
+why the IdP remains the sole issuer at every cross-boundary hop: no downstream
+party and no offline authority can mint a correct onward <code>sub</code>.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">The Identity Continuation Assertion is a Token Exchange subject token used to
+obtain an onward ID-JAG, the output profile of this document.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-3">This document defines the evidence format, Token Exchange parameters,
+validation rules, and IANA registrations needed for that exchange. It does not
+define a new access token format, does not allow a Resource Server to consume
+the Identity Continuation Assertion directly, and does not allow a Chain
+Authority to name the user for the target audience.<a href="#section-1.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="relationship-to-other-specifications">
+<section id="section-1.3">
+        <h3 id="name-relationship-to-other-speci">
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-relationship-to-other-speci" class="section-name selfRef">Relationship to Other Specifications</a>
+        </h3>
+<p id="section-1.3-1">This profile builds directly on OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> and JSON
+Web Tokens (JWTs) <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>. It extends the cross-domain model of OAuth Identity and
+Authorization Chaining Across Domains
+<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> and uses the ID-JAG
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> as its onward grant
+type. It is intended to compose with, and is positioned relative to, the
+Workload Identity in Multi-System Environments (WIMSE) architecture
+<span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span> and offline attenuated delegation tokens such as
+Waffles <span>[<a href="#WAFFLES" class="cite xref">WAFFLES</a>]</span> and Attenuating Authorization Tokens (AAT)
+<span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span>.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="conventions-and-definitions">
+<section id="section-2">
+      <h2 id="name-conventions-and-definitions">
+<a href="#section-2" class="section-number selfRef">2. </a><a href="#name-conventions-and-definitions" class="section-name selfRef">Conventions and Definitions</a>
+      </h2>
+<p id="section-2-1">The key words "<span class="bcp14">MUST</span>", "<span class="bcp14">MUST NOT</span>", "<span class="bcp14">REQUIRED</span>", "<span class="bcp14">SHALL</span>", "<span class="bcp14">SHALL NOT</span>", "<span class="bcp14">SHOULD</span>", "<span class="bcp14">SHOULD NOT</span>", "<span class="bcp14">RECOMMENDED</span>", "<span class="bcp14">NOT RECOMMENDED</span>",
+"<span class="bcp14">MAY</span>", and "<span class="bcp14">OPTIONAL</span>" in this document are to be interpreted as
+described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</span> <span>[<a href="#RFC8174" class="cite xref">RFC8174</a>]</span> when, and only when, they
+appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
+<p id="section-2-2">This document uses the following terms:<a href="#section-2-2" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-2-3">
+        <dt id="section-2-3.1">Identity Provider (IdP):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.2">
+          <p id="section-2-3.2.1">The enterprise authority that authenticates the user, anchors trust for a
+set of Resource Authorization Servers, holds the map from a root delegation
+to each audience's subject identifier, and issues onward authorization
+grants. In this profile, the IdP is the Continuation Authorization Server.<a href="#section-2-3.2.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.3">Continuation Authorization Server:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.4">
+          <p id="section-2-3.4.1">The Authorization Server to which an Identity Continuation Assertion is
+presented to obtain an onward grant. In the same-IdP use case of this
+document, it is the enterprise IdP at every hop.<a href="#section-2-3.4.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.5">Resource Authorization Server (RAS):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.6">
+          <p id="section-2-3.6.1">An Authorization Server that protects a particular SaaS API and trusts the
+enterprise IdP for SSO and subject resolution. It consumes an ID-JAG as an
+authorization grant and issues access tokens for its API.<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.7">Resource Server (RS):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.8">
+          <p id="section-2-3.8.1">The service that hosts a protected API and consumes the access tokens issued
+by its Resource Authorization Server. A Resource Server never consumes an
+Identity Continuation Assertion or a <code>chain_id</code>.<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.9">ID-JAG:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.10">
+          <p id="section-2-3.10.1">An Identity Assertion JWT Authorization Grant
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>: the onward authorization
+grant the IdP issues for a target RAS.<a href="#section-2-3.10.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.11">Identity Continuation Assertion:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.12">
+          <p id="section-2-3.12.1">A short-lived, sender-constrained JWT, defined by this document, issued by a
+Chain Authority and presented to the IdP as the <code>subject_token</code> of a Token
+Exchange request in order to obtain an onward authorization grant. Its token
+type is <code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-2-3.12.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.13">Chain Authority:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.14">
+          <p id="section-2-3.14.1">The party trusted by the Continuation Authorization Server to assert chain
+evidence for a given tenant and to issue Identity Continuation Assertions.
+The Chain Authority is not the authority for resolving the target audience's
+user subject identifier.<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.15">Current actor (presenting actor):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.16">
+          <p id="section-2-3.16.1">The workload that presents the Identity Continuation Assertion and the Token
+Exchange request to the IdP. It is identified by the outermost <code>act</code> claim
+and authenticated by the <code>actor_token</code>.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.17">Tenant:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.18">
+          <p id="section-2-3.18.1">The administrative boundary (for example, an enterprise customer of the IdP)
+within which a chain is established and trust in a Chain Authority is
+configured. How a tenant is determined is deployment-defined and otherwise
+out of scope for this document.<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.19">Chain Identifier (<code>chain_id</code>):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.20">
+          <p id="section-2-3.20.1">An opaque, unguessable, IdP-generated identifier for the root delegation
+context; see <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.21">Root-chain envelope:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.22">
+          <p id="section-2-3.22.1">The set of constraints the IdP records when it establishes a chain at root
+issuance and evaluates every continuation against: the authenticated user,
+the authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>), a set of authorized
+target entries, the maximum actor-chain depth, and the chain's expiry. Each
+target entry binds one audience and resource to the scopes that may be
+requested for that target. The envelope is derived from the user's
+authentication and consent and from IdP policy; how those inputs establish
+its target entries is out of scope for this document. A continuation cannot
+add a target or scope that was not authorized when the root-chain envelope
+was established. See <a href="#validation" class="auto internal xref">Section 9</a> and <a href="#lifecycle" class="auto internal xref">Section 6</a>.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.23">Audience-local (pairwise) subject:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.24">
+          <p id="section-2-3.24.1">The subject identifier under which a particular RAS names the user. Distinct
+Resource Authorization Servers <span class="bcp14">MAY</span> name the same user with different
+identifiers; only the IdP holds the map between them.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+</dd>
+      <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="decision-rule">
+<section id="section-3">
+      <h2 id="name-when-to-use-this-profile-ve">
+<a href="#section-3" class="section-number selfRef">3. </a><a href="#name-when-to-use-this-profile-ve" class="section-name selfRef">When to Use This Profile Versus Offline Attenuation</a>
+      </h2>
+<p id="section-3-1">The deciding question is subject resolution, not cost.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-3-2.1">
+          <p id="section-3-2.1.1">If the next audience requires a <em>different</em> subject identifier (pairwise
+subjects, where only the IdP holds the map), the IdP <span class="bcp14">MUST</span> mint that hop. An
+Identity Continuation Assertion to the IdP is used. Offline tokens cannot
+produce the next audience's <code>sub</code>.<a href="#section-3-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-3-2.2">
+          <p id="section-3-2.2.1">If the <em>same</em> subject identifier, or a key-based workload identity, suffices
+down a local fan-out, the parties <span class="bcp14">SHOULD NOT</span> round-trip the IdP. An offline
+attenuated delegation token (Waffles <span>[<a href="#WAFFLES" class="cite xref">WAFFLES</a>]</span> or AAT
+<span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span>) is used instead, and the IdP
+is reserved for the boundary hops.<a href="#section-3-2.2.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
+<p id="section-3-3">In the canonical flow both appear: an offline attenuated stack inside
+TravelSaaS as it fans out to sub-agents, and an Identity Continuation Assertion
+when TravelSaaS crosses to BookingRAS under a new subject.<a href="#section-3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="assertion">
+<section id="section-4">
+      <h2 id="name-the-identity-continuation-a">
+<a href="#section-4" class="section-number selfRef">4. </a><a href="#name-the-identity-continuation-a" class="section-name selfRef">The Identity Continuation Assertion</a>
+      </h2>
+<div id="names">
+<section id="section-4.1">
+        <h3 id="name-token-type-and-media-type">
+<a href="#section-4.1" class="section-number selfRef">4.1. </a><a href="#name-token-type-and-media-type" class="section-name selfRef">Token Type and Media Type</a>
+        </h3>
+<p id="section-4.1-1">The Identity Continuation Assertion is identified as follows:<a href="#section-4.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-4.1-2">
+<pre>
+Name:        Identity Continuation Assertion
+Token type:  urn:ietf:params:oauth:token-type:identity-continuation
+JOSE typ:    oauth-identity-continuation+jwt
+</pre><a href="#section-4.1-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.1-3">The assertion is a JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>. Its JSON Object Signing and Encryption
+(JOSE) header <code>typ</code> value <code>oauth-identity-continuation+jwt</code> corresponds to the
+media type <code>application/oauth-identity-continuation+jwt</code> (<a href="#iana" class="auto internal xref">Section 13</a>). The IdP
+<span class="bcp14">MUST</span> verify the <code>typ</code> header to ensure that the JWT is processed as an Identity
+Continuation Assertion and is not confused with any other JWT, as recommended
+by <span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>.<a href="#section-4.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="assertion-claims">
+<section id="section-4.2">
+        <h3 id="name-claims">
+<a href="#section-4.2" class="section-number selfRef">4.2. </a><a href="#name-claims" class="section-name selfRef">Claims</a>
+        </h3>
+<p id="section-4.2-1">The following is a non-normative example of the Identity Continuation Assertion
+claim set:<a href="#section-4.2-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-4.2-2">
+<pre>
+{
+  "iss": "https://ca.expenses.example/",
+  "aud": "https://idp.example/",
+  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+
+  "act": {
+    "iss": "https://travel.example/",
+    "sub": "travel-service",
+    "act": {
+      "iss": "https://expenses.example/",
+      "sub": "expense-service",
+      "act": {
+        "iss": "https://expenses.example/",
+        "sub": "expense-app"
+      }
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-current-actor-key-thumbprint"
+  },
+
+  "iat": 1710000500,
+  "exp": 1710000800,
+  "jti": "continuation-assertion-01"
+}
+</pre><a href="#section-4.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.2-3">The claims have the following meanings and requirements:<a href="#section-4.2-3" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-4.2-4">
+          <dt id="section-4.2-4.1">
+<code>iss</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.2">
+            <p id="section-4.2-4.2.1"><span class="bcp14">REQUIRED</span>. The Chain Authority that issued the assertion. The IdP <span class="bcp14">MUST</span> verify
+that this issuer is a trusted Chain Authority for this tenant and that the
+assertion was signed with a key authorized for that issuer.<a href="#section-4.2-4.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.3">
+<code>aud</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.4">
+            <p id="section-4.2-4.4.1"><span class="bcp14">REQUIRED</span>. It <span class="bcp14">MUST</span> be a single string containing the issuer identifier of the
+Continuation Authorization Server being asked to issue the onward grant. The
+IdP <span class="bcp14">MUST</span> validate <code>aud</code> using exact string matching against its issuer
+identifier. A token endpoint URL that differs from the issuer identifier <span class="bcp14">MUST NOT</span> be used as this claim's value.<a href="#section-4.2-4.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.5">
+<code>chain_id</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.6">
+            <p id="section-4.2-4.6.1"><span class="bcp14">REQUIRED</span>. The authoritative binding to the root delegation and user. The IdP
+resolves the user, and the target-audience subject, from it. See <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-4.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.7">
+<code>act</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.8">
+            <p id="section-4.2-4.8.1"><span class="bcp14">REQUIRED</span>. The actor lineage, encoded as nested <code>act</code> claims per <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>.
+The outermost <code>act</code> claim identifies the current actor presenting the Token
+Exchange request, and nested <code>act</code> claims identify prior actors. Claims inside
+<code>act</code> are identity claims only; non-identity claims such as <code>exp</code>, <code>nbf</code>,
+<code>aud</code>, <code>scope</code>, and <code>cnf</code> <span class="bcp14">MUST NOT</span> be used inside <code>act</code>. When the inbound
+segment was an offline attenuated stack, the Chain Authority <span class="bcp14">SHOULD</span> reflect
+the verified leaf actor as the outermost actor. It <span class="bcp14">MAY</span> retain
+deployment-specific audit evidence for the offline segment separately from
+the RFC 8693 <code>act</code> object.<a href="#section-4.2-4.8.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.9">
+<code>cnf</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.10">
+            <p id="section-4.2-4.10.1"><span class="bcp14">REQUIRED</span>. A confirmation claim <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> that binds the assertion to the
+key of the actor that will present it to the IdP. <code>cnf</code> <span class="bcp14">MUST</span> contain a key
+confirmation method: <code>jkt</code>, the JWK SHA-256 thumbprint <span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span> of that
+key when Demonstrating Proof of Possession (DPoP) <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> is used, or
+<code>x5t#S256</code>, the certificate thumbprint when mutual-TLS client authentication
+is used. The presenting actor demonstrates live possession of the confirmed
+key on the Token Exchange request, and the Chain Authority binds the
+assertion to it at issuance. The proof-of-possession model is specified in
+<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>.<a href="#section-4.2-4.10.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.11">
+<code>iat</code>, <code>exp</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.12">
+            <p id="section-4.2-4.12.1"><span class="bcp14">REQUIRED</span>. The assertion lifetime <span class="bcp14">MUST</span> be short. <code>exp</code> <span class="bcp14">MUST</span> be after <code>iat</code>,
+and <code>exp - iat</code> <span class="bcp14">MUST</span> be no more than 300 seconds; see <a href="#validation" class="auto internal xref">Section 9</a>.<a href="#section-4.2-4.12.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-4.2-4.13">
+<code>jti</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-4.2-4.14">
+            <p id="section-4.2-4.14.1"><span class="bcp14">REQUIRED</span>. A unique identifier used by the IdP for replay detection. The value
+<span class="bcp14">MUST</span> be unique per issuer (<code>iss</code>) within the assertion validity window.<a href="#section-4.2-4.14.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-4.2-5">The assertion <span class="bcp14">MUST NOT</span> contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or <code>amr</code>
+claim. The IdP obtains the user and root authentication context from the
+root-chain envelope indexed by <code>chain_id</code>, and identifies the current workload
+from the outermost <code>act</code> claim and the <code>actor_token</code>; repeating those values in
+the assertion would only create competing sources of identity without adding
+authority.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
+<p id="section-4.2-6">In deployments that already maintain a delegation or mission identifier, the
+<code>chain_id</code> <span class="bcp14">MAY</span> be derived from or projected from that identifier, provided the
+result still satisfies the requirements of <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="excluded-claims">
+<section id="section-4.3">
+        <h3 id="name-claims-that-are-deliberatel">
+<a href="#section-4.3" class="section-number selfRef">4.3. </a><a href="#name-claims-that-are-deliberatel" class="section-name selfRef">Claims That Are Deliberately Excluded</a>
+        </h3>
+<p id="section-4.3-1">The following Token Exchange request values <span class="bcp14">MUST NOT</span> be conveyed by the
+Identity Continuation Assertion:<a href="#section-4.3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-4.3-2">
+<pre>
+audience (target)
+resource
+scope
+requested_token_type
+</pre><a href="#section-4.3-2" class="pilcrow">¶</a>
+</div>
+<p id="section-4.3-3">These stay in the Token Exchange request (<a href="#token-exchange" class="auto internal xref">Section 7</a>) so that direct
+and chained Token Exchange calls have an identical shape. The requested
+<code>audience</code>, <code>resource</code>, <code>scope</code>, and <code>requested_token_type</code> always come from
+the Token Exchange request, never from the assertion. The assertion's <code>aud</code>
+claim is different: it identifies the continuation IdP that consumes the
+assertion, not the target audience requested in the Token Exchange request.<a href="#section-4.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="assertion-issuance">
+<section id="section-4.4">
+        <h3 id="name-assertion-issuance-and-key-">
+<a href="#section-4.4" class="section-number selfRef">4.4. </a><a href="#name-assertion-issuance-and-key-" class="section-name selfRef">Assertion Issuance and Key Binding</a>
+        </h3>
+<p id="section-4.4-1">A presenting actor obtains an Identity Continuation Assertion from the Chain
+Authority for a given <code>chain_id</code> (<a href="#flow" class="auto internal xref">Section 8</a>, step 7). The Chain Authority <span class="bcp14">MUST</span>
+bind the assertion to the requesting actor's key by setting the appropriate
+<code>cnf</code> confirmation method (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>) for that key, and <span class="bcp14">MUST</span> do so
+only after establishing that the requesting actor controls that key and is the
+actor recorded in the outermost <code>act</code> claim. The mechanism by which the actor
+authenticates to the Chain Authority and proves control of its key is
+deployment-specific; it is typically the workload's existing mutually
+authenticated credential. An assertion whose <code>cnf</code> is not bound to the
+requesting actor's key is not presentable because the IdP requires live proof
+of possession of the confirmed key (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>).<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="context-provenance">
+<section id="section-4.5">
+        <h3 id="name-chain-context-provenance">
+<a href="#section-4.5" class="section-number selfRef">4.5. </a><a href="#name-chain-context-provenance" class="section-name selfRef">Chain-Context Provenance</a>
+        </h3>
+<p id="section-4.5-1">The mechanism used to transport chain context between workloads is
+deployment-specific, but its security properties are not. A Chain Authority
+<span class="bcp14">MUST</span> issue an Identity Continuation Assertion only after establishing all of
+the following:<a href="#section-4.5-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-4.5-2">
+<li id="section-4.5-2.1">
+            <p id="section-4.5-2.1.1">the <code>chain_id</code> was received through an authenticated, confidential, and
+integrity-protected channel from a participant authorized to continue that
+chain, or was obtained from equivalent authenticated state held by the Chain
+Authority;<a href="#section-4.5-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-4.5-2.2">
+            <p id="section-4.5-2.2.1">the requesting actor is authorized under Chain Authority policy to continue
+the chain;<a href="#section-4.5-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-4.5-2.3">
+            <p id="section-4.5-2.3.1">the requesting actor controls the key placed in <code>cnf</code>; and<a href="#section-4.5-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="section-4.5-2.4">
+            <p id="section-4.5-2.4.1">the actor lineage placed in <code>act</code> was derived from authenticated context or
+from a verifiable delegation artifact whose integrity and delegation rules
+the Chain Authority has validated.<a href="#section-4.5-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+<p id="section-4.5-3">Possession of <code>chain_id</code> alone is insufficient to satisfy these requirements.
+Values received as propagated context, including actor history or requested
+authority, <span class="bcp14">MUST NOT</span> override the root-chain envelope held by the IdP. The
+transport <span class="bcp14">MAY</span> carry deployment-specific hints, but the Identity Continuation
+Assertion contains only the claims defined in <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, and the IdP
+applies its own root-chain and current-actor policy during the exchange.<a href="#section-4.5-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="chain-id">
+<section id="section-5">
+      <h2 id="name-chain-identifier-chain_id">
+<a href="#section-5" class="section-number selfRef">5. </a><a href="#name-chain-identifier-chain_id" class="section-name selfRef">Chain Identifier (<code>chain_id</code>)</a>
+      </h2>
+<p id="section-5-1">The <code>chain_id</code> identifies the root delegation context established when the IdP
+issued the initial ID-JAG. It is opaque, unguessable, IdP-generated, and used
+by the IdP to correlate a continuation back to that root and to resolve the
+correct per-audience subject.<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2"><code>chain_id</code> is a non-bearer reference to that delegation context, closer in
+spirit to a grant identifier than to a token. It conveys no authority on its
+own, and it is never dereferenced into, or presented in place of, a token: it is
+not a token handle or reference token. Authority at each hop comes from the
+sender-constrained Identity Continuation Assertion and the root-chain envelope,
+not from <code>chain_id</code>.<a href="#section-5-2" class="pilcrow">¶</a></p>
+<p id="section-5-3">This follows an established pattern of non-bearer correlation claims carried in
+a JWT. The OpenID Connect <code>sid</code> (Session ID) claim <span>[<a href="#OIDC.FrontChannelLogout" class="cite xref">OIDC.FrontChannelLogout</a>]</span>
+and the <code>txn</code> (Transaction Identifier) claim <span>[<a href="#RFC8417" class="cite xref">RFC8417</a>]</span> are likewise opaque,
+issuer-generated identifiers that index server-side state and convey no
+authority of their own. <code>chain_id</code> differs chiefly in being confined to the
+control plane: unlike <code>sid</code>, which a Resource Server can see in an ID Token,
+<code>chain_id</code> <span class="bcp14">MUST NOT</span> appear in any token a Resource Server consumes (the rules
+below keep it out of the data plane; see also <a href="#privacy" class="auto internal xref">Section 12</a>).<a href="#section-5-3" class="pilcrow">¶</a></p>
+<p id="section-5-4">The following rules apply:<a href="#section-5-4" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-5-5">
+<li id="section-5-5.1">
+          <p id="section-5-5.1.1">The IdP <span class="bcp14">MUST</span> generate <code>chain_id</code> for delegations that are eligible for
+continuation, and <span class="bcp14">MUST</span> return it as a Token Exchange <em>response</em> parameter
+(<a href="#response-param" class="auto internal xref">Section 7.4</a>).<a href="#section-5-5.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.2">
+          <p id="section-5-5.2.1"><code>chain_id</code> <span class="bcp14">MUST</span> contain at least 128 bits of entropy and <span class="bcp14">MUST NOT</span> contain
+user-identifying information.<a href="#section-5-5.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.3">
+          <p id="section-5-5.3.1"><code>chain_id</code> lives in the control plane only: Token Exchange responses,
+propagated chain context, and Identity Continuation Assertions.<a href="#section-5-5.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.4">
+          <p id="section-5-5.4.1"><code>chain_id</code> <span class="bcp14">MUST NOT</span> appear in any ID-JAG or access token that a Resource
+Server consumes. This preserves the audience-local subject property: a
+Resource Server sees only its own subject, audience, scope, and actor chain,
+and nothing that correlates the user across SaaS boundaries.<a href="#section-5-5.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.5">
+          <p id="section-5-5.5.1">End-to-end audit correlation is performed at the IdP, which holds <code>chain_id</code>
+for every hop. Per-Resource-Server logs use that server's own pairwise
+subject.<a href="#section-5-5.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.6">
+          <p id="section-5-5.6.1">Resource Authorization Servers, Resource Servers, and Chain Authorities <span class="bcp14">MUST NOT</span> modify <code>chain_id</code>.<a href="#section-5-5.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.7">
+          <p id="section-5-5.7.1"><code>chain_id</code> alone is not proof of authorization and <span class="bcp14">MUST NOT</span> be treated as a
+bearer credential. The IdP <span class="bcp14">MUST</span> use it only as a lookup handle for root
+chain state, subject resolution, and policy evaluation.<a href="#section-5-5.7.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+<div id="chain-id-privacy">
+<section id="section-5.1">
+        <h3 id="name-stronger-privacy-mode">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-stronger-privacy-mode" class="section-name selfRef">Stronger Privacy Mode</a>
+        </h3>
+<p id="section-5.1-1">If colluding chain participants must not be able to correlate even "same
+delegation", the IdP <span class="bcp14">MAY</span> issue a distinct per-audience chain reference that
+maps internally to a single root delegation, instead of a single shared
+<code>chain_id</code>. See <a href="#privacy" class="auto internal xref">Section 12</a>.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="lifecycle">
+<section id="section-6">
+      <h2 id="name-chain-lifetime-and-revocati">
+<a href="#section-6" class="section-number selfRef">6. </a><a href="#name-chain-lifetime-and-revocati" class="section-name selfRef">Chain Lifetime and Revocation</a>
+      </h2>
+<p id="section-6-1">A chain is continuable only while the IdP considers it active. Because every
+cross-boundary hop is an exchange at the IdP (<a href="#flow" class="auto internal xref">Section 8</a>), the IdP is in the loop
+at each hop and can stop a chain at any point.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">The IdP <span class="bcp14">MUST</span> bound the continuation lifetime of a <code>chain_id</code>. That lifetime
+<span class="bcp14">MUST NOT</span> exceed the lifetime of the authentication context and authorization
+that established the chain (for example, the user's session, the governing
+refresh token, or an explicit maximum chain lifetime set by policy), and the
+IdP <span class="bcp14">MUST</span> reject a continuation whose <code>chain_id</code> has expired (<a href="#validation" class="auto internal xref">Section 9</a>).
+Continuing a chain <span class="bcp14">MUST NOT</span> extend the root authentication context: <code>auth_time</code>,
+<code>acr</code>, and <code>amr</code> are fixed at root issuance, and onward grants inherit them
+unchanged (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>).<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">The IdP <span class="bcp14">MUST</span> be able to revoke a chain (for example, when the user's session is
+terminated, the governing refresh token is revoked, or policy otherwise
+withdraws the delegation), and <span class="bcp14">MUST</span> stop honoring continuation for a revoked
+<code>chain_id</code>. Because each onward grant requires a fresh exchange at the IdP,
+revocation takes effect at the next hop, with no need to reach or invalidate
+chain evidence already held by intermediate services. This is a deliberate
+difference from offline attenuated delegation (Waffles or AAT), where a minted
+child token remains usable for its lifetime without contacting an authority.
+Access tokens already issued by a Resource Authorization Server remain valid
+for their own lifetimes and are governed by that server's revocation
+mechanisms.<a href="#section-6-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="token-exchange">
+<section id="section-7">
+      <h2 id="name-token-exchange-profile">
+<a href="#section-7" class="section-number selfRef">7. </a><a href="#name-token-exchange-profile" class="section-name selfRef">Token Exchange Profile</a>
+      </h2>
+<p id="section-7-1">An Identity Continuation Assertion is used as the <code>subject_token</code> of an OAuth
+2.0 Token Exchange request <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. A direct request and a chained request
+have the same shape: the client changes only <code>subject_token</code> and
+<code>subject_token_type</code>.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<div id="direct-id-jag-request">
+<section id="section-7.1">
+        <h3 id="name-direct-id-jag-request">
+<a href="#section-7.1" class="section-number selfRef">7.1. </a><a href="#name-direct-id-jag-request" class="section-name selfRef">Direct ID-JAG Request</a>
+        </h3>
+<p id="section-7.1-1">A direct request, in which the subject token is a normal subject token such as
+an ID Token or refresh token:<a href="#section-7.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-7.1-2">
+<pre>
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.travel.example/
+resource=https://api.travel.example/
+scope=trips.read
+subject_token=&lt;id_token | refresh_token&gt;
+subject_token_type=&lt;normal-subject-token-type&gt;
+actor_token=&lt;sender-constrained-current-actor-credential&gt;
+actor_token_type=&lt;actor-token-type&gt;
+</pre><a href="#section-7.1-2" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="chained-id-jag-request">
+<section id="section-7.2">
+        <h3 id="name-chained-id-jag-request">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-chained-id-jag-request" class="section-name selfRef">Chained ID-JAG Request</a>
+        </h3>
+<p id="section-7.2-1">A chained request, in which the subject token is an Identity Continuation
+Assertion:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-7.2-2">
+<pre>
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.travel.example/
+resource=https://api.travel.example/
+scope=trips.read
+subject_token=&lt;identity-continuation-assertion&gt;
+subject_token_type=&lt;identity-continuation-token-type&gt;
+actor_token=&lt;sender-constrained-current-actor-credential&gt;
+actor_token_type=&lt;actor-token-type&gt;
+</pre><a href="#section-7.2-2" class="pilcrow">¶</a>
+</div>
+<p id="section-7.2-3">The <code>subject_token_type</code> value above is
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.2-4">The requested <code>audience</code>, <code>resource</code>, <code>scope</code>, and <code>requested_token_type</code> are
+supplied by the Token Exchange request and never by the assertion. Following
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>, <code>audience</code> identifies the
+target Resource Authorization Server and <code>resource</code> <span>[<a href="#RFC8707" class="cite xref">RFC8707</a>]</span> identifies the
+protected resource for which access is ultimately requested.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="sender-constrained-presentation">
+<section id="section-7.3">
+        <h3 id="name-sender-constrained-presenta">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-sender-constrained-presenta" class="section-name selfRef">Sender-Constrained Presentation</a>
+        </h3>
+<p id="section-7.3-1">The Identity Continuation Assertion is sender-constrained: it is bound by <code>cnf</code>
+to the key of the actor that presents it (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). This profile
+uses proof of possession aligned with the direct ID-JAG request
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>:<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-7.3-2.1">
+            <p id="section-7.3-2.1.1">The presenting actor <span class="bcp14">MUST</span> demonstrate live possession of the confirmed key on
+the Token Exchange request to the IdP. With DPoP <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>, the actor
+includes a DPoP proof JWT computed with that key, carried in the <code>DPoP</code> HTTP
+header (and therefore not in the request body shown above); the IdP <span class="bcp14">MUST</span>
+verify that the DPoP proof key thumbprint equals the assertion's <code>cnf.jkt</code>.
+Alternatively, the actor <span class="bcp14">MAY</span> use mutual-TLS client authentication
+<span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>, in which case <code>cnf</code> carries <code>x5t#S256</code>. The IdP <span class="bcp14">MUST</span> verify that
+the presented client certificate thumbprint equals that value. The IdP <span class="bcp14">MUST</span>
+reject a request that does not prove possession of the confirmed key.<a href="#section-7.3-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-7.3-2.2">
+            <p id="section-7.3-2.2.1">The Token Exchange request <span class="bcp14">MUST</span> include an <code>actor_token</code>, which authenticates
+the workload identity of the current actor, the outermost actor in the
+assertion's <code>act</code> chain. The <code>actor_token</code> <span class="bcp14">MUST</span> itself be sender-constrained
+to the same key confirmed by the assertion's <code>cnf</code>. For a JWT actor token,
+the IdP <span class="bcp14">MUST</span> verify a <code>cnf.jkt</code> or <code>cnf.x5t#S256</code> value that matches both the
+assertion and the live proof. For an opaque actor token, the IdP <span class="bcp14">MUST</span> obtain
+the equivalent confirmation value from authoritative token metadata, such as
+a token introspection response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. A bearer actor token <span class="bcp14">MUST NOT</span> be
+accepted. These checks bind the authenticated workload identity, the
+assertion, and the demonstrated key to one actor.<a href="#section-7.3-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-7.3-3">The onward ID-JAG the IdP issues is itself sender-constrained to the same key
+through its own <code>cnf</code> (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>). The presenting actor proves
+possession of that key again when it exchanges the ID-JAG at the target Resource
+Authorization Server, exactly as for a directly issued ID-JAG
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="response-param">
+<section id="section-7.4">
+        <h3 id="name-the-chain_id-response-param">
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-the-chain_id-response-param" class="section-name selfRef">The <code>chain_id</code> Response Parameter</a>
+        </h3>
+<p id="section-7.4-1">When the IdP issues an onward grant for a delegation that is eligible for
+further continuation, it <span class="bcp14">MUST</span> return <code>chain_id</code> as a top-level member of the
+Token Exchange response (alongside <code>access_token</code>, <code>issued_token_type</code>, and so
+forth), so that the next hop's Chain Authority can construct the next Identity
+Continuation Assertion. <code>chain_id</code> <span class="bcp14">MUST NOT</span> be carried as a claim inside the
+issued ID-JAG (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4).<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+<p id="section-7.4-2"><code>chain_id</code> stays in the control plane: it is delivered to the party that
+performed the Token Exchange and conveyed from there to the workload that
+continues the chain, for example accompanying the request into the next service
+or held by a Chain Authority in the originating trust domain. Keeping it out of
+the ID-JAG prevents a cross-hop correlation handle from reaching every audience
+that consumes a token (<a href="#privacy" class="auto internal xref">Section 12</a>). How it is conveyed is deployment-specific,
+but the provenance and integrity requirements of <a href="#context-provenance" class="auto internal xref">Section 4.5</a> apply.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
+<p id="section-7.4-3">A non-normative response example is:<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.4-4">
+<pre>
+{
+  "access_token": "&lt;id-jag&gt;",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
+  "token_type": "N_A",
+  "expires_in": 300,
+  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+}
+</pre><a href="#section-7.4-4" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+</section>
+</div>
+<div id="flow">
+<section id="section-8">
+      <h2 id="name-same-idp-core-flow">
+<a href="#section-8" class="section-number selfRef">8. </a><a href="#name-same-idp-core-flow" class="section-name selfRef">Same-IdP Core Flow</a>
+      </h2>
+<p id="section-8-1">The canonical same-IdP SaaS-to-SaaS flow proceeds as follows. Steps 6 through
+12 repeat for each additional cross-boundary hop (for example, TravelRAS to
+BookingRAS).<a href="#section-8-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-8-2">
+<pre>
+1.  ExpenseApp authenticates the user at the IdP.
+
+2.  ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.
+
+3.  IdP issues:
+      ID-JAG: iss=IdP, aud=ExpenseRAS,
+              sub=&lt;subject for user at ExpenseRAS&gt;,
+              scope, cnf
+    and returns chain_id as a Token Exchange response parameter.
+    IdP records the root-chain envelope: chain_id -&gt; { user,
+        auth_time/acr/amr,
+        authorized targets [(audience, resource, permitted scopes)],
+        max depth, expiry }.
+    (chain_id is not a claim inside the ExpenseRAS ID-JAG.)
+
+4.  ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and
+    invokes ExpenseSaaS. ExpenseApp conveys chain_id to ExpenseSaaS
+    over an authenticated, confidential, and integrity-protected
+    control-plane channel associated with the request. chain_id is
+    not carried in the ID-JAG or AT1.
+
+5.  ExpenseService, the ExpenseSaaS workload handling the request,
+    propagates authenticated, confidential, and integrity-protected
+    chain context to TravelService:
+      chain_id; verified actor lineage.
+    (No hop-local subject is propagated across the SaaS boundary by
+     default. Local fan-out inside a domain MAY use an offline
+     attenuated stack.)
+
+6.  TravelService needs to call TravelAPI behind TravelRAS.
+
+7.  TravelService obtains an Identity Continuation Assertion from the
+    Chain Authority for that chain_id.
+
+8.  TravelService presents the assertion to the IdP as subject_token
+    and requests:
+      requested_token_type = id-jag
+      audience = TravelRAS
+      resource = TravelAPI
+      scope    = trips.read
+
+9.  IdP validates the assertion, root-chain state, actor policy,
+    requested audience/resource/scope, and sender constraint.
+
+10. IdP resolves the user subject identifier for TravelRAS.
+
+11. IdP issues a new ID-JAG:
+      iss=IdP, aud=TravelRAS,
+      sub=&lt;subject for same user at TravelRAS&gt;,
+      act=updated actor chain, cnf
+    and returns chain_id again as a response parameter for any
+    further hop. (No chain_id claim in the TravelRAS ID-JAG.)
+
+12. TravelService exchanges the new ID-JAG at TravelRAS for AT2.
+    Repeat 6-12 for BookingRAS.
+</pre><a href="#section-8-2" class="pilcrow">¶</a>
+</div>
+</section>
+</div>
+<div id="validation">
+<section id="section-9">
+      <h2 id="name-idp-validation-for-id-jag-o">
+<a href="#section-9" class="section-number selfRef">9. </a><a href="#name-idp-validation-for-id-jag-o" class="section-name selfRef">IdP Validation for ID-JAG Output</a>
+      </h2>
+<p id="section-9-1">Before issuing an onward ID-JAG, the IdP <span class="bcp14">MUST</span> reject the Token Exchange request
+unless all of the following hold:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-9-2">
+<li id="section-9-2.1">
+          <p id="section-9-2.1.1">the request contains exactly one each of <code>grant_type</code>, <code>subject_token</code>,
+<code>subject_token_type</code>, <code>requested_token_type</code>, <code>actor_token</code>, and
+<code>actor_token_type</code>; the <code>grant_type</code> is
+<code>urn:ietf:params:oauth:grant-type:token-exchange</code>, and the
+<code>subject_token_type</code> is
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>;<a href="#section-9-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.2">
+          <p id="section-9-2.2.1">the request contains exactly one <code>audience</code> parameter and exactly one
+<code>resource</code> parameter;<a href="#section-9-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.3">
+          <p id="section-9-2.3.1">the assertion is a JWT containing exactly one value for each required claim
+defined in <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>; <code>iss</code>, <code>aud</code>, <code>chain_id</code>, and <code>jti</code> are
+non-empty strings; <code>act</code> and <code>cnf</code> are JSON objects; <code>iat</code> and <code>exp</code> are
+JSON numbers representing NumericDate values; and the JOSE <code>typ</code> header
+value is <code>oauth-identity-continuation+jwt</code>;<a href="#section-9-2.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.4">
+          <p id="section-9-2.4.1">the assertion signature validates using a key authorized for the assertion
+issuer, and the JOSE <code>alg</code> is an asymmetric signature algorithm on the IdP's
+configured allowlist (the <code>none</code> algorithm <span class="bcp14">MUST</span> be rejected; see
+<a href="#security-alg" class="auto internal xref">Section 11.7</a>);<a href="#section-9-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.5">
+          <p id="section-9-2.5.1">the assertion <code>aud</code> exactly matches the IdP's issuer identifier;<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.6">
+          <p id="section-9-2.6.1">the assertion <code>iss</code> is a trusted Chain Authority for this tenant;<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.7">
+          <p id="section-9-2.7.1"><code>chain_id</code> is known, active, unexpired, and eligible for continuation;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.8">
+          <p id="section-9-2.8.1">the assertion does not contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or
+<code>amr</code> claim;<a href="#section-9-2.8.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.9">
+          <p id="section-9-2.9.1">the <code>act</code> chain is present, identifies the current actor as the outermost
+actor, contains only identity claims, and is acceptable and within max-depth
+policy;<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.10">
+          <p id="section-9-2.10.1">the <code>actor_token</code> authenticates the current actor, that actor is the
+   outermost actor in the <code>act</code> chain, and the actor is permitted by IdP policy
+   to continue this chain;<a href="#section-9-2.10.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.11">
+          <p id="section-9-2.11.1">the request proves possession of the key confirmed by <code>cnf</code> (a DPoP proof
+   <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <code>cnf.jkt</code>, or a client certificate <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> matching
+   <code>cnf.x5t#S256</code>), and the <code>actor_token</code> is sender-constrained to that same
+   key (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>);<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.12">
+          <p id="section-9-2.12.1"><code>jti</code> has not been successfully consumed before for the assertion issuer;<a href="#section-9-2.12.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.13">
+          <p id="section-9-2.13.1"><code>iat</code> and <code>exp</code> are valid NumericDate values, <code>iat</code> is not in the future
+beyond the IdP's permitted clock skew, <code>exp</code> is after <code>iat</code>, the assertion
+has not expired, and the assertion lifetime is no more than 300 seconds;<a href="#section-9-2.13.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.14">
+          <p id="section-9-2.14.1">the root-chain envelope contains an authorized target entry whose
+<code>audience</code> and <code>resource</code> exactly match the requested values, and every
+requested scope is permitted by that same target entry and by IdP policy
+for the current actor;<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.15">
+          <p id="section-9-2.15.1">the requested output token type is
+<code>urn:ietf:params:oauth:token-type:id-jag</code>; and<a href="#section-9-2.15.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-9-2.16">
+          <p id="section-9-2.16.1">the IdP can resolve the target-audience subject for the requested
+<code>audience</code>.<a href="#section-9-2.16.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
+<p id="section-9-3">After all other validation succeeds, the IdP <span class="bcp14">MUST</span> atomically check and record
+the tuple (<code>iss</code>, <code>jti</code>) as consumed as part of issuing the onward grant. At
+most one concurrent exchange using the same tuple may succeed. An
+implementation <span class="bcp14">MUST NOT</span> permanently consume the tuple solely because a request
+failed validation before grant issuance. If an implementation reserves a tuple
+before completing issuance, it <span class="bcp14">MUST</span> release the reservation after failure or
+expire it promptly. The IdP <span class="bcp14">MUST</span> retain a successfully consumed tuple until at
+least the assertion's <code>exp</code>, allowing for its permitted clock skew.<a href="#section-9-3" class="pilcrow">¶</a></p>
+<p id="section-9-4">On success, the IdP resolves the audience-local subject for the requested RAS
+and issues the onward ID-JAG with that <code>sub</code>. The onward ID-JAG <span class="bcp14">MUST NOT</span> carry
+a <code>chain_id</code> claim.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<p id="section-9-5">If validation fails, the IdP <span class="bcp14">MUST</span> return an OAuth error response as defined by
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> and <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. The IdP <span class="bcp14">SHOULD</span> use <code>invalid_request</code> for malformed
+or internally inconsistent requests, including requests with unsupported
+parameter cardinality or the wrong <code>subject_token_type</code>; <code>invalid_target</code> for
+a requested audience and resource pair absent from the root-chain envelope;
+and <code>invalid_scope</code> for a requested scope not permitted by that target entry or
+by IdP policy for the current actor.<a href="#section-9-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="onward-id-jag">
+<section id="section-10">
+      <h2 id="name-onward-id-jag">
+<a href="#section-10" class="section-number selfRef">10. </a><a href="#name-onward-id-jag" class="section-name selfRef">Onward ID-JAG</a>
+      </h2>
+<p id="section-10-1">The following is a non-normative example of the onward ID-JAG issued by the
+IdP:<a href="#section-10-1" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-10-2">
+<pre>
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.travel.example/",
+  "sub": "travel-local-subject",
+
+  "client_id": "travel-service",
+  "resource": "https://api.travel.example/",
+  "scope": "trips.read",
+
+  "auth_time": 1710000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "act": {
+    "iss": "https://travel.example/",
+    "sub": "travel-service",
+    "act": {
+      "iss": "https://expenses.example/",
+      "sub": "expense-service",
+      "act": {
+        "iss": "https://expenses.example/",
+        "sub": "expense-app"
+      }
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-current-actor-key-thumbprint"
+  },
+
+  "iat": 1710000520,
+  "exp": 1710000820,
+  "jti": "idjag-travel-01"
+}
+</pre><a href="#section-10-2" class="pilcrow">¶</a>
+</div>
+<p id="section-10-3">TravelRAS processes this as an ordinary ID-JAG per
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. It does not need to
+understand the Identity Continuation Assertion, and it never sees <code>chain_id</code>.
+The <code>client_id</code> matches the outer <code>act.sub</code> by construction.<a href="#section-10-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security">
+<section id="section-11">
+      <h2 id="name-security-considerations">
+<a href="#section-11" class="section-number selfRef">11. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
+      </h2>
+<div id="sender-constraint-and-proof-of-possession">
+<section id="section-11.1">
+        <h3 id="name-sender-constraint-and-proof">
+<a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-sender-constraint-and-proof" class="section-name selfRef">Sender Constraint and Proof of Possession</a>
+        </h3>
+<p id="section-11.1-1">The Identity Continuation Assertion <span class="bcp14">MUST</span> be sender-constrained via <code>cnf</code>
+          <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> and <span class="bcp14">MUST NOT</span> be accepted as a bearer token. The IdP verifies live
+proof of possession of the confirmed key and binds the assertion, that key, and
+the authenticated current actor together (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>).
+Consequently a stolen assertion or stolen actor token cannot be replayed by a
+party that does not hold the confirmed private key, and the short single-use
+lifetime (<a href="#security-replay" class="auto internal xref">Section 11.2</a>) bounds the window even for the key holder.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-replay">
+<section id="section-11.2">
+        <h3 id="name-short-lifetime-and-replay">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-short-lifetime-and-replay" class="section-name selfRef">Short Lifetime and Replay</a>
+        </h3>
+<p id="section-11.2-1">The assertion lifetime <span class="bcp14">MUST</span> be no more than 300 seconds (<a href="#validation" class="auto internal xref">Section 9</a>). The
+IdP <span class="bcp14">MUST</span> atomically consume (<code>iss</code>, <code>jti</code>) with successful grant issuance and
+<span class="bcp14">MUST</span> permit at most one successful exchange for that tuple (<a href="#validation" class="auto internal xref">Section 9</a>).
+Because the assertion is consumed only at the IdP and never by a Resource
+Server, its blast radius on replay is confined to the continuation exchange.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-assurance">
+<section id="section-11.3">
+        <h3 id="name-root-authentication-context">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-root-authentication-context" class="section-name selfRef">Root Authentication Context</a>
+        </h3>
+<p id="section-11.3-1">The authoritative <code>auth_time</code>, <code>acr</code>, and <code>amr</code> values come only from the
+root-chain envelope recorded by the IdP. They are not accepted from the Chain
+Authority. Continuing a chain <span class="bcp14">MUST NOT</span> strengthen or refresh that context, and
+the IdP <span class="bcp14">MUST</span> copy it unchanged into an onward ID-JAG when the output profile
+requires those claims.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="envelope-enforcement-and-offline-attenuation">
+<section id="section-11.4">
+        <h3 id="name-envelope-enforcement-and-of">
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-envelope-enforcement-and-of" class="section-name selfRef">Envelope Enforcement and Offline Attenuation</a>
+        </h3>
+<p id="section-11.4-1">The root-chain envelope is the authorization ceiling for a chain. The IdP
+enforces that the requested target and scopes fall within an authorized target
+entry (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), which prevents a compromised intermediate
+actor from broadening the chain beyond what the root delegation authorized.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<p id="section-11.4-2">Where an offline attenuated delegation stack (Waffles <span>[<a href="#WAFFLES" class="cite xref">WAFFLES</a>]</span> or AAT
+<span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span>) feeds an Identity Continuation
+Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
+linkage along that offline segment are provided and verified by that stack's
+own specification. The Chain Authority validates the segment before issuing
+(<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); the IdP itself enforces only the root-chain envelope
+described above.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="trust-in-the-chain-authority">
+<section id="section-11.5">
+        <h3 id="name-trust-in-the-chain-authorit">
+<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-trust-in-the-chain-authorit" class="section-name selfRef">Trust in the Chain Authority</a>
+        </h3>
+<p id="section-11.5-1">The IdP <span class="bcp14">MUST</span> accept assertions only from Chain Authorities it trusts for the
+relevant tenant (<a href="#validation" class="auto internal xref">Section 9</a>). A compromised Chain
+Authority can request continuations within the envelope of chains it is trusted
+for. Deployments <span class="bcp14">SHOULD</span> scope Chain Authority trust as narrowly as practical
+and <span class="bcp14">SHOULD</span> monitor for anomalous continuation patterns. Because the IdP
+enforces the root-chain envelope, a compromised Chain Authority cannot request
+a target or scope outside its authorized target entries.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="actor-chain-integrity">
+<section id="section-11.6">
+        <h3 id="name-actor-chain-integrity">
+<a href="#section-11.6" class="section-number selfRef">11.6. </a><a href="#name-actor-chain-integrity" class="section-name selfRef">Actor Chain Integrity</a>
+        </h3>
+<p id="section-11.6-1">The nested <code>act</code> claim in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> records the current actor and prior
+actors, but nested prior actors are informational for access-control decisions.
+An IdP <span class="bcp14">MUST</span> therefore base authorization decisions on the root-chain state, the
+authenticated current actor, and the requested <code>audience</code>, <code>resource</code>, and
+<code>scope</code>; it <span class="bcp14">MUST NOT</span> treat unverified nested actor history as independent
+authority. When an offline attenuated segment is summarized in an Identity
+Continuation Assertion, the Chain Authority <span class="bcp14">MUST</span> verify that segment before
+issuing the assertion.<a href="#section-11.6-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="security-alg">
+<section id="section-11.7">
+        <h3 id="name-token-type-and-algorithm-co">
+<a href="#section-11.7" class="section-number selfRef">11.7. </a><a href="#name-token-type-and-algorithm-co" class="section-name selfRef">Token, Type, and Algorithm Confusion</a>
+        </h3>
+<p id="section-11.7-1">The IdP <span class="bcp14">MUST</span> verify the JOSE <code>typ</code> header value
+<code>oauth-identity-continuation+jwt</code> and <span class="bcp14">MUST NOT</span> process an Identity Continuation
+Assertion as any other kind of JWT, in accordance with <span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>. The IdP
+<span class="bcp14">MUST</span> reject an assertion whose JOSE <code>alg</code> header is <code>none</code>, and <span class="bcp14">MUST</span> restrict
+accepted algorithms to a configured allowlist of asymmetric signature
+algorithms. Symmetric (MAC) algorithms <span class="bcp14">MUST NOT</span> be accepted. The IdP <span class="bcp14">MUST</span>
+select the verification key from its trust configuration for the assertion
+<code>iss</code>. A <code>kid</code> header parameter <span class="bcp14">MAY</span> select among verification keys already
+configured for that issuer. The IdP <span class="bcp14">MUST NOT</span> use an untrusted <code>jku</code>, <code>x5u</code>,
+embedded <code>jwk</code>, or other assertion-supplied key material to establish trust or
+retrieve a verification key. General OAuth security guidance in <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>
+applies.<a href="#section-11.7-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="privacy">
+<section id="section-12">
+      <h2 id="name-privacy-considerations">
+<a href="#section-12" class="section-number selfRef">12. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
+      </h2>
+<p id="section-12-1">The <code>chain_id</code> is the primary cross-hop correlation handle, and the rules in
+<a href="#chain-id" class="auto internal xref">Section 5</a> are designed to keep it out of the data plane. Because <code>chain_id</code>
+        <span class="bcp14">MUST NOT</span> appear in any ID-JAG or access token consumed by a Resource Server,
+and because each RAS sees only its own pairwise subject, a Resource Server or
+RAS that receives only its audience-local data-plane tokens cannot directly
+correlate the user across SaaS boundaries from those tokens.<a href="#section-12-1" class="pilcrow">¶</a></p>
+<p id="section-12-2">This property does not make the complete chain unlinkable. The IdP necessarily
+correlates the chain, and workloads, Chain Authorities, or other control-plane
+participants that receive the same <code>chain_id</code> can correlate their observations
+of that delegation. Actor identifiers and other request context can also
+provide indirect correlation. Deployments <span class="bcp14">MUST</span> limit disclosure of
+<code>chain_id</code> to participants that require it to continue or administer the
+chain.<a href="#section-12-2" class="pilcrow">¶</a></p>
+<p id="section-12-3"><code>chain_id</code> <span class="bcp14">MUST NOT</span> contain user-identifying information and <span class="bcp14">MUST</span> carry at least
+128 bits of entropy (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2), so that possession of a <code>chain_id</code>
+does not reveal the user and cannot be guessed.<a href="#section-12-3" class="pilcrow">¶</a></p>
+<p id="section-12-4">Where even "same delegation" correlation among colluding chain participants is a
+concern, the IdP <span class="bcp14">MAY</span> adopt the stronger privacy mode of <a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>,
+issuing a distinct per-audience chain reference that maps internally to one root
+delegation. This prevents participants at different audiences from linking their
+observations to a single shared identifier.<a href="#section-12-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="iana">
+<section id="section-13">
+      <h2 id="name-iana-considerations">
+<a href="#section-13" class="section-number selfRef">13. </a><a href="#name-iana-considerations" class="section-name selfRef">IANA Considerations</a>
+      </h2>
+<div id="oauth-uri-registration">
+<section id="section-13.1">
+        <h3 id="name-oauth-uri-registration">
+<a href="#section-13.1" class="section-number selfRef">13.1. </a><a href="#name-oauth-uri-registration" class="section-name selfRef">OAuth URI Registration</a>
+        </h3>
+<p id="section-13.1-1">IANA is requested to register the following value in the "OAuth URI" registry
+established by <span>[<a href="#RFC6755" class="cite xref">RFC6755</a>]</span> and used for token type identifiers by <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>.<a href="#section-13.1-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-13.1-2">
+          <dt id="section-13.1-2.1">URN:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.1-2.2">
+            <p id="section-13.1-2.2.1">urn:ietf:params:oauth:token-type:identity-continuation<a href="#section-13.1-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.1-2.3">Common Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.1-2.4">
+            <p id="section-13.1-2.4.1">Token type URI for the Identity Continuation Assertion<a href="#section-13.1-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.1-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.1-2.6">
+            <p id="section-13.1-2.6.1">IETF<a href="#section-13.1-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.1-2.7">Reference:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.1-2.8">
+            <p id="section-13.1-2.8.1">This document, <a href="#names" class="auto internal xref">Section 4.1</a><a href="#section-13.1-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="media-type-registration">
+<section id="section-13.2">
+        <h3 id="name-media-type-registration">
+<a href="#section-13.2" class="section-number selfRef">13.2. </a><a href="#name-media-type-registration" class="section-name selfRef">Media Type Registration</a>
+        </h3>
+<p id="section-13.2-1">IANA is requested to register the following media type in the "Media Types"
+registry, corresponding to the JOSE <code>typ</code> header value
+<code>oauth-identity-continuation+jwt</code>.<a href="#section-13.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-13.2-2">
+          <dt id="section-13.2-2.1">Type name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.2">
+            <p id="section-13.2-2.2.1">application<a href="#section-13.2-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.3">Subtype name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.4">
+            <p id="section-13.2-2.4.1">oauth-identity-continuation+jwt<a href="#section-13.2-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.5">Required parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.6">
+            <p id="section-13.2-2.6.1">N/A<a href="#section-13.2-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.7">Optional parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.8">
+            <p id="section-13.2-2.8.1">N/A<a href="#section-13.2-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.9">Encoding considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.10">
+            <p id="section-13.2-2.10.1">8bit; an Identity Continuation Assertion is a JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, which is a
+series of base64url-encoded values (some of which may be empty) separated by
+period ('.') characters.<a href="#section-13.2-2.10.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.11">Security considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.12">
+            <p id="section-13.2-2.12.1">See <a href="#security" class="auto internal xref">Section 11</a> of this document.<a href="#section-13.2-2.12.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.13">Interoperability considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.14">
+            <p id="section-13.2-2.14.1">N/A<a href="#section-13.2-2.14.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.15">Published specification:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.16">
+            <p id="section-13.2-2.16.1">This document, <a href="#names" class="auto internal xref">Section 4.1</a><a href="#section-13.2-2.16.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.17">Applications that use this media type:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.18">
+            <p id="section-13.2-2.18.1">Applications using OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> to perform identity
+continuation across SaaS boundaries.<a href="#section-13.2-2.18.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.19">Fragment identifier considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.20">
+            <p id="section-13.2-2.20.1">N/A<a href="#section-13.2-2.20.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.21">Additional information:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.22">
+            <p id="section-13.2-2.22.1"><br>
+Deprecated alias names for this type: N/A<br>
+Magic number(s): N/A<br>
+File extension(s): N/A<br>
+Macintosh file type code(s): N/A<a href="#section-13.2-2.22.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.23">Person &amp; email address to contact for further information:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.24">
+            <p id="section-13.2-2.24.1">Karl McGuinness (karl.mcguinness@conductorone.com)<a href="#section-13.2-2.24.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.25">Intended usage:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.26">
+            <p id="section-13.2-2.26.1">COMMON<a href="#section-13.2-2.26.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.27">Restrictions on usage:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.28">
+            <p id="section-13.2-2.28.1">N/A<a href="#section-13.2-2.28.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.29">Author:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.30">
+            <p id="section-13.2-2.30.1">Karl McGuinness<a href="#section-13.2-2.30.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.2-2.31">Change controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.2-2.32">
+            <p id="section-13.2-2.32.1">IETF<a href="#section-13.2-2.32.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="json-web-token-claims-registration">
+<section id="section-13.3">
+        <h3 id="name-json-web-token-claims-regis">
+<a href="#section-13.3" class="section-number selfRef">13.3. </a><a href="#name-json-web-token-claims-regis" class="section-name selfRef">JSON Web Token Claims Registration</a>
+        </h3>
+<p id="section-13.3-1">IANA is requested to register the following claim in the "JSON Web Token Claims"
+registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>.<a href="#section-13.3-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-13.3-2">
+          <dt id="section-13.3-2.1">Claim Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.3-2.2">
+            <p id="section-13.3-2.2.1">chain_id<a href="#section-13.3-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.3-2.3">Claim Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.3-2.4">
+            <p id="section-13.3-2.4.1">Chain Identifier: an opaque, IdP-generated identifier for the root delegation
+context, used to correlate a continuation to its root and to resolve the
+per-audience subject.<a href="#section-13.3-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.3-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.3-2.6">
+            <p id="section-13.3-2.6.1">IETF<a href="#section-13.3-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.3-2.7">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-13.3-2.8">
+            <p id="section-13.3-2.8.1">This document, <a href="#chain-id" class="auto internal xref">Section 5</a><a href="#section-13.3-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="oauth-parameters-registration">
+<section id="section-13.4">
+        <h3 id="name-oauth-parameters-registrati">
+<a href="#section-13.4" class="section-number selfRef">13.4. </a><a href="#name-oauth-parameters-registrati" class="section-name selfRef">OAuth Parameters Registration</a>
+        </h3>
+<p id="section-13.4-1">IANA is requested to register the following value in the "OAuth Parameters"
+registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. The parameter is used in the OAuth 2.0
+Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> response.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-13.4-2">
+          <dt id="section-13.4-2.1">Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.2">
+            <p id="section-13.4-2.2.1">chain_id<a href="#section-13.4-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.3">Parameter Usage Location:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.4">
+            <p id="section-13.4-2.4.1">token response<a href="#section-13.4-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.6">
+            <p id="section-13.4-2.6.1">IETF<a href="#section-13.4-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.7">Reference:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.8">
+            <p id="section-13.4-2.8.1">This document, <a href="#response-param" class="auto internal xref">Section 7.4</a><a href="#section-13.4-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-13.4-3">Note: The token type URI <code>urn:ietf:params:oauth:token-type:id-jag</code> referenced by
+this document is registered by
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and is not registered here.<a href="#section-13.4-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="sec-combined-references">
+<section id="section-14">
+      <h2 id="name-references">
+<a href="#section-14" class="section-number selfRef">14. </a><a href="#name-references" class="section-name selfRef">References</a>
+      </h2>
+<div id="sec-normative-references">
+<section id="section-14.1">
+        <h3 id="name-normative-references">
+<a href="#section-14.1" class="section-number selfRef">14.1. </a><a href="#name-normative-references" class="section-name selfRef">Normative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.ietf-oauth-identity-assertion-authz-grant">[I-D.ietf-oauth-identity-assertion-authz-grant]</dt>
+        <dd>
+<span class="refAuthor">Parecki, A.</span>, <span class="refAuthor">McGuinness, K.</span>, and <span class="refAuthor">B. Campbell</span>, <span class="refTitle">"Identity Assertion JWT Authorization Grant"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-assertion-authz-grant-04</span>, <time datetime="2026-05-21" class="refDate">21 May 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.ietf-oauth-identity-chaining">[I-D.ietf-oauth-identity-chaining]</dt>
+        <dd>
+<span class="refAuthor">Schwenkschuster, A.</span>, <span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Burgin, K.</span>, <span class="refAuthor">Jenkins, M. J.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"OAuth Identity and Authorization Chaining Across Domains"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-chaining-14</span>, <time datetime="2026-06-02" class="refDate">2 June 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-14">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-14</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC2119">[RFC2119]</dt>
+        <dd>
+<span class="refAuthor">Bradner, S.</span>, <span class="refTitle">"Key words for use in RFCs to Indicate Requirement Levels"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 2119</span>, <span class="seriesInfo">DOI 10.17487/RFC2119</span>, <time datetime="1997-03" class="refDate">March 1997</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc2119">https://www.rfc-editor.org/rfc/rfc2119</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6749">[RFC6749]</dt>
+        <dd>
+<span class="refAuthor">Hardt, D., Ed.</span>, <span class="refTitle">"The OAuth 2.0 Authorization Framework"</span>, <span class="seriesInfo">RFC 6749</span>, <span class="seriesInfo">DOI 10.17487/RFC6749</span>, <time datetime="2012-10" class="refDate">October 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6749">https://www.rfc-editor.org/rfc/rfc6749</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC6755">[RFC6755]</dt>
+        <dd>
+<span class="refAuthor">Campbell, B.</span> and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"An IETF URN Sub-Namespace for OAuth"</span>, <span class="seriesInfo">RFC 6755</span>, <span class="seriesInfo">DOI 10.17487/RFC6755</span>, <time datetime="2012-10" class="refDate">October 2012</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6755">https://www.rfc-editor.org/rfc/rfc6755</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7519">[RFC7519]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">N. Sakimura</span>, <span class="refTitle">"JSON Web Token (JWT)"</span>, <span class="seriesInfo">RFC 7519</span>, <span class="seriesInfo">DOI 10.17487/RFC7519</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7519">https://www.rfc-editor.org/rfc/rfc7519</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7638">[RFC7638]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span> and <span class="refAuthor">N. Sakimura</span>, <span class="refTitle">"JSON Web Key (JWK) Thumbprint"</span>, <span class="seriesInfo">RFC 7638</span>, <span class="seriesInfo">DOI 10.17487/RFC7638</span>, <time datetime="2015-09" class="refDate">September 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7638">https://www.rfc-editor.org/rfc/rfc7638</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7662">[RFC7662]</dt>
+        <dd>
+<span class="refAuthor">Richer, J., Ed.</span>, <span class="refTitle">"OAuth 2.0 Token Introspection"</span>, <span class="seriesInfo">RFC 7662</span>, <span class="seriesInfo">DOI 10.17487/RFC7662</span>, <time datetime="2015-10" class="refDate">October 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7662">https://www.rfc-editor.org/rfc/rfc7662</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC7800">[RFC7800]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Proof-of-Possession Key Semantics for JSON Web Tokens (JWTs)"</span>, <span class="seriesInfo">RFC 7800</span>, <span class="seriesInfo">DOI 10.17487/RFC7800</span>, <time datetime="2016-04" class="refDate">April 2016</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7800">https://www.rfc-editor.org/rfc/rfc7800</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8174">[RFC8174]</dt>
+        <dd>
+<span class="refAuthor">Leiba, B.</span>, <span class="refTitle">"Ambiguity of Uppercase vs Lowercase in RFC 2119 Key Words"</span>, <span class="seriesInfo">BCP 14</span>, <span class="seriesInfo">RFC 8174</span>, <span class="seriesInfo">DOI 10.17487/RFC8174</span>, <time datetime="2017-05" class="refDate">May 2017</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8174">https://www.rfc-editor.org/rfc/rfc8174</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8693">[RFC8693]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Nadalin, A.</span>, <span class="refAuthor">Campbell, B., Ed.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"OAuth 2.0 Token Exchange"</span>, <span class="seriesInfo">RFC 8693</span>, <span class="seriesInfo">DOI 10.17487/RFC8693</span>, <time datetime="2020-01" class="refDate">January 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8693">https://www.rfc-editor.org/rfc/rfc8693</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8705">[RFC8705]</dt>
+        <dd>
+<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <span class="seriesInfo">RFC 8705</span>, <span class="seriesInfo">DOI 10.17487/RFC8705</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9449">[RFC9449]</dt>
+      <dd>
+<span class="refAuthor">Fett, D.</span>, <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Jones, M.</span>, and <span class="refAuthor">D. Waite</span>, <span class="refTitle">"OAuth 2.0 Demonstrating Proof of Possession (DPoP)"</span>, <span class="seriesInfo">RFC 9449</span>, <span class="seriesInfo">DOI 10.17487/RFC9449</span>, <time datetime="2023-09" class="refDate">September 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9449">https://www.rfc-editor.org/rfc/rfc9449</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+<div id="sec-informative-references">
+<section id="section-14.2">
+        <h3 id="name-informative-references">
+<a href="#section-14.2" class="section-number selfRef">14.2. </a><a href="#name-informative-references" class="section-name selfRef">Informative References</a>
+        </h3>
+<dl class="references">
+<dt id="I-D.ietf-oauth-transaction-tokens">[I-D.ietf-oauth-transaction-tokens]</dt>
+        <dd>
+<span class="refAuthor">Tulshibagwale, A.</span>, <span class="refAuthor">Fletcher, G.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"Transaction Tokens"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-transaction-tokens-08</span>, <time datetime="2026-03-02" class="refDate">2 March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-08">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-08</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.ietf-wimse-arch">[I-D.ietf-wimse-arch]</dt>
+        <dd>
+<span class="refAuthor">Salowey, J. A.</span>, <span class="refAuthor">Rosomakho, Y.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Workload Identity in a Multi System Environment (WIMSE) Architecture"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-wimse-arch-07</span>, <time datetime="2026-03-02" class="refDate">2 March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-07">https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-07</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="I-D.niyikiza-oauth-attenuating-agent-tokens">[I-D.niyikiza-oauth-attenuating-agent-tokens]</dt>
+        <dd>
+<span class="refAuthor">Aimable, N.</span>, <span class="refTitle">"Attenuating Authorization Tokens for Agentic Delegation Chains"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-niyikiza-oauth-attenuating-agent-tokens-00</span>, <time datetime="2026-03-16" class="refDate">16 March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-niyikiza-oauth-attenuating-agent-tokens-00">https://datatracker.ietf.org/doc/html/draft-niyikiza-oauth-attenuating-agent-tokens-00</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="OIDC.FrontChannelLogout">[OIDC.FrontChannelLogout]</dt>
+        <dd>
+<span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8417">[RFC8417]</dt>
+        <dd>
+<span class="refAuthor">Hunt, P., Ed.</span>, <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Denniss, W.</span>, and <span class="refAuthor">M. Ansari</span>, <span class="refTitle">"Security Event Token (SET)"</span>, <span class="seriesInfo">RFC 8417</span>, <span class="seriesInfo">DOI 10.17487/RFC8417</span>, <time datetime="2018-07" class="refDate">July 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8417">https://www.rfc-editor.org/rfc/rfc8417</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8707">[RFC8707]</dt>
+        <dd>
+<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Resource Indicators for OAuth 2.0"</span>, <span class="seriesInfo">RFC 8707</span>, <span class="seriesInfo">DOI 10.17487/RFC8707</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8707">https://www.rfc-editor.org/rfc/rfc8707</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8725">[RFC8725]</dt>
+        <dd>
+<span class="refAuthor">Sheffer, Y.</span>, <span class="refAuthor">Hardt, D.</span>, and <span class="refAuthor">M. Jones</span>, <span class="refTitle">"JSON Web Token Best Current Practices"</span>, <span class="seriesInfo">BCP 225</span>, <span class="seriesInfo">RFC 8725</span>, <span class="seriesInfo">DOI 10.17487/RFC8725</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8725">https://www.rfc-editor.org/rfc/rfc8725</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9700">[RFC9700]</dt>
+        <dd>
+<span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Labunets, A.</span>, and <span class="refAuthor">D. Fett</span>, <span class="refTitle">"Best Current Practice for OAuth 2.0 Security"</span>, <span class="seriesInfo">BCP 240</span>, <span class="seriesInfo">RFC 9700</span>, <span class="seriesInfo">DOI 10.17487/RFC9700</span>, <time datetime="2025-01" class="refDate">January 2025</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9700">https://www.rfc-editor.org/rfc/rfc9700</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="WAFFLES">[WAFFLES]</dt>
+      <dd>
+<span class="refTitle">"Waffles: Stacked Delegated JWTs (work in progress)"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-hingnikar-cecchetti-wimse-waffles</span>, <span>&lt;<a href="https://datatracker.ietf.org/doc/draft-hingnikar-cecchetti-wimse-waffles/">https://datatracker.ietf.org/doc/draft-hingnikar-cecchetti-wimse-waffles/</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+</dl>
+</section>
+</div>
+</section>
+</div>
+<div id="rationale">
+<section id="appendix-A">
+      <h2 id="name-design-rationale">
+<a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-design-rationale" class="section-name selfRef">Design Rationale</a>
+      </h2>
+<p id="appendix-A-1">This appendix is non-normative. It explains why the Identity Continuation
+Assertion is defined as a distinct Token Exchange subject token, rather than as
+a profile of an existing artifact, and why a cross-boundary hop cannot be served
+by propagating an existing token. The recurring answer is per-audience subject
+resolution: only the IdP can name the user to the next audience (<a href="#motivation" class="auto internal xref">Section 1.1</a>,
+<a href="#core-principle" class="auto internal xref">Section 1.2</a>).<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+<div id="rationale-idjag">
+<section id="appendix-A.1">
+        <h3 id="name-why-not-a-profile-of-id-jag">
+<a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-why-not-a-profile-of-id-jag" class="section-name selfRef">Why Not a Profile of ID-JAG</a>
+        </h3>
+<p id="appendix-A.1-1">An ID-JAG <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and an Identity
+Continuation Assertion sit on opposite sides of the same Token Exchange and play
+opposite roles, so neither can be a profile of the other:<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-A.1-2.1">
+            <p id="appendix-A.1-2.1.1">An ID-JAG is the <strong>output</strong>: an authorization grant. An Identity Continuation
+Assertion is the <strong>input</strong>: evidence presented as a <code>subject_token</code>.<a href="#appendix-A.1-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-A.1-2.2">
+            <p id="appendix-A.1-2.2.1">An ID-JAG's <code>aud</code> is the target Resource Authorization Server; an Identity
+Continuation Assertion's <code>aud</code> is the IdP. The two are validated by different
+parties under different rules.<a href="#appendix-A.1-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-A.1-2.3">
+            <p id="appendix-A.1-2.3.1">An ID-JAG carries the user's resolved per-audience subject; an Identity
+Continuation Assertion does not carry a top-level <code>sub</code> (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>).
+Profiling ID-JAG would force a <code>sub</code> to mean precisely what this profile
+forbids.<a href="#appendix-A.1-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-A.1-2.4">
+            <p id="appendix-A.1-2.4.1"><code>chain_id</code> is excluded from every ID-JAG (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4), yet it is the
+defining claim of an Identity Continuation Assertion. "An ID-JAG carrying
+<code>chain_id</code>" is self-contradictory.<a href="#appendix-A.1-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="appendix-A.1-3">An Identity Continuation Assertion is also not a grant: presenting it to a
+Resource Authorization Server is meaningless. It is the input that <em>produces</em> a
+chained ID-JAG, not a kind of ID-JAG.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="rationale-txn">
+<section id="appendix-A.2">
+        <h3 id="name-why-not-a-profile-of-a-tran">
+<a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-why-not-a-profile-of-a-tran" class="section-name selfRef">Why Not a Profile of a Transaction Token</a>
+        </h3>
+<p id="appendix-A.2-1">Transaction Tokens <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> are the closest
+neighbor (a short-lived signed JWT carrying delegation context, often issued by
+a service that could also act as the Chain Authority), but they sit at a
+different layer. A Transaction Token is an <em>intra-domain</em> object:
+its <code>aud</code> identifies a trust domain and it "<span class="bcp14">MUST NOT</span> be accepted outside" it, it
+is consumed by workloads inside the domain and re-minted as it propagates, and
+its <code>sub</code> is domain-local. An Identity Continuation Assertion instead crosses to
+the IdP: its <code>aud</code> is the IdP, it is consumed only there, it is single-use, and
+it carries neither the target subject (the IdP resolves it) nor the request
+context (<code>tctx</code>, <code>rctx</code>, <code>scope</code>) a Transaction Token carries. It is therefore
+<em>derived from</em> a Transaction Token at the boundary, not a profile of one.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="rationale-propagation">
+<section id="appendix-A.3">
+        <h3 id="name-why-not-a-cross-domain-prop">
+<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-why-not-a-cross-domain-prop" class="section-name selfRef">Why Not a Cross-Domain Propagation Token</a>
+        </h3>
+<p id="appendix-A.3-1">A natural question is whether the cross-boundary hop could be served by simply
+propagating a token across domains (an "inter-domain propagation token")
+consumed directly by the next domain with no IdP round-trip. This profile does
+use offline propagation between hops wherever it is sound: that is the Waffles
+and AAT layer, used when the subject does not change (<a href="#decision-rule" class="auto internal xref">Section 3</a>). It
+cannot serve the boundary where the subject changes, for four reasons:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="appendix-A.3-2">
+<li id="appendix-A.3-2.1">
+            <p id="appendix-A.3-2.1.1"><strong>Subject resolution.</strong> A propagation token is minted by the source side,
+which does not know and cannot compute the next audience's pairwise subject;
+only the IdP holds the map (<a href="#motivation" class="auto internal xref">Section 1.1</a>). Such a token can only carry the
+source domain's subject (wrong at the next domain, and a privacy leak), no
+subject (the user is unidentifiable), or a single global subject (which
+pairwise subjects preclude by design). No amount of signing supplies data the
+issuer does not have.<a href="#appendix-A.3-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="appendix-A.3-2.2">
+            <p id="appendix-A.3-2.2.1"><strong>Trust direction.</strong> The receiving domain trusts the IdP, not the source
+domain's issuer, to name the user and scope authority over its resources.
+Direct propagation asks domain B to accept domain A's signature as authority
+over domain B. Obtaining a grant from an authority that domain B already
+trusts is the model of <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>.<a href="#appendix-A.3-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="appendix-A.3-2.3">
+            <p id="appendix-A.3-2.3.1"><strong>Revocation.</strong> An offline propagation token is usable for its lifetime
+without contacting an authority, removing the ability to revoke mid-chain.
+Because each Identity Continuation Assertion hop is an exchange at the IdP,
+revocation takes effect at the next hop (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#appendix-A.3-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li id="appendix-A.3-2.4">
+            <p id="appendix-A.3-2.4.1"><strong>Blast radius.</strong> A token consumed directly by the next Resource
+Authorization Server is a broad, comparatively long-lived credential. An
+Identity Continuation Assertion is narrowly scoped to <code>aud</code> = IdP,
+single-use, and sender-constrained
+(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>). Its theft permits only a request for a
+grant within the root-chain envelope.<a href="#appendix-A.3-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ol>
+<p id="appendix-A.3-3">Built honestly, a cross-domain propagation token collapses into this profile: to
+be usable at the next domain its subject must be re-resolved, and the only party
+that can do so is the IdP, so the token must be presented to the IdP, which is
+exactly an Identity Continuation Assertion. Where all domains share a single
+global subject for the user, mutually trust each other's issuers (for example, a
+single SPIFFE-style trust domain), and accept the loss of mid-chain revocation,
+direct inter-domain propagation is appropriate; that is a different problem from
+the pairwise-subject, per-boundary-trust case this profile addresses.<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="example">
+<section id="appendix-B">
+      <h2 id="name-worked-example-same-idp-two">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-worked-example-same-idp-two" class="section-name selfRef">Worked Example (Same-IdP, Two Hops)</a>
+      </h2>
+<p id="appendix-B-1">This appendix is non-normative. It walks the canonical flow of <a href="#flow" class="auto internal xref">Section 8</a>
+end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
+ExpenseService, the workload handling that request, calls TravelSaaS, whose
+TravelService must call TravelAPI to finish the request. All parties trust one
+enterprise IdP at <code>https://idp.example/</code>.
+Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
+and signatures are omitted. The values are consistent with the examples in
+<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, <a href="#response-param" class="auto internal xref">Section 7.4</a>, and <a href="#onward-id-jag" class="auto internal xref">Section 10</a>.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<p id="appendix-B-2">The participants and values used throughout:<a href="#appendix-B-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Name</th>
+            <th class="text-left" rowspan="1" colspan="1">Value</th>
+            <th class="text-left" rowspan="1" colspan="1">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">User</td>
+            <td class="text-left" rowspan="1" colspan="1">(none)</td>
+            <td class="text-left" rowspan="1" colspan="1">The human, authenticated once at the IdP.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">IdP</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://idp.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseApp</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-app</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">User-facing application; first-hop client.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">First SaaS the user invokes.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseService</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-service</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS workload that calls TravelSaaS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for ExpenseAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Protected resource behind ExpenseRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelSaaS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Downstream SaaS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelService</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>travel-service</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">TravelSaaS workload that calls TravelAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for TravelAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Protected resource behind TravelRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ca.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Issues the Identity Continuation Assertion for the chain.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>chain_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>01JZ8F4J9J8Y3NDK5WQ4P9K7Q2</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Subjects</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-local-subject</code>, <code>travel-local-subject</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The user's pairwise subject at ExpenseRAS and TravelRAS, respectively.</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="appendix-B-4">At a glance, the message flow is:<a href="#appendix-B-4" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B-5">
+<pre>
+User authenticates once at the IdP.
+
+ExpenseApp -&gt; IdP: (1) exchange ID Token
+IdP -&gt; ExpenseApp: (2) ID-JAG(ExpenseRAS) + chain_id
+ExpenseApp -&gt; ExpenseRAS: (3) ID-JAG
+ExpenseRAS -&gt; ExpenseApp: (4) AT1
+ExpenseApp -&gt; ExpenseSaaS: (5) API request + chain_id
+
+ExpenseService -&gt; TravelSaaS: protected request + chain context
+TravelSaaS -&gt; TravelService: verified chain context
+
+TravelService -&gt; CA: (6) request assertion
+CA -&gt; TravelService: (7) Identity Continuation Assertion
+TravelService -&gt; IdP: (8) assertion exchange + DPoP
+IdP -&gt; TravelService: (9) ID-JAG(TravelRAS) + chain_id
+TravelService -&gt; TravelRAS: (10) ID-JAG
+TravelRAS -&gt; TravelService: (11) AT2
+TravelService -&gt; TravelAPI: (12) API call
+</pre><a href="#appendix-B-5" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B-6">The subsections below detail each step.<a href="#appendix-B-6" class="pilcrow">¶</a></p>
+<div id="example-first-hop">
+<section id="appendix-B.1">
+        <h3 id="name-first-hop-direct-id-jag-for">
+<a href="#appendix-B.1" class="section-number selfRef">B.1. </a><a href="#name-first-hop-direct-id-jag-for" class="section-name selfRef">First Hop: Direct ID-JAG for ExpenseRAS</a>
+        </h3>
+<p id="appendix-B.1-1">ExpenseApp holds an ID Token for the authenticated user and exchanges it at the
+IdP for an ID-JAG scoped to ExpenseRAS. The request is DPoP-bound to
+ExpenseApp's key:<a href="#appendix-B.1-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1-2">
+<pre>
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof signed by the expense-app key&gt;
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.expenses.example/
+resource=https://api.expenses.example/
+scope=expenses.read
+subject_token=&lt;id_token&gt;
+subject_token_type=urn:ietf:params:oauth:token-type:id_token
+actor_token=&lt;sender-constrained expense-app credential&gt;
+actor_token_type=urn:ietf:params:oauth:token-type:jwt
+</pre><a href="#appendix-B.1-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1-3">The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
+actor credential is constrained to the DPoP key. For this example, existing
+user consent and enterprise policy authorize both the immediate Expense target
+and the later Travel target. The IdP records the following target entries in
+the root-chain envelope keyed by a freshly generated <code>chain_id</code>:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1-4">
+<pre>
+(https://ras.expenses.example/, https://api.expenses.example/)
+    permitted scopes: expenses.read
+
+(https://ras.travel.example/, https://api.travel.example/)
+    permitted scopes: trips.read
+</pre><a href="#appendix-B.1-4" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1-5">The root exchange does not authorize either target merely by requesting the
+other. Both entries must already be supported by the authentication, consent,
+and policy from which the IdP constructs the envelope. The IdP then responds:<a href="#appendix-B.1-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1-6">
+<pre>
+{
+  "access_token": "&lt;ID-JAG for ExpenseRAS&gt;",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
+  "token_type": "N_A",
+  "expires_in": 300,
+  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+}
+</pre><a href="#appendix-B.1-6" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1-7">The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local subject:<a href="#appendix-B.1-7" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1-8">
+<pre>
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.expenses.example/",
+  "sub": "expense-local-subject",
+
+  "client_id": "expense-app",
+  "resource": "https://api.expenses.example/",
+  "scope": "expenses.read",
+
+  "auth_time": 1710000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "cnf": {
+    "jkt": "base64url-expense-app-key-thumbprint"
+  },
+
+  "iat": 1710000005,
+  "exp": 1710000305,
+  "jti": "idjag-expense-01"
+}
+</pre><a href="#appendix-B.1-8" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1-9">ExpenseApp exchanges this ID-JAG at ExpenseRAS for an access token (AT1) and
+invokes ExpenseSaaS, exactly as for any ID-JAG
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> (not shown). ExpenseApp
+conveys <code>chain_id</code> to ExpenseSaaS in authenticated, confidential, and
+integrity-protected control-plane context associated with that API request.
+The <code>chain_id</code> does not appear in the ID-JAG or AT1.<a href="#appendix-B.1-9" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-context">
+<section id="appendix-B.2">
+        <h3 id="name-crossing-the-boundary-into-">
+<a href="#appendix-B.2" class="section-number selfRef">B.2. </a><a href="#name-crossing-the-boundary-into-" class="section-name selfRef">Crossing the Boundary into TravelSaaS</a>
+        </h3>
+<p id="appendix-B.2-1">To complete the request, ExpenseService calls TravelSaaS, propagating the
+chain context to TravelService over an authenticated, confidential, and
+integrity-protected channel:<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2-2">
+<pre>
+chain_id   = 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
+actor chain = expense-service (ExpenseSaaS) &lt;- expense-app
+</pre><a href="#appendix-B.2-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.2-3">The user's ExpenseRAS-local subject (<code>expense-local-subject</code>) is not propagated
+across the boundary. The IdP retains the authoritative authentication context
+and root-chain envelope; those values are not supplied by TravelService or
+repeated in the Identity Continuation Assertion.<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-ica">
+<section id="appendix-B.3">
+        <h3 id="name-obtaining-the-identity-cont">
+<a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-obtaining-the-identity-cont" class="section-name selfRef">Obtaining the Identity Continuation Assertion</a>
+        </h3>
+<p id="appendix-B.3-1">TravelService needs to call TravelAPI behind TravelRAS. It requests an Identity
+Continuation Assertion from the Chain Authority for this <code>chain_id</code>, proving
+control of its key so the Chain Authority can bind <code>cnf</code> to it
+(<a href="#assertion-issuance" class="auto internal xref">Section 4.4</a>). The Chain Authority returns the assertion shown in
+<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>: <code>iss</code> is the Chain Authority, <code>aud</code> is the IdP,
+<code>chain_id</code> is the value above, the outermost <code>act</code> is <code>travel-service</code>, and
+<code>cnf.jkt</code> is TravelService's key thumbprint.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-chained">
+<section id="appendix-B.4">
+        <h3 id="name-chained-exchange-for-the-tr">
+<a href="#appendix-B.4" class="section-number selfRef">B.4. </a><a href="#name-chained-exchange-for-the-tr" class="section-name selfRef">Chained Exchange for the TravelRAS ID-JAG</a>
+        </h3>
+<p id="appendix-B.4-1">TravelService presents the assertion to the IdP as the <code>subject_token</code>,
+DPoP-bound to TravelService's key:<a href="#appendix-B.4-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.4-2">
+<pre>
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof signed by the travel-service key&gt;
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.travel.example/
+resource=https://api.travel.example/
+scope=trips.read
+subject_token=&lt;identity-continuation-assertion&gt;
+subject_token_type=&lt;identity-continuation-token-type&gt;
+actor_token=&lt;sender-constrained travel-service credential&gt;
+actor_token_type=urn:ietf:params:oauth:token-type:jwt
+</pre><a href="#appendix-B.4-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.4-3">The <code>subject_token_type</code> value above is
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>. The IdP runs the
+checks of <a href="#validation" class="auto internal xref">Section 9</a>: the DPoP key matches both the assertion's <code>cnf.jkt</code>
+and the actor token's key confirmation, <code>travel-service</code> is the outermost
+actor, the <code>chain_id</code> is active, and the requested TravelRAS, TravelAPI, and
+<code>trips.read</code> values match the Travel target entry in the root-chain envelope.
+It then resolves the user's TravelRAS-local subject and returns:<a href="#appendix-B.4-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.4-4">
+<pre>
+{
+  "access_token": "&lt;ID-JAG for TravelRAS&gt;",
+  "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
+  "token_type": "N_A",
+  "expires_in": 300,
+  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+}
+</pre><a href="#appendix-B.4-4" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.4-5">The decoded ID-JAG for TravelRAS is the one shown in <a href="#onward-id-jag" class="auto internal xref">Section 10</a>: same
+user, but <code>sub</code> is now <code>travel-local-subject</code>, and it carries no <code>chain_id</code>.
+The <code>chain_id</code> is returned again as a response parameter so a further hop to
+BookingRAS can repeat this step.<a href="#appendix-B.4-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-use">
+<section id="appendix-B.5">
+        <h3 id="name-using-the-travelras-id-jag">
+<a href="#appendix-B.5" class="section-number selfRef">B.5. </a><a href="#name-using-the-travelras-id-jag" class="section-name selfRef">Using the TravelRAS ID-JAG</a>
+        </h3>
+<p id="appendix-B.5-1">TravelService exchanges the TravelRAS ID-JAG at TravelRAS for an access token
+(AT2), presenting a fresh DPoP proof with the same <code>travel-service</code> key, and
+calls TravelAPI. TravelRAS processes the ID-JAG as an ordinary ID-JAG and
+never sees the Identity Continuation Assertion or the <code>chain_id</code>.<a href="#appendix-B.5-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+</section>
+</div>
+<div id="acknowledgments">
+<section id="appendix-C">
+      <h2 id="name-acknowledgments">
+<a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
+      </h2>
+<p id="appendix-C-1">The author thanks the authors of OAuth Identity and Authorization Chaining
+Across Domains, the Identity Assertion JWT Authorization Grant, Waffles, and
+Attenuating Authorization Tokens, on whose work this profile builds.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="authors-addresses">
+<section id="appendix-D">
+      <h2 id="name-authors-address">
+<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      </h2>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Karl McGuinness</span></div>
+<div dir="auto" class="left"><span class="org">ConductorOne</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:karl.mcguinness@conductorone.com" class="email">karl.mcguinness@conductorone.com</a>
+</div>
+</address>
+</section>
+</div>
+<script>const toc = document.getElementById("toc");
+toc.querySelector("h2").addEventListener("click", e => {
+  toc.classList.toggle("active");
+});
+toc.querySelector("nav").addEventListener("click", e => {
+  toc.classList.remove("active");
+});
+</script>
+</body>
+</html>
