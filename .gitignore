@@ -1,0 +1,7 @@
+# Build artifacts (generated from the kramdown-rfc source)
+.refcache/
+*.xml
+*.txt
+*.html
+*.pdf
+!template.xml
