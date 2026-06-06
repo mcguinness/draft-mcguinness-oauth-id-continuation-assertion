@@ -951,6 +951,20 @@ Table of Contents
    Authority cannot request a target or scope outside its authorized
    target entries.
 
+   How the IdP establishes that trust (a Chain Authority's issuer
+   identifier, its authorized signing keys, and its tenant scope) is out
+   of band and deployment-specific, as for any issuer whose assertions
+   an Authorization Server consumes [RFC7523].  A deployment MAY
+   establish it dynamically using the OAuth Identity Assertion Trust
+   Framework [TRUST-FRAMEWORK], with the IdP as the Validator and the
+   Chain Authority as the Assertion Issuer.  Because the Identity
+   Continuation Assertion carries no subject (Section 4.2), the IdP
+   resolves the root subject and its owning authority from chain_id and
+   authorizes the Chain Authority against that resolved authority,
+   rather than against a subject carried in the assertion.  The root-
+   chain envelope continues to bound a trusted Chain Authority's
+   authority regardless of how trust is established.
+
 11.6.  Actor Chain Integrity
 
    The nested act claim in [RFC8693] records the current actor and prior
@@ -1204,6 +1218,11 @@ Table of Contents
               1.0", <https://openid.net/specs/openid-connect-
               frontchannel-1_0.html>.
 
+   [RFC7523]  Jones, M., Campbell, B., and C. Mortimore, "JSON Web Token
+              (JWT) Profile for OAuth 2.0 Client Authentication and
+              Authorization Grants", RFC 7523, DOI 10.17487/RFC7523, May
+              2015, <https://www.rfc-editor.org/rfc/rfc7523>.
+
    [RFC8417]  Hunt, P., Ed., Jones, M., Denniss, W., and M. Ansari,
               "Security Event Token (SET)", RFC 8417,
               DOI 10.17487/RFC8417, July 2018,
@@ -1222,6 +1241,14 @@ Table of Contents
               "Best Current Practice for OAuth 2.0 Security", BCP 240,
               RFC 9700, DOI 10.17487/RFC9700, January 2025,
               <https://www.rfc-editor.org/rfc/rfc9700>.
+
+   [TRUST-FRAMEWORK]
+              McGuinness, K., "OAuth Identity Assertion Trust
+              Framework", Work in Progress, Internet-Draft, draft-
+              mcguinness-oauth-identity-assertion-trust-framework,
+              <https://mcguinness.github.io/draft-mcguinness-oauth-
+              identity-assertion-trust-policy/draft-mcguinness-oauth-
+              identity-assertion-trust-framework.html>.
 
    [WAFFLES]  "Waffles: Stacked Delegated JWTs (work in progress)", Work
               in Progress, Internet-Draft, draft-hingnikar-cecchetti-

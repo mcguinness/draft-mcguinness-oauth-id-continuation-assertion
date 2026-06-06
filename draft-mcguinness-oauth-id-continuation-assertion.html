@@ -2342,6 +2342,18 @@ for. Deployments <span class="bcp14">SHOULD</span> scope Chain Authority trust a
 and <span class="bcp14">SHOULD</span> monitor for anomalous continuation patterns. Because the IdP
 enforces the root-chain envelope, a compromised Chain Authority cannot request
 a target or scope outside its authorized target entries.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+<p id="section-11.5-2">How the IdP establishes that trust (a Chain Authority's issuer identifier, its
+authorized signing keys, and its tenant scope) is out of band and
+deployment-specific, as for any issuer whose assertions an Authorization Server
+consumes <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>. A deployment <span class="bcp14">MAY</span> establish it dynamically using the OAuth
+Identity Assertion Trust Framework <span>[<a href="#TRUST-FRAMEWORK" class="cite xref">TRUST-FRAMEWORK</a>]</span>, with the IdP as the
+Validator and the Chain Authority as the Assertion Issuer. Because the Identity
+Continuation Assertion carries no subject (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>), the IdP
+resolves the root subject and its owning authority from <code>chain_id</code> and
+authorizes the Chain Authority against that resolved authority, rather than
+against a subject carried in the assertion. The root-chain envelope continues
+to bound a trusted Chain Authority's authority regardless of how trust is
+established.<a href="#section-11.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="actor-chain-integrity">
@@ -2701,6 +2713,10 @@ this document is registered by
         <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC7523">[RFC7523]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants"</span>, <span class="seriesInfo">RFC 7523</span>, <span class="seriesInfo">DOI 10.17487/RFC7523</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7523">https://www.rfc-editor.org/rfc/rfc7523</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC8417">[RFC8417]</dt>
         <dd>
 <span class="refAuthor">Hunt, P., Ed.</span>, <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Denniss, W.</span>, and <span class="refAuthor">M. Ansari</span>, <span class="refTitle">"Security Event Token (SET)"</span>, <span class="seriesInfo">RFC 8417</span>, <span class="seriesInfo">DOI 10.17487/RFC8417</span>, <time datetime="2018-07" class="refDate">July 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8417">https://www.rfc-editor.org/rfc/rfc8417</a>&gt;</span>. </dd>
@@ -2716,6 +2732,10 @@ this document is registered by
 <dt id="RFC9700">[RFC9700]</dt>
         <dd>
 <span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Labunets, A.</span>, and <span class="refAuthor">D. Fett</span>, <span class="refTitle">"Best Current Practice for OAuth 2.0 Security"</span>, <span class="seriesInfo">BCP 240</span>, <span class="seriesInfo">RFC 9700</span>, <span class="seriesInfo">DOI 10.17487/RFC9700</span>, <time datetime="2025-01" class="refDate">January 2025</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9700">https://www.rfc-editor.org/rfc/rfc9700</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="TRUST-FRAMEWORK">[TRUST-FRAMEWORK]</dt>
+        <dd>
+<span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"OAuth Identity Assertion Trust Framework"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-mcguinness-oauth-identity-assertion-trust-framework</span>, <span>&lt;<a href="https://mcguinness.github.io/draft-mcguinness-oauth-identity-assertion-trust-policy/draft-mcguinness-oauth-identity-assertion-trust-framework.html">https://mcguinness.github.io/draft-mcguinness-oauth-identity-assertion-trust-policy/draft-mcguinness-oauth-identity-assertion-trust-framework.html</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="WAFFLES">[WAFFLES]</dt>
       <dd>
