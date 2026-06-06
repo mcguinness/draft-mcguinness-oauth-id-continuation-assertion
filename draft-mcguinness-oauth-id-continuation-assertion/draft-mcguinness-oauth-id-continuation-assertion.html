@@ -2855,52 +2855,116 @@ Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in
 <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, <a href="#response-param" class="auto internal xref">Section 7.4</a>, and <a href="#onward-id-jag" class="auto internal xref">Section 10</a>.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
 <p id="appendix-B-2">The participants and values used throughout:<a href="#appendix-B-2" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-B-3.1">
-          <p id="appendix-B-3.1.1">User: the human, authenticated once at the IdP.<a href="#appendix-B-3.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.2">
-          <p id="appendix-B-3.2.1">IdP: <code>https://idp.example/</code>.<a href="#appendix-B-3.2.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.3">
-          <p id="appendix-B-3.3.1">ExpenseApp: <code>expense-app</code>, the user-facing application.<a href="#appendix-B-3.3.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.4">
-          <p id="appendix-B-3.4.1">ExpenseSaaS: <code>https://expenses.example/</code>.<a href="#appendix-B-3.4.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.5">
-          <p id="appendix-B-3.5.1">ExpenseService: <code>expense-service</code>, the ExpenseSaaS workload that calls
-TravelSaaS.<a href="#appendix-B-3.5.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.6">
-          <p id="appendix-B-3.6.1">ExpenseRAS: <code>https://ras.expenses.example/</code>.<a href="#appendix-B-3.6.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.7">
-          <p id="appendix-B-3.7.1">ExpenseAPI: <code>https://api.expenses.example/</code>.<a href="#appendix-B-3.7.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.8">
-          <p id="appendix-B-3.8.1">TravelSaaS: <code>https://travel.example/</code>.<a href="#appendix-B-3.8.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.9">
-          <p id="appendix-B-3.9.1">TravelService: <code>travel-service</code>, the workload calling TravelAPI.<a href="#appendix-B-3.9.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.10">
-          <p id="appendix-B-3.10.1">TravelRAS: <code>https://ras.travel.example/</code>.<a href="#appendix-B-3.10.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.11">
-          <p id="appendix-B-3.11.1">TravelAPI: <code>https://api.travel.example/</code>.<a href="#appendix-B-3.11.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.12">
-          <p id="appendix-B-3.12.1">Chain Authority: <code>https://ca.expenses.example/</code>.<a href="#appendix-B-3.12.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.13">
-          <p id="appendix-B-3.13.1"><code>chain_id</code>: <code>01JZ8F4J9J8Y3NDK5WQ4P9K7Q2</code>.<a href="#appendix-B-3.13.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-B-3.14">
-          <p id="appendix-B-3.14.1">Subjects: <code>expense-local-subject</code> at ExpenseRAS and
-<code>travel-local-subject</code> at TravelRAS.<a href="#appendix-B-3.14.1" class="pilcrow">¶</a></p>
-</li>
-      </ul>
+<table class="center" id="table-1">
+        <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Name</th>
+            <th class="text-left" rowspan="1" colspan="1">Value</th>
+            <th class="text-left" rowspan="1" colspan="1">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">User</td>
+            <td class="text-left" rowspan="1" colspan="1">(none)</td>
+            <td class="text-left" rowspan="1" colspan="1">The human, authenticated once at the IdP.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">IdP</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://idp.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseApp</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-app</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">User-facing application; first-hop client.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">First SaaS the user invokes.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseService</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-service</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS workload that calls TravelSaaS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for ExpenseAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">ExpenseAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Protected resource behind ExpenseRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelSaaS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Downstream SaaS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelService</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>travel-service</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">TravelSaaS workload that calls TravelAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for TravelAPI.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">TravelAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.travel.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Protected resource behind TravelRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ca.expenses.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Issues the Identity Continuation Assertion for the chain.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>chain_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>01JZ8F4J9J8Y3NDK5WQ4P9K7Q2</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Subjects</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>expense-local-subject</code>, <code>travel-local-subject</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The user's pairwise subject at ExpenseRAS and TravelRAS, respectively.</td>
+          </tr>
+        </tbody>
+      </table>
 <p id="appendix-B-4">At a glance, the message flow is:<a href="#appendix-B-4" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B-5">
 <pre>
