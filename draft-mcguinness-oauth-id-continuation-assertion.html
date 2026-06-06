@@ -1507,8 +1507,12 @@ type is <code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a h
         <dd style="margin-left: 1.5em" id="section-2-3.14">
           <p id="section-2-3.14.1">The party trusted by the Continuation Authorization Server to assert chain
 evidence for a given tenant and to issue Identity Continuation Assertions.
-The Chain Authority is not the authority for resolving the target audience's
-user subject identifier.<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
+The Chain Authority is a role, not necessarily a distinct deployment
+component: it <span class="bcp14">MAY</span> be fulfilled by a Resource Authorization Server the IdP
+already trusts, a transaction-token service, or a domain gateway, provided
+the IdP authorizes that party to issue Identity Continuation Assertions for
+the tenant. The Chain Authority is not the authority for resolving the target
+audience's user subject identifier.<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.15">Current actor (presenting actor):</dt>
