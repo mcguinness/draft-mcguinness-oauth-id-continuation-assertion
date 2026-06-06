@@ -29,7 +29,7 @@ subject identifier.
 <meta content="identity chaining" name="keyword">
 <meta content="delegation" name="keyword">
 <meta content="id-jag" name="keyword">
-<meta content="draft-mcguinness-oauth-id-continuation-assertion-00" name="ietf.draft">
+<meta content="draft-mcguinness-oauth-id-continuation-assertion-latest" name="ietf.draft">
 <!-- Generator version information:
   xml2rfc 3.33.0
     Python 3.12.13
@@ -1075,7 +1075,7 @@ svg {
 <dt class="label-workgroup">Workgroup:</dt>
 <dd class="workgroup">Web Authorization Protocol</dd>
 <dt class="label-internet-draft">Internet-Draft:</dt>
-<dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-00</dd>
+<dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
 <time datetime="2026-06-06" class="published">6 June 2026</time>
@@ -1123,7 +1123,7 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 <p id="section-note.1-3">
         Discussion of this document takes place on the
         Web Authorization Protocol Working Group mailing list (<span><a href="mailto:oauth@ietf.org">mailto:oauth@ietf.org</a></span>),
-        which is archived at <span><a href="https://datatracker.ietf.org/wg/oauth/about/">https://datatracker.ietf.org/wg/oauth/about/</a></span>.
+        which is archived at <span><a href="https://mailarchive.ietf.org/arch/browse/oauth/">https://mailarchive.ietf.org/arch/browse/oauth/</a></span>.
         Subscribe at <span><a href="https://www.ietf.org/mailman/listinfo/oauth/">https://www.ietf.org/mailman/listinfo/oauth/</a></span>.<a href="#section-note.1-3" class="pilcrow">¶</a></p>
 <p id="section-note.1-4">Source for this draft and an issue tracker can be found at
         <span><a href="https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion">https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion</a></span>.<a href="#section-note.1-4" class="pilcrow">¶</a></p>
@@ -2048,65 +2048,65 @@ but the provenance and integrity requirements of <a href="#context-provenance" c
 <p id="section-8-1">The canonical same-IdP SaaS-to-SaaS flow proceeds as follows. Steps 6 through
 12 repeat for each additional cross-boundary hop (for example, TravelRAS to
 BookingRAS).<a href="#section-8-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-8-2">
-<pre>
-1.  ExpenseApp authenticates the user at the IdP.
-
-2.  ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.
-
-3.  IdP issues:
-      ID-JAG: iss=IdP, aud=ExpenseRAS,
-              sub=&lt;subject for user at ExpenseRAS&gt;,
-              scope, cnf
-    and returns chain_id as a Token Exchange response parameter.
-    IdP records the root-chain envelope: chain_id -&gt; { user,
-        auth_time/acr/amr,
-        authorized targets [(audience, resource, permitted scopes)],
-        max depth, expiry }.
-    (chain_id is not a claim inside the ExpenseRAS ID-JAG.)
-
-4.  ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and
-    invokes ExpenseSaaS. ExpenseApp conveys chain_id to ExpenseSaaS
-    over an authenticated, confidential, and integrity-protected
-    control-plane channel associated with the request. chain_id is
-    not carried in the ID-JAG or AT1.
-
-5.  ExpenseService, the ExpenseSaaS workload handling the request,
-    propagates authenticated, confidential, and integrity-protected
-    chain context to TravelService:
-      chain_id; verified actor lineage.
-    (No hop-local subject is propagated across the SaaS boundary by
-     default. Local fan-out inside a domain MAY use an offline
-     attenuated stack.)
-
-6.  TravelService needs to call TravelAPI behind TravelRAS.
-
-7.  TravelService obtains an Identity Continuation Assertion from the
-    Chain Authority for that chain_id.
-
-8.  TravelService presents the assertion to the IdP as subject_token
-    and requests:
-      requested_token_type = id-jag
-      audience = TravelRAS
-      resource = TravelAPI
-      scope    = trips.read
-
-9.  IdP validates the assertion, root-chain state, actor policy,
-    requested audience/resource/scope, and sender constraint.
-
-10. IdP resolves the user subject identifier for TravelRAS.
-
-11. IdP issues a new ID-JAG:
-      iss=IdP, aud=TravelRAS,
-      sub=&lt;subject for same user at TravelRAS&gt;,
-      act=updated actor chain, cnf
-    and returns chain_id again as a response parameter for any
-    further hop. (No chain_id claim in the TravelRAS ID-JAG.)
-
-12. TravelService exchanges the new ID-JAG at TravelRAS for AT2.
-    Repeat 6-12 for BookingRAS.
-</pre><a href="#section-8-2" class="pilcrow">¶</a>
-</div>
+<ol start="1" type="1" class="normal type-1" id="section-8-2">
+<li id="section-8-2.1">
+          <p id="section-8-2.1.1">ExpenseApp authenticates the user at the IdP.<a href="#section-8-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.2">
+          <p id="section-8-2.2.1">ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.<a href="#section-8-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.3">
+          <p id="section-8-2.3.1">The IdP issues an ID-JAG (<code>iss</code>=IdP, <code>aud</code>=ExpenseRAS, <code>sub</code>=the user's
+ExpenseRAS subject, with <code>scope</code> and <code>cnf</code>) and returns <code>chain_id</code> as a
+Token Exchange response parameter. The IdP records the root-chain envelope
+keyed by <code>chain_id</code>: the user, the authentication context
+(<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorized target entries (each an audience,
+resource, and permitted scopes), the maximum actor-chain depth, and the
+expiry. <code>chain_id</code> is not a claim inside the ExpenseRAS ID-JAG.<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.4">
+          <p id="section-8-2.4.1">ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and invokes
+ExpenseSaaS, conveying <code>chain_id</code> to ExpenseSaaS over an authenticated,
+confidential, and integrity-protected control-plane channel associated with
+the request. <code>chain_id</code> is not carried in the ID-JAG or AT1.<a href="#section-8-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.5">
+          <p id="section-8-2.5.1">ExpenseService, the ExpenseSaaS workload handling the request, propagates
+authenticated, confidential, and integrity-protected chain context
+(<code>chain_id</code> and verified actor lineage) to TravelService. No hop-local
+subject is propagated across the SaaS boundary by default; local fan-out
+inside a domain <span class="bcp14">MAY</span> use an offline attenuated stack.<a href="#section-8-2.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.6">
+          <p id="section-8-2.6.1">TravelService needs to call TravelAPI behind TravelRAS.<a href="#section-8-2.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.7">
+          <p id="section-8-2.7.1">TravelService obtains an Identity Continuation Assertion from the Chain
+Authority for that <code>chain_id</code>.<a href="#section-8-2.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.8">
+          <p id="section-8-2.8.1">TravelService presents the assertion to the IdP as the <code>subject_token</code> and
+requests an <code>id-jag</code> for <code>audience</code>=TravelRAS, <code>resource</code>=TravelAPI, and
+<code>scope</code>=<code>trips.read</code>.<a href="#section-8-2.8.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.9">
+          <p id="section-8-2.9.1">The IdP validates the assertion, root-chain state, actor policy, the
+requested audience, resource, and scope, and the sender constraint.<a href="#section-8-2.9.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.10">
+          <p id="section-8-2.10.1">The IdP resolves the user's subject identifier for TravelRAS.<a href="#section-8-2.10.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.11">
+          <p id="section-8-2.11.1">The IdP issues a new ID-JAG (<code>iss</code>=IdP, <code>aud</code>=TravelRAS, <code>sub</code>=the same
+user's TravelRAS subject, an updated <code>act</code> chain, and <code>cnf</code>) and returns
+<code>chain_id</code> again as a response parameter for any further hop. The TravelRAS
+ID-JAG carries no <code>chain_id</code> claim.<a href="#section-8-2.11.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-8-2.12">
+          <p id="section-8-2.12.1">TravelService exchanges the new ID-JAG at TravelRAS for AT2. Steps 6 through
+12 repeat for BookingRAS.<a href="#section-8-2.12.1" class="pilcrow">¶</a></p>
+</li>
+      </ol>
 </section>
 </div>
 <div id="validation">

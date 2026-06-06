@@ -9,7 +9,7 @@ Expires: 8 December 2026
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
-          draft-mcguinness-oauth-id-continuation-assertion-00
+        draft-mcguinness-oauth-id-continuation-assertion-latest
 
 Abstract
 
@@ -44,8 +44,8 @@ About This Document
 
    Discussion of this document takes place on the Web Authorization
    Protocol Working Group mailing list (mailto:oauth@ietf.org), which is
-   archived at https://datatracker.ietf.org/wg/oauth/about/.  Subscribe
-   at https://www.ietf.org/mailman/listinfo/oauth/.
+   archived at https://mailarchive.ietf.org/arch/browse/oauth/.
+   Subscribe at https://www.ietf.org/mailman/listinfo/oauth/.
 
    Source for this draft and an issue tracker can be found at
    https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-
@@ -704,61 +704,54 @@ Table of Contents
    6 through 12 repeat for each additional cross-boundary hop (for
    example, TravelRAS to BookingRAS).
 
-   1.  ExpenseApp authenticates the user at the IdP.
+   1.   ExpenseApp authenticates the user at the IdP.
 
-   2.  ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.
+   2.   ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.
 
-   3.  IdP issues:
-         ID-JAG: iss=IdP, aud=ExpenseRAS,
-                 sub=<subject for user at ExpenseRAS>,
-                 scope, cnf
-       and returns chain_id as a Token Exchange response parameter.
-       IdP records the root-chain envelope: chain_id -> { user,
-           auth_time/acr/amr,
-           authorized targets [(audience, resource, permitted scopes)],
-           max depth, expiry }.
-       (chain_id is not a claim inside the ExpenseRAS ID-JAG.)
+   3.   The IdP issues an ID-JAG (iss=IdP, aud=ExpenseRAS, sub=the
+        user's ExpenseRAS subject, with scope and cnf) and returns
+        chain_id as a Token Exchange response parameter.  The IdP
+        records the root-chain envelope keyed by chain_id: the user, the
+        authentication context (auth_time/acr/amr), the authorized
+        target entries (each an audience, resource, and permitted
+        scopes), the maximum actor-chain depth, and the expiry. chain_id
+        is not a claim inside the ExpenseRAS ID-JAG.
 
-   4.  ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and
-       invokes ExpenseSaaS. ExpenseApp conveys chain_id to ExpenseSaaS
-       over an authenticated, confidential, and integrity-protected
-       control-plane channel associated with the request. chain_id is
-       not carried in the ID-JAG or AT1.
+   4.   ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and
+        invokes ExpenseSaaS, conveying chain_id to ExpenseSaaS over an
+        authenticated, confidential, and integrity-protected control-
+        plane channel associated with the request. chain_id is not
+        carried in the ID-JAG or AT1.
 
-   5.  ExpenseService, the ExpenseSaaS workload handling the request,
-       propagates authenticated, confidential, and integrity-protected
-       chain context to TravelService:
-         chain_id; verified actor lineage.
-       (No hop-local subject is propagated across the SaaS boundary by
-        default. Local fan-out inside a domain MAY use an offline
-        attenuated stack.)
+   5.   ExpenseService, the ExpenseSaaS workload handling the request,
+        propagates authenticated, confidential, and integrity-protected
+        chain context (chain_id and verified actor lineage) to
+        TravelService.  No hop-local subject is propagated across the
+        SaaS boundary by default; local fan-out inside a domain MAY use
+        an offline attenuated stack.
 
-   6.  TravelService needs to call TravelAPI behind TravelRAS.
+   6.   TravelService needs to call TravelAPI behind TravelRAS.
 
-   7.  TravelService obtains an Identity Continuation Assertion from the
-       Chain Authority for that chain_id.
+   7.   TravelService obtains an Identity Continuation Assertion from
+        the Chain Authority for that chain_id.
 
-   8.  TravelService presents the assertion to the IdP as subject_token
-       and requests:
-         requested_token_type = id-jag
-         audience = TravelRAS
-         resource = TravelAPI
-         scope    = trips.read
+   8.   TravelService presents the assertion to the IdP as the
+        subject_token and requests an id-jag for audience=TravelRAS,
+        resource=TravelAPI, and scope=trips.read.
 
-   9.  IdP validates the assertion, root-chain state, actor policy,
-       requested audience/resource/scope, and sender constraint.
+   9.   The IdP validates the assertion, root-chain state, actor policy,
+        the requested audience, resource, and scope, and the sender
+        constraint.
 
-   10. IdP resolves the user subject identifier for TravelRAS.
+   10.  The IdP resolves the user's subject identifier for TravelRAS.
 
-   11. IdP issues a new ID-JAG:
-         iss=IdP, aud=TravelRAS,
-         sub=<subject for same user at TravelRAS>,
-         act=updated actor chain, cnf
-       and returns chain_id again as a response parameter for any
-       further hop. (No chain_id claim in the TravelRAS ID-JAG.)
+   11.  The IdP issues a new ID-JAG (iss=IdP, aud=TravelRAS, sub=the
+        same user's TravelRAS subject, an updated act chain, and cnf)
+        and returns chain_id again as a response parameter for any
+        further hop.  The TravelRAS ID-JAG carries no chain_id claim.
 
-   12. TravelService exchanges the new ID-JAG at TravelRAS for AT2.
-       Repeat 6-12 for BookingRAS.
+   12.  TravelService exchanges the new ID-JAG at TravelRAS for AT2.
+        Steps 6 through 12 repeat for BookingRAS.
 
 9.  IdP Validation for ID-JAG Output
 
