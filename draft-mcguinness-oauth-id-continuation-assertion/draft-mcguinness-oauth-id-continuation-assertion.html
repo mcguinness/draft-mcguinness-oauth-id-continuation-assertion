@@ -1384,10 +1384,9 @@ ExpenseApp -&gt; ExpenseSaaS/ExpenseRAS -&gt; TravelSaaS/TravelRAS
 </pre><a href="#section-1-4" class="pilcrow">¶</a>
 </div>
 <p id="section-1-5">The user authenticates once at the enterprise IdP and is never redirected
-through a new interactive flow merely because TravelSaaS must call BookingSaaS
-to complete the original request. The IdP remains the trust anchor, and each
-onward grant is audience-scoped and carries the subject identifier appropriate
-for its target RAS.<a href="#section-1-5" class="pilcrow">¶</a></p>
+through a new interactive flow for an onward hop. The IdP remains the trust
+anchor, and each onward grant is audience-scoped and carries the subject
+identifier appropriate for its target RAS.<a href="#section-1-5" class="pilcrow">¶</a></p>
 <div id="motivation">
 <section id="section-1.1">
         <h3 id="name-why-a-new-input-is-needed">
@@ -1717,10 +1716,10 @@ and <code>exp - iat</code> <span class="bcp14">MUST</span> be no more than 300 s
 </dl>
 <p id="section-4.2-5">The assertion <span class="bcp14">MUST NOT</span> contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or <code>amr</code>
 claim. The IdP obtains the user and root authentication context from the
-authoritative root-chain envelope indexed by <code>chain_id</code>. The current workload
-is identified by the outermost <code>act</code> claim and authenticated by the
-<code>actor_token</code>. Repeating these values in the assertion would create competing
-sources of identity or authentication context without adding authority.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
+root-chain envelope indexed by <code>chain_id</code>, and identifies the current workload
+from the outermost <code>act</code> claim and the <code>actor_token</code>; repeating those values in
+the assertion would only create competing sources of identity without adding
+authority.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
 <p id="section-4.2-6">In deployments that already maintain a delegation or mission identifier, the
 <code>chain_id</code> <span class="bcp14">MAY</span> be derived from or projected from that identifier, provided the
 result still satisfies the requirements of <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
@@ -2018,23 +2017,15 @@ Token Exchange response (alongside <code>access_token</code>, <code>issued_token
 forth), so that the next hop's Chain Authority can construct the next Identity
 Continuation Assertion. <code>chain_id</code> <span class="bcp14">MUST NOT</span> be carried as a claim inside the
 issued ID-JAG (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4).<a href="#section-7.4-1" class="pilcrow">¶</a></p>
-<p id="section-7.4-2">Returning <code>chain_id</code> as a response parameter rather than as a claim is
-deliberate: it keeps <code>chain_id</code> in the control plane, where it reaches the
-requester that will continue the chain, and out of the data-plane ID-JAG that a
-Resource Authorization Server consumes. Only the continuing party needs
-<code>chain_id</code>; the Resource Authorization Server does not, and carrying it in the
-ID-JAG would expose a cross-hop correlation handle to every audience that
-receives a token (<a href="#privacy" class="auto internal xref">Section 12</a>).<a href="#section-7.4-2" class="pilcrow">¶</a></p>
-<p id="section-7.4-3"><code>chain_id</code> is delivered to the party that performed the Token Exchange and is
-conveyed from there to the workload that continues the chain over a
-control-plane channel. For example, it can accompany the request as it crosses
-into the next service, or a Chain Authority in the originating trust domain can
-hold it. It is never carried in the ID-JAG or in an access token. Therefore,
-the target Resource Authorization Server and Resource Server do not receive it
-from either token. How <code>chain_id</code> is conveyed is deployment-specific, but the
-provenance and integrity requirements of <a href="#context-provenance" class="auto internal xref">Section 4.5</a> apply.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
-<p id="section-7.4-4">A non-normative response example is:<a href="#section-7.4-4" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-7.4-5">
+<p id="section-7.4-2"><code>chain_id</code> stays in the control plane: it is delivered to the party that
+performed the Token Exchange and conveyed from there to the workload that
+continues the chain, for example accompanying the request into the next service
+or held by a Chain Authority in the originating trust domain. Keeping it out of
+the ID-JAG prevents a cross-hop correlation handle from reaching every audience
+that consumes a token (<a href="#privacy" class="auto internal xref">Section 12</a>). How it is conveyed is deployment-specific,
+but the provenance and integrity requirements of <a href="#context-provenance" class="auto internal xref">Section 4.5</a> apply.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
+<p id="section-7.4-3">A non-normative response example is:<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.4-4">
 <pre>
 {
   "access_token": "&lt;id-jag&gt;",
@@ -2043,7 +2034,7 @@ provenance and integrity requirements of <a href="#context-provenance" class="au
   "expires_in": 300,
   "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
 }
-</pre><a href="#section-7.4-5" class="pilcrow">¶</a>
+</pre><a href="#section-7.4-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -2285,18 +2276,12 @@ The <code>client_id</code> matches the outer <code>act.sub</code> by constructio
 <a href="#section-11.1" class="section-number selfRef">11.1. </a><a href="#name-sender-constraint-and-proof" class="section-name selfRef">Sender Constraint and Proof of Possession</a>
         </h3>
 <p id="section-11.1-1">The Identity Continuation Assertion <span class="bcp14">MUST</span> be sender-constrained via <code>cnf</code>
-          <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> and <span class="bcp14">MUST NOT</span> be accepted as a bearer token. The presenting actor
-demonstrates possession of the key confirmed by <code>cnf</code> (using a DPoP proof
-<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> or mutual-TLS client authentication <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>) on the Token
-Exchange request, and the IdP <span class="bcp14">MUST</span> verify that the demonstrated key matches
-<code>cnf</code>, that the <code>actor_token</code> is sender-constrained to the same key, and that
-the actor authenticated by that token is the outermost actor of the <code>act</code> chain
-(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>, <a href="#validation" class="auto internal xref">Section 9</a>). Binding the assertion,
-the demonstrated key, and the authenticated workload identity to a single
-actor means a stolen assertion or stolen actor token cannot be replayed by a
-different party without the confirmed private key. The assertion is also
-short-lived and single-use (<a href="#security-replay" class="auto internal xref">Section 11.2</a>), bounding the window even
-against the key holder.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+          <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> and <span class="bcp14">MUST NOT</span> be accepted as a bearer token. The IdP verifies live
+proof of possession of the confirmed key and binds the assertion, that key, and
+the authenticated current actor together (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>).
+Consequently a stolen assertion or stolen actor token cannot be replayed by a
+party that does not hold the confirmed private key, and the short single-use
+lifetime (<a href="#security-replay" class="auto internal xref">Section 11.2</a>) bounds the window even for the key holder.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-replay">
@@ -2328,11 +2313,10 @@ requires those claims.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
         <h3 id="name-envelope-enforcement-and-of">
 <a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-envelope-enforcement-and-of" class="section-name selfRef">Envelope Enforcement and Offline Attenuation</a>
         </h3>
-<p id="section-11.4-1">The IdP <span class="bcp14">MUST</span> require the requested audience and resource pair to match one
-authorized target entry in the root-chain envelope, and <span class="bcp14">MUST</span> require every
-requested scope to be permitted by that same entry and by IdP policy for the
-current actor (<a href="#validation" class="auto internal xref">Section 9</a>). This prevents a compromised intermediate actor
-from broadening the chain beyond what the root delegation authorized.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<p id="section-11.4-1">The root-chain envelope is the authorization ceiling for a chain. The IdP
+enforces that the requested target and scopes fall within an authorized target
+entry (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), which prevents a compromised intermediate
+actor from broadening the chain beyond what the root delegation authorized.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
 <p id="section-11.4-2">Where an offline attenuated delegation stack (Waffles <span>[<a href="#WAFFLES" class="cite xref">WAFFLES</a>]</span> or AAT
 <span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span>) feeds an Identity Continuation
 Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
