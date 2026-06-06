@@ -117,10 +117,9 @@ ExpenseApp -> ExpenseSaaS/ExpenseRAS -> TravelSaaS/TravelRAS
 ~~~
 
 The user authenticates once at the enterprise IdP and is never redirected
-through a new interactive flow merely because TravelSaaS must call BookingSaaS
-to complete the original request. The IdP remains the trust anchor, and each
-onward grant is audience-scoped and carries the subject identifier appropriate
-for its target RAS.
+through a new interactive flow for an onward hop. The IdP remains the trust
+anchor, and each onward grant is audience-scoped and carries the subject
+identifier appropriate for its target RAS.
 
 ## Why a New Input Is Needed {#motivation}
 
@@ -370,10 +369,10 @@ The claims have the following meanings and requirements:
 
 The assertion MUST NOT contain a top-level `sub`, `auth_time`, `acr`, or `amr`
 claim. The IdP obtains the user and root authentication context from the
-authoritative root-chain envelope indexed by `chain_id`. The current workload
-is identified by the outermost `act` claim and authenticated by the
-`actor_token`. Repeating these values in the assertion would create competing
-sources of identity or authentication context without adding authority.
+root-chain envelope indexed by `chain_id`, and identifies the current workload
+from the outermost `act` claim and the `actor_token`; repeating those values in
+the assertion would only create competing sources of identity without adding
+authority.
 
 In deployments that already maintain a delegation or mission identifier, the
 `chain_id` MAY be derived from or projected from that identifier, provided the
@@ -618,22 +617,13 @@ forth), so that the next hop's Chain Authority can construct the next Identity
 Continuation Assertion. `chain_id` MUST NOT be carried as a claim inside the
 issued ID-JAG ({{chain-id}}, rule 4).
 
-Returning `chain_id` as a response parameter rather than as a claim is
-deliberate: it keeps `chain_id` in the control plane, where it reaches the
-requester that will continue the chain, and out of the data-plane ID-JAG that a
-Resource Authorization Server consumes. Only the continuing party needs
-`chain_id`; the Resource Authorization Server does not, and carrying it in the
-ID-JAG would expose a cross-hop correlation handle to every audience that
-receives a token ({{privacy}}).
-
-`chain_id` is delivered to the party that performed the Token Exchange and is
-conveyed from there to the workload that continues the chain over a
-control-plane channel. For example, it can accompany the request as it crosses
-into the next service, or a Chain Authority in the originating trust domain can
-hold it. It is never carried in the ID-JAG or in an access token. Therefore,
-the target Resource Authorization Server and Resource Server do not receive it
-from either token. How `chain_id` is conveyed is deployment-specific, but the
-provenance and integrity requirements of {{context-provenance}} apply.
+`chain_id` stays in the control plane: it is delivered to the party that
+performed the Token Exchange and conveyed from there to the workload that
+continues the chain, for example accompanying the request into the next service
+or held by a Chain Authority in the originating trust domain. Keeping it out of
+the ID-JAG prevents a cross-hop correlation handle from reaching every audience
+that consumes a token ({{privacy}}). How it is conveyed is deployment-specific,
+but the provenance and integrity requirements of {{context-provenance}} apply.
 
 A non-normative response example is:
 
@@ -849,18 +839,12 @@ The `client_id` matches the outer `act.sub` by construction.
 ## Sender Constraint and Proof of Possession
 
 The Identity Continuation Assertion MUST be sender-constrained via `cnf`
-{{RFC7800}} and MUST NOT be accepted as a bearer token. The presenting actor
-demonstrates possession of the key confirmed by `cnf` (using a DPoP proof
-{{RFC9449}} or mutual-TLS client authentication {{RFC8705}}) on the Token
-Exchange request, and the IdP MUST verify that the demonstrated key matches
-`cnf`, that the `actor_token` is sender-constrained to the same key, and that
-the actor authenticated by that token is the outermost actor of the `act` chain
-({{sender-constrained-presentation}}, {{validation}}). Binding the assertion,
-the demonstrated key, and the authenticated workload identity to a single
-actor means a stolen assertion or stolen actor token cannot be replayed by a
-different party without the confirmed private key. The assertion is also
-short-lived and single-use ({{security-replay}}), bounding the window even
-against the key holder.
+{{RFC7800}} and MUST NOT be accepted as a bearer token. The IdP verifies live
+proof of possession of the confirmed key and binds the assertion, that key, and
+the authenticated current actor together ({{sender-constrained-presentation}}).
+Consequently a stolen assertion or stolen actor token cannot be replayed by a
+party that does not hold the confirmed private key, and the short single-use
+lifetime ({{security-replay}}) bounds the window even for the key holder.
 
 ## Short Lifetime and Replay {#security-replay}
 
@@ -880,11 +864,10 @@ requires those claims.
 
 ## Envelope Enforcement and Offline Attenuation
 
-The IdP MUST require the requested audience and resource pair to match one
-authorized target entry in the root-chain envelope, and MUST require every
-requested scope to be permitted by that same entry and by IdP policy for the
-current actor ({{validation}}). This prevents a compromised intermediate actor
-from broadening the chain beyond what the root delegation authorized.
+The root-chain envelope is the authorization ceiling for a chain. The IdP
+enforces that the requested target and scopes fall within an authorized target
+entry ({{validation}}, rule 14), which prevents a compromised intermediate
+actor from broadening the chain beyond what the root delegation authorized.
 
 Where an offline attenuated delegation stack (Waffles {{WAFFLES}} or AAT
 {{I-D.niyikiza-oauth-attenuating-agent-tokens}}) feeds an Identity Continuation
