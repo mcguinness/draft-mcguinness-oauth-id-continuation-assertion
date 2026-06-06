@@ -196,8 +196,15 @@ Table of Contents
    issuer at every cross-boundary hop: no downstream party and no
    offline authority can mint a correct onward sub.
 
-   The Identity Continuation Assertion is a Token Exchange subject token
-   used to obtain an onward ID-JAG, the output profile of this document.
+   An onward hop that re-subjects the user is therefore a re-issuance,
+   not an attenuation.  A holder can only narrow authority it already
+   possesses; it cannot synthesize a subject it was never issued.  The
+   original identity assertion is spent after the first hop, so before
+   the IdP can mint the next grant it needs fresh, sender-constrained
+   evidence that the in-flight delegation is still live and still
+   represents this user.  The Identity Continuation Assertion is that
+   evidence; it is used as a Token Exchange subject token to obtain an
+   onward ID-JAG, the output profile of this document.
 
    This document defines the evidence format, Token Exchange parameters,
    validation rules, and IANA registrations needed for that exchange.
@@ -1317,7 +1324,12 @@ A.3.  Why Not a Cross-Domain Propagation Token
    round-trip.  This profile does use offline propagation between hops
    wherever it is sound: that is the Waffles and AAT layer, used when
    the subject does not change (Section 3).  It cannot serve the
-   boundary where the subject changes, for four reasons:
+   boundary where the subject changes.  Crossing that boundary re-
+   subjects the user, and re-subjecting is a mint that only the IdP can
+   perform, not an attenuation a propagation token can carry: a holder
+   narrows authority it already has, it does not synthesize a subject it
+   was never issued (Section 1.2).  Four consequences make this
+   concrete:
 
    1.  *Subject resolution.* A propagation token is minted by the source
        side, which does not know and cannot compute the next audience's

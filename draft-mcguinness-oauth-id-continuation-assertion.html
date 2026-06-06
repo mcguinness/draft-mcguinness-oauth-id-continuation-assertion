@@ -1420,8 +1420,14 @@ resolves the user under its own (pairwise) subject identifier and only the IdP
 holds the map from the root delegation to those per-audience subjects. That is
 why the IdP remains the sole issuer at every cross-boundary hop: no downstream
 party and no offline authority can mint a correct onward <code>sub</code>.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
-<p id="section-1.2-2">The Identity Continuation Assertion is a Token Exchange subject token used to
-obtain an onward ID-JAG, the output profile of this document.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+<p id="section-1.2-2">An onward hop that re-subjects the user is therefore a re-issuance, not an
+attenuation. A holder can only narrow authority it already possesses; it cannot
+synthesize a subject it was never issued. The original identity assertion is
+spent after the first hop, so before the IdP can mint the next grant it needs
+fresh, sender-constrained evidence that the in-flight delegation is still live
+and still represents this user. The Identity Continuation Assertion is that
+evidence; it is used as a Token Exchange subject token to obtain an onward
+ID-JAG, the output profile of this document.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
 <p id="section-1.2-3">This document defines the evidence format, Token Exchange parameters,
 validation rules, and IANA registrations needed for that exchange. It does not
 define a new access token format, does not allow a Resource Server to consume
@@ -2820,7 +2826,11 @@ propagating a token across domains (an "inter-domain propagation token")
 consumed directly by the next domain with no IdP round-trip. This profile does
 use offline propagation between hops wherever it is sound: that is the Waffles
 and AAT layer, used when the subject does not change (<a href="#decision-rule" class="auto internal xref">Section 3</a>). It
-cannot serve the boundary where the subject changes, for four reasons:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+cannot serve the boundary where the subject changes. Crossing that boundary
+re-subjects the user, and re-subjecting is a mint that only the IdP can perform,
+not an attenuation a propagation token can carry: a holder narrows authority it
+already has, it does not synthesize a subject it was never issued
+(<a href="#core-principle" class="auto internal xref">Section 1.2</a>). Four consequences make this concrete:<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="appendix-A.3-2">
 <li id="appendix-A.3-2.1">
             <p id="appendix-A.3-2.1.1"><strong>Subject resolution.</strong> A propagation token is minted by the source side,
