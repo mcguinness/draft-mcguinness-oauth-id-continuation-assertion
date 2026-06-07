@@ -1460,8 +1460,13 @@ reuses ID-JAG unchanged as the onward grant type, rather than defining a
 competing grant.<a href="#section-1.3-1" class="pilcrow">¶</a></p>
 <p id="section-1.3-2">It composes with, and is positioned relative to, the Workload Identity in
 Multi-System Environments (WIMSE) architecture <span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span> and
-offline attenuated delegation tokens such as Attenuating Authorization Tokens
-(AAT) <span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span>.<a href="#section-1.3-2" class="pilcrow">¶</a></p>
+offline attenuated delegation tokens used for intra-domain fan-out.<a href="#section-1.3-2" class="pilcrow">¶</a></p>
+<p id="section-1.3-3">Concretely, this profile adds three things to the ID-JAG exchange and reuses
+everything else: a new <code>subject_token</code> type (<a href="#names" class="auto internal xref">Section 4.1</a>) for the continuation
+evidence, the <code>chain_id</code> claim and its control-plane handling (<a href="#chain-id" class="auto internal xref">Section 5</a>),
+and the IdP validation rules for a continuation request (<a href="#validation" class="auto internal xref">Section 9</a>). The
+Token Exchange request, the onward ID-JAG, and the way a Resource Authorization
+Server consumes it are unchanged.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -1595,9 +1600,8 @@ produce the next audience's <code>sub</code>.<a href="#section-3-2.1.1" class="p
         <li class="normal" id="section-3-2.2">
           <p id="section-3-2.2.1">If the <em>same</em> subject identifier, or a key-based workload identity, suffices
 down a local fan-out, the parties <span class="bcp14">SHOULD NOT</span> round-trip the IdP. An offline
-attenuated delegation token such as Attenuating Authorization Tokens (AAT)
-<span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span> is used instead, and the IdP
-is reserved for the boundary hops.<a href="#section-3-2.2.1" class="pilcrow">¶</a></p>
+attenuated delegation token is used instead, and the IdP is reserved for the
+boundary hops.<a href="#section-3-2.2.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-3-3">In the canonical flow both appear: an offline attenuated stack inside
@@ -2371,11 +2375,10 @@ requires those claims.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
 enforces that the requested target and scopes fall within an authorized target
 entry (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), which prevents a compromised intermediate
 actor from broadening the chain beyond what the root delegation authorized.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
-<p id="section-11.4-2">Where an offline attenuated delegation stack such as Attenuating Authorization
-Tokens (AAT) <span>[<a href="#I-D.niyikiza-oauth-attenuating-agent-tokens" class="cite xref">I-D.niyikiza-oauth-attenuating-agent-tokens</a>]</span> feeds an Identity
-Continuation Assertion, monotonic attenuation, bounded delegation depth, and
-parent-hash linkage along that offline segment are provided and verified by that
-stack's own specification. The Chain Authority validates the segment before issuing
+<p id="section-11.4-2">Where an offline attenuated delegation stack feeds an Identity Continuation
+Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
+linkage along that offline segment are provided and verified by that stack's
+own specification. The Chain Authority validates the segment before issuing
 (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); the IdP itself enforces only the root-chain envelope
 described above.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
 </section>
@@ -2395,15 +2398,13 @@ a target or scope outside its authorized target entries.<a href="#section-11.5-1
 <p id="section-11.5-2">How the IdP establishes that trust (a Chain Authority's issuer identifier, its
 authorized signing keys, and its tenant scope) is out of band and
 deployment-specific, as for any issuer whose assertions an Authorization Server
-consumes <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>. A deployment <span class="bcp14">MAY</span> establish it dynamically using the OAuth
-Identity Assertion Trust Framework <span>[<a href="#TRUST-FRAMEWORK" class="cite xref">TRUST-FRAMEWORK</a>]</span>, with the IdP as the
-Validator and the Chain Authority as the Assertion Issuer. Because the Identity
-Continuation Assertion carries no subject (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>), the IdP
-resolves the root subject and its owning authority from <code>chain_id</code> and
-authorizes the Chain Authority against that resolved authority, rather than
-against a subject carried in the assertion. The root-chain envelope continues
-to bound a trusted Chain Authority's authority regardless of how trust is
-established.<a href="#section-11.5-2" class="pilcrow">¶</a></p>
+consumes <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>. It <span class="bcp14">MAY</span> be established statically or through a federation
+or trust-framework mechanism. Because the Identity Continuation Assertion
+carries no subject (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>), such a mechanism resolves the root
+subject and its owning authority from <code>chain_id</code> and authorizes the Chain
+Authority against that resolved authority, rather than against a subject carried
+in the assertion. The root-chain envelope continues to bound a trusted Chain
+Authority's authority regardless of how trust is established.<a href="#section-11.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="actor-chain-integrity">
@@ -2755,10 +2756,6 @@ this document is registered by
         <dd>
 <span class="refAuthor">Salowey, J. A.</span>, <span class="refAuthor">Rosomakho, Y.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Workload Identity in a Multi System Environment (WIMSE) Architecture"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-wimse-arch-07</span>, <time datetime="2026-03-02" class="refDate">2 March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-07">https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-07</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="I-D.niyikiza-oauth-attenuating-agent-tokens">[I-D.niyikiza-oauth-attenuating-agent-tokens]</dt>
-        <dd>
-<span class="refAuthor">Aimable, N.</span>, <span class="refTitle">"Attenuating Authorization Tokens for Agentic Delegation Chains"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-niyikiza-oauth-attenuating-agent-tokens-00</span>, <time datetime="2026-03-16" class="refDate">16 March 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-niyikiza-oauth-attenuating-agent-tokens-00">https://datatracker.ietf.org/doc/html/draft-niyikiza-oauth-attenuating-agent-tokens-00</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="OIDC.FrontChannelLogout">[OIDC.FrontChannelLogout]</dt>
         <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
@@ -2780,12 +2777,8 @@ this document is registered by
 <span class="refAuthor">Sheffer, Y.</span>, <span class="refAuthor">Hardt, D.</span>, and <span class="refAuthor">M. Jones</span>, <span class="refTitle">"JSON Web Token Best Current Practices"</span>, <span class="seriesInfo">BCP 225</span>, <span class="seriesInfo">RFC 8725</span>, <span class="seriesInfo">DOI 10.17487/RFC8725</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8725">https://www.rfc-editor.org/rfc/rfc8725</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9700">[RFC9700]</dt>
-        <dd>
-<span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Labunets, A.</span>, and <span class="refAuthor">D. Fett</span>, <span class="refTitle">"Best Current Practice for OAuth 2.0 Security"</span>, <span class="seriesInfo">BCP 240</span>, <span class="seriesInfo">RFC 9700</span>, <span class="seriesInfo">DOI 10.17487/RFC9700</span>, <time datetime="2025-01" class="refDate">January 2025</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9700">https://www.rfc-editor.org/rfc/rfc9700</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="TRUST-FRAMEWORK">[TRUST-FRAMEWORK]</dt>
       <dd>
-<span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"OAuth Identity Assertion Trust Framework"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-mcguinness-oauth-identity-assertion-trust-framework</span>, <span>&lt;<a href="https://mcguinness.github.io/draft-mcguinness-oauth-identity-assertion-trust-policy/draft-mcguinness-oauth-identity-assertion-trust-framework.html">https://mcguinness.github.io/draft-mcguinness-oauth-identity-assertion-trust-policy/draft-mcguinness-oauth-identity-assertion-trust-framework.html</a>&gt;</span>. </dd>
+<span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Labunets, A.</span>, and <span class="refAuthor">D. Fett</span>, <span class="refTitle">"Best Current Practice for OAuth 2.0 Security"</span>, <span class="seriesInfo">BCP 240</span>, <span class="seriesInfo">RFC 9700</span>, <span class="seriesInfo">DOI 10.17487/RFC9700</span>, <time datetime="2025-01" class="refDate">January 2025</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9700">https://www.rfc-editor.org/rfc/rfc9700</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 </dl>
 </section>
@@ -3254,8 +3247,8 @@ never sees the Identity Continuation Assertion or the <code>chain_id</code>.<a h
 <a href="#name-acknowledgments" class="section-name selfRef">Acknowledgments</a>
       </h2>
 <p id="appendix-C-1">The author thanks the authors of OAuth Identity and Authorization Chaining
-Across Domains, the Identity Assertion JWT Authorization Grant, and Attenuating
-Authorization Tokens, on whose work this profile builds.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+Across Domains and the Identity Assertion JWT Authorization Grant, on whose work
+this profile builds.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="authors-addresses">
