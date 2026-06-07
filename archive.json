@@ -1,0 +1,83 @@
+{
+  "magic": "E!vIA5L86J2I",
+  "timestamp": "2026-06-07T03:51:27.381918+00:00",
+  "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+  "labels": [
+    {
+      "name": "bug",
+      "description": "Something isn't working",
+      "color": "d73a4a"
+    },
+    {
+      "name": "documentation",
+      "description": "Improvements or additions to documentation",
+      "color": "0075ca"
+    },
+    {
+      "name": "duplicate",
+      "description": "This issue or pull request already exists",
+      "color": "cfd3d7"
+    },
+    {
+      "name": "enhancement",
+      "description": "New feature or request",
+      "color": "a2eeef"
+    },
+    {
+      "name": "good first issue",
+      "description": "Good for newcomers",
+      "color": "7057ff"
+    },
+    {
+      "name": "help wanted",
+      "description": "Extra attention is needed",
+      "color": "008672"
+    },
+    {
+      "name": "invalid",
+      "description": "This doesn't seem right",
+      "color": "e4e669"
+    },
+    {
+      "name": "question",
+      "description": "Further information is requested",
+      "color": "d876e3"
+    },
+    {
+      "name": "wontfix",
+      "description": "This will not be worked on",
+      "color": "ffffff"
+    }
+  ],
+  "issues": [],
+  "pulls": [
+    {
+      "number": 1,
+      "id": "PR_kwDOSyPVJM7jWfdu",
+      "title": "Identity Continuation Assertion for OAuth 2.0 Token Exchange (-00)",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/pull/1",
+      "state": "MERGED",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Adds the initial Internet-Draft **draft-mcguinness-oauth-id-continuation-assertion-00**.\n\n## Summary\nProfiles OAuth 2.0 Token Exchange (RFC 8693) to define the **Identity Continuation Assertion**: a short-lived, sender-constrained JWT that carries verifiable delegation-chain evidence to a continuation IdP, so the IdP can resolve the next audience's pairwise subject and issue an onward ID-JAG. Primary use case is same-IdP SaaS-to-SaaS chaining where the user is no longer present after the first hop.\n\n## Contents\n- Token type `urn:ietf:params:oauth:token-type:identity-continuation` + media type `application/oauth-identity-continuation+jwt`\n- `chain_id` as a control-plane, non-bearer correlation handle (kept out of every data-plane token), anchored to the `sid`/`txn`/`grant_id` pattern\n- Token Exchange profile (direct vs chained), sender-constrained presentation (DPoP or mTLS), sender-constrained `actor_token`\n- IdP validation rules, atomic single-use `jti` consumption, chain lifetime + revocation, chain-context provenance\n- IANA registrations (OAuth URI, media type, JWT claim `chain_id`, token-response parameter)\n- Appendices: Design Rationale (why not ID-JAG / Transaction Token / cross-domain propagation) and a worked two-hop example\n- Removes the i-d-template placeholder; adds `.gitignore` for build artifacts\n\nBuilds cleanly via `kramdown-rfc | xml2rfc`.\n\n## Open item\nThe **Waffles** reference (`draft-hingnikar-cecchetti-wimse-waffles`) is not yet on the Datatracker; its title/URL are a placeholder marked with a NOTE and must be replaced with the authoritative citation.",
+      "createdAt": "2026-06-06T04:03:06Z",
+      "updatedAt": "2026-06-06T21:57:41Z",
+      "baseRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "baseRefName": "main",
+      "baseRefOid": "01b0069699b610c2606ed7acc6b1aa68d687acd2",
+      "headRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "headRefName": "draft-mcguinness-oauth-id-continuation-assertion",
+      "headRefOid": "52afd13e5d1c7183c6b6477c2095fdb06f27bda5",
+      "closedAt": "2026-06-06T05:04:58Z",
+      "mergedAt": "2026-06-06T05:04:58Z",
+      "mergedBy": "mcguinness",
+      "mergeCommit": {
+        "oid": "f2da6ebb1586de415797c6d794ce5f67c8587ac4"
+      },
+      "comments": [],
+      "reviews": []
+    }
+  ]
+}
