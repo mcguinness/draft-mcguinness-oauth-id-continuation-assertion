@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                             6 June 2026
-Expires: 8 December 2026
+Intended status: Standards Track                             7 June 2026
+Expires: 9 December 2026
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -23,13 +23,15 @@ Abstract
    Resource Authorization Servers trust a single enterprise IdP and each
    names the user under its own audience-local (pairwise) subject
    identifier.  Because only the IdP holds the map from a root
-   delegation to each audience's subject, the IdP remains the sole
-   issuer of the onward Identity Assertion JWT Authorization Grant (ID-
-   JAG) at every cross-boundary hop.  The assertion is the evidence
-   carried into the exchange; the resulting grant is the authority.
-   This profile complements, and does not replace, offline attenuated
-   delegation, which is appropriate for intra-domain fan-out that does
-   not change the user's subject identifier.
+   delegation to each audience's subject, and because crossing a
+   boundary that renames the user is a re-issuance rather than an
+   attenuation, the IdP remains the sole issuer of the onward Identity
+   Assertion JWT Authorization Grant (ID-JAG) at every cross-boundary
+   hop.  The assertion is the evidence carried into the exchange; the
+   resulting grant is the authority.  This profile complements, and does
+   not replace, offline attenuated delegation, which is appropriate for
+   intra-domain fan-out that does not change the user's subject
+   identifier.
 
 About This Document
 
@@ -66,7 +68,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 8 December 2026.
+   This Internet-Draft will expire on 9 December 2026.
 
 Copyright Notice
 
@@ -87,7 +89,7 @@ Table of Contents
    1.  Introduction
      1.1.  Why a New Input Is Needed
      1.2.  Core Principle
-     1.3.  Relationship to Other Specifications
+     1.3.  Relationship to ID-JAG and Identity Chaining
    2.  Conventions and Definitions
    3.  When to Use This Profile Versus Offline Attenuation
    4.  The Identity Continuation Assertion
@@ -97,7 +99,7 @@ Table of Contents
      4.4.  Assertion Issuance and Key Binding
      4.5.  Chain-Context Provenance
    5.  Chain Identifier (chain_id)
-     5.1.  Stronger Privacy Mode
+     5.1.  Per-Audience Chain References
    6.  Chain Lifetime and Revocation
    7.  Token Exchange Profile
      7.1.  Direct ID-JAG Request
@@ -144,11 +146,14 @@ Table of Contents
    single human user.  A user authenticates once at an enterprise
    Identity Provider (IdP) and invokes an application; completing the
    user's request requires that application to call a second
-   application, which in turn must call a third.  Each application
-   exposes an API protected by its own Resource Authorization Server
-   (RAS), and all of these Resource Authorization Servers trust the same
-   enterprise IdP for single sign-on (SSO), for delegation continuity,
-   and for resolving the user's identity into an audience-local subject
+   application, which in turn must call a third.  Increasingly the
+   calling party is an automated agent acting for the user, fanning out
+   onward calls while the user is no longer present, which makes this
+   pattern both more common and more acute.  Each application exposes an
+   API protected by its own Resource Authorization Server (RAS), and all
+   of these Resource Authorization Servers trust the same enterprise IdP
+   for single sign-on (SSO), for delegation continuity, and for
+   resolving the user's identity into an audience-local subject
    identifier.
 
    The key use case addressed by this document is therefore:
@@ -213,18 +218,27 @@ Table of Contents
    directly, and does not allow a Chain Authority to name the user for
    the target audience.
 
-1.3.  Relationship to Other Specifications
+1.3.  Relationship to ID-JAG and Identity Chaining
 
    This profile builds directly on OAuth 2.0 Token Exchange [RFC8693]
-   and JSON Web Tokens (JWTs) [RFC7519].  It extends the cross-domain
-   model of OAuth Identity and Authorization Chaining Across Domains
-   [I-D.ietf-oauth-identity-chaining] and uses the ID-JAG
-   [I-D.ietf-oauth-identity-assertion-authz-grant] as its onward grant
-   type.  It is intended to compose with, and is positioned relative to,
-   the Workload Identity in Multi-System Environments (WIMSE)
-   architecture [I-D.ietf-wimse-arch] and offline attenuated delegation
-   tokens such as Waffles [WAFFLES] and Attenuating Authorization Tokens
-   (AAT) [I-D.niyikiza-oauth-attenuating-agent-tokens].
+   and JSON Web Tokens (JWTs) [RFC7519], and it is a continuation
+   extension of the ID-JAG
+   [I-D.ietf-oauth-identity-assertion-authz-grant] within the cross-
+   domain model of OAuth Identity and Authorization Chaining Across
+   Domains [I-D.ietf-oauth-identity-chaining].  ID-JAG covers the
+   exchange at the first hop, where the requester still holds an end-
+   user credential.  It does not by itself cover later hops: once that
+   credential is spent, a downstream service has no end-user assertion
+   to exchange and cannot mint the next audience's subject
+   (Section 1.2).  This profile supplies the missing input for those
+   hops and reuses ID-JAG unchanged as the onward grant type, rather
+   than defining a competing grant.
+
+   It composes with, and is positioned relative to, the Workload
+   Identity in Multi-System Environments (WIMSE) architecture
+   [I-D.ietf-wimse-arch] and offline attenuated delegation tokens such
+   as Attenuating Authorization Tokens (AAT)
+   [I-D.niyikiza-oauth-attenuating-agent-tokens].
 
 2.  Conventions and Definitions
 
@@ -271,13 +285,13 @@ Table of Contents
    Chain Authority:  The party trusted by the Continuation Authorization
       Server to assert chain evidence for a given tenant and to issue
       Identity Continuation Assertions.  The Chain Authority is a role,
-      not necessarily a distinct deployment component: it MAY be
-      fulfilled by a Resource Authorization Server the IdP already
-      trusts, a transaction-token service, or a domain gateway, provided
-      the IdP authorizes that party to issue Identity Continuation
-      Assertions for the tenant.  The Chain Authority is not the
-      authority for resolving the target audience's user subject
-      identifier.
+      not a new deployed component.  In the common case it is an
+      existing party the IdP already trusts (a Resource Authorization
+      Server, a transaction-token service, or a domain gateway) that the
+      IdP additionally authorizes to issue Identity Continuation
+      Assertions for the tenant; a deployment MAY instead run it as a
+      dedicated service.  The Chain Authority is not the authority for
+      resolving the target audience's user subject identifier.
 
    Current actor (presenting actor):  The workload that presents the
       Identity Continuation Assertion and the Token Exchange request to
@@ -321,10 +335,10 @@ Table of Contents
 
    *  If the _same_ subject identifier, or a key-based workload
       identity, suffices down a local fan-out, the parties SHOULD NOT
-      round-trip the IdP.  An offline attenuated delegation token
-      (Waffles [WAFFLES] or AAT
-      [I-D.niyikiza-oauth-attenuating-agent-tokens]) is used instead,
-      and the IdP is reserved for the boundary hops.
+      round-trip the IdP.  An offline attenuated delegation token such
+      as Attenuating Authorization Tokens (AAT)
+      [I-D.niyikiza-oauth-attenuating-agent-tokens] is used instead, and
+      the IdP is reserved for the boundary hops.
 
    In the canonical flow both appear: an offline attenuated stack inside
    TravelSaaS as it fans out to sub-agents, and an Identity Continuation
@@ -558,12 +572,16 @@ Table of Contents
        lookup handle for root chain state, subject resolution, and
        policy evaluation.
 
-5.1.  Stronger Privacy Mode
+5.1.  Per-Audience Chain References
 
-   If colluding chain participants must not be able to correlate even
-   "same delegation", the IdP MAY issue a distinct per-audience chain
-   reference that maps internally to a single root delegation, instead
-   of a single shared chain_id.  See Section 12.
+   A single shared chain_id lets control-plane participants that see it
+   correlate their observations of one delegation.  Where colluding
+   participants must not be able to correlate even "same delegation",
+   the IdP SHOULD instead issue a distinct per-audience chain reference
+   that maps internally to a single root delegation.  This keeps the
+   IdP's correlation ability intact while denying any shared identifier
+   to the participants.  Deployments whose threat model includes
+   colluding audiences SHOULD adopt this mode; see Section 12.
 
 6.  Chain Lifetime and Revocation
 
@@ -589,10 +607,10 @@ Table of Contents
    requires a fresh exchange at the IdP, revocation takes effect at the
    next hop, with no need to reach or invalidate chain evidence already
    held by intermediate services.  This is a deliberate difference from
-   offline attenuated delegation (Waffles or AAT), where a minted child
-   token remains usable for its lifetime without contacting an
-   authority.  Access tokens already issued by a Resource Authorization
-   Server remain valid for their own lifetimes and are governed by that
+   an offline attenuated delegation token, where a minted child token
+   remains usable for its lifetime without contacting an authority.
+   Access tokens already issued by a Resource Authorization Server
+   remain valid for their own lifetimes and are governed by that
    server's revocation mechanisms.
 
 7.  Token Exchange Profile
@@ -903,6 +921,32 @@ Table of Contents
 
 11.  Security Considerations
 
+   This profile assumes TLS-protected channels between all parties and
+   an IdP that correctly holds the per-audience subject map and the
+   root-chain envelope.  The general OAuth security guidance of
+   [RFC9700] applies.  The adversaries specifically considered are:
+
+   *  a network or on-path attacker observing or replaying a Token
+      Exchange request, addressed by sender-constraining the assertion
+      and single-use consumption (Section 7.3, Section 11.2);
+
+   *  a compromised or curious intermediate workload that holds
+      propagated chain context and attempts to broaden authority,
+      impersonate the user, or inflate the authentication context,
+      bounded by the root-chain envelope and the actor binding
+      (Section 11.3, the envelope enforcement below);
+
+   *  a compromised Chain Authority, which can request continuations
+      only within the envelope of chains it is trusted for (the Chain
+      Authority trust section below);
+
+   *  a malicious or curious Resource Server or Resource Authorization
+      Server attempting to correlate the user across boundaries,
+      addressed by keeping chain_id out of every data-plane token
+      (Section 12).
+
+   The subsections below address each in turn.
+
 11.1.  Sender Constraint and Proof of Possession
 
    The Identity Continuation Assertion MUST be sender-constrained via
@@ -939,8 +983,9 @@ Table of Contents
    compromised intermediate actor from broadening the chain beyond what
    the root delegation authorized.
 
-   Where an offline attenuated delegation stack (Waffles [WAFFLES] or
-   AAT [I-D.niyikiza-oauth-attenuating-agent-tokens]) feeds an Identity
+   Where an offline attenuated delegation stack such as Attenuating
+   Authorization Tokens (AAT)
+   [I-D.niyikiza-oauth-attenuating-agent-tokens] feeds an Identity
    Continuation Assertion, monotonic attenuation, bounded delegation
    depth, and parent-hash linkage along that offline segment are
    provided and verified by that stack's own specification.  The Chain
@@ -1022,9 +1067,9 @@ Table of Contents
    at least 128 bits of entropy (Section 5, rule 2), so that possession
    of a chain_id does not reveal the user and cannot be guessed.
 
-   Where even "same delegation" correlation among colluding chain
-   participants is a concern, the IdP MAY adopt the stronger privacy
-   mode of Section 5.1, issuing a distinct per-audience chain reference
+   Where "same delegation" correlation among colluding chain
+   participants is in scope, the IdP SHOULD adopt per-audience chain
+   references (Section 5.1), issuing a distinct reference per audience
    that maps internally to one root delegation.  This prevents
    participants at different audiences from linking their observations
    to a single shared identifier.
@@ -1257,11 +1302,6 @@ Table of Contents
               identity-assertion-trust-policy/draft-mcguinness-oauth-
               identity-assertion-trust-framework.html>.
 
-   [WAFFLES]  "Waffles: Stacked Delegated JWTs (work in progress)", Work
-              in Progress, Internet-Draft, draft-hingnikar-cecchetti-
-              wimse-waffles, <https://datatracker.ietf.org/doc/draft-
-              hingnikar-cecchetti-wimse-waffles/>.
-
 Appendix A.  Design Rationale
 
    This appendix is non-normative.  It explains why the Identity
@@ -1322,14 +1362,14 @@ A.3.  Why Not a Cross-Domain Propagation Token
    by simply propagating a token across domains (an "inter-domain
    propagation token") consumed directly by the next domain with no IdP
    round-trip.  This profile does use offline propagation between hops
-   wherever it is sound: that is the Waffles and AAT layer, used when
-   the subject does not change (Section 3).  It cannot serve the
-   boundary where the subject changes.  Crossing that boundary re-
-   subjects the user, and re-subjecting is a mint that only the IdP can
-   perform, not an attenuation a propagation token can carry: a holder
-   narrows authority it already has, it does not synthesize a subject it
-   was never issued (Section 1.2).  Four consequences make this
-   concrete:
+   wherever it is sound: that is the offline attenuated delegation
+   layer, used when the subject does not change (Section 3).  It cannot
+   serve the boundary where the subject changes.  Crossing that boundary
+   re-subjects the user, and re-subjecting is a mint that only the IdP
+   can perform, not an attenuation a propagation token can carry: a
+   holder narrows authority it already has, it does not synthesize a
+   subject it was never issued (Section 1.2).  Four consequences make
+   this concrete:
 
    1.  *Subject resolution.* A propagation token is minted by the source
        side, which does not know and cannot compute the next audience's
@@ -1640,8 +1680,8 @@ Acknowledgments
 
    The author thanks the authors of OAuth Identity and Authorization
    Chaining Across Domains, the Identity Assertion JWT Authorization
-   Grant, Waffles, and Attenuating Authorization Tokens, on whose work
-   this profile builds.
+   Grant, and Attenuating Authorization Tokens, on whose work this
+   profile builds.
 
 Author's Address
 
