@@ -40,6 +40,7 @@ normative:
   RFC7800:
   RFC8693:
   RFC8705:
+  RFC9110:
   RFC9449:
   I-D.ietf-oauth-identity-chaining:
   I-D.ietf-oauth-identity-assertion-authz-grant:
@@ -252,14 +253,19 @@ Chain Identifier (`chain_id`):
 Root-chain envelope:
 : The set of constraints the IdP records when it establishes a chain at root
   issuance and evaluates every continuation against: the authenticated user,
-  the authentication context (`auth_time`, `acr`, `amr`), a set of authorized
-  target entries, the maximum actor-chain depth, and the chain's expiry. Each
-  target entry binds one audience and resource to the scopes that may be
-  requested for that target. The envelope is derived from the user's
-  authentication and consent and from IdP policy; how those inputs establish
-  its target entries is out of scope for this document. A continuation cannot
-  add a target or scope that was not authorized when the root-chain envelope
-  was established. See {{validation}} and {{lifecycle}}.
+  the authentication context (`auth_time`, `acr`, `amr`), the authorization
+  basis for onward targets, the maximum actor-chain depth, and the chain's
+  expiry. The authorization basis takes one of two forms. In *enumerated*
+  form it is a set of target entries, each binding one audience and resource
+  to the scopes that may be requested for that target. In *policy-reference*
+  form it is a reference to the user's standing consent and tenant policy,
+  which the IdP evaluates at continuation time to decide whether a requested
+  target and scope are authorized for this user and chain; this form supports
+  dynamic fan-out, in which onward targets are not enumerable at root
+  issuance. In both forms the envelope is derived from the user's
+  authentication and consent and from IdP policy, and a continuation cannot
+  obtain a target or scope that the authorization basis does not permit at
+  the time of the request. See {{validation}} and {{lifecycle}}.
 
 Audience-local (pairwise) subject:
 : The subject identifier under which a particular RAS names the user. Distinct
@@ -310,7 +316,7 @@ claim set:
 
 ~~~ json
 {
-  "iss": "https://ca.expenses.example/",
+  "iss": "https://ca.travel.example/",
   "aud": "https://idp.example/",
   "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
 
@@ -425,9 +431,16 @@ only after establishing that the requesting actor controls that key and is the
 actor recorded in the outermost `act` claim. The mechanism by which the actor
 authenticates to the Chain Authority and proves control of its key is
 deployment-specific; it is typically the workload's existing mutually
-authenticated credential. An assertion whose `cnf` is not bound to the
-requesting actor's key is not presentable because the IdP requires live proof
-of possession of the confirmed key ({{sender-constrained-presentation}}).
+authenticated credential. Because a Chain Authority can satisfy these
+requirements only for actors it can directly authenticate, each trust domain
+normally operates or designates a Chain Authority for its own workloads, and
+the Chain Authority that issues an assertion SHOULD be in the requesting
+actor's trust domain. Issuing assertions for actors in another trust domain
+is NOT RECOMMENDED unless the Chain Authority has an authenticated
+relationship with those actors and their keys. An assertion whose `cnf` is not
+bound to the requesting actor's key is not presentable because the IdP
+requires live proof of possession of the confirmed key
+({{sender-constrained-presentation}}).
 
 ## Chain-Context Provenance {#context-provenance}
 
@@ -456,6 +469,28 @@ authority, MUST NOT override the root-chain envelope held by the IdP. The
 transport MAY carry deployment-specific hints, but the Identity Continuation
 Assertion contains only the claims defined in {{assertion-claims}}, and the IdP
 applies its own root-chain and current-actor policy during the exchange.
+
+## An HTTP Binding for Chain Context {#context-binding}
+
+Interoperability between independently developed participants requires at
+least one common representation for conveying `chain_id` with a request. This
+document defines an OPTIONAL HTTP binding that participants SHOULD support
+when they convey chain context over HTTP: the `Chain-Id` request header field
+{{RFC9110}}, whose field value is the `chain_id`.
+
+~~~
+Chain-Id: 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
+~~~
+
+A sender MUST transmit this field only over a channel that satisfies
+{{context-provenance}} (authenticated, confidential, and integrity-protected;
+for example, mutual TLS between the workloads). A receiver MUST treat the
+value per {{context-provenance}}: it identifies a chain but conveys no
+authority, and possession alone does not authorize continuation. Participants
+SHOULD exclude the field value from logs. Actor lineage and other chain
+context are conveyed by deployment-specific means (for example, a transaction
+token) and are validated by the Chain Authority before issuance
+({{context-provenance}}).
 
 # Chain Identifier (`chain_id`) {#chain-id}
 
@@ -514,9 +549,13 @@ A single shared `chain_id` lets control-plane participants that see it correlate
 their observations of one delegation. Where colluding participants must not be
 able to correlate even "same delegation", the IdP SHOULD instead issue a
 distinct per-audience chain reference that maps internally to a single root
-delegation. This keeps the IdP's correlation ability intact while denying any
-shared identifier to the participants. Deployments whose threat model includes
-colluding audiences SHOULD adopt this mode; see {{privacy}}.
+delegation. Concretely, in this mode the IdP returns a fresh reference in each
+Token Exchange response ({{response-param}}); each maps internally to the same
+root delegation, and a continuing party presents the reference it received, so
+no two participants observe the same value. This keeps the IdP's correlation
+ability intact while denying any shared identifier to the participants.
+Deployments whose threat model includes colluding audiences SHOULD adopt this
+mode; see {{privacy}}.
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -628,6 +667,11 @@ through its own `cnf` ({{onward-id-jag}}). The presenting actor proves
 possession of that key again when it exchanges the ID-JAG at the target Resource
 Authorization Server, exactly as for a directly issued ID-JAG
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}.
+
+The key binding is established per assertion at issuance. A workload that
+rotates its key obtains its next assertion, and an actor token, bound to the
+new key; rotation takes effect at the next issuance and requires no
+coordination with the IdP.
 
 ## The `chain_id` Response Parameter {#response-param}
 
@@ -763,10 +807,12 @@ unless all of the following hold:
     beyond the IdP's permitted clock skew, `exp` is after `iat`, the assertion
     has not expired, and the assertion lifetime is no more than 300 seconds;
 
-14. the root-chain envelope contains an authorized target entry whose
-    `audience` and `resource` exactly match the requested values, and every
-    requested scope is permitted by that same target entry and by IdP policy
-    for the current actor;
+14. the requested `audience` and `resource` are authorized by the root-chain
+    envelope's authorization basis: in enumerated form, an authorized target
+    entry exactly matches the requested values; in policy-reference form, the
+    IdP evaluates the referenced consent and policy for this chain at the time
+    of the request; and in both forms every requested scope is permitted by
+    that same authorization basis and by IdP policy for the current actor;
 
 15. the requested output token type is
     `urn:ietf:params:oauth:token-type:id-jag`; and
@@ -783,6 +829,14 @@ before completing issuance, it MUST release the reservation after failure or
 expire it promptly. The IdP MUST retain a successfully consumed tuple until at
 least the assertion's `exp`, allowing for its permitted clock skew.
 
+These requirements imply per-chain state and, within the assertion validity
+window, strongly consistent replay state at the IdP; the 300-second lifetime
+bounds the retention window for consumed tuples. A client that does not
+receive the response to an exchange cannot retry with the same assertion; it
+obtains a fresh assertion from its Chain Authority and repeats the exchange,
+so Chain Authority issuance SHOULD be inexpensive relative to the exchange
+itself.
+
 On success, the IdP resolves the audience-local subject for the requested RAS
 and issues the onward ID-JAG with that `sub`. The onward ID-JAG MUST NOT carry
 a `chain_id` claim.
@@ -791,9 +845,9 @@ If validation fails, the IdP MUST return an OAuth error response as defined by
 {{RFC8693}} and {{RFC6749}}. The IdP SHOULD use `invalid_request` for malformed
 or internally inconsistent requests, including requests with unsupported
 parameter cardinality or the wrong `subject_token_type`; `invalid_target` for
-a requested audience and resource pair absent from the root-chain envelope;
-and `invalid_scope` for a requested scope not permitted by that target entry or
-by IdP policy for the current actor.
+a requested audience and resource pair not authorized for the chain; and
+`invalid_scope` for a requested scope not permitted by the chain's
+authorization basis or by IdP policy for the current actor.
 
 # Onward ID-JAG {#onward-id-jag}
 
@@ -894,9 +948,10 @@ requires those claims.
 ## Envelope Enforcement and Offline Attenuation
 
 The root-chain envelope is the authorization ceiling for a chain. The IdP
-enforces that the requested target and scopes fall within an authorized target
-entry ({{validation}}, rule 14), which prevents a compromised intermediate
-actor from broadening the chain beyond what the root delegation authorized.
+enforces that the requested target and scopes are permitted by the envelope's
+authorization basis ({{validation}}, rule 14), which prevents a compromised
+intermediate actor from broadening the chain beyond what the root delegation
+and its governing consent and policy authorize.
 
 Where an offline attenuated delegation stack feeds an Identity Continuation
 Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
@@ -912,8 +967,13 @@ relevant tenant ({{validation}}). A compromised Chain
 Authority can request continuations within the envelope of chains it is trusted
 for. Deployments SHOULD scope Chain Authority trust as narrowly as practical
 and SHOULD monitor for anomalous continuation patterns. Because the IdP
-enforces the root-chain envelope, a compromised Chain Authority cannot request
-a target or scope outside its authorized target entries.
+enforces the root-chain envelope, a compromised Chain Authority cannot obtain
+a target or scope outside the chain's authorization basis. Neither possession
+of a `chain_id` nor trusted-Chain-Authority status alone authorizes
+continuation: the IdP independently requires that the authenticated current
+actor is permitted by IdP policy to continue the specific chain
+({{validation}}, rule 10). `chain_id` confidentiality is defense in depth, not
+an authorization factor.
 
 How the IdP establishes that trust (a Chain Authority's issuer identifier, its
 authorized signing keys, and its tenant scope) is out of band and
@@ -964,10 +1024,14 @@ correlate the user across SaaS boundaries from those tokens.
 This property does not make the complete chain unlinkable. The IdP necessarily
 correlates the chain, and workloads, Chain Authorities, or other control-plane
 participants that receive the same `chain_id` can correlate their observations
-of that delegation. Actor identifiers and other request context can also
-provide indirect correlation. Deployments MUST limit disclosure of
-`chain_id` to participants that require it to continue or administer the
-chain.
+of that delegation. In particular, the actor chain carried in each onward
+ID-JAG names the participating workloads, so colluding audiences can correlate
+a transaction from actor lineage and timing alone, regardless of how
+`chain_id` is handled. Deployments requiring unlinkability across audiences
+must weigh the audit value of deep actor lineage against this correlation
+channel and MAY limit the nested lineage exposed to each audience, subject to
+their audit requirements. Deployments MUST limit disclosure of `chain_id` to
+participants that require it to continue or administer the chain.
 
 `chain_id` MUST NOT contain user-identifying information and MUST carry at least
 128 bits of entropy ({{chain-id}}, rule 2), so that possession of a `chain_id`
@@ -1096,6 +1160,20 @@ Change Controller:
 Reference:
 : This document, {{response-param}}
 
+## HTTP Field Name Registration
+
+IANA is requested to register the following entry in the "Hypertext Transfer
+Protocol (HTTP) Field Name Registry" defined by {{RFC9110}}.
+
+Field Name:
+: Chain-Id
+
+Status:
+: permanent
+
+Reference:
+: This document, {{context-binding}}
+
 Note: The token type URI `urn:ietf:params:oauth:token-type:id-jag` referenced by
 this document is registered by
 {{I-D.ietf-oauth-identity-assertion-authz-grant}} and is not registered here.
@@ -1200,6 +1278,42 @@ single SPIFFE-style trust domain), and accept the loss of mid-chain revocation,
 direct inter-domain propagation is appropriate; that is a different problem from
 the pairwise-subject, per-boundary-trust case this profile addresses.
 
+## Alternative Topology: Resolution at the Target {#rationale-pull}
+
+This profile uses a push topology: the continuing workload carries continuation
+evidence to the IdP and then carries the resulting ID-JAG to the target
+Resource Authorization Server. A pull topology was also evaluated. In it, the
+workload presents its chain reference directly to the target Resource
+Authorization Server under a new grant type, together with proof of possession
+of its key, and that server resolves the reference at the IdP over a back
+channel in the style of token introspection {{RFC7662}}: the IdP performs the
+same envelope, actor-policy, and proof-of-possession checks, resolves its
+audience-local subject, and the Resource Authorization Server issues the
+access token directly. A variant returns the ID-JAG itself in the back-channel
+response, so the Resource Authorization Server validates it with unchanged
+ID-JAG processing and only the delivery path differs.
+
+The pull topology has real advantages. It removes the Chain Authority
+entirely, because the target's Authorization Server asks the IdP it already
+trusts and no additional assertion issuer exists. It removes one token round
+trip per hop. It reduces the cross-boundary artifact to a single opaque
+reference, shrinking the deployment-specific transport surface. And issuing a
+fresh reference per resolution provides per-audience unlinkability
+structurally rather than as an option.
+
+Its cost falls on the many-party side of the ecosystem: every target Resource
+Authorization Server must implement the new grant type and the back-channel
+resolution call, and the reference becomes visible to each Resource
+Authorization Server it is presented to. This document standardizes the push
+topology because it preserves the deployment property that drives ID-JAG
+adoption: the target Resource Authorization Server consumes an ordinary
+ID-JAG and requires no changes. Push concentrates new behavior in the IdP and
+the Chain Authority, which are few; pull distributes it to Resource
+Authorization Servers, which are many. The pull topology remains a candidate
+companion profile should the ecosystem prefer to move the integration cost to
+the target side; the two topologies consume the same root-chain envelope and
+differ only in who carries the evidence to the IdP.
+
 # Worked Example (Same-IdP, Two Hops) {#example}
 
 This appendix is non-normative. It walks the canonical flow of {{flow}}
@@ -1226,7 +1340,7 @@ The participants and values used throughout:
 | TravelService | `travel-service` | TravelSaaS workload that calls TravelAPI. |
 | TravelRAS | `https://ras.travel.example/` | Resource Authorization Server for TravelAPI. |
 | TravelAPI | `https://api.travel.example/` | Protected resource behind TravelRAS. |
-| Chain Authority | `https://ca.expenses.example/` | Issues the Identity Continuation Assertion for the chain. |
+| Chain Authority | `https://ca.travel.example/` | TravelSaaS's Chain Authority; issues the Identity Continuation Assertion for TravelSaaS workloads. |
 | `chain_id` | `01JZ8F4J9J8Y3NDK5WQ4P9K7Q2` | Root-delegation correlation handle. |
 | Subjects | `expense-local-subject`, `travel-local-subject` | The user's pairwise subject at ExpenseRAS and TravelRAS, respectively. |
 
@@ -1294,7 +1408,11 @@ the root-chain envelope keyed by a freshly generated `chain_id`:
 
 The root exchange does not authorize either target merely by requesting the
 other. Both entries must already be supported by the authentication, consent,
-and policy from which the IdP constructs the envelope. The IdP then responds:
+and policy from which the IdP constructs the envelope. This example uses the
+enumerated form of the authorization basis; a deployment whose onward targets
+are not knowable at root issuance would record a policy reference instead and
+evaluate the Travel target at continuation time ({{validation}}, rule 14). The
+IdP then responds:
 
 ~~~ json
 {
