@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-07-02T03:29:55.648012+00:00",
+  "timestamp": "2026-07-05T03:18:19.745777+00:00",
   "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
   "labels": [
     {
@@ -75,6 +75,34 @@
       "mergedBy": "mcguinness",
       "mergeCommit": {
         "oid": "f2da6ebb1586de415797c6d794ce5f67c8587ac4"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 2,
+      "id": "PR_kwDOSyPVJM7tQuhz",
+      "title": "Address design-review findings; document pull topology as alternative",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/pull/2",
+      "state": "MERGED",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Resolves the findings from an adversarial design review of the -00 draft, and documents the pull topology as an alternative considered (committing to push as the single normative topology).\n\n## Findings addressed\n\n- **Envelope enumeration paradox.** The root-chain envelope's authorization basis now has two forms: *enumerated* target entries, or a *policy reference* evaluated at continuation time. The second reconciles dynamic (agentic) fan-out with bounded authority; a frozen target list is no longer the only conforming shape. Validation rule 14, error responses, Security Considerations, and the worked example updated to the authorization-basis framing.\n- **Boundary interoperability.** New section defining an OPTIONAL `Chain-Id` HTTP request header binding for conveying `chain_id` between workloads (only over channels meeting the chain-context provenance requirements; excluded from logs), plus an IANA HTTP Field Name registration (RFC 9110 added as a normative reference). Independently developed participants now have a defined meeting point.\n- **Chain Authority confused-deputy.** Issuance constrained to actors the Chain Authority can directly authenticate: the CA SHOULD be in the requesting actor's trust domain, and cross-domain issuance is NOT RECOMMENDED without an authenticated relationship. The example configuration that embodied the problem (`ca.expenses.example` issuing for `travel-service`) is corrected to `ca.travel.example`. The trust section now states explicitly that neither `chain_id` possession nor trusted-CA status alone authorizes continuation (IdP actor policy, rule 10, is the backstop) and that `chain_id` confidentiality is defense in depth, not an authorization factor.\n- **IdP state and operations.** The validation section acknowledges the strongly consistent replay state implied by atomic `(iss, jti)` consumption, notes the 300-second bound on retention, and defines the lost-response retry path (obtain a fresh assertion; CA issuance SHOULD be cheap).\n- **Privacy honesty.** Privacy Considerations now states that actor lineage plus timing is a cross-audience correlation channel independent of `chain_id` handling, with a lineage-minimization option. Per-audience chain references are made concretely implementable: a fresh reference per Token Exchange response.\n- **Key rotation.** Clarified that the key binding is per assertion at issuance; rotation takes effect at the next issuance with no IdP coordination.\n\n## Topology decision\n\nThe Design Rationale gains \"Alternative Topology: Resolution at the Target\": the pull model (workload presents its reference to the target RAS; the RAS resolves it at the IdP over a back channel, with a back-channel ID-JAG delivery variant). It removes the Chain Authority and one round trip per hop, but moves integration cost to every downstream RAS. The document commits to the push topology as the single normative model because the RAS-unchanged property is what drives ID-JAG adoption; pull is preserved as a candidate companion profile consuming the same root-chain envelope.\n\nBuilds cleanly via `kramdown-rfc | xml2rfc`; no em-dashes; all references resolve.",
+      "createdAt": "2026-07-02T18:18:26Z",
+      "updatedAt": "2026-07-02T18:23:41Z",
+      "baseRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "baseRefName": "main",
+      "baseRefOid": "cb000bd4f7adeeb3473b3e153c9f89c2eee53259",
+      "headRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "headRefName": "review-findings",
+      "headRefOid": "4495ff591cbe058b321671eefff0cb0e966be540",
+      "closedAt": "2026-07-02T18:23:35Z",
+      "mergedAt": "2026-07-02T18:23:35Z",
+      "mergedBy": "mcguinness",
+      "mergeCommit": {
+        "oid": "9706feed3efef48147ec35fed43f0c1f32b5d697"
       },
       "comments": [],
       "reviews": []
