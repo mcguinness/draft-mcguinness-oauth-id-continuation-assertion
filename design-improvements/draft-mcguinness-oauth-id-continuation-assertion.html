@@ -3059,9 +3059,10 @@ this document is registered by
 <p id="appendix-A-1">This appendix is non-normative. It explains why the Identity Continuation
 Assertion is defined as a distinct Token Exchange subject token, rather than as
 a profile of an existing artifact, and why a cross-boundary hop cannot be served
-by propagating an existing token. The recurring answer is per-audience subject
-resolution: only the IdP can name the user to the next audience (<a href="#motivation" class="auto internal xref">Section 1.1</a>,
-<a href="#core-principle" class="auto internal xref">Section 1.2</a>).<a href="#appendix-A-1" class="pilcrow">¶</a></p>
+by propagating an existing token. The recurring answer is per-boundary trust:
+each target trusts only the IdP to name the user and to scope authority over
+its resources, and where subjects are pairwise, only the IdP can even mint the
+next audience's subject (<a href="#motivation" class="auto internal xref">Section 1.1</a>, <a href="#core-principle" class="auto internal xref">Section 1.2</a>).<a href="#appendix-A-1" class="pilcrow">¶</a></p>
 <div id="rationale-idjag">
 <section id="appendix-A.1">
         <h3 id="name-why-not-a-profile-of-id-jag">
