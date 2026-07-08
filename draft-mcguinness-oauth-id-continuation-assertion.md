@@ -1683,6 +1683,130 @@ TravelService exchanges the TravelRAS ID-JAG at TravelRAS for an access token
 calls TravelAPI. TravelRAS processes the ID-JAG as an ordinary ID-JAG and
 never sees the Identity Continuation Assertion or the `chain_id`.
 
+# Background Agent Example (User-Scheduled Continuation) {#example-background}
+
+This appendix is non-normative. It applies the continuation machinery of this
+document to a background agent: the user is present once, when the task is
+created, and absent at every run. The example is the same protocol as
+{{example}}, time-shifted; nothing new is defined. The property that makes it
+work is that the platform stores only the non-bearer `chain_id`; no refresh
+token or other user credential is vaulted, and run-time authority comes from a
+fresh, sender-constrained assertion evaluated against the root-chain envelope.
+
+The participants: the user Alice; an agent platform at
+`https://platform.example/` operating the workload `briefing-agent` and its
+own Chain Authority `https://ca.platform.example/`; the IdP
+`https://idp.example/`; and a calendar service behind
+`https://ras.calendar.example/` and `https://api.calendar.example/`.
+
+## Setup (Alice Present)
+
+Alice schedules "summarize my calendar every morning" and authorizes it in an
+active session. The platform performs the direct ID-JAG exchange of
+{{token-exchange}} with Alice's session as the `subject_token` and
+`briefing-agent` as the authenticated actor. Because the task will outlive
+Alice's session, the consent captured here establishes an explicit maximum
+chain lifetime as the chain's governing authorization ({{lifecycle}}), and the
+envelope's authorized target entry is exactly the task's need:
+(`https://ras.calendar.example/`, `https://api.calendar.example/`,
+`calendar.read`). The IdP records the envelope, with `briefing-agent` as the
+authenticated root actor, and responds with the grant plus:
+
+~~~ json
+{
+  "chain_id": "01K2Q9RS7VW3XM5TZC8HB4DFEG",
+  "chain_exp": 1714592000
+}
+~~~
+
+The platform stores the task. This record contains no credential:
+
+~~~
+task: morning-calendar-brief
+  user:     alice
+  agent:    briefing-agent           # the authorized continuer
+  chain_id: 01K2Q9RS7VW3XM5TZC8HB4DFEG   # non-bearer reference
+  chain_exp: 1714592000
+  schedule: "0 7 * * *"
+~~~
+
+## Each Run (Alice Absent)
+
+~~~
+Scheduler      -> Agent:          run task, here is chain_id
+Agent          -> ChainAuthority: assertion for chain_id, bound to
+                                  the briefing-agent key
+ChainAuthority -> Agent:          Identity Continuation Assertion
+Agent          -> IdP:            Token Exchange (assertion + DPoP)
+IdP:                              validate per the rules of the
+                                  validation section; resolve Alice's
+                                  Calendar subject; mint
+IdP            -> Agent:          ID-JAG(CalendarRAS) [+ chain_id]
+Agent          -> CalendarRAS:    ID-JAG -> access token (DPoP)
+Agent          -> CalendarAPI:    read calendar -> summarize
+~~~
+
+The assertion is the ordinary artifact of {{assertion-claims}}, issued by the
+platform's own Chain Authority for its own workload
+({{assertion-issuance}}): `iss` is `https://ca.platform.example/`, `aud` is
+the IdP, `chain_id` is the stored value, the `act` claim is `briefing-agent`,
+and `cnf` binds the agent's key. The onward ID-JAG carries Alice's
+Calendar-local subject, an `act` chain of `briefing-agent` (the root and
+continuing actor are the same workload here), and Alice's real authentication
+context from setup:
+
+~~~ json
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.calendar.example/",
+  "sub": "alice-calendar-subject",
+  "client_id": "briefing-agent",
+  "resource": "https://api.calendar.example/",
+  "scope": "calendar.read",
+
+  "auth_time": 1712000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "act": {
+    "iss": "https://platform.example/",
+    "sub": "briefing-agent"
+  },
+  "cnf": {
+    "jkt": "base64url-briefing-agent-key-thumbprint"
+  },
+
+  "iat": 1712900001,
+  "exp": 1712900301,
+  "jti": "idjag-cal-alice-01"
+}
+~~~
+
+## Points Worth Noticing
+
+The `auth_time` is honest and inherited: it records when Alice actually
+authenticated at setup, possibly days before this run
+({{security-assurance}}). CalendarRAS decides whether that staleness is
+acceptable for `calendar.read`; nothing presents the run as a fresh login.
+
+Each run consumes a fresh, single-use assertion; between runs the platform
+holds nothing presentable. Theft of the stored record yields a `chain_id`
+that is useless without the agent's key ({{chain-id}}).
+
+The chain fails closed. When Alice's authorization is revoked or `chain_exp`
+passes, the next exchange returns `invalid_grant` ({{validation}}): the
+signal to seek re-authorization from Alice rather than retry. `chain_exp`
+lets the platform anticipate expiry and prompt her before the task silently
+stops, and the chain is visible and revocable in the IdP's management
+interfaces ({{lifecycle}}).
+
+This pattern requires a user-present setup event to root the chain. Where no
+such event exists (for example, an administratively mandated agent acting
+for users who never authorized it), there is no delegation to continue and
+this profile does not apply; such deployments need a differently rooted
+authorization, such as administrative policy at the IdP, which is out of
+scope for this document.
+
 # Acknowledgments
 {:numbered="false"}
 
