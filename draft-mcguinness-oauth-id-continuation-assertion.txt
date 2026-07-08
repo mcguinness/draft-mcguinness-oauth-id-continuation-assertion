@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                             2 July 2026
-Expires: 3 January 2027
+Intended status: Standards Track                             8 July 2026
+Expires: 9 January 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -22,8 +22,9 @@ Abstract
    Identity-Provider (same-IdP) SaaS-to-SaaS chaining, in which several
    Resource Authorization Servers trust a single enterprise IdP and each
    names the user under its own audience-local (pairwise) subject
-   identifier.  Because only the IdP holds the map from a root
-   delegation to each audience's subject, and because crossing a
+   identifier.  Because each Resource Authorization Server trusts only
+   the IdP to name the user, because only the IdP holds the map from a
+   root delegation to each audience's subject, and because crossing a
    boundary that renames the user is a re-issuance rather than an
    attenuation, the IdP remains the sole issuer of the onward Identity
    Assertion JWT Authorization Grant (ID-JAG) at every cross-boundary
@@ -68,7 +69,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 3 January 2027.
+   This Internet-Draft will expire on 9 January 2027.
 
 Copyright Notice
 
@@ -107,6 +108,7 @@ Table of Contents
      7.2.  Chained ID-JAG Request
      7.3.  Sender-Constrained Presentation
      7.4.  The chain_id Response Parameter
+     7.5.  Authorization Server Metadata
    8.  Same-IdP Core Flow
    9.  IdP Validation for ID-JAG Output
    10. Onward ID-JAG
@@ -116,15 +118,17 @@ Table of Contents
      11.3.  Root Authentication Context
      11.4.  Envelope Enforcement and Offline Attenuation
      11.5.  Trust in the Chain Authority
-     11.6.  Actor Chain Integrity
-     11.7.  Token, Type, and Algorithm Confusion
+     11.6.  Trust in Actor Token Issuers
+     11.7.  Actor Chain Integrity
+     11.8.  Token, Type, and Algorithm Confusion
    12. Privacy Considerations
    13. IANA Considerations
      13.1.  OAuth URI Registration
      13.2.  Media Type Registration
      13.3.  JSON Web Token Claims Registration
      13.4.  OAuth Parameters Registration
-     13.5.  HTTP Field Name Registration
+     13.5.  OAuth Authorization Server Metadata Registration
+     13.6.  HTTP Field Name Registration
    14. References
      14.1.  Normative References
      14.2.  Informative References
@@ -133,6 +137,7 @@ Table of Contents
      A.2.  Why Not a Profile of a Transaction Token
      A.3.  Why Not a Cross-Domain Propagation Token
      A.4.  Alternative Topology: Resolution at the Target
+     A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
    Appendix B.  Worked Example (Same-IdP, Two Hops)
      B.1.  First Hop: Direct ID-JAG for ExpenseRAS
      B.2.  Crossing the Boundary into TravelSaaS
@@ -197,12 +202,19 @@ Table of Contents
 
 1.2.  Core Principle
 
-   The IdP is the only party that can name the user to each RAS, because
-   each RAS resolves the user under its own (pairwise) subject
-   identifier and only the IdP holds the map from the root delegation to
-   those per-audience subjects.  That is why the IdP remains the sole
-   issuer at every cross-boundary hop: no downstream party and no
-   offline authority can mint a correct onward sub.
+   Each RAS trusts only the IdP to name the user and to scope authority
+   over its resources; it does not accept another SaaS domain's word for
+   either.  The IdP therefore remains the issuer at every cross-boundary
+   hop as a matter of trust direction, whatever form subject identifiers
+   take.  Pairwise subjects strengthen that trust rule into a structural
+   impossibility: where each RAS resolves the user under its own
+   audience-local subject identifier, only the IdP holds the map from
+   the root delegation to those per-audience subjects, and no downstream
+   party or offline authority can mint a correct onward sub.
+   Deployments whose subject identifiers are globally consistent (for
+   example, email-based) still require the IdP at every hop for trust
+   direction and revocation; adopting audience-local subjects
+   additionally yields the pairwise privacy property.
 
    An onward hop that re-subjects the user is therefore a re-issuance,
    not an attenuation.  A holder can only narrow authority it already
@@ -328,10 +340,13 @@ Table of Contents
       consent and tenant policy, which the IdP evaluates at continuation
       time to decide whether a requested target and scope are authorized
       for this user and chain; this form supports dynamic fan-out, in
-      which onward targets are not enumerable at root issuance.  In both
-      forms the envelope is derived from the user's authentication and
-      consent and from IdP policy, and a continuation cannot obtain a
-      target or scope that the authorization basis does not permit at
+      which onward targets are not enumerable at root issuance.  Policy-
+      reference evaluation is bounded by the consent and policy in force
+      when the chain was established: changes after root issuance MAY
+      narrow, but MUST NOT broaden, what a continuation can obtain.  In
+      both forms the envelope is derived from the user's authentication
+      and consent and from IdP policy, and a continuation cannot obtain
+      a target or scope that the authorization basis does not permit at
       the time of the request.  See Section 9 and Section 6.
 
    Audience-local (pairwise) subject:  The subject identifier under
@@ -387,15 +402,7 @@ Table of Contents
 
      "act": {
        "iss": "https://travel.example/",
-       "sub": "travel-service",
-       "act": {
-         "iss": "https://expenses.example/",
-         "sub": "expense-service",
-         "act": {
-           "iss": "https://expenses.example/",
-           "sub": "expense-app"
-         }
-       }
+       "sub": "travel-service"
      },
 
      "cnf": {
@@ -425,16 +432,24 @@ Table of Contents
       delegation and user.  The IdP resolves the user, and the target-
       audience subject, from it.  See Section 5.
 
-   act:  REQUIRED.  The actor lineage, encoded as nested act claims per
+   act:  REQUIRED.  The current actor, encoded as an act claim per
       [RFC8693].  The outermost act claim identifies the current actor
-      presenting the Token Exchange request, and nested act claims
-      identify prior actors.  Claims inside act are identity claims
-      only; non-identity claims such as exp, nbf, aud, scope, and cnf
-      MUST NOT be used inside act.  When the inbound segment was an
-      offline attenuated stack, the Chain Authority SHOULD reflect the
-      verified leaf actor as the outermost actor.  It MAY retain
-      deployment-specific audit evidence for the offline segment
-      separately from the RFC 8693 act object.
+      presenting the Token Exchange request.  Nested act claims MAY
+      appear only for actors within the issuing Chain Authority's own
+      trust domain that it has verified, for example the intra-domain
+      segment of an offline attenuated stack, with the verified leaf
+      actor outermost.  The assertion MUST NOT assert actors outside the
+      issuing Chain Authority's trust domain: cross-boundary lineage is
+      constructed by the IdP from the actors it authenticated at the
+      root exchange and at each continuation (Section 10).  Claims
+      inside act are identity claims only; non-identity claims such as
+      exp, nbf, aud, scope, and cnf MUST NOT be used inside act.  The
+      Chain Authority MAY retain audit evidence for the offline segment
+      separately from the RFC 8693 act object, for example per-hop
+      issuer receipts [I-D.mcguinness-oauth-actor-receipts] or actor-
+      signed hop proofs [I-D.mcguinness-oauth-actor-proofs]; such
+      evidence SHOULD remain in the control plane rather than be
+      embedded in tokens a Resource Server consumes (Section 12).
 
    cnf:  REQUIRED.  A confirmation claim [RFC7800] that binds the
       assertion to the key of the actor that will present it to the IdP.
@@ -524,9 +539,13 @@ Table of Contents
 
    3.  the requesting actor controls the key placed in cnf; and
 
-   4.  the actor lineage placed in act was derived from authenticated
-       context or from a verifiable delegation artifact whose integrity
-       and delegation rules the Chain Authority has validated.
+   4.  the actors placed in act (the current actor and any verified
+       intra-domain segment) were derived from authenticated context or
+       from a verifiable delegation artifact whose integrity and
+       delegation rules the Chain Authority has validated, such as an
+       actor-signed hop-proof chain [I-D.mcguinness-oauth-actor-proofs];
+       actors outside the Chain Authority's trust domain are not placed
+       in act (Section 4.2).
 
    Possession of chain_id alone is insufficient to satisfy these
    requirements.  Values received as propagated context, including actor
@@ -543,7 +562,8 @@ Table of Contents
    with a request.  This document defines an OPTIONAL HTTP binding that
    participants SHOULD support when they convey chain context over HTTP:
    the Chain-Id request header field [RFC9110], whose field value is the
-   chain_id.
+   chain_id.  The syntax of chain_id (Section 5, rule 2) confines it to
+   characters valid in an HTTP field value.
 
    Chain-Id: 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
 
@@ -588,8 +608,11 @@ Table of Contents
        for continuation, and MUST return it as a Token Exchange
        _response_ parameter (Section 7.4).
 
-   2.  chain_id MUST contain at least 128 bits of entropy and MUST NOT
-       contain user-identifying information.
+   2.  chain_id MUST contain at least 128 bits of entropy, MUST NOT
+       contain user-identifying information, and MUST consist of 22 to
+       256 characters drawn from the URL-safe set A-Z, a-z, 0-9, -, and
+       _, making it safe for use in URLs and HTTP field values
+       (Section 4.6).
 
    3.  chain_id lives in the control plane only: Token Exchange
        responses, propagated chain context, and Identity Continuation
@@ -657,6 +680,14 @@ Table of Contents
    Access tokens already issued by a Resource Authorization Server
    remain valid for their own lifetimes and are governed by that
    server's revocation mechanisms.
+
+   Revocation is a control-plane capability, but the delegation belongs
+   to the user.  The IdP SHOULD make active chains visible and revocable
+   through user- and administrator-facing management interfaces,
+   presenting the root context, the chain's authenticated actor history,
+   the targets granted so far, and the chain's expiry.  Grant Management
+   for OAuth 2.0 [GRANT-MGMT] provides a comparable management model for
+   standing grants.
 
 7.  Token Exchange Profile
 
@@ -768,6 +799,13 @@ Table of Contents
    specific, but the provenance and integrity requirements of
    Section 4.5 apply.
 
+   The IdP MAY also include chain_exp, a JSON number containing a
+   NumericDate [RFC7519] after which the chain ceases to be eligible for
+   continuation (Section 6), letting a continuing party anticipate
+   expiry rather than discover it by failure. chain_exp is advisory; the
+   authoritative lifetime is the chain state held by the IdP, which can
+   revoke the chain before that time.
+
    A non-normative response example is:
 
    {
@@ -775,8 +813,22 @@ Table of Contents
      "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
      "token_type": "N_A",
      "expires_in": 300,
-     "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+     "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+     "chain_exp": 1710086400
    }
+
+7.5.  Authorization Server Metadata
+
+   An IdP that supports this profile SHOULD signal it in its
+   authorization server metadata [RFC8414] with the following parameter:
+
+   identity_continuation_supported:  OPTIONAL.  Boolean value indicating
+      support for the urn:ietf:params:oauth:token-type:identity-
+      continuation subject token type and the chain_id Token Exchange
+      response parameter.  Default false.
+
+   Absent this signal, a client learns of support out of band or by
+   attempting an exchange.
 
 8.  Same-IdP Core Flow
 
@@ -794,8 +846,10 @@ Table of Contents
         records the root-chain envelope keyed by chain_id: the user, the
         authentication context (auth_time/acr/amr), the authorized
         target entries (each an audience, resource, and permitted
-        scopes), the maximum actor-chain depth, and the expiry. chain_id
-        is not a claim inside the ExpenseRAS ID-JAG.
+        scopes), the maximum actor-chain depth, the expiry, and the
+        authenticated root actor (expense-app), which begins the chain's
+        authenticated actor history. chain_id is not a claim inside the
+        ExpenseRAS ID-JAG.
 
    4.   ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and
         invokes ExpenseSaaS, conveying chain_id to ExpenseSaaS over an
@@ -826,9 +880,11 @@ Table of Contents
    10.  The IdP resolves the user's subject identifier for TravelRAS.
 
    11.  The IdP issues a new ID-JAG (iss=IdP, aud=TravelRAS, sub=the
-        same user's TravelRAS subject, an updated act chain, and cnf)
-        and returns chain_id again as a response parameter for any
-        further hop.  The TravelRAS ID-JAG carries no chain_id claim.
+        same user's TravelRAS subject, an act chain constructed from the
+        chain's authenticated actor history plus the newly authenticated
+        current actor, and cnf) and returns chain_id again as a response
+        parameter for any further hop.  The TravelRAS ID-JAG carries no
+        chain_id claim.
 
    12.  TravelService exchanges the new ID-JAG at TravelRAS for AT2.
         Steps 6 through 12 repeat for BookingRAS.
@@ -857,7 +913,7 @@ Table of Contents
    4.   the assertion signature validates using a key authorized for the
         assertion issuer, and the JOSE alg is an asymmetric signature
         algorithm on the IdP's configured allowlist (the none algorithm
-        MUST be rejected; see Section 11.7);
+        MUST be rejected; see Section 11.8);
 
    5.   the assertion aud exactly matches the IdP's issuer identifier;
 
@@ -869,13 +925,18 @@ Table of Contents
    8.   the assertion does not contain a top-level sub, auth_time, acr,
         or amr claim;
 
-   9.   the act chain is present, identifies the current actor as the
-        outermost actor, contains only identity claims, and is
+   9.   the assertion's act claim is present, identifies the current
+        actor as the outermost actor, contains only identity claims,
+        asserts no actor outside the issuing Chain Authority's trust
+        domain, and the resulting actor chain (the chain's authenticated
+        actor history plus any asserted intra-domain segment) is
         acceptable and within max-depth policy;
 
-   10.  the actor_token authenticates the current actor, that actor is
-        the outermost actor in the act chain, and the actor is permitted
-        by IdP policy to continue this chain;
+   10.  the actor_token was issued by a workload identity issuer the IdP
+        trusts for the current actor's trust domain and tenant, it
+        authenticates the current actor, that actor is the outermost
+        actor in the act chain, and the actor is permitted by IdP policy
+        to continue this chain;
 
    11.  the request proves possession of the key confirmed by cnf (a
         DPoP proof [RFC9449] matching cnf.jkt, or a client certificate
@@ -935,6 +996,17 @@ Table of Contents
    requested scope not permitted by the chain's authorization basis or
    by IdP policy for the current actor.
 
+   The IdP SHOULD use invalid_grant when the chain_id is unknown,
+   expired, revoked, or otherwise no longer eligible for continuation
+   (rule 7): the chain itself is dead, retrying cannot succeed, and
+   continuing requires establishing a new root delegation, which
+   typically requires the user. invalid_target and invalid_scope instead
+   signal that this particular request falls outside the chain's
+   authorization basis while the chain may remain continuable for other
+   targets.  This distinction lets an unattended client decide between
+   escalating for re-authorization and abandoning only the current
+   request.
+
 10.  Onward ID-JAG
 
    The following is a non-normative example of the onward ID-JAG issued
@@ -958,11 +1030,7 @@ Table of Contents
        "sub": "travel-service",
        "act": {
          "iss": "https://expenses.example/",
-         "sub": "expense-service",
-         "act": {
-           "iss": "https://expenses.example/",
-           "sub": "expense-app"
-         }
+         "sub": "expense-app"
        }
      },
 
@@ -974,6 +1042,22 @@ Table of Contents
      "exp": 1710000820,
      "jti": "idjag-travel-01"
    }
+
+   The act chain in an onward ID-JAG is constructed by the IdP, not
+   copied from the assertion: the cross-boundary lineage consists of the
+   actors the IdP itself authenticated at the root exchange and at each
+   continuation (the chain's authenticated actor history), extended by
+   any intra-domain segment the Chain Authority verified and asserted
+   (Section 4.2).  Nested lineage in an onward ID-JAG is therefore
+   authenticated, not self-reported.  In this example the chain is
+   travel-service (authenticated at this continuation) acting for a
+   delegation rooted by expense-app (authenticated at root issuance);
+   intermediate workloads that never performed an exchange, such as
+   expense-service, appear in deployment audit records rather than in
+   the authenticated lineage.  Actor receipts
+   [I-D.mcguinness-oauth-actor-receipts] and actor-signed hop proofs
+   [I-D.mcguinness-oauth-actor-proofs] provide a verifiable form for
+   such records.
 
    TravelRAS processes this as an ordinary ID-JAG per
    [I-D.ietf-oauth-identity-assertion-authz-grant].  It does not need to
@@ -1081,19 +1165,37 @@ Table of Contents
    a trusted Chain Authority's authority regardless of how trust is
    established.
 
-11.6.  Actor Chain Integrity
+11.6.  Trust in Actor Token Issuers
 
-   The nested act claim in [RFC8693] records the current actor and prior
-   actors, but nested prior actors are informational for access-control
-   decisions.  An IdP MUST therefore base authorization decisions on the
-   root-chain state, the authenticated current actor, and the requested
-   audience, resource, and scope; it MUST NOT treat unverified nested
-   actor history as independent authority.  When an offline attenuated
-   segment is summarized in an Identity Continuation Assertion, the
-   Chain Authority MUST verify that segment before issuing the
-   assertion.
+   Validation rule 10 depends on the actor_token authenticating the
+   current actor, which makes the issuer of that token a trust anchor of
+   equal weight to the Chain Authority.  The IdP MUST accept actor
+   tokens only from workload identity issuers it trusts for the actor's
+   trust domain and tenant, scoped exactly as it scopes Chain Authority
+   trust.  How that trust is established (the issuer, its keys, and its
+   domain scope) is out of band and deployment-specific, whether through
+   static configuration, a federation, or a workload identity system
+   such as the WIMSE architecture [I-D.ietf-wimse-arch].  An actor token
+   from an untrusted or out-of-scope issuer MUST be rejected regardless
+   of the validity of the Identity Continuation Assertion that
+   accompanies it.
 
-11.7.  Token, Type, and Algorithm Confusion
+11.7.  Actor Chain Integrity
+
+   Cross-boundary actor lineage in an onward ID-JAG is constructed by
+   the IdP from the actors it authenticated at the root exchange and at
+   each continuation, so nested lineage is authenticated rather than
+   self-reported (Section 10).  The only reported segment is the intra-
+   domain lineage a Chain Authority asserts for its own trust domain,
+   which it MUST verify before issuance (Section 4.5); the IdP MUST
+   reject an assertion that names actors outside the issuing Chain
+   Authority's trust domain (Section 9, rule 9).  The IdP bases
+   authorization decisions on the root-chain state, the authenticated
+   current actor, and the requested audience, resource, and scope;
+   asserted intra-domain lineage informs audit and depth policy, not
+   authority.
+
+11.8.  Token, Type, and Algorithm Confusion
 
    The IdP MUST verify the JOSE typ header value oauth-identity-
    continuation+jwt and MUST NOT process an Identity Continuation
@@ -1224,9 +1326,9 @@ Table of Contents
 
 13.4.  OAuth Parameters Registration
 
-   IANA is requested to register the following value in the "OAuth
-   Parameters" registry established by [RFC6749].  The parameter is used
-   in the OAuth 2.0 Token Exchange [RFC8693] response.
+   IANA is requested to register the following values in the "OAuth
+   Parameters" registry established by [RFC6749].  Both parameters are
+   used in the OAuth 2.0 Token Exchange [RFC8693] response.
 
    Name:  chain_id
 
@@ -1236,7 +1338,29 @@ Table of Contents
 
    Reference:  This document, Section 7.4
 
-13.5.  HTTP Field Name Registration
+   Name:  chain_exp
+
+   Parameter Usage Location:  token response
+
+   Change Controller:  IETF
+
+   Reference:  This document, Section 7.4
+
+13.5.  OAuth Authorization Server Metadata Registration
+
+   IANA is requested to register the following value in the "OAuth
+   Authorization Server Metadata" registry established by [RFC8414].
+
+   Metadata Name:  identity_continuation_supported
+
+   Metadata Description:  Boolean value indicating support for the
+      Identity Continuation Assertion profile
+
+   Change Controller:  IETF
+
+   Reference:  This document, Section 7.5
+
+13.6.  HTTP Field Name Registration
 
    IANA is requested to register the following entry in the "Hypertext
    Transfer Protocol (HTTP) Field Name Registry" defined by [RFC9110].
@@ -1306,6 +1430,11 @@ Table of Contents
               2119 Key Words", BCP 14, RFC 8174, DOI 10.17487/RFC8174,
               May 2017, <https://www.rfc-editor.org/rfc/rfc8174>.
 
+   [RFC8414]  Jones, M., Sakimura, N., and J. Bradley, "OAuth 2.0
+              Authorization Server Metadata", RFC 8414,
+              DOI 10.17487/RFC8414, June 2018,
+              <https://www.rfc-editor.org/rfc/rfc8414>.
+
    [RFC8693]  Jones, M., Nadalin, A., Campbell, B., Ed., Bradley, J.,
               and C. Mortimore, "OAuth 2.0 Token Exchange", RFC 8693,
               DOI 10.17487/RFC8693, January 2020,
@@ -1329,20 +1458,38 @@ Table of Contents
 
 14.2.  Informative References
 
+   [GRANT-MGMT]
+              OpenID Foundation, "Grant Management for OAuth 2.0",
+              <https://openid.net/specs/oauth-v2-grant-management.html>.
+
    [I-D.ietf-oauth-transaction-tokens]
               Tulshibagwale, A., Fletcher, G., and P. Kasselman,
               "Transaction Tokens", Work in Progress, Internet-Draft,
-              draft-ietf-oauth-transaction-tokens-08, 2 March 2026,
+              draft-ietf-oauth-transaction-tokens-09, 6 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
-              transaction-tokens-08>.
+              transaction-tokens-09>.
 
    [I-D.ietf-wimse-arch]
               Salowey, J. A., Rosomakho, Y., and H. Tschofenig,
               "Workload Identity in a Multi System Environment (WIMSE)
               Architecture", Work in Progress, Internet-Draft, draft-
-              ietf-wimse-arch-07, 2 March 2026,
+              ietf-wimse-arch-08, 6 July 2026,
               <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
-              arch-07>.
+              arch-08>.
+
+   [I-D.mcguinness-oauth-actor-proofs]
+              McGuinness, K., "OAuth Actor-Signed Hop Proofs", Work in
+              Progress, Internet-Draft, draft-mcguinness-oauth-actor-
+              proofs-00, 4 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mcguinness-
+              oauth-actor-proofs-00>.
+
+   [I-D.mcguinness-oauth-actor-receipts]
+              McGuinness, K., "OAuth Actor Receipts for Delegation
+              Provenance", Work in Progress, Internet-Draft, draft-
+              mcguinness-oauth-actor-receipts-00, 4 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-mcguinness-
+              oauth-actor-receipts-00>.
 
    [OIDC.FrontChannelLogout]
               OpenID Foundation, "OpenID Connect Front-Channel Logout
@@ -1379,9 +1526,10 @@ Appendix A.  Design Rationale
    Continuation Assertion is defined as a distinct Token Exchange
    subject token, rather than as a profile of an existing artifact, and
    why a cross-boundary hop cannot be served by propagating an existing
-   token.  The recurring answer is per-audience subject resolution: only
-   the IdP can name the user to the next audience (Section 1.1,
-   Section 1.2).
+   token.  The recurring answer is per-boundary trust: each target
+   trusts only the IdP to name the user and to scope authority over its
+   resources, and where subjects are pairwise, only the IdP can even
+   mint the next audience's subject (Section 1.1, Section 1.2).
 
 A.1.  Why Not a Profile of ID-JAG
 
@@ -1522,6 +1670,29 @@ A.4.  Alternative Topology: Resolution at the Target
    integration cost to the target side; the two topologies consume the
    same root-chain envelope and differ only in who carries the evidence
    to the IdP.
+
+A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
+
+   A dedicated grant type was also evaluated: the continuing workload
+   would present chain_id as a request parameter directly to the IdP,
+   authenticated by its sender-constrained actor_token and live proof of
+   possession, with no assertion JWT, no Chain Authority issuer trust,
+   and no per-assertion replay state.  Where the continuing domain has
+   no offline delegation segment and no domain-local continuation
+   policy, that reduction loses little: the IdP independently
+   authenticates the actor and enforces the envelope either way.
+
+   The signed assertion was retained for the work the Chain Authority
+   performs that the IdP cannot: verifying the intra-domain offline
+   segment before the boundary is crossed, and gating continuation under
+   policy local to the domain where the fan-out happens.  With cross-
+   boundary lineage constructed by the IdP (Section 10), the assertion
+   carries exactly what the Chain Authority can attest first-hand: the
+   authenticated current actor, its key binding, and its own-domain
+   verified segment.  Deployments needing neither capability reduce the
+   Chain Authority to a co-signature over chain_id and the current
+   actor; the bare grant type remains a candidate simplification should
+   working group feedback favor it.
 
 Appendix B.  Worked Example (Same-IdP, Two Hops)
 
