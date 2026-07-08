@@ -138,16 +138,19 @@ Table of Contents
      A.3.  Why Not a Cross-Domain Propagation Token
      A.4.  Alternative Topology: Resolution at the Target
      A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
-   Appendix B.  Worked Example (Same-IdP, Two Hops)
+   Appendix B.  Worked Example (Same-IdP)
      B.1.  First Hop: Direct ID-JAG for ExpenseRAS
      B.2.  Crossing the Boundary into TravelSaaS
      B.3.  Obtaining the Identity Continuation Assertion
      B.4.  Chained Exchange for the TravelRAS ID-JAG
      B.5.  Using the TravelRAS ID-JAG
+     B.6.  Third Hop with an Intra-Domain Segment
+     B.7.  Variant: Mutual-TLS Proof of Possession
    Appendix C.  Background Agent Example (User-Scheduled Continuation)
      C.1.  Setup (Alice Present)
      C.2.  Each Run (Alice Absent)
      C.3.  Points Worth Noticing
+     C.4.  A Dynamic Target Under a Policy-Reference Basis
    Acknowledgments
    Author's Address
 
@@ -933,8 +936,9 @@ Table of Contents
         actor as the outermost actor, contains only identity claims,
         asserts no actor outside the issuing Chain Authority's trust
         domain, and the resulting actor chain (the chain's authenticated
-        actor history plus any asserted intra-domain segment) is
-        acceptable and within max-depth policy;
+        actor history plus any asserted intra-domain segment, composed
+        as described in Section 10) is acceptable and within max-depth
+        policy;
 
    10.  the actor_token was issued by a workload identity issuer the IdP
         trusts for the current actor's trust domain and tenant, it
@@ -1052,13 +1056,17 @@ Table of Contents
    actors the IdP itself authenticated at the root exchange and at each
    continuation (the chain's authenticated actor history), extended by
    any intra-domain segment the Chain Authority verified and asserted
-   (Section 4.2).  Nested lineage in an onward ID-JAG is therefore
-   authenticated, not self-reported.  In this example the chain is
-   travel-service (authenticated at this continuation) acting for a
-   delegation rooted by expense-app (authenticated at root issuance);
-   intermediate workloads that never performed an exchange, such as
-   expense-service, appear in deployment audit records rather than in
-   the authenticated lineage.  Actor receipts
+   (Section 4.2).  The asserted segment is placed atop the history with
+   the current actor outermost; when the segment's innermost actor names
+   the same actor as the most recent entry in the history, they are the
+   same hop and appear once.  Depth policy (Section 9, rule 9) applies
+   to the composed chain.  Nested lineage in an onward ID-JAG is
+   therefore authenticated, not self-reported.  In this example the
+   chain is travel-service (authenticated at this continuation) acting
+   for a delegation rooted by expense-app (authenticated at root
+   issuance); intermediate workloads that never performed an exchange,
+   such as expense-service, appear in deployment audit records rather
+   than in the authenticated lineage.  Actor receipts
    [I-D.mcguinness-oauth-actor-receipts] and actor-signed hop proofs
    [I-D.mcguinness-oauth-actor-proofs] provide a verifiable form for
    such records.
@@ -1698,7 +1706,7 @@ A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
    actor; the bare grant type remains a candidate simplification should
    working group feedback favor it.
 
-Appendix B.  Worked Example (Same-IdP, Two Hops)
+Appendix B.  Worked Example (Same-IdP)
 
    This appendix is non-normative.  It walks the canonical flow of
    Section 8 end-to-end for a single user: ExpenseApp invokes
@@ -1836,15 +1844,18 @@ B.1.  First Hop: Direct ID-JAG for ExpenseRAS
    The IdP authenticates the user from the ID Token and verifies that
    ExpenseApp's actor credential is constrained to the DPoP key.  For
    this example, existing user consent and enterprise policy authorize
-   both the immediate Expense target and the later Travel target.  The
-   IdP records the following target entries in the root-chain envelope
-   keyed by a freshly generated chain_id:
+   the immediate Expense target and the later Travel and Booking
+   targets.  The IdP records the following target entries in the root-
+   chain envelope keyed by a freshly generated chain_id:
 
    (https://ras.expenses.example/, https://api.expenses.example/)
        permitted scopes: expenses.read
 
    (https://ras.travel.example/, https://api.travel.example/)
        permitted scopes: trips.read
+
+   (https://ras.booking.example/, https://api.booking.example/)
+       permitted scopes: stays.book
 
    The root exchange does not authorize either target merely by
    requesting the other.  Both entries must already be supported by the
@@ -1971,6 +1982,110 @@ B.5.  Using the TravelRAS ID-JAG
    JAG as an ordinary ID-JAG and never sees the Identity Continuation
    Assertion or the chain_id.
 
+B.6.  Third Hop with an Intra-Domain Segment
+
+   Completing the itinerary requires a reservation at BookingSaaS
+   (https://booking.example/), whose API https://api.booking.example/
+   sits behind https://ras.booking.example/. Inside TravelSaaS, travel-
+   service does not make this call itself: it fans out offline to
+   booking-worker, another travel.example workload, using an offline
+   attenuated delegation token with no IdP round trip (Section 3).  The
+   user's subject changes at the Booking boundary, so that hop is a
+   continuation.
+
+   booking-worker requests an assertion from https://ca.travel.example/,
+   which verifies the offline segment before issuing (Section 4.5) and
+   asserts it as nested own-domain act values (Section 4.2):
+
+   {
+     "iss": "https://ca.travel.example/",
+     "aud": "https://idp.example/",
+     "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+
+     "act": {
+       "iss": "https://travel.example/",
+       "sub": "booking-worker",
+       "act": {
+         "iss": "https://travel.example/",
+         "sub": "travel-service"
+       }
+     },
+
+     "cnf": {
+       "jkt": "base64url-booking-worker-key-thumbprint"
+     },
+
+     "iat": 1710000900,
+     "exp": 1710001200,
+     "jti": "continuation-assertion-02"
+   }
+
+   booking-worker exchanges the assertion, DPoP-bound to its own key,
+   for an ID-JAG with audience=https://ras.booking.example/,
+   resource=https://api.booking.example/, and scope=stays.book, all
+   within the envelope's Booking target entry.  The IdP composes the
+   onward act chain (Section 10): the asserted segment (booking-worker
+   above travel-service) is placed atop the authenticated actor history
+   (travel-service, then expense-app), and travel-service, being both
+   the segment's innermost actor and the history's most recent, appears
+   once:
+
+   {
+     "iss": "https://idp.example/",
+     "aud": "https://ras.booking.example/",
+     "sub": "booking-local-subject",
+
+     "client_id": "booking-worker",
+     "resource": "https://api.booking.example/",
+     "scope": "stays.book",
+
+     "auth_time": 1710000000,
+     "acr": "urn:example:loa:2",
+     "amr": ["pwd", "mfa"],
+
+     "act": {
+       "iss": "https://travel.example/",
+       "sub": "booking-worker",
+       "act": {
+         "iss": "https://travel.example/",
+         "sub": "travel-service",
+         "act": {
+           "iss": "https://expenses.example/",
+           "sub": "expense-app"
+         }
+       }
+     },
+
+     "cnf": {
+       "jkt": "base64url-booking-worker-key-thumbprint"
+     },
+
+     "iat": 1710000920,
+     "exp": 1710001220,
+     "jti": "idjag-booking-01"
+   }
+
+   booking-worker, having performed this exchange, now enters the
+   chain's authenticated actor history, and any further continuation
+   builds on it.  BookingRAS processes an ordinary ID-JAG and receives
+   an authenticated lineage, including an offline hop that its own
+   domain could never have verified.
+
+B.7.  Variant: Mutual-TLS Proof of Possession
+
+   Every exchange above uses DPoP.  With mutual-TLS client
+   authentication [RFC8705] the flows are unchanged except for the proof
+   mechanics: the workload presents its client certificate on a mutual-
+   TLS connection instead of sending a DPoP header, and each cnf carries
+   the certificate thumbprint rather than a key thumbprint:
+
+   "cnf": { "x5t#S256": "base64url-client-cert-sha256-thumbprint" }
+
+   The IdP verifies that the presented certificate matches the
+   assertion's confirmation (Section 7.3), and the workload presents the
+   same certificate when exchanging the onward ID-JAG at the target
+   Resource Authorization Server.
+
 Appendix C.  Background Agent Example (User-Scheduled Continuation)
 
    This appendix is non-normative.  It applies the continuation
@@ -2091,6 +2206,40 @@ C.3.  Points Worth Noticing
    deployments need a differently rooted authorization, such as
    administrative policy at the IdP, which is out of scope for this
    document.
+
+C.4.  A Dynamic Target Under a Policy-Reference Basis
+
+   Suppose the platform later extends the briefing to include unread
+   mail, which requires https://api.mail.example/ behind
+   https://ras.mail.example/: a target nobody named when Alice created
+   the task.  Under the enumerated basis recorded in the setup above,
+   the agent's exchange for that audience fails, and the chain is
+   otherwise unaffected:
+
+   HTTP/1.1 400 Bad Request
+   Content-Type: application/json
+
+   {
+     "error": "invalid_target"
+   }
+
+   A deployment expecting dynamic needs instead records the policy-
+   reference form of the authorization basis at setup (Section 9, rule
+   14): the envelope references Alice's standing consent (for example, a
+   productivity read-access grant she holds) and tenant policy, and the
+   IdP evaluates that reference at continuation time.  The same exchange
+   then succeeds if, and only if, read access to the mail service is
+   within Alice's standing consent and tenant policy permits briefing-
+   agent to reach it.  A request for mail.send, outside that consent,
+   fails with invalid_scope.
+
+   The envelope guardrail applies: evaluation is bounded by the consent
+   and policy in force when the chain was established.  If the tenant
+   later broadens policy, existing chains do not gain the new authority;
+   if it narrows, they lose it at the next run.  Either failure is per-
+   request (invalid_target, invalid_scope), and the chain remains
+   continuable for authorized targets, in contrast to invalid_grant,
+   which reports the chain itself no longer continuable (Section 9).
 
 Acknowledgments
 

@@ -1353,7 +1353,7 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16">
-            <p id="section-toc.1-1.16.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-worked-example-same-idp-two" class="internal xref">Worked Example (Same-IdP, Two Hops)</a></p>
+            <p id="section-toc.1-1.16.1"><a href="#appendix-B" class="auto internal xref">Appendix B</a>.  <a href="#name-worked-example-same-idp" class="internal xref">Worked Example (Same-IdP)</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.1">
                 <p id="section-toc.1-1.16.2.1.1"><a href="#appendix-B.1" class="auto internal xref">B.1</a>.  <a href="#name-first-hop-direct-id-jag-for" class="internal xref">First Hop: Direct ID-JAG for ExpenseRAS</a></p>
@@ -1370,6 +1370,12 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.5">
                 <p id="section-toc.1-1.16.2.5.1"><a href="#appendix-B.5" class="auto internal xref">B.5</a>.  <a href="#name-using-the-travelras-id-jag" class="internal xref">Using the TravelRAS ID-JAG</a></p>
 </li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.6">
+                <p id="section-toc.1-1.16.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-third-hop-with-an-intra-dom" class="internal xref">Third Hop with an Intra-Domain Segment</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.7">
+                <p id="section-toc.1-1.16.2.7.1"><a href="#appendix-B.7" class="auto internal xref">B.7</a>.  <a href="#name-variant-mutual-tls-proof-of" class="internal xref">Variant: Mutual-TLS Proof of Possession</a></p>
+</li>
             </ul>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17">
@@ -1383,6 +1389,9 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.3">
                 <p id="section-toc.1-1.17.2.3.1"><a href="#appendix-C.3" class="auto internal xref">C.3</a>.  <a href="#name-points-worth-noticing" class="internal xref">Points Worth Noticing</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.4">
+                <p id="section-toc.1-1.17.2.4.1"><a href="#appendix-C.4" class="auto internal xref">C.4</a>.  <a href="#name-a-dynamic-target-under-a-po" class="internal xref">A Dynamic Target Under a Policy-Reference Basis</a></p>
 </li>
             </ul>
 </li>
@@ -2326,8 +2335,9 @@ configured allowlist (the <code>none</code> algorithm <span class="bcp14">MUST</
           <p id="section-9-2.9.1">the assertion's <code>act</code> claim is present, identifies the current actor as the
 outermost actor, contains only identity claims, asserts no actor outside the
 issuing Chain Authority's trust domain, and the resulting actor chain (the
-chain's authenticated actor history plus any asserted intra-domain segment)
-is acceptable and within max-depth policy;<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
+chain's authenticated actor history plus any asserted intra-domain segment,
+composed as described in <a href="#onward-id-jag" class="auto internal xref">Section 10</a>) is acceptable and within
+max-depth policy;<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.10">
           <p id="section-9-2.10.1">the <code>actor_token</code> was issued by a workload identity issuer the IdP trusts
@@ -2446,8 +2456,12 @@ IdP:<a href="#section-10-1" class="pilcrow">¶</a></p>
 the assertion: the cross-boundary lineage consists of the actors the IdP
 itself authenticated at the root exchange and at each continuation (the
 chain's authenticated actor history), extended by any intra-domain segment the
-Chain Authority verified and asserted (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). Nested lineage
-in an onward ID-JAG is therefore authenticated, not self-reported. In this
+Chain Authority verified and asserted (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). The asserted
+segment is placed atop the history with the current actor outermost; when the
+segment's innermost actor names the same actor as the most recent entry in
+the history, they are the same hop and appear once. Depth policy
+(<a href="#validation" class="auto internal xref">Section 9</a>, rule 9) applies to the composed chain. Nested lineage in an
+onward ID-JAG is therefore authenticated, not self-reported. In this
 example the chain is <code>travel-service</code> (authenticated at this continuation)
 acting for a delegation rooted by <code>expense-app</code> (authenticated at root
 issuance); intermediate workloads that never performed an exchange, such as
@@ -3269,8 +3283,8 @@ group feedback favor it.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
 </div>
 <div id="example">
 <section id="appendix-B">
-      <h2 id="name-worked-example-same-idp-two">
-<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-worked-example-same-idp-two" class="section-name selfRef">Worked Example (Same-IdP, Two Hops)</a>
+      <h2 id="name-worked-example-same-idp">
+<a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-worked-example-same-idp" class="section-name selfRef">Worked Example (Same-IdP)</a>
       </h2>
 <p id="appendix-B-1">This appendix is non-normative. It walks the canonical flow of <a href="#flow" class="auto internal xref">Section 8</a>
 end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
@@ -3443,9 +3457,9 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 </div>
 <p id="appendix-B.1-3">The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
 actor credential is constrained to the DPoP key. For this example, existing
-user consent and enterprise policy authorize both the immediate Expense target
-and the later Travel target. The IdP records the following target entries in
-the root-chain envelope keyed by a freshly generated <code>chain_id</code>:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
+user consent and enterprise policy authorize the immediate Expense target and
+the later Travel and Booking targets. The IdP records the following target
+entries in the root-chain envelope keyed by a freshly generated <code>chain_id</code>:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1-4">
 <pre>
 (https://ras.expenses.example/, https://api.expenses.example/)
@@ -3453,6 +3467,9 @@ the root-chain envelope keyed by a freshly generated <code>chain_id</code>:<a hr
 
 (https://ras.travel.example/, https://api.travel.example/)
     permitted scopes: trips.read
+
+(https://ras.booking.example/, https://api.booking.example/)
+    permitted scopes: stays.book
 </pre><a href="#appendix-B.1-4" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1-5">The root exchange does not authorize either target merely by requesting the
@@ -3601,6 +3618,121 @@ calls TravelAPI. TravelRAS processes the ID-JAG as an ordinary ID-JAG and
 never sees the Identity Continuation Assertion or the <code>chain_id</code>.<a href="#appendix-B.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
+<div id="example-offline-segment">
+<section id="appendix-B.6">
+        <h3 id="name-third-hop-with-an-intra-dom">
+<a href="#appendix-B.6" class="section-number selfRef">B.6. </a><a href="#name-third-hop-with-an-intra-dom" class="section-name selfRef">Third Hop with an Intra-Domain Segment</a>
+        </h3>
+<p id="appendix-B.6-1">Completing the itinerary requires a reservation at BookingSaaS
+(<code>https://booking.example/</code>), whose API <code>https://api.booking.example/</code> sits
+behind <code>https://ras.booking.example/</code>. Inside TravelSaaS, <code>travel-service</code>
+does not make this call itself: it fans out offline to <code>booking-worker</code>,
+another travel.example workload, using an offline attenuated delegation token
+with no IdP round trip (<a href="#decision-rule" class="auto internal xref">Section 3</a>). The user's subject changes at the
+Booking boundary, so that hop is a continuation.<a href="#appendix-B.6-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.6-2"><code>booking-worker</code> requests an assertion from <code>https://ca.travel.example/</code>,
+which verifies the offline segment before issuing (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>)
+and asserts it as nested own-domain <code>act</code> values (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>):<a href="#appendix-B.6-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.6-3">
+<pre>
+{
+  "iss": "https://ca.travel.example/",
+  "aud": "https://idp.example/",
+  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+
+  "act": {
+    "iss": "https://travel.example/",
+    "sub": "booking-worker",
+    "act": {
+      "iss": "https://travel.example/",
+      "sub": "travel-service"
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-booking-worker-key-thumbprint"
+  },
+
+  "iat": 1710000900,
+  "exp": 1710001200,
+  "jti": "continuation-assertion-02"
+}
+</pre><a href="#appendix-B.6-3" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.6-4"><code>booking-worker</code> exchanges the assertion, DPoP-bound to its own key, for an
+ID-JAG with <code>audience=https://ras.booking.example/</code>,
+<code>resource=https://api.booking.example/</code>, and <code>scope=stays.book</code>, all within
+the envelope's Booking target entry. The IdP composes the onward <code>act</code> chain
+(<a href="#onward-id-jag" class="auto internal xref">Section 10</a>): the asserted segment (<code>booking-worker</code> above
+<code>travel-service</code>) is placed atop the authenticated actor history
+(<code>travel-service</code>, then <code>expense-app</code>), and <code>travel-service</code>, being both the
+segment's innermost actor and the history's most recent, appears once:<a href="#appendix-B.6-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.6-5">
+<pre>
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.booking.example/",
+  "sub": "booking-local-subject",
+
+  "client_id": "booking-worker",
+  "resource": "https://api.booking.example/",
+  "scope": "stays.book",
+
+  "auth_time": 1710000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "act": {
+    "iss": "https://travel.example/",
+    "sub": "booking-worker",
+    "act": {
+      "iss": "https://travel.example/",
+      "sub": "travel-service",
+      "act": {
+        "iss": "https://expenses.example/",
+        "sub": "expense-app"
+      }
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-booking-worker-key-thumbprint"
+  },
+
+  "iat": 1710000920,
+  "exp": 1710001220,
+  "jti": "idjag-booking-01"
+}
+</pre><a href="#appendix-B.6-5" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.6-6"><code>booking-worker</code>, having performed this exchange, now enters the chain's
+authenticated actor history, and any further continuation builds on it.
+BookingRAS processes an ordinary ID-JAG and receives an authenticated
+lineage, including an offline hop that its own domain could never have
+verified.<a href="#appendix-B.6-6" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-mtls">
+<section id="appendix-B.7">
+        <h3 id="name-variant-mutual-tls-proof-of">
+<a href="#appendix-B.7" class="section-number selfRef">B.7. </a><a href="#name-variant-mutual-tls-proof-of" class="section-name selfRef">Variant: Mutual-TLS Proof of Possession</a>
+        </h3>
+<p id="appendix-B.7-1">Every exchange above uses DPoP. With mutual-TLS client authentication
+<span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> the flows are unchanged except for the proof mechanics: the
+workload presents its client certificate on a mutual-TLS connection instead
+of sending a <code>DPoP</code> header, and each <code>cnf</code> carries the certificate thumbprint
+rather than a key thumbprint:<a href="#appendix-B.7-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.7-2">
+<pre>
+"cnf": { "x5t#S256": "base64url-client-cert-sha256-thumbprint" }
+</pre><a href="#appendix-B.7-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.7-3">The IdP verifies that the presented certificate matches the assertion's
+confirmation (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>), and the workload presents
+the same certificate when exchanging the onward ID-JAG at the target Resource
+Authorization Server.<a href="#appendix-B.7-3" class="pilcrow">¶</a></p>
+</section>
+</div>
 </section>
 </div>
 <div id="example-background">
@@ -3738,6 +3870,43 @@ for users who never authorized it), there is no delegation to continue and
 this profile does not apply; such deployments need a differently rooted
 authorization, such as administrative policy at the IdP, which is out of
 scope for this document.<a href="#appendix-C.3-4" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="example-dynamic">
+<section id="appendix-C.4">
+        <h3 id="name-a-dynamic-target-under-a-po">
+<a href="#appendix-C.4" class="section-number selfRef">C.4. </a><a href="#name-a-dynamic-target-under-a-po" class="section-name selfRef">A Dynamic Target Under a Policy-Reference Basis</a>
+        </h3>
+<p id="appendix-C.4-1">Suppose the platform later extends the briefing to include unread mail,
+which requires <code>https://api.mail.example/</code> behind
+<code>https://ras.mail.example/</code>: a target nobody named when Alice created the
+task. Under the enumerated basis recorded in the setup above, the agent's
+exchange for that audience fails, and the chain is otherwise unaffected:<a href="#appendix-C.4-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-C.4-2">
+<pre>
+HTTP/1.1 400 Bad Request
+Content-Type: application/json
+
+{
+  "error": "invalid_target"
+}
+</pre><a href="#appendix-C.4-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-C.4-3">A deployment expecting dynamic needs instead records the policy-reference
+form of the authorization basis at setup (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14): the
+envelope references Alice's standing consent (for example, a productivity
+read-access grant she holds) and tenant policy, and the IdP evaluates that
+reference at continuation time. The same exchange then succeeds if, and only
+if, read access to the mail service is within Alice's standing consent and
+tenant policy permits <code>briefing-agent</code> to reach it. A request for
+<code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-C.4-3" class="pilcrow">¶</a></p>
+<p id="appendix-C.4-4">The envelope guardrail applies: evaluation is bounded by the consent and
+policy in force when the chain was established. If the tenant later broadens
+policy, existing chains do not gain the new authority; if it narrows, they
+lose it at the next run. Either failure is per-request (<code>invalid_target</code>,
+<code>invalid_scope</code>), and the chain remains continuable for authorized targets,
+in contrast to <code>invalid_grant</code>, which reports the chain itself no longer
+continuable (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#appendix-C.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
