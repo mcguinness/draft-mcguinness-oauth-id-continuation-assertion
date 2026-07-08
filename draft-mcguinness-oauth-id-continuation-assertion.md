@@ -54,6 +54,8 @@ informative:
   RFC9700:
   I-D.ietf-oauth-transaction-tokens:
   I-D.ietf-wimse-arch:
+  I-D.mcguinness-oauth-actor-receipts:
+  I-D.mcguinness-oauth-actor-proofs:
   OIDC.FrontChannelLogout:
     title: "OpenID Connect Front-Channel Logout 1.0"
     target: "https://openid.net/specs/openid-connect-frontchannel-1_0.html"
@@ -383,8 +385,12 @@ The claims have the following meanings and requirements:
   and at each continuation ({{onward-id-jag}}). Claims inside `act` are
   identity claims only; non-identity claims such as `exp`, `nbf`, `aud`,
   `scope`, and `cnf` MUST NOT be used inside `act`. The Chain Authority MAY
-  retain deployment-specific audit evidence for the offline segment separately
-  from the RFC 8693 `act` object.
+  retain audit evidence for the offline segment separately from the RFC 8693
+  `act` object, for example per-hop issuer receipts
+  {{I-D.mcguinness-oauth-actor-receipts}} or actor-signed hop proofs
+  {{I-D.mcguinness-oauth-actor-proofs}}; such evidence SHOULD remain in the
+  control plane rather than be embedded in tokens a Resource Server consumes
+  ({{privacy}}).
 
 `cnf`:
 : REQUIRED. A confirmation claim {{RFC7800}} that binds the assertion to the
@@ -476,8 +482,9 @@ the following:
 4. the actors placed in `act` (the current actor and any verified intra-domain
    segment) were derived from authenticated context or from a verifiable
    delegation artifact whose integrity and delegation rules the Chain
-   Authority has validated; actors outside the Chain Authority's trust domain
-   are not placed in `act` ({{assertion-claims}}).
+   Authority has validated, such as an actor-signed hop-proof chain
+   {{I-D.mcguinness-oauth-actor-proofs}}; actors outside the Chain Authority's
+   trust domain are not placed in `act` ({{assertion-claims}}).
 
 Possession of `chain_id` alone is insufficient to satisfy these requirements.
 Values received as propagated context, including actor history or requested
@@ -959,7 +966,9 @@ example the chain is `travel-service` (authenticated at this continuation)
 acting for a delegation rooted by `expense-app` (authenticated at root
 issuance); intermediate workloads that never performed an exchange, such as
 `expense-service`, appear in deployment audit records rather than in the
-authenticated lineage.
+authenticated lineage. Actor receipts {{I-D.mcguinness-oauth-actor-receipts}}
+and actor-signed hop proofs {{I-D.mcguinness-oauth-actor-proofs}} provide a
+verifiable form for such records.
 
 TravelRAS processes this as an ordinary ID-JAG per
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}. It does not need to
