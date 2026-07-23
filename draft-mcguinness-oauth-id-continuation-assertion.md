@@ -1978,39 +1978,108 @@ workload `tool-gateway` at `https://gateway.example/`, protected by
 upstream wiki service behind `https://ras.wiki.example/` and
 `https://api.wiki.example/`.
 
-## Root: the Session Runtime Establishes the Chain
+At a glance, the message flow is:
+
+~~~
+Alice authenticates in agent-app.
+
+AgentApp -> IdP:        (1) direct exchange: Alice's ID Token
+IdP -> AgentApp:        (2) ID-JAG(GatewayRAS) + chain_id
+AgentApp -> GatewayRAS: (3) ID-JAG
+GatewayRAS -> AgentApp: (4) gateway access token
+AgentApp -> Gateway:    (5) tool call + Chain-Id header
+
+Gateway resolves the tool call to the wiki upstream.
+
+Gateway -> CA:          (6) request assertion for chain_id
+CA -> Gateway:          (7) Identity Continuation Assertion
+Gateway -> IdP:         (8) chained exchange (assertion + DPoP)
+IdP -> Gateway:         (9) ID-JAG(WikiRAS) + chain_id
+Gateway -> WikiRAS:     (10) ID-JAG
+WikiRAS -> Gateway:     (11) wiki access token
+Gateway -> WikiAPI:     (12) tool call executes
+~~~
+
+The subsections below detail each step.
+
+## Root Exchange: the Runtime Establishes the Chain
 
 Alice authenticates in `agent-app`, a confidential client whose `client_id`
 is the audience of her identity assertion, so `agent-app` performs the
 ordinary direct exchange of {{token-exchange}} for the one audience it does
-know: the gateway (`audience=https://ras.gateway.example/`). Because tool
-routing is dynamic, the IdP records the envelope with the policy-reference
-authorization basis ({{validation}}, rule 14), referencing Alice's standing
-consent and tenant policy, with `agent-app` as the authenticated root actor.
-Enterprise policy registers `tool-gateway` as an actor permitted to continue
-chains rooted this way ({{validation}}, rule 10). The response returns
-`chain_id` `01K5D3W8YAZE6QNMB2TVXH94RC`.
+know: the gateway (`audience=https://ras.gateway.example/`) (steps 1 and 2).
+Because tool routing is dynamic, the IdP records the envelope with the
+policy-reference authorization basis ({{validation}}, rule 14), referencing
+Alice's standing consent and tenant policy, with `agent-app` as the
+authenticated root actor. Enterprise policy registers `tool-gateway` as an
+actor permitted to continue chains rooted this way ({{validation}}, rule 10).
+The response returns `chain_id` `01K5D3W8YAZE6QNMB2TVXH94RC`.
 
 `agent-app` exchanges its gateway ID-JAG at `ras.gateway.example` for an
-access token and invokes the gateway, conveying the chain reference with the
-request per the HTTP binding ({{context-binding}}):
+access token (steps 3 and 4) and invokes the gateway, conveying the chain
+reference with the request per the HTTP binding ({{context-binding}})
+(step 5):
 
 ~~~
 Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
 ~~~
 
-## Tool Call: the Gateway Continues Dynamically
+## Chained Exchange: the Gateway Continues
 
 A tool call in Alice's session requires the wiki service. Only the gateway
-knows this routing. `tool-gateway` obtains an Identity Continuation
-Assertion from `https://ca.gateway.example/` bound to its own key, with
-itself as the `act` current actor ({{assertion-issuance}}), and presents it
-to the IdP, DPoP-bound, requesting
-`audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`,
-and `scope=wiki.read`. The IdP verifies that `tool-gateway` is a permitted
-continuer, evaluates the policy reference now (wiki read access is within
-Alice's standing consent, and tenant policy permits the gateway to reach it),
-resolves Alice's wiki-local subject, and mints:
+knows this routing. `tool-gateway` requests an Identity Continuation
+Assertion from `https://ca.gateway.example/`, proving control of its key so
+the Chain Authority can bind `cnf` to it ({{assertion-issuance}}) (steps 6
+and 7):
+
+~~~ json
+{
+  "iss": "https://ca.gateway.example/",
+  "aud": "https://idp.example/",
+  "chain_id": "01K5D3W8YAZE6QNMB2TVXH94RC",
+
+  "act": {
+    "iss": "https://gateway.example/",
+    "sub": "tool-gateway"
+  },
+
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+
+  "iat": 1713000390,
+  "exp": 1713000690,
+  "jti": "continuation-assertion-03"
+}
+~~~
+
+`tool-gateway` presents the assertion to the IdP as the `subject_token`,
+DPoP-bound to its key (step 8):
+
+~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the tool-gateway key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.wiki.example/
+resource=https://api.wiki.example/
+scope=wiki.read
+subject_token=<identity-continuation-assertion>
+subject_token_type=<identity-continuation-token-type>
+actor_token=<sender-constrained tool-gateway credential>
+actor_token_type=urn:ietf:params:oauth:token-type:jwt
+~~~
+
+The `subject_token_type` value above is
+`urn:ietf:params:oauth:token-type:identity-continuation`. The IdP verifies
+that `tool-gateway` is a permitted continuer, that the DPoP key matches both
+the assertion's `cnf.jkt` and the actor token's confirmation, and evaluates
+the policy reference now: wiki read access is within Alice's standing
+consent, and tenant policy permits the gateway to reach it. It resolves
+Alice's wiki-local subject and mints (step 9):
 
 ~~~ json
 {
@@ -2046,11 +2115,11 @@ resolves Alice's wiki-local subject, and mints:
 ~~~
 
 The gateway exchanges this at `ras.wiki.example` for an access token and
-calls the wiki API. A different tool call tomorrow reaches a different
-upstream through the same machinery: a fresh assertion, a fresh
-continuation-time policy decision, no new consent ceremony, and the same
-denial behavior as {{example-dynamic}} for targets or scopes outside Alice's
-standing consent.
+calls the wiki API (steps 10 through 12). A different tool call tomorrow
+reaches a different upstream through the same machinery: a fresh assertion, a
+fresh continuation-time policy decision, no new consent ceremony, and the
+same denial behavior as {{example-dynamic}} for targets or scopes outside
+Alice's standing consent.
 
 ## Points Worth Noticing
 
