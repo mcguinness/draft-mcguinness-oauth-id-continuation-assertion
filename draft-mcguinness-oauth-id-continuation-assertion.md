@@ -1957,6 +1957,127 @@ lose it at the next run. Either failure is per-request (`invalid_target`,
 in contrast to `invalid_grant`, which reports the chain itself no longer
 continuable ({{validation}}).
 
+# Gateway Example (Dynamic Upstream Audiences) {#example-gateway}
+
+This appendix is non-normative. It applies the continuation machinery to a
+gateway or proxy topology, common in AI tool-calling deployments: the runtime
+that starts the user's session routes tool calls through a gateway that
+aggregates upstream services, each protected by its own Resource
+Authorization Server trusting the same IdP. The defining tension is that the
+session runtime cannot know which upstream a given tool call will require,
+while the gateway, which does know, holds no end-user credential addressed to
+it. Neither party can be given the other's power without harm: the runtime
+must not mint arbitrary cross-domain grants, and the gateway must not present
+an identity assertion whose audience it is not.
+
+The participants: the user Alice; a confidential agent runtime `agent-app` at
+`https://agent.example/` in which Alice's session runs; a tool gateway
+workload `tool-gateway` at `https://gateway.example/`, protected by
+`https://ras.gateway.example/`, whose platform operates the Chain Authority
+`https://ca.gateway.example/`; the IdP `https://idp.example/`; and an
+upstream wiki service behind `https://ras.wiki.example/` and
+`https://api.wiki.example/`.
+
+## Root: the Session Runtime Establishes the Chain
+
+Alice authenticates in `agent-app`, a confidential client whose `client_id`
+is the audience of her identity assertion, so `agent-app` performs the
+ordinary direct exchange of {{token-exchange}} for the one audience it does
+know: the gateway (`audience=https://ras.gateway.example/`). Because tool
+routing is dynamic, the IdP records the envelope with the policy-reference
+authorization basis ({{validation}}, rule 14), referencing Alice's standing
+consent and tenant policy, with `agent-app` as the authenticated root actor.
+Enterprise policy registers `tool-gateway` as an actor permitted to continue
+chains rooted this way ({{validation}}, rule 10). The response returns
+`chain_id` `01K5D3W8YAZE6QNMB2TVXH94RC`.
+
+`agent-app` exchanges its gateway ID-JAG at `ras.gateway.example` for an
+access token and invokes the gateway, conveying the chain reference with the
+request per the HTTP binding ({{context-binding}}):
+
+~~~
+Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
+~~~
+
+## Tool Call: the Gateway Continues Dynamically
+
+A tool call in Alice's session requires the wiki service. Only the gateway
+knows this routing. `tool-gateway` obtains an Identity Continuation
+Assertion from `https://ca.gateway.example/` bound to its own key, with
+itself as the `act` current actor ({{assertion-issuance}}), and presents it
+to the IdP, DPoP-bound, requesting
+`audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`,
+and `scope=wiki.read`. The IdP verifies that `tool-gateway` is a permitted
+continuer, evaluates the policy reference now (wiki read access is within
+Alice's standing consent, and tenant policy permits the gateway to reach it),
+resolves Alice's wiki-local subject, and mints:
+
+~~~ json
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.wiki.example/",
+  "sub": "alice-wiki-subject",
+
+  "client_id": "tool-gateway",
+  "resource": "https://api.wiki.example/",
+  "scope": "wiki.read",
+
+  "auth_time": 1713000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "act": {
+    "iss": "https://gateway.example/",
+    "sub": "tool-gateway",
+    "act": {
+      "iss": "https://agent.example/",
+      "sub": "agent-app"
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+
+  "iat": 1713000400,
+  "exp": 1713000700,
+  "jti": "idjag-wiki-01"
+}
+~~~
+
+The gateway exchanges this at `ras.wiki.example` for an access token and
+calls the wiki API. A different tool call tomorrow reaches a different
+upstream through the same machinery: a fresh assertion, a fresh
+continuation-time policy decision, no new consent ceremony, and the same
+denial behavior as {{example-dynamic}} for targets or scopes outside Alice's
+standing consent.
+
+## Points Worth Noticing
+
+The identity assertion's audience check is never weakened. Alice's assertion
+is presented exactly once, by the client that is its audience. The gateway
+never presents it; the gateway's authority is a continuation assertion bound
+to the gateway's own key, evaluated against the envelope. Strict audience
+validation for identity assertions and a working proxy topology coexist.
+
+The upstream Resource Authorization Server consumes an ordinary ID-JAG whose
+`act` chain states precisely what a proxy topology needs stated: this
+gateway, acting for a delegation rooted by this runtime for this user, for
+this audience and scope, under a policy decision made at continuation time.
+The lineage is authenticated by the IdP, not reported by the gateway
+({{onward-id-jag}}).
+
+Neither party ever holds the other's power. The runtime performed one
+exchange for one audience it already knew; the gateway can request only what
+the envelope's policy reference permits, per target, per hop, revocable at
+the IdP ({{lifecycle}}).
+
+This example assumes a confidential runtime. Where the session runtime is a
+public client, the continuation flow after root establishment is unchanged,
+but bootstrapping the root exchange from a public client raises
+considerations in the underlying ID-JAG profile, which recommends Token
+Exchange for confidential clients, and is not addressed here.
+
 # Acknowledgments
 {:numbered="false"}
 
