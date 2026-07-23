@@ -1469,10 +1469,14 @@ group feedback favor it.
 
 # Worked Example (Same-IdP) {#example}
 
-This appendix is non-normative. It walks the canonical flow of {{flow}}
-end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
-ExpenseService, the workload handling that request, calls TravelSaaS, whose
-TravelService must call TravelAPI to finish the request. All parties trust one
+This appendix is non-normative. This and the following appendices cover the
+three deployment shapes this profile serves: interactive SaaS-to-SaaS
+chaining (this appendix), an unattended background agent
+({{example-background}}), and a gateway topology with dynamically determined
+upstream audiences ({{example-gateway}}). This appendix walks the canonical
+flow of {{flow}} end-to-end for a single user: ExpenseApp invokes
+ExpenseSaaS, and ExpenseService, the workload handling that request, calls
+TravelSaaS, whose TravelService must call TravelAPI to finish the request. All parties trust one
 enterprise IdP at `https://idp.example/`.
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in
