@@ -1809,11 +1809,18 @@ work is that the platform stores only the non-bearer `chain_id`; no refresh
 token or other user credential is vaulted, and run-time authority comes from a
 fresh, sender-constrained assertion evaluated against the root-chain envelope.
 
-The participants: the user Alice; an agent platform at
-`https://platform.example/` operating the workload `briefing-agent` and its
-own Chain Authority `https://ca.platform.example/`; the IdP
-`https://idp.example/`; and a calendar service behind
-`https://ras.calendar.example/` and `https://api.calendar.example/`.
+The participants and values used throughout:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| User | (none) | The human, Alice; present at setup, absent at every run. |
+| IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
+| BriefingAgent | `briefing-agent` | Agent platform workload that runs the scheduled task. |
+| Chain Authority | `https://ca.platform.example/` | The platform's Chain Authority; issues assertions for its workloads. |
+| CalendarRAS | `https://ras.calendar.example/` | Resource Authorization Server for the calendar service. |
+| CalendarAPI | `https://api.calendar.example/` | Protected resource behind CalendarRAS. |
+| `chain_id` | `01K2Q9RS7VW3XM5TZC8HB4DFEG` | Root-delegation correlation handle. |
+| Subject | `alice-calendar-subject` | Alice's pairwise subject at CalendarRAS. |
 
 ## Setup (Alice Present)
 
@@ -1970,13 +1977,20 @@ it. Neither party can be given the other's power without harm: the runtime
 must not mint arbitrary cross-domain grants, and the gateway must not present
 an identity assertion whose audience it is not.
 
-The participants: the user Alice; a confidential agent runtime `agent-app` at
-`https://agent.example/` in which Alice's session runs; a tool gateway
-workload `tool-gateway` at `https://gateway.example/`, protected by
-`https://ras.gateway.example/`, whose platform operates the Chain Authority
-`https://ca.gateway.example/`; the IdP `https://idp.example/`; and an
-upstream wiki service behind `https://ras.wiki.example/` and
-`https://api.wiki.example/`.
+The participants and values used throughout:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| User | (none) | The human, Alice; her session runs in AgentApp. |
+| IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
+| AgentApp | `agent-app` | Confidential agent runtime; hosts Alice's session and roots the chain. |
+| Gateway | `tool-gateway` | Tool gateway workload; continues the chain per tool call. |
+| GatewayRAS | `https://ras.gateway.example/` | Resource Authorization Server protecting the gateway. |
+| Chain Authority | `https://ca.gateway.example/` | The gateway platform's Chain Authority; issues assertions for its workloads. |
+| WikiRAS | `https://ras.wiki.example/` | Resource Authorization Server for the wiki upstream. |
+| WikiAPI | `https://api.wiki.example/` | Upstream protected resource behind WikiRAS. |
+| `chain_id` | `01K5D3W8YAZE6QNMB2TVXH94RC` | Root-delegation correlation handle. |
+| Subject | `alice-wiki-subject` | Alice's pairwise subject at WikiRAS. |
 
 At a glance, the message flow is:
 
