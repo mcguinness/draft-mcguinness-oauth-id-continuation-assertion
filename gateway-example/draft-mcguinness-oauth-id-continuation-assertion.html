@@ -1399,10 +1399,10 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             <p id="section-toc.1-1.18.1"><a href="#appendix-D" class="auto internal xref">Appendix D</a>.  <a href="#name-gateway-example-dynamic-ups" class="internal xref">Gateway Example (Dynamic Upstream Audiences)</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.1">
-                <p id="section-toc.1-1.18.2.1.1"><a href="#appendix-D.1" class="auto internal xref">D.1</a>.  <a href="#name-root-the-session-runtime-es" class="internal xref">Root: the Session Runtime Establishes the Chain</a></p>
+                <p id="section-toc.1-1.18.2.1.1"><a href="#appendix-D.1" class="auto internal xref">D.1</a>.  <a href="#name-root-exchange-the-runtime-e" class="internal xref">Root Exchange: the Runtime Establishes the Chain</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.2">
-                <p id="section-toc.1-1.18.2.2.1"><a href="#appendix-D.2" class="auto internal xref">D.2</a>.  <a href="#name-tool-call-the-gateway-conti" class="internal xref">Tool Call: the Gateway Continues Dynamically</a></p>
+                <p id="section-toc.1-1.18.2.2.1"><a href="#appendix-D.2" class="auto internal xref">D.2</a>.  <a href="#name-chained-exchange-the-gatewa" class="internal xref">Chained Exchange: the Gateway Continues</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.3">
                 <p id="section-toc.1-1.18.2.3.1"><a href="#appendix-D.3" class="auto internal xref">D.3</a>.  <a href="#name-points-worth-noticing-2" class="internal xref">Points Worth Noticing</a></p>
@@ -3947,24 +3947,48 @@ workload <code>tool-gateway</code> at <code>https://gateway.example/</code>, pro
 <code>https://ca.gateway.example/</code>; the IdP <code>https://idp.example/</code>; and an
 upstream wiki service behind <code>https://ras.wiki.example/</code> and
 <code>https://api.wiki.example/</code>.<a href="#appendix-D-2" class="pilcrow">¶</a></p>
-<div id="root-the-session-runtime-establishes-the-chain">
+<p id="appendix-D-3">At a glance, the message flow is:<a href="#appendix-D-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-D-4">
+<pre>
+Alice authenticates in agent-app.
+
+AgentApp -&gt; IdP:        (1) direct exchange: Alice's ID Token
+IdP -&gt; AgentApp:        (2) ID-JAG(GatewayRAS) + chain_id
+AgentApp -&gt; GatewayRAS: (3) ID-JAG
+GatewayRAS -&gt; AgentApp: (4) gateway access token
+AgentApp -&gt; Gateway:    (5) tool call + Chain-Id header
+
+Gateway resolves the tool call to the wiki upstream.
+
+Gateway -&gt; CA:          (6) request assertion for chain_id
+CA -&gt; Gateway:          (7) Identity Continuation Assertion
+Gateway -&gt; IdP:         (8) chained exchange (assertion + DPoP)
+IdP -&gt; Gateway:         (9) ID-JAG(WikiRAS) + chain_id
+Gateway -&gt; WikiRAS:     (10) ID-JAG
+WikiRAS -&gt; Gateway:     (11) wiki access token
+Gateway -&gt; WikiAPI:     (12) tool call executes
+</pre><a href="#appendix-D-4" class="pilcrow">¶</a>
+</div>
+<p id="appendix-D-5">The subsections below detail each step.<a href="#appendix-D-5" class="pilcrow">¶</a></p>
+<div id="root-exchange-the-runtime-establishes-the-chain">
 <section id="appendix-D.1">
-        <h3 id="name-root-the-session-runtime-es">
-<a href="#appendix-D.1" class="section-number selfRef">D.1. </a><a href="#name-root-the-session-runtime-es" class="section-name selfRef">Root: the Session Runtime Establishes the Chain</a>
+        <h3 id="name-root-exchange-the-runtime-e">
+<a href="#appendix-D.1" class="section-number selfRef">D.1. </a><a href="#name-root-exchange-the-runtime-e" class="section-name selfRef">Root Exchange: the Runtime Establishes the Chain</a>
         </h3>
 <p id="appendix-D.1-1">Alice authenticates in <code>agent-app</code>, a confidential client whose <code>client_id</code>
 is the audience of her identity assertion, so <code>agent-app</code> performs the
 ordinary direct exchange of <a href="#token-exchange" class="auto internal xref">Section 7</a> for the one audience it does
-know: the gateway (<code>audience=https://ras.gateway.example/</code>). Because tool
-routing is dynamic, the IdP records the envelope with the policy-reference
-authorization basis (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), referencing Alice's standing
-consent and tenant policy, with <code>agent-app</code> as the authenticated root actor.
-Enterprise policy registers <code>tool-gateway</code> as an actor permitted to continue
-chains rooted this way (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10). The response returns
-<code>chain_id</code> <code>01K5D3W8YAZE6QNMB2TVXH94RC</code>.<a href="#appendix-D.1-1" class="pilcrow">¶</a></p>
+know: the gateway (<code>audience=https://ras.gateway.example/</code>) (steps 1 and 2).
+Because tool routing is dynamic, the IdP records the envelope with the
+policy-reference authorization basis (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), referencing
+Alice's standing consent and tenant policy, with <code>agent-app</code> as the
+authenticated root actor. Enterprise policy registers <code>tool-gateway</code> as an
+actor permitted to continue chains rooted this way (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10).
+The response returns <code>chain_id</code> <code>01K5D3W8YAZE6QNMB2TVXH94RC</code>.<a href="#appendix-D.1-1" class="pilcrow">¶</a></p>
 <p id="appendix-D.1-2"><code>agent-app</code> exchanges its gateway ID-JAG at <code>ras.gateway.example</code> for an
-access token and invokes the gateway, conveying the chain reference with the
-request per the HTTP binding (<a href="#context-binding" class="auto internal xref">Section 4.6</a>):<a href="#appendix-D.1-2" class="pilcrow">¶</a></p>
+access token (steps 3 and 4) and invokes the gateway, conveying the chain
+reference with the request per the HTTP binding (<a href="#context-binding" class="auto internal xref">Section 4.6</a>)
+(step 5):<a href="#appendix-D.1-2" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-D.1-3">
 <pre>
 Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
@@ -3972,22 +3996,66 @@ Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
 </div>
 </section>
 </div>
-<div id="tool-call-the-gateway-continues-dynamically">
+<div id="chained-exchange-the-gateway-continues">
 <section id="appendix-D.2">
-        <h3 id="name-tool-call-the-gateway-conti">
-<a href="#appendix-D.2" class="section-number selfRef">D.2. </a><a href="#name-tool-call-the-gateway-conti" class="section-name selfRef">Tool Call: the Gateway Continues Dynamically</a>
+        <h3 id="name-chained-exchange-the-gatewa">
+<a href="#appendix-D.2" class="section-number selfRef">D.2. </a><a href="#name-chained-exchange-the-gatewa" class="section-name selfRef">Chained Exchange: the Gateway Continues</a>
         </h3>
 <p id="appendix-D.2-1">A tool call in Alice's session requires the wiki service. Only the gateway
-knows this routing. <code>tool-gateway</code> obtains an Identity Continuation
-Assertion from <code>https://ca.gateway.example/</code> bound to its own key, with
-itself as the <code>act</code> current actor (<a href="#assertion-issuance" class="auto internal xref">Section 4.4</a>), and presents it
-to the IdP, DPoP-bound, requesting
-<code>audience=https://ras.wiki.example/</code>, <code>resource=https://api.wiki.example/</code>,
-and <code>scope=wiki.read</code>. The IdP verifies that <code>tool-gateway</code> is a permitted
-continuer, evaluates the policy reference now (wiki read access is within
-Alice's standing consent, and tenant policy permits the gateway to reach it),
-resolves Alice's wiki-local subject, and mints:<a href="#appendix-D.2-1" class="pilcrow">¶</a></p>
+knows this routing. <code>tool-gateway</code> requests an Identity Continuation
+Assertion from <code>https://ca.gateway.example/</code>, proving control of its key so
+the Chain Authority can bind <code>cnf</code> to it (<a href="#assertion-issuance" class="auto internal xref">Section 4.4</a>) (steps 6
+and 7):<a href="#appendix-D.2-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-D.2-2">
+<pre>
+{
+  "iss": "https://ca.gateway.example/",
+  "aud": "https://idp.example/",
+  "chain_id": "01K5D3W8YAZE6QNMB2TVXH94RC",
+
+  "act": {
+    "iss": "https://gateway.example/",
+    "sub": "tool-gateway"
+  },
+
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+
+  "iat": 1713000390,
+  "exp": 1713000690,
+  "jti": "continuation-assertion-03"
+}
+</pre><a href="#appendix-D.2-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-D.2-3"><code>tool-gateway</code> presents the assertion to the IdP as the <code>subject_token</code>,
+DPoP-bound to its key (step 8):<a href="#appendix-D.2-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-D.2-4">
+<pre>
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof signed by the tool-gateway key&gt;
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.wiki.example/
+resource=https://api.wiki.example/
+scope=wiki.read
+subject_token=&lt;identity-continuation-assertion&gt;
+subject_token_type=&lt;identity-continuation-token-type&gt;
+actor_token=&lt;sender-constrained tool-gateway credential&gt;
+actor_token_type=urn:ietf:params:oauth:token-type:jwt
+</pre><a href="#appendix-D.2-4" class="pilcrow">¶</a>
+</div>
+<p id="appendix-D.2-5">The <code>subject_token_type</code> value above is
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>. The IdP verifies
+that <code>tool-gateway</code> is a permitted continuer, that the DPoP key matches both
+the assertion's <code>cnf.jkt</code> and the actor token's confirmation, and evaluates
+the policy reference now: wiki read access is within Alice's standing
+consent, and tenant policy permits the gateway to reach it. It resolves
+Alice's wiki-local subject and mints (step 9):<a href="#appendix-D.2-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-D.2-6">
 <pre>
 {
   "iss": "https://idp.example/",
@@ -4019,14 +4087,14 @@ resolves Alice's wiki-local subject, and mints:<a href="#appendix-D.2-1" class="
   "exp": 1713000700,
   "jti": "idjag-wiki-01"
 }
-</pre><a href="#appendix-D.2-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-D.2-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-D.2-3">The gateway exchanges this at <code>ras.wiki.example</code> for an access token and
-calls the wiki API. A different tool call tomorrow reaches a different
-upstream through the same machinery: a fresh assertion, a fresh
-continuation-time policy decision, no new consent ceremony, and the same
-denial behavior as <a href="#example-dynamic" class="auto internal xref">Appendix C.4</a> for targets or scopes outside Alice's
-standing consent.<a href="#appendix-D.2-3" class="pilcrow">¶</a></p>
+<p id="appendix-D.2-7">The gateway exchanges this at <code>ras.wiki.example</code> for an access token and
+calls the wiki API (steps 10 through 12). A different tool call tomorrow
+reaches a different upstream through the same machinery: a fresh assertion, a
+fresh continuation-time policy decision, no new consent ceremony, and the
+same denial behavior as <a href="#example-dynamic" class="auto internal xref">Appendix C.4</a> for targets or scopes outside
+Alice's standing consent.<a href="#appendix-D.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="points-worth-noticing-1">
