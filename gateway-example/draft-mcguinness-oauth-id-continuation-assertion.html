@@ -3761,11 +3761,75 @@ created, and absent at every run. The example is the same protocol as
 work is that the platform stores only the non-bearer <code>chain_id</code>; no refresh
 token or other user credential is vaulted, and run-time authority comes from a
 fresh, sender-constrained assertion evaluated against the root-chain envelope.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
-<p id="appendix-C-2">The participants: the user Alice; an agent platform at
-<code>https://platform.example/</code> operating the workload <code>briefing-agent</code> and its
-own Chain Authority <code>https://ca.platform.example/</code>; the IdP
-<code>https://idp.example/</code>; and a calendar service behind
-<code>https://ras.calendar.example/</code> and <code>https://api.calendar.example/</code>.<a href="#appendix-C-2" class="pilcrow">¶</a></p>
+<p id="appendix-C-2">The participants and values used throughout:<a href="#appendix-C-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-2">
+        <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Name</th>
+            <th class="text-left" rowspan="1" colspan="1">Value</th>
+            <th class="text-left" rowspan="1" colspan="1">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">User</td>
+            <td class="text-left" rowspan="1" colspan="1">(none)</td>
+            <td class="text-left" rowspan="1" colspan="1">The human, Alice; present at setup, absent at every run.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">IdP</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://idp.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">BriefingAgent</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>briefing-agent</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Agent platform workload at <code>https://platform.example/</code> that runs the scheduled task.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ca.platform.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The platform's Chain Authority; issues assertions for its workloads.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">CalendarRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.calendar.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the calendar service.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">CalendarAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.calendar.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Protected resource behind CalendarRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>chain_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>01K2Q9RS7VW3XM5TZC8HB4DFEG</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Subject</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>alice-calendar-subject</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Alice's pairwise subject at CalendarRAS.</td>
+          </tr>
+        </tbody>
+      </table>
 <div id="setup-alice-present">
 <section id="appendix-C.1">
         <h3 id="name-setup-alice-present">
@@ -3940,15 +4004,91 @@ while the gateway, which does know, holds no end-user credential addressed to
 it. Neither party can be given the other's power without harm: the runtime
 must not mint arbitrary cross-domain grants, and the gateway must not present
 an identity assertion whose audience it is not.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
-<p id="appendix-D-2">The participants: the user Alice; a confidential agent runtime <code>agent-app</code> at
-<code>https://agent.example/</code> in which Alice's session runs; a tool gateway
-workload <code>tool-gateway</code> at <code>https://gateway.example/</code>, protected by
-<code>https://ras.gateway.example/</code>, whose platform operates the Chain Authority
-<code>https://ca.gateway.example/</code>; the IdP <code>https://idp.example/</code>; and an
-upstream wiki service behind <code>https://ras.wiki.example/</code> and
-<code>https://api.wiki.example/</code>.<a href="#appendix-D-2" class="pilcrow">¶</a></p>
-<p id="appendix-D-3">At a glance, the message flow is:<a href="#appendix-D-3" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-D-4">
+<p id="appendix-D-2">The participants and values used throughout:<a href="#appendix-D-2" class="pilcrow">¶</a></p>
+<table class="center" id="table-3">
+        <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
+<thead>
+          <tr>
+            <th class="text-left" rowspan="1" colspan="1">Name</th>
+            <th class="text-left" rowspan="1" colspan="1">Value</th>
+            <th class="text-left" rowspan="1" colspan="1">Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">User</td>
+            <td class="text-left" rowspan="1" colspan="1">(none)</td>
+            <td class="text-left" rowspan="1" colspan="1">The human, Alice; her session runs in AgentApp.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">IdP</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://idp.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">AgentApp</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>agent-app</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Confidential agent runtime at <code>https://agent.example/</code>; hosts Alice's session and roots the chain.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Gateway</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>tool-gateway</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Tool gateway workload at <code>https://gateway.example/</code>; continues the chain per tool call.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">GatewayRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.gateway.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server protecting the gateway.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ca.gateway.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">The gateway platform's Chain Authority; issues assertions for its workloads.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">WikiRAS</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://ras.wiki.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the wiki upstream.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">WikiAPI</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>https://api.wiki.example/</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Upstream protected resource behind WikiRAS.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>chain_id</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>01K5D3W8YAZE6QNMB2TVXH94RC</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+          </tr>
+          <tr>
+            <td class="text-left" rowspan="1" colspan="1">Subject</td>
+            <td class="text-left" rowspan="1" colspan="1">
+              <code>alice-wiki-subject</code>
+</td>
+            <td class="text-left" rowspan="1" colspan="1">Alice's pairwise subject at WikiRAS.</td>
+          </tr>
+        </tbody>
+      </table>
+<p id="appendix-D-4">At a glance, the message flow is:<a href="#appendix-D-4" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-D-5">
 <pre>
 Alice authenticates in agent-app.
 
@@ -3967,9 +4107,9 @@ IdP -&gt; Gateway:         (9) ID-JAG(WikiRAS) + chain_id
 Gateway -&gt; WikiRAS:     (10) ID-JAG
 WikiRAS -&gt; Gateway:     (11) wiki access token
 Gateway -&gt; WikiAPI:     (12) tool call executes
-</pre><a href="#appendix-D-4" class="pilcrow">¶</a>
+</pre><a href="#appendix-D-5" class="pilcrow">¶</a>
 </div>
-<p id="appendix-D-5">The subsections below detail each step.<a href="#appendix-D-5" class="pilcrow">¶</a></p>
+<p id="appendix-D-6">The subsections below detail each step.<a href="#appendix-D-6" class="pilcrow">¶</a></p>
 <div id="root-exchange-the-runtime-establishes-the-chain">
 <section id="appendix-D.1">
         <h3 id="name-root-exchange-the-runtime-e">
