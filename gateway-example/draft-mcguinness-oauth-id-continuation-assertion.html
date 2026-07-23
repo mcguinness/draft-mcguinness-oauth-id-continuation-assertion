@@ -3300,10 +3300,14 @@ group feedback favor it.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
       <h2 id="name-worked-example-same-idp">
 <a href="#appendix-B" class="section-number selfRef">Appendix B. </a><a href="#name-worked-example-same-idp" class="section-name selfRef">Worked Example (Same-IdP)</a>
       </h2>
-<p id="appendix-B-1">This appendix is non-normative. It walks the canonical flow of <a href="#flow" class="auto internal xref">Section 8</a>
-end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
-ExpenseService, the workload handling that request, calls TravelSaaS, whose
-TravelService must call TravelAPI to finish the request. All parties trust one
+<p id="appendix-B-1">This appendix is non-normative. This and the following appendices cover the
+three deployment shapes this profile serves: interactive SaaS-to-SaaS
+chaining (this appendix), an unattended background agent
+(<a href="#example-background" class="auto internal xref">Appendix C</a>), and a gateway topology with dynamically determined
+upstream audiences (<a href="#example-gateway" class="auto internal xref">Appendix D</a>). This appendix walks the canonical
+flow of <a href="#flow" class="auto internal xref">Section 8</a> end-to-end for a single user: ExpenseApp invokes
+ExpenseSaaS, and ExpenseService, the workload handling that request, calls
+TravelSaaS, whose TravelService must call TravelAPI to finish the request. All parties trust one
 enterprise IdP at <code>https://idp.example/</code>.
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in

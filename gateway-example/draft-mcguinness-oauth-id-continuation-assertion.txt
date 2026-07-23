@@ -1712,8 +1712,12 @@ A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
 
 Appendix B.  Worked Example (Same-IdP)
 
-   This appendix is non-normative.  It walks the canonical flow of
-   Section 8 end-to-end for a single user: ExpenseApp invokes
+   This appendix is non-normative.  This and the following appendices
+   cover the three deployment shapes this profile serves: interactive
+   SaaS-to-SaaS chaining (this appendix), an unattended background agent
+   (Appendix C), and a gateway topology with dynamically determined
+   upstream audiences (Appendix D).  This appendix walks the canonical
+   flow of Section 8 end-to-end for a single user: ExpenseApp invokes
    ExpenseSaaS, and ExpenseService, the workload handling that request,
    calls TravelSaaS, whose TravelService must call TravelAPI to finish
    the request.  All parties trust one enterprise IdP at
