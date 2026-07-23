@@ -1469,10 +1469,14 @@ group feedback favor it.
 
 # Worked Example (Same-IdP) {#example}
 
-This appendix is non-normative. It walks the canonical flow of {{flow}}
-end-to-end for a single user: ExpenseApp invokes ExpenseSaaS, and
-ExpenseService, the workload handling that request, calls TravelSaaS, whose
-TravelService must call TravelAPI to finish the request. All parties trust one
+This appendix is non-normative. This and the following appendices cover the
+three deployment shapes this profile serves: interactive SaaS-to-SaaS
+chaining (this appendix), an unattended background agent
+({{example-background}}), and a gateway topology with dynamically determined
+upstream audiences ({{example-gateway}}). This appendix walks the canonical
+flow of {{flow}} end-to-end for a single user: ExpenseApp invokes
+ExpenseSaaS, and ExpenseService, the workload handling that request, calls
+TravelSaaS, whose TravelService must call TravelAPI to finish the request. All parties trust one
 enterprise IdP at `https://idp.example/`.
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in
@@ -1809,11 +1813,18 @@ work is that the platform stores only the non-bearer `chain_id`; no refresh
 token or other user credential is vaulted, and run-time authority comes from a
 fresh, sender-constrained assertion evaluated against the root-chain envelope.
 
-The participants: the user Alice; an agent platform at
-`https://platform.example/` operating the workload `briefing-agent` and its
-own Chain Authority `https://ca.platform.example/`; the IdP
-`https://idp.example/`; and a calendar service behind
-`https://ras.calendar.example/` and `https://api.calendar.example/`.
+The participants and values used throughout:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| User | (none) | The human, Alice; present at setup, absent at every run. |
+| IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
+| BriefingAgent | `briefing-agent` | Agent platform workload that runs the scheduled task. |
+| Chain Authority | `https://ca.platform.example/` | The platform's Chain Authority; issues assertions for its workloads. |
+| CalendarRAS | `https://ras.calendar.example/` | Resource Authorization Server for the calendar service. |
+| CalendarAPI | `https://api.calendar.example/` | Protected resource behind CalendarRAS. |
+| `chain_id` | `01K2Q9RS7VW3XM5TZC8HB4DFEG` | Root-delegation correlation handle. |
+| Subject | `alice-calendar-subject` | Alice's pairwise subject at CalendarRAS. |
 
 ## Setup (Alice Present)
 
@@ -1956,6 +1967,203 @@ lose it at the next run. Either failure is per-request (`invalid_target`,
 `invalid_scope`), and the chain remains continuable for authorized targets,
 in contrast to `invalid_grant`, which reports the chain itself no longer
 continuable ({{validation}}).
+
+# Gateway Example (Dynamic Upstream Audiences) {#example-gateway}
+
+This appendix is non-normative. It applies the continuation machinery to a
+gateway or proxy topology, common in AI tool-calling deployments: the runtime
+that starts the user's session routes tool calls through a gateway that
+aggregates upstream services, each protected by its own Resource
+Authorization Server trusting the same IdP. The defining tension is that the
+session runtime cannot know which upstream a given tool call will require,
+while the gateway, which does know, holds no end-user credential addressed to
+it. Neither party can be given the other's power without harm: the runtime
+must not mint arbitrary cross-domain grants, and the gateway must not present
+an identity assertion whose audience it is not.
+
+The participants and values used throughout:
+
+| Name | Value | Description |
+|------|-------|-------------|
+| User | (none) | The human, Alice; her session runs in AgentApp. |
+| IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
+| AgentApp | `agent-app` | Confidential agent runtime; hosts Alice's session and roots the chain. |
+| Gateway | `tool-gateway` | Tool gateway workload; continues the chain per tool call. |
+| GatewayRAS | `https://ras.gateway.example/` | Resource Authorization Server protecting the gateway. |
+| Chain Authority | `https://ca.gateway.example/` | The gateway platform's Chain Authority; issues assertions for its workloads. |
+| WikiRAS | `https://ras.wiki.example/` | Resource Authorization Server for the wiki upstream. |
+| WikiAPI | `https://api.wiki.example/` | Upstream protected resource behind WikiRAS. |
+| `chain_id` | `01K5D3W8YAZE6QNMB2TVXH94RC` | Root-delegation correlation handle. |
+| Subject | `alice-wiki-subject` | Alice's pairwise subject at WikiRAS. |
+
+At a glance, the message flow is:
+
+~~~
+Alice authenticates in agent-app.
+
+AgentApp -> IdP:        (1) direct exchange: Alice's ID Token
+IdP -> AgentApp:        (2) ID-JAG(GatewayRAS) + chain_id
+AgentApp -> GatewayRAS: (3) ID-JAG
+GatewayRAS -> AgentApp: (4) gateway access token
+AgentApp -> Gateway:    (5) tool call + Chain-Id header
+
+Gateway resolves the tool call to the wiki upstream.
+
+Gateway -> CA:          (6) request assertion for chain_id
+CA -> Gateway:          (7) Identity Continuation Assertion
+Gateway -> IdP:         (8) chained exchange (assertion + DPoP)
+IdP -> Gateway:         (9) ID-JAG(WikiRAS) + chain_id
+Gateway -> WikiRAS:     (10) ID-JAG
+WikiRAS -> Gateway:     (11) wiki access token
+Gateway -> WikiAPI:     (12) tool call executes
+~~~
+
+The subsections below detail each step.
+
+## Root Exchange: the Runtime Establishes the Chain
+
+Alice authenticates in `agent-app`, a confidential client whose `client_id`
+is the audience of her identity assertion, so `agent-app` performs the
+ordinary direct exchange of {{token-exchange}} for the one audience it does
+know: the gateway (`audience=https://ras.gateway.example/`) (steps 1 and 2).
+Because tool routing is dynamic, the IdP records the envelope with the
+policy-reference authorization basis ({{validation}}, rule 14), referencing
+Alice's standing consent and tenant policy, with `agent-app` as the
+authenticated root actor. Enterprise policy registers `tool-gateway` as an
+actor permitted to continue chains rooted this way ({{validation}}, rule 10).
+The response returns `chain_id` `01K5D3W8YAZE6QNMB2TVXH94RC`.
+
+`agent-app` exchanges its gateway ID-JAG at `ras.gateway.example` for an
+access token (steps 3 and 4) and invokes the gateway, conveying the chain
+reference with the request per the HTTP binding ({{context-binding}})
+(step 5):
+
+~~~
+Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
+~~~
+
+## Chained Exchange: the Gateway Continues
+
+A tool call in Alice's session requires the wiki service. Only the gateway
+knows this routing. `tool-gateway` requests an Identity Continuation
+Assertion from `https://ca.gateway.example/`, proving control of its key so
+the Chain Authority can bind `cnf` to it ({{assertion-issuance}}) (steps 6
+and 7):
+
+~~~ json
+{
+  "iss": "https://ca.gateway.example/",
+  "aud": "https://idp.example/",
+  "chain_id": "01K5D3W8YAZE6QNMB2TVXH94RC",
+
+  "act": {
+    "iss": "https://gateway.example/",
+    "sub": "tool-gateway"
+  },
+
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+
+  "iat": 1713000390,
+  "exp": 1713000690,
+  "jti": "continuation-assertion-03"
+}
+~~~
+
+`tool-gateway` presents the assertion to the IdP as the `subject_token`,
+DPoP-bound to its key (step 8):
+
+~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the tool-gateway key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.wiki.example/
+resource=https://api.wiki.example/
+scope=wiki.read
+subject_token=<identity-continuation-assertion>
+subject_token_type=<identity-continuation-token-type>
+actor_token=<sender-constrained tool-gateway credential>
+actor_token_type=urn:ietf:params:oauth:token-type:jwt
+~~~
+
+The `subject_token_type` value above is
+`urn:ietf:params:oauth:token-type:identity-continuation`. The IdP verifies
+that `tool-gateway` is a permitted continuer, that the DPoP key matches both
+the assertion's `cnf.jkt` and the actor token's confirmation, and evaluates
+the policy reference now: wiki read access is within Alice's standing
+consent, and tenant policy permits the gateway to reach it. It resolves
+Alice's wiki-local subject and mints (step 9):
+
+~~~ json
+{
+  "iss": "https://idp.example/",
+  "aud": "https://ras.wiki.example/",
+  "sub": "alice-wiki-subject",
+
+  "client_id": "tool-gateway",
+  "resource": "https://api.wiki.example/",
+  "scope": "wiki.read",
+
+  "auth_time": 1713000000,
+  "acr": "urn:example:loa:2",
+  "amr": ["pwd", "mfa"],
+
+  "act": {
+    "iss": "https://gateway.example/",
+    "sub": "tool-gateway",
+    "act": {
+      "iss": "https://agent.example/",
+      "sub": "agent-app"
+    }
+  },
+
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+
+  "iat": 1713000400,
+  "exp": 1713000700,
+  "jti": "idjag-wiki-01"
+}
+~~~
+
+The gateway exchanges this at `ras.wiki.example` for an access token and
+calls the wiki API (steps 10 through 12). A different tool call tomorrow
+reaches a different upstream through the same machinery: a fresh assertion, a
+fresh continuation-time policy decision, no new consent ceremony, and the
+same denial behavior as {{example-dynamic}} for targets or scopes outside
+Alice's standing consent.
+
+## Points Worth Noticing
+
+The identity assertion's audience check is never weakened. Alice's assertion
+is presented exactly once, by the client that is its audience. The gateway
+never presents it; the gateway's authority is a continuation assertion bound
+to the gateway's own key, evaluated against the envelope. Strict audience
+validation for identity assertions and a working proxy topology coexist.
+
+The upstream Resource Authorization Server consumes an ordinary ID-JAG whose
+`act` chain states precisely what a proxy topology needs stated: this
+gateway, acting for a delegation rooted by this runtime for this user, for
+this audience and scope, under a policy decision made at continuation time.
+The lineage is authenticated by the IdP, not reported by the gateway
+({{onward-id-jag}}).
+
+Neither party ever holds the other's power. The runtime performed one
+exchange for one audience it already knew; the gateway can request only what
+the envelope's policy reference permits, per target, per hop, revocable at
+the IdP ({{lifecycle}}).
+
+This example assumes a confidential runtime. Where the session runtime is a
+public client, the continuation flow after root establishment is unchanged,
+but bootstrapping the root exchange from a public client raises
+considerations in the underlying ID-JAG profile, which recommends Token
+Exchange for confidential clients, and is not addressed here.
 
 # Acknowledgments
 {:numbered="false"}
