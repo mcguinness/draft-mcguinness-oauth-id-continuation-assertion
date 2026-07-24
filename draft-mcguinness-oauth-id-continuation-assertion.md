@@ -2176,3 +2176,12 @@ Exchange for confidential clients, and is not addressed here.
 The author thanks the authors of OAuth Identity and Authorization Chaining
 Across Domains and the Identity Assertion JWT Authorization Grant, on whose work
 this profile builds.
+
+# Document History
+{:numbered="false"}
+
+\[\[ To be removed from the final specification ]]
+
+-00
+
+* Initial revision
