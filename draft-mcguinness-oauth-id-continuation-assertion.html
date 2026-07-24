@@ -1678,7 +1678,7 @@ continue the chain, and the basis on which that permission was
 established (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>);<a href="#section-2-3.26.2.4.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-2-3.26.2.5">
-              <p id="section-2-3.26.2.5.1">the maximum actor-chain depth; and<a href="#section-2-3.26.2.5.1" class="pilcrow">¶</a></p>
+              <p id="section-2-3.26.2.5.1">any maximum actor-chain depth set by policy; and<a href="#section-2-3.26.2.5.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-2-3.26.2.6">
               <p id="section-2-3.26.2.6.1">the chain's expiry.<a href="#section-2-3.26.2.6.1" class="pilcrow">¶</a></p>
@@ -2144,7 +2144,7 @@ Access tokens already issued by a Resource Authorization Server remain valid
 for their own lifetimes and are governed by that server's revocation
 mechanisms.<a href="#section-6-4" class="pilcrow">¶</a></p>
 <p id="section-6-5">Revocation is a control-plane capability, but the delegation belongs to the
-user. The IdP <span class="bcp14">SHOULD</span> make active chains visible and revocable through user-
+user. IdPs are encouraged to make active chains visible and revocable through user-
 and administrator-facing management interfaces, presenting the root context,
 the chain's hop graph and actor lineage, the targets granted so far, and the
 chain's expiry. Grant Management for OAuth 2.0 <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> provides a
@@ -2197,7 +2197,7 @@ reject a request carrying any other value as malformed (<span>[<a href="#RFC6749
 <code>invalid_request</code>). Future specifications may define richer values to
 negotiate chain properties.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">The chain's properties are not negotiated in this profile. The authorization
-basis and its form, the continuation authorization, the maximum actor-chain
+basis and its form, the continuation authorization, any maximum actor-chain
 depth, and the chain's lifetime are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
 envelope. The IdP <span class="bcp14">MUST NOT</span> establish a chain if the parameter is absent.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
@@ -2424,7 +2424,7 @@ the root-chain envelope: the user, the authentication context
 (<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorization basis (enumerated target
 entries or a policy reference evaluated at continuation time), the
 continuation authorization (here, designated TravelSaaS and BookingSaaS
-workloads), the maximum actor-chain depth, the expiry, and the root hop
+workloads), any maximum actor-chain depth, the expiry, and the root hop
 with its authenticated actor (<code>expense-app</code>). <code>continuation_handle</code> is not a claim
 inside the ExpenseRAS ID-JAG.<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
 </li>
@@ -2518,7 +2518,8 @@ configured allowlist (the <code>none</code> algorithm <span class="bcp14">MUST</
 </li>
         <li id="section-9-2.7">
           <p id="section-9-2.7.1"><code>continuation_handle</code> identifies a known, active continuation handle of an unexpired,
-unrevoked chain, on a branch with remaining actor-chain depth;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
+unrevoked chain, on a branch within any actor-chain depth bound set by
+policy;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.8">
           <p id="section-9-2.8.1">the assertion does not contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or
@@ -2540,7 +2541,7 @@ and<a href="#section-9-2.9.2.2.1" class="pilcrow">¶</a></p>
             <li class="normal" id="section-9-2.9.2.3">
               <p id="section-9-2.9.2.3.1">yields a composed actor chain (the presented hop's lineage plus any
 asserted intra-domain segment, per <a href="#onward-id-jag" class="auto internal xref">Section 10</a>) that is
-acceptable and within max-depth policy;<a href="#section-9-2.9.2.3.1" class="pilcrow">¶</a></p>
+acceptable and within any max-depth policy;<a href="#section-9-2.9.2.3.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </li>
@@ -2609,12 +2610,12 @@ the current actor;<a href="#section-9-2.14.2.3.1" class="pilcrow">¶</a></p>
       </ol>
 <p id="section-9-3">After all other validation succeeds, the IdP <span class="bcp14">MUST</span> atomically check and record
 the tuple (<code>iss</code>, <code>jti</code>) as consumed as part of issuing the onward grant. At
-most one concurrent exchange using the same tuple may succeed. An
-implementation <span class="bcp14">MUST NOT</span> permanently consume the tuple solely because a
-request failed validation before grant issuance; if it reserves a tuple
-before completing issuance, it <span class="bcp14">MUST</span> release the reservation after failure or
-expire it promptly. The IdP <span class="bcp14">MUST</span> retain a successfully consumed tuple until
-at least the assertion's <code>exp</code>, allowing for its permitted clock skew.<a href="#section-9-3" class="pilcrow">¶</a></p>
+most one concurrent exchange using the same tuple may succeed, and the IdP
+<span class="bcp14">MUST</span> retain a successfully consumed tuple until at least the assertion's
+<code>exp</code>, allowing for its permitted clock skew. A request that fails validation
+before grant issuance does not consume the tuple; how an implementation
+ensures this (for example, by releasing reservations on failure) is an
+implementation detail.<a href="#section-9-3" class="pilcrow">¶</a></p>
 <p id="section-9-4">These requirements imply per-chain state and, within the assertion validity
 window, strongly consistent replay state at the IdP; the 300-second lifetime
 bounds the retention window.<a href="#section-9-4" class="pilcrow">¶</a></p>
@@ -2913,7 +2914,7 @@ a transaction from actor lineage and timing alone, regardless of how
 <code>continuation_handle</code> is handled. Deployments requiring unlinkability across audiences
 must weigh the audit value of deep actor lineage against this correlation
 channel and <span class="bcp14">MAY</span> limit the nested lineage exposed to each audience, subject to
-their audit requirements. Deployments <span class="bcp14">MUST</span> limit disclosure of <code>continuation_handle</code> to
+their audit requirements. Deployments <span class="bcp14">SHOULD</span> limit disclosure of <code>continuation_handle</code> to
 participants that require it to continue or administer the chain.<a href="#section-12-2" class="pilcrow">¶</a></p>
 <p id="section-12-3"><code>continuation_handle</code> <span class="bcp14">MUST NOT</span> contain user-identifying information and <span class="bcp14">MUST</span> carry at least
 128 bits of entropy (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2), so that possession of a <code>continuation_handle</code>
