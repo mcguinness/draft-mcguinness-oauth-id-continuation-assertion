@@ -413,7 +413,10 @@ The claims have the following meanings and requirements:
   REQUIRED `iss` and a REQUIRED `sub`, both non-empty strings. Additional
   members MAY carry further identity attributes of the actor; a recipient
   MUST ignore members it does not understand, and the members `exp`, `nbf`,
-  `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present. The IdP MUST
+  `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present. Additional
+  members are non-authoritative: the IdP MUST NOT use them for identity
+  comparison, continuation authorization, lineage construction, or grant
+  issuance. The IdP MUST
   reject an assertion whose `act` does not conform to this schema. The
   assertion names no other actor: all lineage is constructed by the IdP
   ({{onward-id-jag}}), and nested `act` values are reserved for a future
@@ -1100,19 +1103,19 @@ audience and resource pair, `invalid_scope` for a scope, and
 value, in each case one not permitted by the authorization basis or by IdP
 policy for the current actor (rule 14).
 
-The IdP SHOULD use `invalid_grant` when the presented `continuation_handle`
-is unknown, expired, revoked, or otherwise not continuable (rule 7). This is
-a deliberate, profile-specific deviation from Section 2.2.2 of {{RFC8693}},
-which would direct `invalid_request` for an unacceptable `subject_token`:
-the assertion may be entirely valid while the presented hop is not
-continuable, and the semantics of `invalid_grant` (an expired or revoked
-grant) match the condition. Retrying with the same handle cannot succeed;
-continuing requires a handle on a live branch or a new root delegation,
-which typically requires the user. `invalid_target`, `invalid_scope`, and
-`invalid_authorization_details` instead signal that this particular request
-falls outside the chain's authority while the chain may remain continuable.
-This distinction lets an unattended client decide between escalating for
-re-authorization and abandoning only the current request.
+A presented `continuation_handle` that is unknown, expired, revoked, or
+otherwise not continuable (rule 7) makes the `subject_token` unacceptable,
+and the IdP returns `invalid_request` as Section 2.2.2 of {{RFC8693}}
+requires. Retrying with the same handle cannot succeed; continuing requires
+a handle on a live branch or a new root delegation, which typically requires
+the user. `invalid_target`, `invalid_scope`, and
+`invalid_authorization_details` signal instead that this particular request
+falls outside the chain's authority while the chain remains continuable, so
+an unattended client can abandon only the current request. Because
+`invalid_request` also covers malformed requests, the error code alone does
+not distinguish a dead hop from a protocol error; a continuation-specific
+error code that would restore that distinction is an open item
+({{open-items}}).
 
 # Onward ID-JAG {#onward-id-jag}
 
@@ -2151,8 +2154,9 @@ for any onward hops within the run; sibling runs are independent branches of
 the chain.
 
 The chain fails closed. When Alice's authorization is revoked or `chain_exp`
-passes, the next exchange returns `invalid_grant` ({{validation}}): the
-signal to seek re-authorization from Alice rather than retry. `chain_exp`
+passes, the next exchange fails validation ({{validation}}, rule 7) and
+cannot succeed by retrying: the platform's signal to seek re-authorization
+from Alice. `chain_exp`
 lets the platform anticipate expiry and prompt her before the task silently
 stops, and, where the IdP
 provides the management interfaces encouraged by {{lifecycle}}, the chain is
@@ -2195,8 +2199,8 @@ policy in force when the chain was established. If the tenant later broadens
 policy, existing chains do not gain the new authority; if it narrows, they
 lose it at the next run. Both failures are per-request (`invalid_target`,
 `invalid_scope`), and the chain remains continuable for authorized targets,
-in contrast to `invalid_grant`, which reports that the chain itself is no
-longer continuable ({{validation}}).
+in contrast to a dead chain, which fails every request
+({{validation}}, rule 7).
 
 # Gateway Example (Dynamic Upstream Audiences) {#example-gateway}
 
@@ -2475,6 +2479,13 @@ is welcome.
    of an IdP's accepted actor-token profile (types, issuers, proof
    methods) should be advertised in its metadata ({{metadata}}) rather
    than learned out of band?
+
+8. **A continuation-specific error code.** A dead hop ({{validation}},
+   rule 7) returns `invalid_request` per Section 2.2.2 of {{RFC8693}}, the
+   same code as a malformed request, so an unattended client cannot
+   distinguish "seek re-authorization" from "fix the request" by the code
+   alone. Should this profile register a continuation-specific error code
+   (for example, `invalid_continuation`) to restore that signal?
 
 # Acknowledgments
 {:numbered="false"}
