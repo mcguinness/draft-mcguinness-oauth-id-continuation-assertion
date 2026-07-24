@@ -1232,7 +1232,7 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             <p id="section-toc.1-1.5.1"><a href="#section-5" class="auto internal xref">5</a>.  <a href="#name-chain-identifier-chain_id" class="internal xref">Chain Identifier (<code>chain_id</code>)</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1">
-                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-per-audience-chain-referenc" class="internal xref">Per-Audience Chain References</a></p>
+                <p id="section-toc.1-1.5.2.1.1"><a href="#section-5.1" class="auto internal xref">5.1</a>.  <a href="#name-handle-freshness-and-unlink" class="internal xref">Handle Freshness and Unlinkability</a></p>
 </li>
             </ul>
 </li>
@@ -1246,16 +1246,22 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                 <p id="section-toc.1-1.7.2.1.1"><a href="#section-7.1" class="auto internal xref">7.1</a>.  <a href="#name-direct-id-jag-request" class="internal xref">Direct ID-JAG Request</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.2">
-                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-chained-id-jag-request" class="internal xref">Chained ID-JAG Request</a></p>
+                <p id="section-toc.1-1.7.2.2.1"><a href="#section-7.2" class="auto internal xref">7.2</a>.  <a href="#name-establishing-a-chain" class="internal xref">Establishing a Chain</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.3">
-                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-sender-constrained-presenta" class="internal xref">Sender-Constrained Presentation</a></p>
+                <p id="section-toc.1-1.7.2.3.1"><a href="#section-7.3" class="auto internal xref">7.3</a>.  <a href="#name-chained-id-jag-request" class="internal xref">Chained ID-JAG Request</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.4">
-                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-the-chain_id-response-param" class="internal xref">The <code>chain_id</code> Response Parameter</a></p>
+                <p id="section-toc.1-1.7.2.4.1"><a href="#section-7.4" class="auto internal xref">7.4</a>.  <a href="#name-sender-constrained-presenta" class="internal xref">Sender-Constrained Presentation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.5">
-                <p id="section-toc.1-1.7.2.5.1"><a href="#section-7.5" class="auto internal xref">7.5</a>.  <a href="#name-authorization-server-metada" class="internal xref">Authorization Server Metadata</a></p>
+                <p id="section-toc.1-1.7.2.5.1"><a href="#section-7.5" class="auto internal xref">7.5</a>.  <a href="#name-client-identity-and-authent" class="internal xref">Client Identity and Authentication</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.6">
+                <p id="section-toc.1-1.7.2.6.1"><a href="#section-7.6" class="auto internal xref">7.6</a>.  <a href="#name-the-chain_id-response-param" class="internal xref">The <code>chain_id</code> Response Parameter</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.7.2.7">
+                <p id="section-toc.1-1.7.2.7.1"><a href="#section-7.7" class="auto internal xref">7.7</a>.  <a href="#name-authorization-server-metada" class="internal xref">Authorization Server Metadata</a></p>
 </li>
             </ul>
 </li>
@@ -1374,9 +1380,6 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.6">
                 <p id="section-toc.1-1.16.2.6.1"><a href="#appendix-B.6" class="auto internal xref">B.6</a>.  <a href="#name-third-hop-with-an-intra-dom" class="internal xref">Third Hop with an Intra-Domain Segment</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.16.2.7">
-                <p id="section-toc.1-1.16.2.7.1"><a href="#appendix-B.7" class="auto internal xref">B.7</a>.  <a href="#name-variant-mutual-tls-proof-of" class="internal xref">Variant: Mutual-TLS Proof of Possession</a></p>
 </li>
             </ul>
 </li>
@@ -1581,7 +1584,10 @@ authorization grant and issues access tokens for its API.<a href="#section-2-3.6
         <dd style="margin-left: 1.5em" id="section-2-3.8">
           <p id="section-2-3.8.1">The service that hosts a protected API and consumes the access tokens issued
 by its Resource Authorization Server. A Resource Server never consumes an
-Identity Continuation Assertion or a <code>chain_id</code>.<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+Identity Continuation Assertion, no token it consumes carries a <code>chain_id</code>,
+and its authorization decisions never depend on one. A workload co-located
+with a Resource Server <span class="bcp14">MAY</span> receive a <code>chain_id</code> as control-plane context
+accompanying a request (<a href="#context-binding" class="auto internal xref">Section 4.6</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.9">ID-JAG:</dt>
@@ -1629,37 +1635,47 @@ out of scope for this document.<a href="#section-2-3.18.1" class="pilcrow">¶</a
         <dd class="break"></dd>
 <dt id="section-2-3.19">Chain Identifier (<code>chain_id</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.20">
-          <p id="section-2-3.20.1">An opaque, unguessable, IdP-generated identifier for the root delegation
-context; see <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.20.1">An opaque, unguessable, IdP-generated continuation handle referencing one
+hop of a delegation chain; see <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.21">Root-chain envelope:</dt>
+<dt id="section-2-3.21">Hop:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.22">
-          <p id="section-2-3.22.1">The set of constraints the IdP records when it establishes a chain at root
-issuance and evaluates every continuation against: the authenticated user,
-the authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>), the authorization
-basis for onward targets, the maximum actor-chain depth, and the chain's
-expiry. The authorization basis takes one of two forms. In <em>enumerated</em>
-form it is a set of target entries, each binding one audience and resource
-to the scopes that may be requested for that target. In <em>policy-reference</em>
-form it is a reference to the user's standing consent and tenant policy,
-which the IdP evaluates at continuation time to decide whether a requested
-target and scope are authorized for this user and chain; this form supports
-dynamic fan-out, in which onward targets are not enumerable at root
-issuance. Policy-reference evaluation is bounded by the consent and policy
-in force when the chain was established: changes after root issuance <span class="bcp14">MAY</span>
-narrow, but <span class="bcp14">MUST NOT</span> broaden, what a continuation can obtain. In both forms
-the envelope is derived from the user's
-authentication and consent and from IdP policy, and a continuation cannot
-obtain a target or scope that the authorization basis does not permit at
-the time of the request. See <a href="#validation" class="auto internal xref">Section 9</a> and <a href="#lifecycle" class="auto internal xref">Section 6</a>.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.22.1">One continuation point in a chain: the root delegation context, or a
+successful continuation recorded with an immutable reference to its parent
+hop. A chain's hops form a tree, and a hop's lineage is the path from that
+hop to the root.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.23">Audience-local (pairwise) subject:</dt>
+<dt id="section-2-3.23">Root-chain envelope:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">The subject identifier under which a particular RAS names the user. Distinct
+          <p id="section-2-3.24.1">The state the IdP records when it establishes a chain and evaluates every
+continuation against: the authenticated user, the authentication context
+(<code>auth_time</code>, <code>acr</code>, <code>amr</code>), the authorization basis for onward targets,
+the continuation authorization, the maximum actor-chain depth, and the
+chain's expiry. The authorization basis takes one of two forms. In
+<em>enumerated</em> form it is a set of target entries, each binding one audience
+and resource to the scopes, and optionally the authorization details
+<span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, that may be requested for that target. In <em>policy-reference</em>
+form it is a reference to the user's standing consent and tenant policy,
+which the IdP evaluates at continuation time; this form supports dynamic
+fan-out, in which onward targets are not enumerable at root issuance.
+Policy-reference evaluation is bounded by the consent and policy in force
+when the chain was established: the IdP records that ceiling (for example,
+a policy version or an evaluated maximal grant) as part of the envelope,
+and later changes <span class="bcp14">MAY</span> narrow, but <span class="bcp14">MUST NOT</span> broaden, what a continuation can
+obtain. The continuation authorization names the actors or trust domains
+permitted to continue the chain and the basis on which that permission was
+established (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). In both forms the envelope is derived
+from the user's authentication and consent and from IdP policy. See
+<a href="#validation" class="auto internal xref">Section 9</a> and <a href="#lifecycle" class="auto internal xref">Section 6</a>.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.25">Audience-local (pairwise) subject:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.26">
+          <p id="section-2-3.26.1">The subject identifier under which a particular RAS names the user. Distinct
 Resource Authorization Servers <span class="bcp14">MAY</span> name the same user with different
-identifiers; only the IdP holds the map between them.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+identifiers; only the IdP holds the map between them.<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
 </dl>
@@ -1728,7 +1744,7 @@ claim set:<a href="#section-4.2-1" class="pilcrow">¶</a></p>
 {
   "iss": "https://ca.travel.example/",
   "aud": "https://idp.example/",
-  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+  "chain_id": "kW4uJ8pTe2NxA6rQvD1zYs",
 
   "act": {
     "iss": "https://travel.example/",
@@ -1767,8 +1783,9 @@ identifier. A token endpoint URL that differs from the issuer identifier <span c
 <dt id="section-4.2-4.5">
 <code>chain_id</code>:</dt>
           <dd style="margin-left: 1.5em" id="section-4.2-4.6">
-            <p id="section-4.2-4.6.1"><span class="bcp14">REQUIRED</span>. The authoritative binding to the root delegation and user. The IdP
-resolves the user, and the target-audience subject, from it. See <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-4.6.1" class="pilcrow">¶</a></p>
+            <p id="section-4.2-4.6.1"><span class="bcp14">REQUIRED</span>. The continuation handle being continued. It binds the request to a
+specific hop of a chain: the IdP resolves the chain, the parent hop, the
+user, and the target-audience subject from it. See <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-4.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-4.2-4.7">
@@ -1797,14 +1814,14 @@ control plane rather than be embedded in tokens a Resource Server consumes
 <code>cnf</code>:</dt>
           <dd style="margin-left: 1.5em" id="section-4.2-4.10">
             <p id="section-4.2-4.10.1"><span class="bcp14">REQUIRED</span>. A confirmation claim <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> that binds the assertion to the
-key of the actor that will present it to the IdP. <code>cnf</code> <span class="bcp14">MUST</span> contain a key
-confirmation method: <code>jkt</code>, the JWK SHA-256 thumbprint <span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span> of that
-key when Demonstrating Proof of Possession (DPoP) <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> is used, or
-<code>x5t#S256</code>, the certificate thumbprint when mutual-TLS client authentication
-is used. The presenting actor demonstrates live possession of the confirmed
-key on the Token Exchange request, and the Chain Authority binds the
-assertion to it at issuance. The proof-of-possession model is specified in
-<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>.<a href="#section-4.2-4.10.1" class="pilcrow">¶</a></p>
+key of the actor that will present it to the IdP. <code>cnf</code> <span class="bcp14">MUST</span> contain exactly
+one confirmation method: <code>jkt</code>, the JWK SHA-256 thumbprint <span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span> of
+the key whose possession the actor demonstrates with Demonstrating Proof of
+Possession (DPoP) <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>. The presenting actor demonstrates live
+possession of the confirmed key on the Token Exchange request, and the
+Chain Authority binds the assertion to it at issuance. The
+proof-of-possession model is specified in
+<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>.<a href="#section-4.2-4.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-4.2-4.11">
@@ -1879,7 +1896,7 @@ is <span class="bcp14">NOT RECOMMENDED</span> unless the Chain Authority has an 
 relationship with those actors and their keys. An assertion whose <code>cnf</code> is not
 bound to the requesting actor's key is not presentable because the IdP
 requires live proof of possession of the confirmed key
-(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>).<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>).<a href="#section-4.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="context-provenance">
@@ -1935,7 +1952,7 @@ when they convey chain context over HTTP: the <code>Chain-Id</code> request head
 (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2) confines it to characters valid in an HTTP field value.<a href="#section-4.6-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-4.6-2">
 <pre>
-Chain-Id: 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
+Chain-Id: Yw5pD8kFq3RtN6vBx1LzHe
 </pre><a href="#section-4.6-2" class="pilcrow">¶</a>
 </div>
 <p id="section-4.6-3">A sender <span class="bcp14">MUST</span> transmit this field only over a channel that satisfies
@@ -1963,11 +1980,18 @@ cross under its own audience rules (<a href="#rationale-txn" class="auto interna
       <h2 id="name-chain-identifier-chain_id">
 <a href="#section-5" class="section-number selfRef">5. </a><a href="#name-chain-identifier-chain_id" class="section-name selfRef">Chain Identifier (<code>chain_id</code>)</a>
       </h2>
-<p id="section-5-1">The <code>chain_id</code> identifies the root delegation context established when the IdP
-issued the initial ID-JAG. It is opaque, unguessable, IdP-generated, and used
-by the IdP to correlate a continuation back to that root and to resolve the
-correct per-audience subject.<a href="#section-5-1" class="pilcrow">¶</a></p>
-<p id="section-5-2"><code>chain_id</code> is a non-bearer reference to that delegation context, closer in
+<p id="section-5-1">A <code>chain_id</code> value is a continuation handle: an opaque, unguessable,
+IdP-generated reference to one hop of a delegation chain. The IdP creates the
+root hop when it establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>) and a child hop
+for each successful continuation, each child holding an immutable reference to
+the hop whose handle was presented. A chain is therefore a tree rooted in the
+root delegation context: sibling continuations that present the same handle,
+including concurrently, create sibling hops, and the lineage of any hop is the
+path from that hop to the root, independent of every other branch. The IdP
+resolves the chain, the parent hop, and the correct per-audience subject from
+the presented handle, and derives actor lineage solely by walking parent
+references (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-5-1" class="pilcrow">¶</a></p>
+<p id="section-5-2"><code>chain_id</code> is a non-bearer reference to a hop and its chain, closer in
 spirit to a grant identifier than to a token. It conveys no authority on its
 own, and it is never dereferenced into, or presented in place of, a token: it is
 not a token handle or reference token. Authority at each hop comes from the
@@ -1984,9 +2008,11 @@ below keep it out of the data plane; see also <a href="#privacy" class="auto int
 <p id="section-5-4">The following rules apply:<a href="#section-5-4" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-5-5">
 <li id="section-5-5.1">
-          <p id="section-5-5.1.1">The IdP <span class="bcp14">MUST</span> generate <code>chain_id</code> for delegations that are eligible for
-continuation, and <span class="bcp14">MUST</span> return it as a Token Exchange <em>response</em> parameter
-(<a href="#response-param" class="auto internal xref">Section 7.4</a>).<a href="#section-5-5.1.1" class="pilcrow">¶</a></p>
+          <p id="section-5-5.1.1">The IdP <span class="bcp14">MUST</span> create a chain only when the root Token Exchange requests it
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), and <span class="bcp14">MUST</span> return a fresh continuation handle as a
+Token Exchange <em>response</em> parameter (<a href="#response-param" class="auto internal xref">Section 7.6</a>) for the root hop
+and for each continuation hop. Handle values <span class="bcp14">MUST NOT</span> be reused across
+hops.<a href="#section-5-5.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-5.2">
           <p id="section-5-5.2.1"><code>chain_id</code> <span class="bcp14">MUST</span> contain at least 128 bits of entropy, <span class="bcp14">MUST NOT</span> contain
@@ -2006,35 +2032,37 @@ Resource Server sees only its own subject, audience, scope, and actor chain,
 and nothing that correlates the user across SaaS boundaries.<a href="#section-5-5.4.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-5.5">
-          <p id="section-5-5.5.1">End-to-end audit correlation is performed at the IdP, which holds <code>chain_id</code>
-for every hop. Per-Resource-Server logs use that server's own pairwise
-subject.<a href="#section-5-5.5.1" class="pilcrow">¶</a></p>
+          <p id="section-5-5.5.1">End-to-end audit correlation is performed at the IdP, which holds the hop
+graph for every chain. Per-Resource-Server logs use that server's own
+pairwise subject.<a href="#section-5-5.5.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-5.6">
           <p id="section-5-5.6.1">Resource Authorization Servers, Resource Servers, and Chain Authorities <span class="bcp14">MUST NOT</span> modify <code>chain_id</code>.<a href="#section-5-5.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-5.7">
           <p id="section-5-5.7.1"><code>chain_id</code> alone is not proof of authorization and <span class="bcp14">MUST NOT</span> be treated as a
-bearer credential. The IdP <span class="bcp14">MUST</span> use it only as a lookup handle for
-root-chain state, subject resolution, and policy evaluation.<a href="#section-5-5.7.1" class="pilcrow">¶</a></p>
+bearer credential. The IdP <span class="bcp14">MUST</span> use it only as a lookup handle for the hop,
+its chain state, subject resolution, and policy evaluation.<a href="#section-5-5.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="section-5-5.8">
+          <p id="section-5-5.8.1">A hop's parent reference is immutable. The IdP <span class="bcp14">MUST</span> derive lineage solely
+by walking parent references from the presented hop to the root, and <span class="bcp14">MUST NOT</span> maintain or extend a single chain-wide actor history: concurrent
+sibling continuations are independent branches.<a href="#section-5-5.8.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <div id="chain-id-privacy">
 <section id="section-5.1">
-        <h3 id="name-per-audience-chain-referenc">
-<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-per-audience-chain-referenc" class="section-name selfRef">Per-Audience Chain References</a>
+        <h3 id="name-handle-freshness-and-unlink">
+<a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-handle-freshness-and-unlink" class="section-name selfRef">Handle Freshness and Unlinkability</a>
         </h3>
-<p id="section-5.1-1">A single shared <code>chain_id</code> lets control-plane participants that see it correlate
-their observations of one delegation. Where colluding participants must not be
-able to correlate even "same delegation", the IdP <span class="bcp14">SHOULD</span> instead issue a
-distinct per-audience chain reference that maps internally to a single root
-delegation. Concretely, in this mode the IdP returns a fresh reference in each
-Token Exchange response (<a href="#response-param" class="auto internal xref">Section 7.4</a>); each maps internally to the same
-root delegation, and a continuing party presents the reference it received, so
-no two participants observe the same value. This keeps the IdP's correlation
-ability intact while denying any shared identifier to the participants.
-Deployments whose threat model includes colluding audiences <span class="bcp14">SHOULD</span> adopt this
-mode; see <a href="#privacy" class="auto internal xref">Section 12</a>.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<p id="section-5.1-1">Handles are hop-specific by construction: no two hops share a value (rule 1),
+so audiences and branches do not acquire a shared identifier for the
+delegation. A given handle is still observed by every participant on its
+conveyance path (the party that received it, workloads that propagate it, the
+Chain Authority, and the IdP), so unlinkability holds across hops, not within
+a path, and actor lineage and timing remain correlation channels
+(<a href="#privacy" class="auto internal xref">Section 12</a>). Handles of a revoked chain, or of a hop subtree the IdP has
+revoked (<a href="#lifecycle" class="auto internal xref">Section 6</a>), fail validation rule 7 at the next exchange.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2058,7 +2086,8 @@ unchanged (<a href="#security-assurance" class="auto internal xref">Section 11.3
 <p id="section-6-3">The IdP <span class="bcp14">MUST</span> be able to revoke a chain (for example, when the user's session is
 terminated, the governing refresh token is revoked, or policy otherwise
 withdraws the delegation), and <span class="bcp14">MUST</span> stop honoring continuation for a revoked
-<code>chain_id</code>. Because each onward grant requires a fresh exchange at the IdP,
+chain. An IdP <span class="bcp14">MAY</span> additionally revoke an individual hop's subtree, stopping
+continuation along one branch while the rest of the chain remains continuable. Because each onward grant requires a fresh exchange at the IdP,
 revocation takes effect at the next hop, with no need to reach or invalidate
 chain evidence already held by intermediate services. This is a deliberate
 difference from an offline attenuated delegation token, where a minted child
@@ -2069,7 +2098,7 @@ mechanisms.<a href="#section-6-3" class="pilcrow">¶</a></p>
 <p id="section-6-4">Revocation is a control-plane capability, but the delegation belongs to the
 user. The IdP <span class="bcp14">SHOULD</span> make active chains visible and revocable through user-
 and administrator-facing management interfaces, presenting the root context,
-the chain's authenticated actor history, the targets granted so far, and the
+the chain's hop graph and actor lineage, the targets granted so far, and the
 chain's expiry. Grant Management for OAuth 2.0 <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> provides a
 comparable management model for standing grants.<a href="#section-6-4" class="pilcrow">¶</a></p>
 </section>
@@ -2105,14 +2134,62 @@ actor_token_type=&lt;actor-token-type&gt;
 </div>
 </section>
 </div>
-<div id="chained-id-jag-request">
+<div id="root-establishment">
 <section id="section-7.2">
-        <h3 id="name-chained-id-jag-request">
-<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-chained-id-jag-request" class="section-name selfRef">Chained ID-JAG Request</a>
+        <h3 id="name-establishing-a-chain">
+<a href="#section-7.2" class="section-number selfRef">7.2. </a><a href="#name-establishing-a-chain" class="section-name selfRef">Establishing a Chain</a>
         </h3>
-<p id="section-7.2-1">A chained request, in which the subject token is an Identity Continuation
-Assertion:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-7.2-2">
+<p id="section-7.2-1">A chain exists only if the root Token Exchange requests one. This document
+defines the <code>continuation</code> Token Exchange request parameter: a JSON object
+whose presence in a direct request asks the IdP to establish a chain for the
+delegation being created. Its members, each <span class="bcp14">OPTIONAL</span>, are:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-7.2-2">
+          <dt id="section-7.2-2.1">
+<code>basis</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-2.2">
+            <p id="section-7.2-2.2.1">The requested authorization-basis form: <code>enumerated</code> or <code>policy</code>.<a href="#section-7.2-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.2-2.3">
+<code>lifetime</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-2.4">
+            <p id="section-7.2-2.4.1">The requested maximum chain lifetime, in seconds.<a href="#section-7.2-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.2-2.5">
+<code>max_depth</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-2.6">
+            <p id="section-7.2-2.6.1">The requested maximum actor-chain depth.<a href="#section-7.2-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-7.2-2.7">
+<code>continuers</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-7.2-2.8">
+            <p id="section-7.2-2.8.1">An array of actor or trust-domain identifiers requested as permitted
+continuers.<a href="#section-7.2-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-7.2-3">The IdP decides what to grant, bounded by the user's authentication and
+consent and by policy. It <span class="bcp14">MUST NOT</span> establish a chain if the parameter is
+absent, and where a member is present it <span class="bcp14">MUST NOT</span> grant a longer lifetime,
+greater depth, or broader continuation authorization than requested. What was
+granted is recorded in the root-chain envelope. The response returns the root
+hop's handle in <code>chain_id</code> and the chain's expiry in <code>chain_exp</code>
+(<a href="#response-param" class="auto internal xref">Section 7.6</a>), and <span class="bcp14">MAY</span> echo the granted values in a <code>continuation</code>
+response member. If the IdP cannot establish the requested chain, it <span class="bcp14">MAY</span> still
+issue the requested grant without one; the absence of <code>chain_id</code> in the
+response tells the client that no chain exists.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="chained-id-jag-request">
+<section id="section-7.3">
+        <h3 id="name-chained-id-jag-request">
+<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-chained-id-jag-request" class="section-name selfRef">Chained ID-JAG Request</a>
+        </h3>
+<p id="section-7.3-1">A chained request, in which the subject token is an Identity Continuation
+Assertion:<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-7.3-2">
 <pre>
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 requested_token_type=urn:ietf:params:oauth:token-type:id-jag
@@ -2123,120 +2200,162 @@ subject_token=&lt;identity-continuation-assertion&gt;
 subject_token_type=&lt;identity-continuation-token-type&gt;
 actor_token=&lt;sender-constrained-current-actor-credential&gt;
 actor_token_type=&lt;actor-token-type&gt;
-</pre><a href="#section-7.2-2" class="pilcrow">¶</a>
+</pre><a href="#section-7.3-2" class="pilcrow">¶</a>
 </div>
-<p id="section-7.2-3">The <code>subject_token_type</code> value above is
-<code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-7.2-3" class="pilcrow">¶</a></p>
-<p id="section-7.2-4">The requested <code>audience</code>, <code>resource</code>, <code>scope</code>, and <code>requested_token_type</code> are
+<p id="section-7.3-3">The <code>subject_token_type</code> value above is
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+<p id="section-7.3-4">The requested <code>audience</code>, <code>resource</code>, <code>scope</code>, and <code>requested_token_type</code> are
 supplied by the Token Exchange request and never by the assertion. Following
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>, <code>audience</code> identifies the
 target Resource Authorization Server and <code>resource</code> (<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, originally
 defined in <span>[<a href="#RFC8707" class="cite xref">RFC8707</a>]</span>) identifies the protected resource for which access is
-ultimately requested.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+ultimately requested. The request <span class="bcp14">MAY</span> also include <code>authorization_details</code>
+          <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, which the ID-JAG profile supports in both the exchange and the
+issued grant; the authorization-basis check of <a href="#validation" class="auto internal xref">Section 9</a>, rule 14,
+applies to requested authorization details as it does to scope. Client
+authentication is required on every exchange (<a href="#client-identity" class="auto internal xref">Section 7.5</a>) and is
+omitted from the example bodies for brevity.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="sender-constrained-presentation">
-<section id="section-7.3">
+<section id="section-7.4">
         <h3 id="name-sender-constrained-presenta">
-<a href="#section-7.3" class="section-number selfRef">7.3. </a><a href="#name-sender-constrained-presenta" class="section-name selfRef">Sender-Constrained Presentation</a>
+<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-sender-constrained-presenta" class="section-name selfRef">Sender-Constrained Presentation</a>
         </h3>
-<p id="section-7.3-1">The Identity Continuation Assertion is sender-constrained: it is bound by <code>cnf</code>
+<p id="section-7.4-1">The Identity Continuation Assertion is sender-constrained: it is bound by <code>cnf</code>
 to the key of the actor that presents it (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). This profile
 uses proof of possession aligned with the direct ID-JAG request
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>:<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>:<a href="#section-7.4-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-7.3-2.1">
-            <p id="section-7.3-2.1.1">The presenting actor <span class="bcp14">MUST</span> demonstrate live possession of the confirmed key on
-the Token Exchange request to the IdP. With DPoP <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>, the actor
-includes a DPoP proof JWT computed with that key, carried in the <code>DPoP</code> HTTP
-header (and therefore not in the request body shown above); the IdP <span class="bcp14">MUST</span>
-verify that the DPoP proof key thumbprint equals the assertion's <code>cnf.jkt</code>.
-Alternatively, the actor <span class="bcp14">MAY</span> use mutual-TLS client authentication
-<span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>, in which case <code>cnf</code> carries <code>x5t#S256</code>. The IdP <span class="bcp14">MUST</span> verify that
-the presented client certificate thumbprint equals that value. The IdP <span class="bcp14">MUST</span>
-reject a request that does not prove possession of the confirmed key.<a href="#section-7.3-2.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-7.4-2.1">
+            <p id="section-7.4-2.1.1">The presenting actor <span class="bcp14">MUST</span> demonstrate live possession of the confirmed key
+by including a DPoP proof JWT <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> computed with that key, carried in
+the <code>DPoP</code> HTTP header (and therefore not in the request body shown above).
+The IdP <span class="bcp14">MUST</span> verify that the DPoP proof key thumbprint equals the
+assertion's <code>cnf.jkt</code>, and <span class="bcp14">MUST</span> reject a request that does not prove
+possession of the confirmed key.<a href="#section-7.4-2.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-7.3-2.2">
-            <p id="section-7.3-2.2.1">The Token Exchange request <span class="bcp14">MUST</span> include an <code>actor_token</code>, which authenticates
+          <li class="normal" id="section-7.4-2.2">
+            <p id="section-7.4-2.2.1">The Token Exchange request <span class="bcp14">MUST</span> include an <code>actor_token</code>, which authenticates
 the workload identity of the current actor, the outermost actor in the
 assertion's <code>act</code> chain. The <code>actor_token</code> <span class="bcp14">MUST</span> itself be sender-constrained
 to the same key confirmed by the assertion's <code>cnf</code>. For a JWT actor token,
-the IdP <span class="bcp14">MUST</span> verify a <code>cnf.jkt</code> or <code>cnf.x5t#S256</code> value that matches both the
-assertion and the live proof. For an opaque actor token, the IdP <span class="bcp14">MUST</span> obtain
-the equivalent confirmation value from authoritative token metadata, such as
-a token introspection response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. A bearer actor token <span class="bcp14">MUST NOT</span> be
+the IdP <span class="bcp14">MUST</span> verify a <code>cnf.jkt</code> value that matches both the assertion and
+the live proof. For an opaque actor token, the IdP <span class="bcp14">MUST</span> obtain the
+equivalent confirmation value from authoritative token metadata, such as a
+token introspection response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. A bearer actor token <span class="bcp14">MUST NOT</span> be
 accepted. These checks bind the authenticated workload identity, the
-assertion, and the demonstrated key to one actor.<a href="#section-7.3-2.2.1" class="pilcrow">¶</a></p>
+assertion, and the demonstrated key to one actor.<a href="#section-7.4-2.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-7.3-3">The onward ID-JAG the IdP issues is itself sender-constrained to the same key
-through its own <code>cnf</code> (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>). The presenting actor proves
-possession of that key again when it exchanges the ID-JAG at the target Resource
-Authorization Server, exactly as for a directly issued ID-JAG
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>.<a href="#section-7.3-3" class="pilcrow">¶</a></p>
-<p id="section-7.3-4">The key binding is established per assertion at issuance. A workload that
+<p id="section-7.4-3">Actor identity comparison is exact: two actor identities are the same entity
+only if their issuer and subject identifiers are octet-for-octet equal. The
+IdP <span class="bcp14">MUST</span> apply this comparison when matching the <code>actor_token</code> to the
+outermost <code>act</code> and to the authenticated client (<a href="#client-identity" class="auto internal xref">Section 7.5</a>).<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+<p id="section-7.4-4">The onward ID-JAG the IdP issues is itself sender-constrained to the same key
+through its own <code>cnf</code>, using the DPoP-based binding the ID-JAG profile defines
+(<a href="#onward-id-jag" class="auto internal xref">Section 10</a>). A mutual-TLS-bound variant <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> is deliberately
+not specified: the ID-JAG profile currently defines only DPoP-based binding,
+and a different confirmation method in the onward grant would break the
+property that the target Resource Authorization Server processes an unchanged
+ID-JAG. The presenting actor proves possession of the key again when it
+exchanges the ID-JAG at the target Resource Authorization Server, exactly as
+for a directly issued ID-JAG
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>.<a href="#section-7.4-4" class="pilcrow">¶</a></p>
+<p id="section-7.4-5">The key binding is established per assertion at issuance. A workload that
 rotates its key obtains its next assertion, and an actor token, bound to the
 new key; rotation takes effect at the next issuance and requires no
-coordination with the IdP.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
+coordination with the IdP.<a href="#section-7.4-5" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="client-identity">
+<section id="section-7.5">
+        <h3 id="name-client-identity-and-authent">
+<a href="#section-7.5" class="section-number selfRef">7.5. </a><a href="#name-client-identity-and-authent" class="section-name selfRef">Client Identity and Authentication</a>
+        </h3>
+<p id="section-7.5-1">The party presenting a continuation exchange is an OAuth client of the IdP,
+and the exchange <span class="bcp14">MUST</span> be authenticated as one: the current actor is the
+client, and, as with the direct ID-JAG exchange, this profile is intended for
+confidential clients. The IdP <span class="bcp14">MUST</span> verify that the authenticated client and
+the current actor are the same entity, using the exact comparison of
+<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>. A deployment <span class="bcp14">MAY</span> register the workload so
+that a single sender-constrained JWT credential serves as both the client
+authentication (a JWT client assertion per <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>) and the <code>actor_token</code>;
+otherwise the client authenticates with its registered method and additionally
+presents the <code>actor_token</code>.<a href="#section-7.5-1" class="pilcrow">¶</a></p>
+<p id="section-7.5-2">The <code>client_id</code> of the onward ID-JAG is the identifier under which the current
+actor is registered for the target Resource Authorization Server. The ID-JAG
+profile defines how the IdP knows that identifier: an out-of-band mapping of
+client identifiers per Resource Authorization Server, or a shared client
+identifier namespace such as Client ID Metadata Documents
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. When the continuing
+workload redeems the onward ID-JAG, it authenticates to the target Resource
+Authorization Server as that client, and the ID-JAG profile requires the
+grant's <code>client_id</code> to match the authenticated client. A continuing workload
+therefore needs a client registration, or a resolvable client identity, at
+each target it will reach. In the examples of this document the workload
+identifier doubles as that client identifier.<a href="#section-7.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="response-param">
-<section id="section-7.4">
+<section id="section-7.6">
         <h3 id="name-the-chain_id-response-param">
-<a href="#section-7.4" class="section-number selfRef">7.4. </a><a href="#name-the-chain_id-response-param" class="section-name selfRef">The <code>chain_id</code> Response Parameter</a>
+<a href="#section-7.6" class="section-number selfRef">7.6. </a><a href="#name-the-chain_id-response-param" class="section-name selfRef">The <code>chain_id</code> Response Parameter</a>
         </h3>
-<p id="section-7.4-1">When the IdP issues an onward grant for a delegation that is eligible for
-further continuation, it <span class="bcp14">MUST</span> return <code>chain_id</code> as a top-level member of the
-Token Exchange response (alongside <code>access_token</code>, <code>issued_token_type</code>, and so
-forth), so that the next hop's Chain Authority can construct the next Identity
-Continuation Assertion. <code>chain_id</code> <span class="bcp14">MUST NOT</span> be carried as a claim inside the
-issued ID-JAG (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4).<a href="#section-7.4-1" class="pilcrow">¶</a></p>
-<p id="section-7.4-2"><code>chain_id</code> stays in the control plane: it is delivered to the party that
+<p id="section-7.6-1">When the IdP establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>) or continues one, it
+<span class="bcp14">MUST</span> return a fresh continuation handle for the newly created hop as the
+<code>chain_id</code> top-level member of the Token Exchange response (alongside
+<code>access_token</code>, <code>issued_token_type</code>, and so forth), so that an authorized
+continuer can construct the next Identity Continuation Assertion from that
+hop. Each hop's handle is distinct and its parent reference is immutable
+(<a href="#chain-id" class="auto internal xref">Section 5</a>, rules 1 and 8). <code>chain_id</code> <span class="bcp14">MUST NOT</span> be carried as a claim
+inside the issued ID-JAG (rule 4).<a href="#section-7.6-1" class="pilcrow">¶</a></p>
+<p id="section-7.6-2"><code>chain_id</code> stays in the control plane: it is delivered to the party that
 performed the Token Exchange and conveyed from there to the workload that
 continues the chain, for example accompanying the request into the next service
 or held by a Chain Authority in the originating trust domain. Keeping it out of
 the ID-JAG prevents a cross-hop correlation handle from reaching every audience
 that consumes a token (<a href="#privacy" class="auto internal xref">Section 12</a>). How it is conveyed is deployment-specific,
-but the provenance and integrity requirements of <a href="#context-provenance" class="auto internal xref">Section 4.5</a> apply.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
-<p id="section-7.4-3">The IdP <span class="bcp14">MAY</span> also include <code>chain_exp</code>, a JSON number containing a NumericDate
+but the provenance and integrity requirements of <a href="#context-provenance" class="auto internal xref">Section 4.5</a> apply.<a href="#section-7.6-2" class="pilcrow">¶</a></p>
+<p id="section-7.6-3">The IdP <span class="bcp14">MAY</span> also include <code>chain_exp</code>, a JSON number containing a NumericDate
 <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> after which the chain ceases to be eligible for continuation
 (<a href="#lifecycle" class="auto internal xref">Section 6</a>), letting a continuing party anticipate expiry rather than
 discover it by failure. <code>chain_exp</code> is advisory; the authoritative lifetime is
-the chain state held by the IdP, which can revoke the chain before that time.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
-<p id="section-7.4-4">A non-normative response example is:<a href="#section-7.4-4" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="section-7.4-5">
+the chain state held by the IdP, which can revoke the chain before that time.<a href="#section-7.6-3" class="pilcrow">¶</a></p>
+<p id="section-7.6-4">A non-normative response example is:<a href="#section-7.6-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="section-7.6-5">
 <pre>
 {
   "access_token": "&lt;id-jag&gt;",
   "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
   "token_type": "N_A",
   "expires_in": 300,
-  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+  "chain_id": "3q0YyKfLxRt7VZm2cPw8Ab",
   "chain_exp": 1710086400
 }
-</pre><a href="#section-7.4-5" class="pilcrow">¶</a>
+</pre><a href="#section-7.6-5" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
 <div id="metadata">
-<section id="section-7.5">
+<section id="section-7.7">
         <h3 id="name-authorization-server-metada">
-<a href="#section-7.5" class="section-number selfRef">7.5. </a><a href="#name-authorization-server-metada" class="section-name selfRef">Authorization Server Metadata</a>
+<a href="#section-7.7" class="section-number selfRef">7.7. </a><a href="#name-authorization-server-metada" class="section-name selfRef">Authorization Server Metadata</a>
         </h3>
-<p id="section-7.5-1">An IdP that supports this profile <span class="bcp14">SHOULD</span> signal it in its authorization server
-metadata <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span> with the following parameter:<a href="#section-7.5-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-7.5-2">
-          <dt id="section-7.5-2.1">
+<p id="section-7.7-1">An IdP that supports this profile <span class="bcp14">SHOULD</span> signal it in its authorization server
+metadata <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span> with the following parameter:<a href="#section-7.7-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-7.7-2">
+          <dt id="section-7.7-2.1">
 <code>identity_continuation_supported</code>:</dt>
-          <dd style="margin-left: 1.5em" id="section-7.5-2.2">
-            <p id="section-7.5-2.2.1"><span class="bcp14">OPTIONAL</span>. Boolean value indicating support for the
+          <dd style="margin-left: 1.5em" id="section-7.7-2.2">
+            <p id="section-7.7-2.2.1"><span class="bcp14">OPTIONAL</span>. Boolean value indicating support for the
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code> subject token type
-and the <code>chain_id</code> Token Exchange response parameter. Default <code>false</code>.<a href="#section-7.5-2.2.1" class="pilcrow">¶</a></p>
+and the <code>chain_id</code> Token Exchange response parameter. Default <code>false</code>.<a href="#section-7.7-2.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-7.5-3">Absent this signal, a client learns of support out of band or by attempting an
-exchange.<a href="#section-7.5-3" class="pilcrow">¶</a></p>
+<p id="section-7.7-3">Absent this signal, a client learns of support out of band or by attempting an
+exchange.<a href="#section-7.7-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2254,19 +2373,21 @@ BookingRAS).<a href="#section-8-1" class="pilcrow">¶</a></p>
           <p id="section-8-2.1.1">ExpenseApp authenticates the user at the IdP.<a href="#section-8-2.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.2">
-          <p id="section-8-2.2.1">ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.<a href="#section-8-2.2.1" class="pilcrow">¶</a></p>
+          <p id="section-8-2.2.1">ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange, including
+the <code>continuation</code> parameter to request a continuable chain
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#section-8-2.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.3">
           <p id="section-8-2.3.1">The IdP issues an ID-JAG (<code>iss</code>=IdP, <code>aud</code>=ExpenseRAS, <code>sub</code>=the user's
-ExpenseRAS subject, with <code>scope</code> and <code>cnf</code>) and returns <code>chain_id</code> as a
-Token Exchange response parameter. The IdP records the root-chain envelope
-keyed by <code>chain_id</code>: the user, the authentication context
+ExpenseRAS subject, with <code>scope</code> and <code>cnf</code>) and returns the root hop's
+continuation handle as the <code>chain_id</code> response parameter. The IdP records
+the root-chain envelope: the user, the authentication context
 (<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorization basis (enumerated target
-entries, each an audience, resource, and permitted scopes, or a policy
-reference evaluated at continuation time), the maximum actor-chain depth,
-the expiry, and the authenticated root actor (<code>expense-app</code>), which begins
-the chain's authenticated actor history. <code>chain_id</code> is not a claim inside the
-ExpenseRAS ID-JAG.<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
+entries or a policy reference evaluated at continuation time), the
+continuation authorization (here, designated TravelSaaS and BookingSaaS
+workloads), the maximum actor-chain depth, the expiry, and the root hop
+with its authenticated actor (<code>expense-app</code>). <code>chain_id</code> is not a claim
+inside the ExpenseRAS ID-JAG.<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.4">
           <p id="section-8-2.4.1">ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access token (AT1) and
@@ -2302,11 +2423,13 @@ requested audience, resource, and scope, and the sender constraint.<a href="#sec
           <p id="section-8-2.10.1">The IdP resolves the user's subject identifier for TravelRAS.<a href="#section-8-2.10.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.11">
-          <p id="section-8-2.11.1">The IdP issues a new ID-JAG (<code>iss</code>=IdP, <code>aud</code>=TravelRAS, <code>sub</code>=the same
-user's TravelRAS subject, an <code>act</code> chain constructed from the chain's
-authenticated actor history plus the newly authenticated current actor,
-and <code>cnf</code>) and returns <code>chain_id</code> again as a response parameter for any
-further hop. The TravelRAS ID-JAG carries no <code>chain_id</code> claim.<a href="#section-8-2.11.1" class="pilcrow">¶</a></p>
+          <p id="section-8-2.11.1">The IdP records the continuation as a new hop whose parent is the
+presented handle, and issues a new ID-JAG (<code>iss</code>=IdP, <code>aud</code>=TravelRAS,
+<code>sub</code>=the same user's TravelRAS subject, an <code>act</code> chain constructed from
+the presented hop's lineage plus the newly authenticated current actor,
+and <code>cnf</code>), returning the new hop's fresh handle as the <code>chain_id</code>
+response parameter for any further hop. The TravelRAS ID-JAG carries no
+<code>chain_id</code> claim.<a href="#section-8-2.11.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.12">
           <p id="section-8-2.12.1">TravelService exchanges the new ID-JAG at TravelRAS for an access token
@@ -2355,32 +2478,35 @@ configured allowlist (the <code>none</code> algorithm <span class="bcp14">MUST</
           <p id="section-9-2.6.1">the assertion <code>iss</code> is a trusted Chain Authority for this tenant;<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.7">
-          <p id="section-9-2.7.1"><code>chain_id</code> is known, active, unexpired, and eligible for continuation;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
+          <p id="section-9-2.7.1"><code>chain_id</code> identifies a known, active continuation handle of an unexpired,
+unrevoked chain, on a branch with remaining actor-chain depth;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.8">
           <p id="section-9-2.8.1">the assertion does not contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or
-<code>amr</code> claim, nor a <code>resource</code>, <code>scope</code>, or <code>requested_token_type</code> claim
-(<a href="#excluded-claims" class="auto internal xref">Section 4.3</a>);<a href="#section-9-2.8.1" class="pilcrow">¶</a></p>
+<code>amr</code> claim, nor an <code>audience</code>, <code>resource</code>, <code>scope</code>, or
+<code>requested_token_type</code> claim (<a href="#excluded-claims" class="auto internal xref">Section 4.3</a>);<a href="#section-9-2.8.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.9">
           <p id="section-9-2.9.1">the assertion's <code>act</code> claim is present, identifies the current actor as the
 outermost actor, contains only identity claims, asserts no actor outside the
 issuing Chain Authority's trust domain, and the resulting actor chain (the
-chain's authenticated actor history plus any asserted intra-domain segment,
-composed as described in <a href="#onward-id-jag" class="auto internal xref">Section 10</a>) is acceptable and within
-max-depth policy;<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
+presented hop's lineage plus any asserted intra-domain segment, composed as
+described in <a href="#onward-id-jag" class="auto internal xref">Section 10</a>) is acceptable and within max-depth policy;<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.10">
-          <p id="section-9-2.10.1">the <code>actor_token</code> was issued by a workload identity issuer the IdP trusts
-   for the current actor's trust domain and tenant, it authenticates the
-   current actor, that actor is the outermost actor in the <code>act</code> chain, and
-   the actor is permitted by IdP policy to continue this chain;<a href="#section-9-2.10.1" class="pilcrow">¶</a></p>
+          <p id="section-9-2.10.1">the request is authenticated as an OAuth client that is the same entity as
+   the current actor (<a href="#client-identity" class="auto internal xref">Section 7.5</a>); the <code>actor_token</code> was issued by a
+   workload identity issuer the IdP trusts for the current actor's trust
+   domain and tenant and authenticates the current actor; that actor is the
+   outermost actor in the <code>act</code> chain; and the actor is permitted by the
+   chain's continuation authorization (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>) to continue
+   from the presented hop;<a href="#section-9-2.10.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.11">
-          <p id="section-9-2.11.1">the request proves possession of the key confirmed by <code>cnf</code> (a DPoP proof
-   <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <code>cnf.jkt</code>, or a client certificate <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> matching
-   <code>cnf.x5t#S256</code>), and the <code>actor_token</code> is sender-constrained to that same
-   key (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>);<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
+          <p id="section-9-2.11.1">the request proves possession of the key confirmed by <code>cnf</code> with a DPoP
+   proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <code>cnf.jkt</code>, and the <code>actor_token</code> is
+   sender-constrained to that same key
+   (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>);<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.12">
           <p id="section-9-2.12.1"><code>jti</code> has not been successfully consumed before for the assertion issuer;<a href="#section-9-2.12.1" class="pilcrow">¶</a></p>
@@ -2395,8 +2521,9 @@ has not expired, and the assertion lifetime is no more than 300 seconds;<a href=
 envelope's authorization basis: in enumerated form, an authorized target
 entry exactly matches the requested values; in policy-reference form, the
 IdP evaluates the referenced consent and policy for this chain at the time
-of the request; and in both forms every requested scope is permitted by
-that same authorization basis and by IdP policy for the current actor;<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
+of the request; and in both forms every requested scope, and any requested
+authorization details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, is permitted by that same authorization
+basis and by IdP policy for the current actor;<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.15">
           <p id="section-9-2.15.1">the requested output token type is
@@ -2421,10 +2548,14 @@ bounds the retention window for consumed tuples. A client that does not
 receive the response to an exchange cannot retry with the same assertion; it
 obtains a fresh assertion from its Chain Authority and repeats the exchange,
 so Chain Authority issuance <span class="bcp14">SHOULD</span> be inexpensive relative to the exchange
-itself.<a href="#section-9-4" class="pilcrow">¶</a></p>
-<p id="section-9-5">On success, the IdP resolves the audience-local subject for the requested RAS
-and issues the onward ID-JAG with that <code>sub</code>. The onward ID-JAG <span class="bcp14">MUST NOT</span> carry
-a <code>chain_id</code> claim.<a href="#section-9-5" class="pilcrow">¶</a></p>
+itself. This retry path is at-least-once: if a response was issued but never
+received, the retry mints a second, equivalent grant and hop. Both grants are
+short-lived, sender-constrained to the same actor key, and bounded by the same
+authorization basis, so the duplicate confers no additional authority.<a href="#section-9-4" class="pilcrow">¶</a></p>
+<p id="section-9-5">On success, the IdP records the continuation as a new hop whose immutable
+parent is the presented handle, resolves the audience-local subject for the
+requested RAS, and issues the onward ID-JAG with that <code>sub</code>. The onward ID-JAG
+<span class="bcp14">MUST NOT</span> carry a <code>chain_id</code> claim.<a href="#section-9-5" class="pilcrow">¶</a></p>
 <p id="section-9-6">If validation fails, the IdP <span class="bcp14">MUST</span> return an OAuth error response as defined by
 <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> and <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. The IdP <span class="bcp14">SHOULD</span> use <code>invalid_request</code> for malformed
 or internally inconsistent requests, including requests with unsupported
@@ -2484,10 +2615,11 @@ IdP:<a href="#section-10-1" class="pilcrow">¶</a></p>
 </pre><a href="#section-10-2" class="pilcrow">¶</a>
 </div>
 <p id="section-10-3">The <code>act</code> chain in an onward ID-JAG is constructed by the IdP, not copied from
-the assertion: the cross-boundary lineage consists of the actors the IdP
-itself authenticated at the root exchange and at each continuation (the
-chain's authenticated actor history), extended by any intra-domain segment the
-Chain Authority verified and asserted (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). The asserted
+the assertion: the cross-boundary lineage is the presented hop's lineage, the
+actors the IdP itself authenticated along that hop's parent path to the root
+(<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 8), extended by any intra-domain segment the Chain
+Authority verified and asserted (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>). Sibling branches never
+contribute to one another's lineage. The asserted
 segment is placed atop the history with the current actor outermost; when the
 segment's innermost actor names the same actor as the most recent entry in
 the history, they are the same hop and appear once. Depth policy
@@ -2503,7 +2635,10 @@ verifiable form for such records.<a href="#section-10-3" class="pilcrow">¶</a><
 <p id="section-10-4">TravelRAS processes this as an ordinary ID-JAG per
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. It does not need to
 understand the Identity Continuation Assertion, and it never sees <code>chain_id</code>.
-The <code>client_id</code> matches the outer <code>act.sub</code> by construction.<a href="#section-10-4" class="pilcrow">¶</a></p>
+The <code>client_id</code> is the current actor's client identifier for the target
+Resource Authorization Server (<a href="#client-identity" class="auto internal xref">Section 7.5</a>); in this document's
+examples the workload identifier serves as both, so it matches the outer
+<code>act.sub</code>.<a href="#section-10-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security">
@@ -2519,7 +2654,7 @@ specifically considered are:<a href="#section-11-1" class="pilcrow">¶</a></p>
 <li class="normal" id="section-11-2.1">
           <p id="section-11-2.1.1">a network or on-path attacker observing or replaying a Token Exchange
 request, addressed by sender-constraining the assertion and single-use
-consumption (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>, <a href="#security-replay" class="auto internal xref">Section 11.2</a>);<a href="#section-11-2.1.1" class="pilcrow">¶</a></p>
+consumption (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>, <a href="#security-replay" class="auto internal xref">Section 11.2</a>);<a href="#section-11-2.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-11-2.2">
           <p id="section-11-2.2.1">a compromised or curious intermediate workload that holds propagated chain
@@ -2547,7 +2682,7 @@ attempting to correlate the user across boundaries, addressed by keeping
 <p id="section-11.1-1">The Identity Continuation Assertion <span class="bcp14">MUST</span> be sender-constrained via <code>cnf</code>
           <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span> and <span class="bcp14">MUST NOT</span> be accepted as a bearer token. The IdP verifies live
 proof of possession of the confirmed key and binds the assertion, that key, and
-the authenticated current actor together (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>).
+the authenticated current actor together (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>).
 Consequently a stolen assertion or stolen actor token cannot be replayed by a
 party that does not hold the confirmed private key, and the short single-use
 lifetime (<a href="#security-replay" class="auto internal xref">Section 11.2</a>) bounds the window even for the key holder.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
@@ -2706,9 +2841,12 @@ participants that require it to continue or administer the chain.<a href="#secti
 <p id="section-12-3"><code>chain_id</code> <span class="bcp14">MUST NOT</span> contain user-identifying information and <span class="bcp14">MUST</span> carry at least
 128 bits of entropy (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2), so that possession of a <code>chain_id</code>
 does not reveal the user and cannot be guessed.<a href="#section-12-3" class="pilcrow">¶</a></p>
-<p id="section-12-4">Where "same delegation" correlation among colluding chain participants is in
-scope, the IdP <span class="bcp14">SHOULD</span> adopt per-audience chain references
-(<a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>).<a href="#section-12-4" class="pilcrow">¶</a></p>
+<p id="section-12-4">Continuation handles are hop-specific by construction (<a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>),
+so audiences and branches do not share a correlatable identifier. A handle's
+conveyance path still observes its value, and a workload co-located with a
+Resource Server that receives chain context alongside a request
+(<a href="#context-binding" class="auto internal xref">Section 4.6</a>) is, for that data, a control-plane participant subject
+to the disclosure limits above.<a href="#section-12-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
@@ -2861,9 +2999,9 @@ registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]
           <dd class="break"></dd>
 <dt id="section-13.3-2.3">Claim Description:</dt>
           <dd style="margin-left: 1.5em" id="section-13.3-2.4">
-            <p id="section-13.3-2.4.1">Chain Identifier: an opaque, IdP-generated identifier for the root delegation
-context, used to correlate a continuation to its root and to resolve the
-per-audience subject.<a href="#section-13.3-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-13.3-2.4.1">Chain Identifier: an opaque, IdP-generated continuation handle referencing
+one hop of a delegation chain, used to correlate a continuation to its chain
+and parent hop and to resolve the per-audience subject.<a href="#section-13.3-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.3-2.5">Change Controller:</dt>
@@ -2885,17 +3023,18 @@ per-audience subject.<a href="#section-13.3-2.4.1" class="pilcrow">¶</a></p>
 <a href="#section-13.4" class="section-number selfRef">13.4. </a><a href="#name-oauth-parameters-registrati" class="section-name selfRef">OAuth Parameters Registration</a>
         </h3>
 <p id="section-13.4-1">IANA is requested to register the following values in the "OAuth Parameters"
-registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. Both parameters are used in the OAuth 2.0
-Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> response.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
+registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. The <code>continuation</code> parameter is used in
+the OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request; <code>chain_id</code> and <code>chain_exp</code>
+are used in the response.<a href="#section-13.4-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-13.4-2">
           <dt id="section-13.4-2.1">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.2">
-            <p id="section-13.4-2.2.1">chain_id<a href="#section-13.4-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.2.1">continuation<a href="#section-13.4-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.4-2.3">Parameter usage location:</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.4">
-            <p id="section-13.4-2.4.1">token response<a href="#section-13.4-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.4.1">token request<a href="#section-13.4-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.4-2.5">Change controller:</dt>
@@ -2905,12 +3044,12 @@ Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> r
           <dd class="break"></dd>
 <dt id="section-13.4-2.7">Specification document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.8">
-            <p id="section-13.4-2.8.1">This document, <a href="#response-param" class="auto internal xref">Section 7.4</a><a href="#section-13.4-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.8.1">This document, <a href="#root-establishment" class="auto internal xref">Section 7.2</a><a href="#section-13.4-2.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.4-2.9">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.10">
-            <p id="section-13.4-2.10.1">chain_exp<a href="#section-13.4-2.10.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.10.1">chain_id<a href="#section-13.4-2.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.4-2.11">Parameter usage location:</dt>
@@ -2925,7 +3064,27 @@ Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> r
           <dd class="break"></dd>
 <dt id="section-13.4-2.15">Specification document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.16">
-            <p id="section-13.4-2.16.1">This document, <a href="#response-param" class="auto internal xref">Section 7.4</a><a href="#section-13.4-2.16.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.16.1">This document, <a href="#response-param" class="auto internal xref">Section 7.6</a><a href="#section-13.4-2.16.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.17">Parameter name:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.18">
+            <p id="section-13.4-2.18.1">chain_exp<a href="#section-13.4-2.18.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.19">Parameter usage location:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.20">
+            <p id="section-13.4-2.20.1">token response<a href="#section-13.4-2.20.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.21">Change controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.22">
+            <p id="section-13.4-2.22.1">IETF<a href="#section-13.4-2.22.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-13.4-2.23">Specification document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-13.4-2.24">
+            <p id="section-13.4-2.24.1">This document, <a href="#response-param" class="auto internal xref">Section 7.6</a><a href="#section-13.4-2.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -2957,7 +3116,7 @@ profile<a href="#section-13.5-2.4.1" class="pilcrow">¶</a></p>
           <dd class="break"></dd>
 <dt id="section-13.5-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-13.5-2.8">
-            <p id="section-13.5-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7.5</a><a href="#section-13.5-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-13.5-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7.7</a><a href="#section-13.5-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -3021,6 +3180,10 @@ this document is registered by
         <dd>
 <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">N. Sakimura</span>, <span class="refTitle">"JSON Web Token (JWT)"</span>, <span class="seriesInfo">RFC 7519</span>, <span class="seriesInfo">DOI 10.17487/RFC7519</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7519">https://www.rfc-editor.org/rfc/rfc7519</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC7523">[RFC7523]</dt>
+        <dd>
+<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants"</span>, <span class="seriesInfo">RFC 7523</span>, <span class="seriesInfo">DOI 10.17487/RFC7523</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7523">https://www.rfc-editor.org/rfc/rfc7523</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC7638">[RFC7638]</dt>
         <dd>
 <span class="refAuthor">Jones, M.</span> and <span class="refAuthor">N. Sakimura</span>, <span class="refTitle">"JSON Web Key (JWK) Thumbprint"</span>, <span class="seriesInfo">RFC 7638</span>, <span class="seriesInfo">DOI 10.17487/RFC7638</span>, <time datetime="2015-09" class="refDate">September 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7638">https://www.rfc-editor.org/rfc/rfc7638</a>&gt;</span>. </dd>
@@ -3045,10 +3208,6 @@ this document is registered by
         <dd>
 <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Nadalin, A.</span>, <span class="refAuthor">Campbell, B., Ed.</span>, <span class="refAuthor">Bradley, J.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"OAuth 2.0 Token Exchange"</span>, <span class="seriesInfo">RFC 8693</span>, <span class="seriesInfo">DOI 10.17487/RFC8693</span>, <time datetime="2020-01" class="refDate">January 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8693">https://www.rfc-editor.org/rfc/rfc8693</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC8705">[RFC8705]</dt>
-        <dd>
-<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <span class="seriesInfo">RFC 8705</span>, <span class="seriesInfo">DOI 10.17487/RFC8705</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="RFC8725">[RFC8725]</dt>
         <dd>
 <span class="refAuthor">Sheffer, Y.</span>, <span class="refAuthor">Hardt, D.</span>, and <span class="refAuthor">M. Jones</span>, <span class="refTitle">"JSON Web Token Best Current Practices"</span>, <span class="seriesInfo">BCP 225</span>, <span class="seriesInfo">RFC 8725</span>, <span class="seriesInfo">DOI 10.17487/RFC8725</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8725">https://www.rfc-editor.org/rfc/rfc8725</a>&gt;</span>. </dd>
@@ -3056,6 +3215,10 @@ this document is registered by
 <dt id="RFC9110">[RFC9110]</dt>
         <dd>
 <span class="refAuthor">Fielding, R., Ed.</span>, <span class="refAuthor">Nottingham, M., Ed.</span>, and <span class="refAuthor">J. Reschke, Ed.</span>, <span class="refTitle">"HTTP Semantics"</span>, <span class="seriesInfo">STD 97</span>, <span class="seriesInfo">RFC 9110</span>, <span class="seriesInfo">DOI 10.17487/RFC9110</span>, <time datetime="2022-06" class="refDate">June 2022</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9110">https://www.rfc-editor.org/rfc/rfc9110</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC9396">[RFC9396]</dt>
+        <dd>
+<span class="refAuthor">Lodderstedt, T.</span>, <span class="refAuthor">Richer, J.</span>, and <span class="refAuthor">B. Campbell</span>, <span class="refTitle">"OAuth 2.0 Rich Authorization Requests"</span>, <span class="seriesInfo">RFC 9396</span>, <span class="seriesInfo">DOI 10.17487/RFC9396</span>, <time datetime="2023-05" class="refDate">May 2023</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc9396">https://www.rfc-editor.org/rfc/rfc9396</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC9449">[RFC9449]</dt>
       <dd>
@@ -3106,13 +3269,13 @@ this document is registered by
         <dd>
 <span class="refAuthor">Freed, N.</span>, <span class="refAuthor">Klensin, J.</span>, and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"Media Type Specifications and Registration Procedures"</span>, <span class="seriesInfo">BCP 13</span>, <span class="seriesInfo">RFC 6838</span>, <span class="seriesInfo">DOI 10.17487/RFC6838</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6838">https://www.rfc-editor.org/rfc/rfc6838</a>&gt;</span>. </dd>
 <dd class="break"></dd>
-<dt id="RFC7523">[RFC7523]</dt>
-        <dd>
-<span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">C. Mortimore</span>, <span class="refTitle">"JSON Web Token (JWT) Profile for OAuth 2.0 Client Authentication and Authorization Grants"</span>, <span class="seriesInfo">RFC 7523</span>, <span class="seriesInfo">DOI 10.17487/RFC7523</span>, <time datetime="2015-05" class="refDate">May 2015</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc7523">https://www.rfc-editor.org/rfc/rfc7523</a>&gt;</span>. </dd>
-<dd class="break"></dd>
 <dt id="RFC8417">[RFC8417]</dt>
         <dd>
 <span class="refAuthor">Hunt, P., Ed.</span>, <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Denniss, W.</span>, and <span class="refAuthor">M. Ansari</span>, <span class="refTitle">"Security Event Token (SET)"</span>, <span class="seriesInfo">RFC 8417</span>, <span class="seriesInfo">DOI 10.17487/RFC8417</span>, <time datetime="2018-07" class="refDate">July 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8417">https://www.rfc-editor.org/rfc/rfc8417</a>&gt;</span>. </dd>
+<dd class="break"></dd>
+<dt id="RFC8705">[RFC8705]</dt>
+        <dd>
+<span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <span class="seriesInfo">RFC 8705</span>, <span class="seriesInfo">DOI 10.17487/RFC8705</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="RFC8707">[RFC8707]</dt>
         <dd>
@@ -3236,7 +3399,7 @@ revocation takes effect at the next hop (<a href="#lifecycle" class="auto intern
 Authorization Server is a broad, comparatively long-lived credential. An
 Identity Continuation Assertion is narrowly scoped to <code>aud</code> = IdP,
 single-use, and sender-constrained
-(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>). Its theft permits only a request for a
+(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>). Its theft permits only a request for a
 grant within the root-chain envelope.<a href="#appendix-A.3-2.4.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
@@ -3272,8 +3435,8 @@ entirely, because the target's Authorization Server asks the IdP it already
 trusts and no additional assertion issuer exists. It removes one token round
 trip per hop. It reduces the cross-boundary artifact to a single opaque
 reference, shrinking the deployment-specific transport surface. And issuing a
-fresh reference per resolution provides per-audience unlinkability
-structurally rather than as an option.<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
+fresh reference per resolution mirrors the per-hop handles of the push
+topology (<a href="#chain-id" class="auto internal xref">Section 5</a>).<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
 <p id="appendix-A.4-3">Its cost falls on the many-party side of the ecosystem: every target Resource
 Authorization Server must implement the new grant type and the back-channel
 resolution call, and the reference becomes visible to each Resource
@@ -3302,14 +3465,16 @@ domain-local continuation policy, that reduction loses little: the IdP
 independently authenticates the actor and enforces the envelope either way.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
 <p id="appendix-A.5-2">The signed assertion was retained for the work the Chain Authority performs
 that the IdP cannot: verifying the intra-domain offline segment before the
-boundary is crossed, and gating continuation under policy local to the domain
-where the fan-out happens. With cross-boundary lineage constructed by the IdP
-(<a href="#onward-id-jag" class="auto internal xref">Section 10</a>), the assertion carries exactly what the Chain Authority
-can attest first-hand: the authenticated current actor, its key binding, and
-its own-domain verified segment. Deployments needing neither capability
-reduce the Chain Authority to a co-signature over <code>chain_id</code> and the current
-actor; the bare grant type remains a candidate simplification should working
-group feedback favor it.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
+boundary is crossed, and vouching first-hand for its own workloads' identity,
+keys, and provenance. The Chain Authority does not see the target of the
+eventual exchange (<a href="#excluded-claims" class="auto internal xref">Section 4.3</a>) and therefore gates only continuation
+itself, never target or scope, which are solely the IdP's to authorize. With
+cross-boundary lineage constructed by the IdP (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>), the
+assertion carries exactly what the Chain Authority can attest first-hand: the
+authenticated current actor, its key binding, and its own-domain verified
+segment. Deployments needing neither capability reduce the Chain Authority to
+a co-signature over <code>chain_id</code> and the current actor; the bare grant type
+remains a candidate simplification should working group feedback favor it.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3330,7 +3495,7 @@ TravelSaaS, whose TravelService must call TravelAPI to finish the request. All p
 enterprise IdP at <code>https://idp.example/</code>.
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE headers
 and signatures are omitted. The values are consistent with the examples in
-<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, <a href="#response-param" class="auto internal xref">Section 7.4</a>, and <a href="#onward-id-jag" class="auto internal xref">Section 10</a>.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, <a href="#response-param" class="auto internal xref">Section 7.6</a>, and <a href="#onward-id-jag" class="auto internal xref">Section 10</a>.<a href="#appendix-B-1" class="pilcrow">¶</a></p>
 <p id="appendix-B-2">The participants and values used throughout:<a href="#appendix-B-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
         <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
@@ -3454,12 +3619,10 @@ and signatures are omitted. The values are consistent with the examples in
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">
-              <code>chain_id</code>
-</td>
+              <code>chain_id</code> handles</td>
             <td class="text-left" rowspan="1" colspan="1">
-              <code>01JZ8F4J9J8Y3NDK5WQ4P9K7Q2</code>
-</td>
-            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+              <code>kW4uJ8pTe2NxA6rQvD1zYs</code> (root hop), <code>Uc9fB3mHs5LdK7gEnX2wRj</code> (Travel hop)</td>
+            <td class="text-left" rowspan="1" colspan="1">Continuation handles; one per hop.</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Subjects</td>
@@ -3551,7 +3714,7 @@ IdP then responds:<a href="#appendix-B.1-5" class="pilcrow">¶</a></p>
   "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
   "token_type": "N_A",
   "expires_in": 300,
-  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+  "chain_id": "kW4uJ8pTe2NxA6rQvD1zYs"
 }
 </pre><a href="#appendix-B.1-6" class="pilcrow">¶</a>
 </div>
@@ -3599,7 +3762,7 @@ chain context to TravelService over an authenticated, confidential, and
 integrity-protected channel:<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.2-2">
 <pre>
-chain_id   = 01JZ8F4J9J8Y3NDK5WQ4P9K7Q2
+chain_id   = kW4uJ8pTe2NxA6rQvD1zYs
 actor chain = expense-service (ExpenseSaaS) &lt;- expense-app
 </pre><a href="#appendix-B.2-2" class="pilcrow">¶</a>
 </div>
@@ -3662,14 +3825,15 @@ It then resolves the user's TravelRAS-local subject and returns:<a href="#append
   "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
   "token_type": "N_A",
   "expires_in": 300,
-  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2"
+  "chain_id": "Uc9fB3mHs5LdK7gEnX2wRj"
 }
 </pre><a href="#appendix-B.4-4" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.4-5">The decoded ID-JAG for TravelRAS is the one shown in <a href="#onward-id-jag" class="auto internal xref">Section 10</a>: same
 user, but <code>sub</code> is now <code>travel-local-subject</code>, and it carries no <code>chain_id</code>.
-The <code>chain_id</code> is returned again as a response parameter so a further hop to
-BookingRAS can repeat this step.<a href="#appendix-B.4-5" class="pilcrow">¶</a></p>
+The response returns a fresh handle for the newly created Travel hop; the
+Booking continuation in <a href="#example-offline-segment" class="auto internal xref">Appendix B.6</a> presents that handle, so
+its lineage builds on the Travel hop rather than on any sibling branch.<a href="#appendix-B.4-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-use">
@@ -3703,7 +3867,7 @@ and asserts it as nested own-domain <code>act</code> values (<a href="#assertion
 {
   "iss": "https://ca.travel.example/",
   "aud": "https://idp.example/",
-  "chain_id": "01JZ8F4J9J8Y3NDK5WQ4P9K7Q2",
+  "chain_id": "Uc9fB3mHs5LdK7gEnX2wRj",
 
   "act": {
     "iss": "https://travel.example/",
@@ -3729,9 +3893,9 @@ ID-JAG with <code>audience=https://ras.booking.example/</code>,
 <code>resource=https://api.booking.example/</code>, and <code>scope=stays.book</code>, all within
 the envelope's Booking target entry. The IdP composes the onward <code>act</code> chain
 (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>): the asserted segment (<code>booking-worker</code> above
-<code>travel-service</code>) is placed atop the authenticated actor history
+<code>travel-service</code>) is placed atop the presented hop's lineage
 (<code>travel-service</code>, then <code>expense-app</code>), and <code>travel-service</code>, being both the
-segment's innermost actor and the history's most recent, appears once:<a href="#appendix-B.6-4" class="pilcrow">¶</a></p>
+segment's innermost actor and the lineage's most recent, appears once:<a href="#appendix-B.6-4" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.6-5">
 <pre>
 {
@@ -3770,32 +3934,11 @@ segment's innermost actor and the history's most recent, appears once:<a href="#
 }
 </pre><a href="#appendix-B.6-5" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.6-6"><code>booking-worker</code>, having performed this exchange, now enters the chain's
-authenticated actor history, and any further continuation builds on it.
-BookingRAS processes an ordinary ID-JAG and receives an authenticated
-lineage, including an offline hop that its own domain could never have
-verified.<a href="#appendix-B.6-6" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="example-mtls">
-<section id="appendix-B.7">
-        <h3 id="name-variant-mutual-tls-proof-of">
-<a href="#appendix-B.7" class="section-number selfRef">B.7. </a><a href="#name-variant-mutual-tls-proof-of" class="section-name selfRef">Variant: Mutual-TLS Proof of Possession</a>
-        </h3>
-<p id="appendix-B.7-1">Every exchange above uses DPoP. With mutual-TLS client authentication
-<span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> the flows are unchanged except for the proof mechanics: the
-workload presents its client certificate on a mutual-TLS connection instead
-of sending a <code>DPoP</code> header, and each <code>cnf</code> carries the certificate thumbprint
-rather than a key thumbprint:<a href="#appendix-B.7-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.7-2">
-<pre>
-"cnf": { "x5t#S256": "base64url-client-cert-sha256-thumbprint" }
-</pre><a href="#appendix-B.7-2" class="pilcrow">¶</a>
-</div>
-<p id="appendix-B.7-3">The IdP verifies that the presented certificate matches the assertion's
-confirmation (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.3</a>), and the workload presents
-the same certificate when exchanging the onward ID-JAG at the target Resource
-Authorization Server.<a href="#appendix-B.7-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.6-6"><code>booking-worker</code>, having performed this exchange, now anchors a new hop of
+the chain, and any continuation presenting that hop's handle builds on its
+lineage. BookingRAS processes an ordinary ID-JAG and receives an
+authenticated lineage, including an offline hop that its own domain could
+never have verified.<a href="#appendix-B.6-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3875,9 +4018,9 @@ fresh, sender-constrained assertion evaluated against the root-chain envelope.<a
               <code>chain_id</code>
 </td>
             <td class="text-left" rowspan="1" colspan="1">
-              <code>01K2Q9RS7VW3XM5TZC8HB4DFEG</code>
+              <code>Pz6vTq1NcY4kM8bJf3RxWa</code>
 </td>
-            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+            <td class="text-left" rowspan="1" colspan="1">Root hop's continuation handle, stored with the task.</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Subject</td>
@@ -3906,7 +4049,7 @@ authenticated root actor, and responds with the grant plus:<a href="#appendix-C.
 <div class="lang-json sourcecode" id="appendix-C.1-2">
 <pre>
 {
-  "chain_id": "01K2Q9RS7VW3XM5TZC8HB4DFEG",
+  "chain_id": "Pz6vTq1NcY4kM8bJf3RxWa",
   "chain_exp": 1714592000
 }
 </pre><a href="#appendix-C.1-2" class="pilcrow">¶</a>
@@ -3917,7 +4060,7 @@ authenticated root actor, and responds with the grant plus:<a href="#appendix-C.
 task: morning-calendar-brief
   user:     alice
   agent:    briefing-agent           # the authorized continuer
-  chain_id: 01K2Q9RS7VW3XM5TZC8HB4DFEG   # non-bearer reference
+  chain_id: Pz6vTq1NcY4kM8bJf3RxWa   # non-bearer reference
   chain_exp: 1714592000
   schedule: "0 7 * * *"
 </pre><a href="#appendix-C.1-4" class="pilcrow">¶</a>
@@ -3996,7 +4139,10 @@ authenticated at setup, possibly days before this run
 acceptable for <code>calendar.read</code>; nothing presents the run as a fresh login.<a href="#appendix-C.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-C.3-2">Each run consumes a fresh, single-use assertion; between runs the platform
 holds nothing presentable. Theft of the stored record yields a <code>chain_id</code>
-that is useless without the agent's key (<a href="#chain-id" class="auto internal xref">Section 5</a>).<a href="#appendix-C.3-2" class="pilcrow">¶</a></p>
+that is useless without the agent's key (<a href="#chain-id" class="auto internal xref">Section 5</a>). Each run presents the
+stored root handle and creates its own hop, receiving that hop's fresh handle
+for any onward hops within the run; sibling runs are independent branches of
+the chain.<a href="#appendix-C.3-2" class="pilcrow">¶</a></p>
 <p id="appendix-C.3-3">The chain fails closed. When Alice's authorization is revoked or <code>chain_exp</code>
 passes, the next exchange returns <code>invalid_grant</code> (<a href="#validation" class="auto internal xref">Section 9</a>): the
 signal to seek re-authorization from Alice rather than retry. <code>chain_exp</code>
@@ -4149,9 +4295,9 @@ an identity assertion whose audience it is not.<a href="#appendix-D-1" class="pi
               <code>chain_id</code>
 </td>
             <td class="text-left" rowspan="1" colspan="1">
-              <code>01K5D3W8YAZE6QNMB2TVXH94RC</code>
+              <code>Gm2sVe7XpB5tK9nLw4QzCd</code>
 </td>
-            <td class="text-left" rowspan="1" colspan="1">Root-delegation correlation handle.</td>
+            <td class="text-left" rowspan="1" colspan="1">Root hop's continuation handle.</td>
           </tr>
           <tr>
             <td class="text-left" rowspan="1" colspan="1">Subject</td>
@@ -4199,13 +4345,13 @@ policy-reference authorization basis (<a href="#validation" class="auto internal
 Alice's standing consent and tenant policy, with <code>agent-app</code> as the
 authenticated root actor. Enterprise policy registers <code>tool-gateway</code> as an
 actor permitted to continue chains rooted this way (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10).
-The response returns <code>chain_id</code> <code>01K5D3W8YAZE6QNMB2TVXH94RC</code>.<a href="#appendix-D.1-1" class="pilcrow">¶</a></p>
+The response returns <code>chain_id</code> <code>Gm2sVe7XpB5tK9nLw4QzCd</code>.<a href="#appendix-D.1-1" class="pilcrow">¶</a></p>
 <p id="appendix-D.1-2"><code>agent-app</code> exchanges its gateway ID-JAG at <code>ras.gateway.example</code> for an
 access token (steps 3 and 4) and invokes the gateway, conveying the <code>chain_id</code>
 with the request per the HTTP binding (<a href="#context-binding" class="auto internal xref">Section 4.6</a>) (step 5):<a href="#appendix-D.1-2" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-D.1-3">
 <pre>
-Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
+Chain-Id: Gm2sVe7XpB5tK9nLw4QzCd
 </pre><a href="#appendix-D.1-3" class="pilcrow">¶</a>
 </div>
 </section>
@@ -4225,7 +4371,7 @@ and 7):<a href="#appendix-D.2-1" class="pilcrow">¶</a></p>
 {
   "iss": "https://ca.gateway.example/",
   "aud": "https://idp.example/",
-  "chain_id": "01K5D3W8YAZE6QNMB2TVXH94RC",
+  "chain_id": "Gm2sVe7XpB5tK9nLw4QzCd",
 
   "act": {
     "iss": "https://gateway.example/",
@@ -4308,7 +4454,8 @@ calls the wiki API (steps 10 through 12). A different tool call tomorrow
 reaches a different upstream through the same machinery: a fresh assertion, a
 fresh continuation-time policy decision, no new consent ceremony, and the
 same denial behavior as <a href="#example-dynamic" class="auto internal xref">Appendix C.4</a> for targets or scopes outside
-Alice's standing consent.<a href="#appendix-D.2-7" class="pilcrow">¶</a></p>
+Alice's standing consent. Concurrent tool calls present the same stored root
+handle and become sibling hops with independent lineage.<a href="#appendix-D.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="points-worth-noticing-1">
