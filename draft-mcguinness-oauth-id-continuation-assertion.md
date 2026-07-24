@@ -516,6 +516,11 @@ context are conveyed by deployment-specific means (for example, a transaction
 token) and are validated by the Chain Authority before issuance
 ({{context-provenance}}).
 
+Within a trust domain, `chain_id` typically travels inside existing context
+propagation such as a Transaction Token {{I-D.ietf-oauth-transaction-tokens}}.
+This binding serves the inter-domain hop, which a Transaction Token cannot
+cross under its own audience rules ({{rationale-txn}}).
+
 # Chain Identifier (`chain_id`) {#chain-id}
 
 The `chain_id` identifies the root delegation context established when the IdP
