@@ -546,7 +546,9 @@ A sender MUST transmit this field only over a channel that satisfies
 {{context-provenance}} (authenticated, confidential, and integrity-protected;
 for example, mutual TLS between the workloads). A receiver MUST treat the
 value per {{context-provenance}}: it identifies a chain but conveys no
-authority. Participants SHOULD exclude the field value from logs.
+authority. Participants SHOULD exclude the field value from logs. The chain
+participant to which the field is addressed consumes it; a receiver MUST NOT
+forward the field to a party that is not a participant in the chain.
 
 The field is a singleton: a sender MUST NOT generate more than one
 `Continuation-Handle` field in a message, and a receiver MUST reject a message
@@ -733,6 +735,11 @@ cannot establish the requested chain, it MAY still issue the requested grant
 without one; the absence of `continuation_handle` in the response tells the
 client that no chain exists.
 
+Like the continuation exchange ({{validation}}), root establishment is
+at-least-once: a retry after a lost response MAY establish a second chain.
+Both chains are bounded by the same consent and policy, and an unused chain
+expires.
+
 ## Chained ID-JAG Request
 
 A chained request, in which the subject token is an Identity Continuation
@@ -788,8 +795,13 @@ uses proof of possession aligned with the direct ID-JAG request
   the live proof. For an opaque actor token, the IdP MUST obtain the
   equivalent confirmation value from authoritative token metadata, such as a
   token introspection response {{RFC7662}}. A bearer actor token MUST NOT be
-  accepted. These checks bind the authenticated workload identity, the
-  assertion, and the demonstrated key to one actor.
+  accepted. The `actor_token` MUST be of a type the IdP accepts for
+  continuation and currently valid under that type's rules, and where its
+  type defines an audience or equivalent applicability restriction, that
+  restriction MUST designate the IdP: a token a trusted issuer minted for
+  another service is not a valid `actor_token`. These checks bind the
+  authenticated workload identity, the assertion, and the demonstrated key
+  to one actor.
 
 Actor identity comparison is exact: two actor identities are the same entity
 only if their issuer and subject identifiers are octet-for-octet equal. The
@@ -1005,8 +1017,10 @@ unless all of the following hold:
     * the request is authenticated as an OAuth client that is the same
       entity as the current actor ({{client-identity}});
     * the `actor_token` was issued by a workload identity issuer the IdP
-      trusts for the current actor's trust domain and tenant, and it
-      authenticates the current actor;
+      trusts for the current actor's trust domain and tenant, is of an
+      accepted type and currently valid, designates the IdP where its type
+      defines an audience or applicability restriction, and authenticates
+      the current actor;
     * that actor is the actor named in `act`; and
     * that actor is permitted by the chain's continuation authorization
       ({{root-establishment}}) to continue from the presented hop;
@@ -1030,8 +1044,9 @@ unless all of the following hold:
 15. the requested output token type is
     `urn:ietf:params:oauth:token-type:id-jag`; and
 
-16. the IdP can resolve the target-audience subject for the requested
-    `audience`.
+16. the IdP can resolve, for the requested `audience`, both the
+    target-audience subject and the current actor's client identifier
+    ({{client-identity}}).
 
 After all other validation succeeds, the IdP MUST, as part of issuing the
 onward grant, atomically verify that the tuple (`iss`, `jti`) has not been
@@ -2430,15 +2445,12 @@ is welcome.
    actor-signed hop proofs {{I-D.mcguinness-oauth-actor-proofs}} are an
    alternative carrier.
 
-7. **Actor-token acceptance constraints.** Rule 10 of {{validation}}
-   requires a trusted issuer and sender constraint, but a token that a
-   trusted issuer minted for a different audience or purpose is not
-   thereby a valid `actor_token`. The sketched tightening: the IdP accepts
-   only configured actor-token classes whose audience or purpose
-   designates the continuation exchange, with tenant binding and liveness
-   checks, and advertises the accepted profiles in its metadata
-   ({{metadata}}). Should this become normative, and how much of it
-   belongs in discovery?
+7. **Actor-token profile discovery.** This profile constrains accepted
+   actor-token types, validity, and applicability
+   ({{sender-constrained-presentation}}; {{validation}}, rule 10). How much
+   of an IdP's accepted actor-token profile (types, issuers, proof
+   methods) should be advertised in its metadata ({{metadata}}) rather
+   than learned out of band?
 
 # Acknowledgments
 {:numbered="false"}
