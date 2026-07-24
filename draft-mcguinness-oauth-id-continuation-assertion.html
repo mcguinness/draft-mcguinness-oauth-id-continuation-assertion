@@ -1883,6 +1883,10 @@ root-chain envelope indexed by <code>continuation_handle</code>, and identifies 
 from the <code>act</code> claim and the <code>actor_token</code>; repeating those values in
 the assertion would only create competing sources of identity without adding
 authority.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
+<p id="section-4.2-6">The assertion <span class="bcp14">MAY</span> carry other top-level claims. A recipient <span class="bcp14">MUST</span> ignore
+claims it does not understand, and additional claims are non-authoritative:
+the IdP <span class="bcp14">MUST NOT</span> use them in validation, continuation authorization, or
+grant issuance.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="excluded-claims">
@@ -1975,9 +1979,10 @@ hop-proof chain <span>[<a href="#I-D.mcguinness-oauth-actor-proofs" class="cite 
 <p id="section-4.5-3">Possession of <code>continuation_handle</code> alone is insufficient to satisfy these
 requirements, and values received as propagated context, including actor
 history or requested authority, <span class="bcp14">MUST NOT</span> override the root-chain envelope.
-The transport <span class="bcp14">MAY</span> carry deployment-specific hints, but the assertion contains
-only the claims of <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>, and the IdP applies its own
-root-chain and current-actor policy at the exchange.<a href="#section-4.5-3" class="pilcrow">¶</a></p>
+The transport <span class="bcp14">MAY</span> carry deployment-specific hints, but the assertion's
+authoritative content is only the claims defined in <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>,
+and the IdP applies its own root-chain and current-actor policy at the
+exchange.<a href="#section-4.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="context-binding">
@@ -2819,6 +2824,12 @@ whose client-issued tokens are key-linked, monotonically downscoped, and
 depth-bounded). The Chain Authority validates the segment before issuing
 (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); the IdP itself enforces only the root-chain envelope
 described above.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
+<p id="section-11.4-3">A related risk for a multi-user intermediary is association error rather
+than broadening: a workload holding many valid handles that attaches the
+wrong handle to a request continues the wrong user's chain, within that
+chain's envelope. Deployments <span class="bcp14">MUST</span> preserve the association between an
+inbound transaction and its handle (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); standardizing a
+carrier for that association is an open item (<a href="#open-items" class="auto internal xref">Appendix E</a>).<a href="#section-11.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="trust-in-the-chain-authority">

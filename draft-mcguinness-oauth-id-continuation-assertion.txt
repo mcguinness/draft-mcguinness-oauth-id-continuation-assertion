@@ -530,6 +530,11 @@ Table of Contents
    actor_token; repeating those values in the assertion would only
    create competing sources of identity without adding authority.
 
+   The assertion MAY carry other top-level claims.  A recipient MUST
+   ignore claims it does not understand, and additional claims are non-
+   authoritative: the IdP MUST NOT use them in validation, continuation
+   authorization, or grant issuance.
+
 4.3.  Claims That Are Deliberately Excluded
 
    The following Token Exchange request values MUST NOT be conveyed by
@@ -602,9 +607,9 @@ Table of Contents
    these requirements, and values received as propagated context,
    including actor history or requested authority, MUST NOT override the
    root-chain envelope.  The transport MAY carry deployment-specific
-   hints, but the assertion contains only the claims of Section 4.2, and
-   the IdP applies its own root-chain and current-actor policy at the
-   exchange.
+   hints, but the assertion's authoritative content is only the claims
+   defined in Section 4.2, and the IdP applies its own root-chain and
+   current-actor policy at the exchange.
 
 4.6.  An HTTP Binding for Chain Context
 
@@ -1366,6 +1371,14 @@ Table of Contents
    are key-linked, monotonically downscoped, and depth-bounded).  The
    Chain Authority validates the segment before issuing (Section 4.5);
    the IdP itself enforces only the root-chain envelope described above.
+
+   A related risk for a multi-user intermediary is association error
+   rather than broadening: a workload holding many valid handles that
+   attaches the wrong handle to a request continues the wrong user's
+   chain, within that chain's envelope.  Deployments MUST preserve the
+   association between an inbound transaction and its handle
+   (Section 4.5); standardizing a carrier for that association is an
+   open item (Appendix E).
 
 11.5.  Trust in the Chain Authority
 
