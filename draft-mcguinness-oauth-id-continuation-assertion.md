@@ -455,6 +455,11 @@ from the `act` claim and the `actor_token`; repeating those values in
 the assertion would only create competing sources of identity without adding
 authority.
 
+The assertion MAY carry other top-level claims. A recipient MUST ignore
+claims it does not understand, and additional claims are non-authoritative:
+the IdP MUST NOT use them in validation, continuation authorization, or
+grant issuance.
+
 ## Claims That Are Deliberately Excluded {#excluded-claims}
 
 The following Token Exchange request values MUST NOT be conveyed by the
@@ -526,9 +531,10 @@ the following:
 Possession of `continuation_handle` alone is insufficient to satisfy these
 requirements, and values received as propagated context, including actor
 history or requested authority, MUST NOT override the root-chain envelope.
-The transport MAY carry deployment-specific hints, but the assertion contains
-only the claims of {{assertion-claims}}, and the IdP applies its own
-root-chain and current-actor policy at the exchange.
+The transport MAY carry deployment-specific hints, but the assertion's
+authoritative content is only the claims defined in {{assertion-claims}},
+and the IdP applies its own root-chain and current-actor policy at the
+exchange.
 
 ## An HTTP Binding for Chain Context {#context-binding}
 
@@ -1248,6 +1254,13 @@ whose client-issued tokens are key-linked, monotonically downscoped, and
 depth-bounded). The Chain Authority validates the segment before issuing
 ({{context-provenance}}); the IdP itself enforces only the root-chain envelope
 described above.
+
+A related risk for a multi-user intermediary is association error rather
+than broadening: a workload holding many valid handles that attaches the
+wrong handle to a request continues the wrong user's chain, within that
+chain's envelope. Deployments MUST preserve the association between an
+inbound transaction and its handle ({{context-provenance}}); standardizing a
+carrier for that association is an open item ({{open-items}}).
 
 ## Trust in the Chain Authority
 
