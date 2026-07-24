@@ -169,8 +169,8 @@ privacy property.
 
 An onward hop that re-subjects the user is therefore a re-issuance, not an
 attenuation. A holder can only narrow authority it already possesses; it cannot
-synthesize a subject it was never issued. The original identity assertion is
-spent after the first hop, so before the IdP can mint the next grant it needs
+synthesize a subject it was never issued. The end-user credential that authorized the first hop is not available to
+downstream services, so before the IdP can mint the next grant it needs
 fresh, sender-constrained evidence that the in-flight delegation is still live
 and still represents this user. The Identity Continuation Assertion is that
 evidence; it is used as a Token Exchange subject token to obtain an onward
@@ -190,8 +190,8 @@ Web Tokens (JWTs) {{RFC7519}}, and it is a continuation extension of the ID-JAG
 of OAuth Identity and Authorization Chaining Across Domains
 {{I-D.ietf-oauth-identity-chaining}}. ID-JAG covers the exchange at the first
 hop, where the requester still holds an end-user credential. It does not by
-itself cover later hops: once that credential is spent, a downstream service has
-no end-user assertion to exchange and cannot mint the next audience's subject
+itself cover later hops, where a downstream service holds no end-user
+credential to exchange and cannot mint the next audience's subject
 ({{core-principle}}). This profile supplies the missing input for those hops and
 reuses ID-JAG unchanged as the onward grant type, rather than defining a
 competing grant.
@@ -555,9 +555,9 @@ value per {{context-provenance}}: it identifies a chain but conveys no
 authority. Participants SHOULD exclude the field value from logs.
 
 The field is a singleton: a sender MUST NOT generate more than one
-`Continuation-Handle` field in a message, and a receiver MUST treat a message
-containing multiple instances, or a list-valued instance, as carrying no
-chain context.
+`Continuation-Handle` field in a message, and a receiver MUST reject a message
+containing multiple instances, or a list-valued instance, as malformed,
+rather than proceed as though no chain context were present.
 
 Actor lineage and other chain context are conveyed by deployment-specific
 means and are validated by the Chain Authority before issuance
@@ -648,19 +648,21 @@ A chain is continuable only while the IdP considers it active. Because every
 cross-boundary hop is an exchange at the IdP ({{flow}}), the IdP is in the loop
 at each hop and can stop a chain at any point.
 
-The IdP MUST bound the continuation lifetime of a chain. That lifetime
-MUST NOT exceed the lifetime of the authentication context and authorization
-that established the chain (for example, the user's session or the
-governing refresh token), or any explicit maximum chain lifetime set by
-policy, whichever is shorter, and the IdP MUST reject a continuation of an expired chain ({{validation}}).
-Continuing a chain MUST NOT extend the root authentication context: `auth_time`,
-`acr`, and `amr` are fixed at root issuance, and onward grants inherit them
-unchanged ({{security-assurance}}).
+Every chain has a governing authorization: the consent or policy grant under
+which it was established, such as the user's session, a governing refresh
+token, or a durable consent with an explicit maximum lifetime set by policy.
+The IdP MUST bound the continuation lifetime of a chain by the lifetime of
+its governing authorization, and MUST reject a continuation of an expired
+chain ({{validation}}). The governing authorization is distinct from the
+root authentication context: continuing a chain MUST NOT extend that
+context, and `auth_time`, `acr`, and `amr` are fixed at root issuance and
+inherited unchanged by onward grants ({{security-assurance}}).
 
-The IdP MUST be able to revoke a chain (for example, when the user's session is
-terminated, the governing refresh token is revoked, or policy otherwise
-withdraws the delegation), and MUST stop honoring continuation for a revoked
-chain. An IdP MAY additionally revoke an individual hop's subtree, stopping
+The IdP MUST be able to revoke a chain, and MUST stop honoring continuation
+for a revoked chain. Ending the governing authorization revokes the chain:
+termination of the user's session does so when the session governs, as does
+revocation of a governing refresh token or withdrawal of the underlying
+policy. An IdP MAY additionally revoke an individual hop's subtree, stopping
 continuation along one branch while the rest of the chain remains
 continuable.
 
@@ -722,6 +724,14 @@ basis, the continuation authorization, any maximum actor-chain
 depth, and the chain's expiry are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
 envelope.
+
+When establishing a chain, the IdP MUST determine the root actor: the
+authenticated OAuth client of the direct request, identified through the
+authoritative client-to-actor mapping of {{client-identity}}. If the direct
+request includes an `actor_token`, it MUST meet the requirements of
+{{sender-constrained-presentation}} and MUST identify that same entity. The
+IdP MUST record the root actor in the root hop only after this validation;
+the root actor begins every branch's lineage ({{onward-id-jag}}).
 
 The response returns the root hop's handle in `continuation_handle` and MAY
 include the chain's expiry in `chain_exp` ({{response-param}}). If the IdP
@@ -791,6 +801,9 @@ Actor identity comparison is exact: two actor identities are the same entity
 only if their issuer and subject identifiers are octet-for-octet equal. The
 IdP MUST apply this comparison when matching the `actor_token` to the
 outermost `act` and to the authenticated client ({{client-identity}}).
+Comparison occurs within the tenant context already established for the
+exchange ({{validation}}, rule 10); identities from different tenants are
+never compared equal.
 
 The onward ID-JAG the IdP issues is itself sender-constrained to the same key
 through its own `cnf`, using the DPoP-based binding the ID-JAG profile defines
@@ -1069,8 +1082,13 @@ authorization basis or by IdP policy for the current actor; and
 `invalid_authorization_details` {{RFC9396}} for a malformed
 `authorization_details` value or one not permitted by that basis.
 
-The IdP SHOULD use `invalid_grant` when the `continuation_handle` is unknown, expired,
-revoked, or otherwise no longer eligible for continuation (rule 7): the chain
+The IdP SHOULD use `invalid_grant` when the `continuation_handle` is unknown,
+expired, revoked, or otherwise no longer eligible for continuation (rule 7).
+This is a deliberate, profile-specific deviation from Section 2.2.2 of
+{{RFC8693}}, which would direct `invalid_request` for an unacceptable
+`subject_token`: for this token type the assertion itself may be entirely
+valid while the referenced chain is dead, and the semantics of
+`invalid_grant` (an expired or revoked grant) match the condition. The chain
 itself is dead, retrying cannot succeed, and continuing requires establishing
 a new root delegation, which typically requires the user. `invalid_target` and
 `invalid_scope` instead signal that this particular request falls outside the
@@ -1326,7 +1344,7 @@ Common Name:
 : Token type URI for the Identity Continuation Assertion
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document:
 : This document, {{names}}
@@ -1350,7 +1368,7 @@ Optional parameters:
 : N/A
 
 Encoding considerations:
-: 8bit; an Identity Continuation Assertion is a JWT {{RFC7519}}, which is a
+: binary; an Identity Continuation Assertion is a JWT {{RFC7519}}, which is a
   series of base64url-encoded values (some of which may be empty) separated by
   period ('.') characters.
 
@@ -1425,7 +1443,7 @@ Parameter usage location:
 : token request
 
 Change controller:
-: IESG
+: IETF
 
 Specification document(s):
 : This document, {{root-establishment}}
@@ -1437,7 +1455,7 @@ Parameter usage location:
 : token response
 
 Change controller:
-: IESG
+: IETF
 
 Specification document(s):
 : This document, {{response-param}}
@@ -1449,7 +1467,7 @@ Parameter usage location:
 : token response
 
 Change controller:
-: IESG
+: IETF
 
 Specification document(s):
 : This document, {{response-param}}
@@ -2020,7 +2038,7 @@ active session. The platform performs the direct ID-JAG exchange of
 `briefing-agent` as the authenticated actor, including the `continuation`
 parameter ({{root-establishment}}). Because the task will outlive
 Alice's session, the consent captured here establishes an explicit maximum
-chain lifetime as the chain's governing bound ({{lifecycle}}), with
+chain lifetime as the chain's governing authorization ({{lifecycle}}), with
 `briefing-agent` as the permitted continuer, and the
 envelope's authorized target entry is exactly the task's need:
 (`https://ras.calendar.example/`, `https://api.calendar.example/`,
