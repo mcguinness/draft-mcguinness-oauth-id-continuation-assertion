@@ -1757,7 +1757,8 @@ TravelRAS -> TravelService: AT2
 TravelService -> TravelAPI: API call
 ~~~
 
-The subsections below detail each step.
+The subsections below detail each step; {{example-offline-segment}} then
+repeats the continuation pattern for a third hop to BookingRAS.
 
 ## First Hop: Direct ID-JAG for ExpenseRAS {#example-first-hop}
 
@@ -1919,7 +1920,8 @@ It then resolves the user's TravelRAS-local subject and returns:
   "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
   "token_type": "N_A",
   "expires_in": 300,
-  "continuation_handle": "Uc9fB3mHs5LdK7gEnX2wRj"
+  "continuation_handle": "Uc9fB3mHs5LdK7gEnX2wRj",
+  "chain_exp": 1710086400
 }
 ~~~
 
@@ -2047,18 +2049,22 @@ The participants and values used throughout:
 | Chain Authority | `https://ca.platform.example/` | The platform's Chain Authority; issues assertions for its workloads. |
 | CalendarRAS | `https://ras.calendar.example/` | Resource Authorization Server for the calendar service. |
 | CalendarAPI | `https://api.calendar.example/` | Protected resource behind CalendarRAS. |
+| Scheduler | (internal) | Platform component that triggers each run. |
+| MailRAS | `https://ras.mail.example/` | Resource Authorization Server for the mail upstream ({{example-dynamic}}). |
+| MailAPI | `https://api.mail.example/` | Mail protected resource ({{example-dynamic}}). |
 | Handle | `Pz6vTq1NcY4kM8bJf3RxWa` | Root hop handle, stored with the task. |
 | Subject | `alice-calendar-subject` | Alice's pairwise subject at CalendarRAS. |
 
 ## Setup (Alice Present)
 
 Alice schedules "summarize my calendar every morning" and authorizes it in an
-active session. The platform performs the direct ID-JAG exchange of
-{{token-exchange}} with Alice's session as the `subject_token` and
-`briefing-agent` as the authenticated actor, including the `continuation`
-parameter ({{root-establishment}}). Because the task will outlive
-Alice's session, the consent captured here establishes an explicit maximum
-chain lifetime as the chain's governing authorization ({{lifecycle}}), with
+active session. `briefing-agent`, the platform workload, authenticates as
+the OAuth client and performs the direct ID-JAG exchange of
+{{token-exchange}}, with a token from Alice's active session (an ID Token)
+as the `subject_token` and the `continuation` parameter present
+({{root-establishment}}). Because the task will outlive Alice's session,
+the consent captured here (a durable consent with an explicit maximum
+lifetime) is the chain's governing authorization ({{lifecycle}}), with
 `briefing-agent` as the permitted continuer, and the
 envelope's authorized target entry is exactly the task's need:
 (`https://ras.calendar.example/`, `https://api.calendar.example/`,
