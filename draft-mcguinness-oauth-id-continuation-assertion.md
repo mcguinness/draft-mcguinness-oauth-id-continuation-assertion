@@ -2384,12 +2384,22 @@ is welcome.
    ({{I-D.mcguinness-oauth-actor-receipts}},
    {{I-D.mcguinness-oauth-actor-proofs}})?
 
-2. **Signed assertion versus a bare grant type.** {{rationale-grant-type}}
-   documents the alternative in which the continuing workload presents the
-   handle directly under client authentication, with no assertion, Chain
-   Authority, or per-assertion replay state. Which do implementers prefer,
-   and is the Chain Authority's remaining role (actor and key vouching plus
-   a domain-local gate) worth its trust configuration?
+2. **Signed assertion versus a recipient-bound direct profile.**
+   {{rationale-grant-type}} documents an alternative in which the
+   continuing workload presents the handle directly under client
+   authentication, with no assertion, Chain Authority, or per-assertion
+   replay state. Implementer review indicates that a raw handle is not an
+   adequate subject token for such a profile: an actor credential proves
+   who the actor is, not that this actor was authorized to receive and
+   continue this particular chain. The sketched direct profile instead
+   uses a recipient-bound continuation credential: when the IdP returns a
+   hop's handle, it binds it to an intended successor (a specific actor,
+   an actor class, a trust domain, or a confirmation key), and a
+   continuation presenting it succeeds only for that successor, alongside
+   client authentication, a sender-constrained actor token, and live proof
+   of possession. Which profile should ship, and is the Chain Authority's
+   remaining role (actor and key vouching plus a domain-local gate) worth
+   its trust configuration where recipient binding is available?
 
 3. **Pull topology.** {{rationale-pull}} documents resolution at the target
    Resource Authorization Server as a candidate companion profile that moves
@@ -2404,6 +2414,31 @@ is welcome.
    negotiation of lifetime, depth, or permitted continuers is reserved for
    future values ({{root-establishment}}). Is client-side negotiation of
    chain properties needed at all?
+
+6. **Binding chain context to the local transaction.** Chain-context
+   provenance ({{context-provenance}}) requires an authorized channel but
+   does not bind a received handle to the inbound request, the prior actor,
+   or the user context the receiver observed. A multi-user gateway holds
+   many valid handles, and if it associates the wrong handle with a
+   request, the IdP resolves the user from whichever chain the handle
+   names. Should a future revision standardize one interoperable
+   provenance profile? The sketched candidate carries the handle inside a
+   Transaction Token {{I-D.ietf-oauth-transaction-tokens}} together with
+   the parent actor and request context, so the Chain Authority verifies
+   an integrity-protected association among chain, actor, and local
+   transaction rather than relying on channel authentication alone;
+   actor-signed hop proofs {{I-D.mcguinness-oauth-actor-proofs}} are an
+   alternative carrier.
+
+7. **Actor-token acceptance constraints.** Rule 10 of {{validation}}
+   requires a trusted issuer and sender constraint, but a token that a
+   trusted issuer minted for a different audience or purpose is not
+   thereby a valid `actor_token`. The sketched tightening: the IdP accepts
+   only configured actor-token classes whose audience or purpose
+   designates the continuation exchange, with tenant binding and liveness
+   checks, and advertises the accepted profiles in its metadata
+   ({{metadata}}). Should this become normative, and how much of it
+   belongs in discovery?
 
 # Acknowledgments
 {:numbered="false"}
