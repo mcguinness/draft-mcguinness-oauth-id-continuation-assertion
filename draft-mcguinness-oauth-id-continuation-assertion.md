@@ -56,6 +56,7 @@ informative:
   I-D.ietf-oauth-identity-chaining:
   I-D.ietf-oauth-transaction-tokens:
   I-D.ietf-wimse-arch:
+  I-D.li-oauth-delegated-authorization:
   I-D.mcguinness-oauth-actor-receipts:
   I-D.mcguinness-oauth-actor-proofs:
   OIDC.FrontChannelLogout:
@@ -320,8 +321,9 @@ The deciding question is subject resolution, not cost.
 
 * If the *same* subject identifier, or a key-based workload identity, suffices
   down a local fan-out, the parties SHOULD NOT round-trip the IdP. An offline
-  attenuated delegation token is used instead, and the IdP is reserved for the
-  boundary hops.
+  attenuated delegation token (for example,
+  {{I-D.li-oauth-delegated-authorization}}) is used instead, and the IdP is
+  reserved for the boundary hops.
 
 In the canonical flow both appear: an offline attenuated stack inside
 TravelSaaS as it fans out to sub-agents, and an Identity Continuation Assertion
@@ -1185,9 +1187,11 @@ intermediate actor from broadening the chain beyond what the root delegation
 and its governing consent and policy authorize.
 
 Where an offline attenuated delegation stack feeds an Identity Continuation
-Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
+Assertion, monotonic attenuation, bounded delegation depth, and parent
 linkage along that offline segment are provided and verified by that stack's
-own specification. The Chain Authority validates the segment before issuing
+own specification (for example, {{I-D.li-oauth-delegated-authorization}},
+whose client-issued tokens are key-linked, monotonically downscoped, and
+depth-bounded). The Chain Authority validates the segment before issuing
 ({{context-provenance}}); the IdP itself enforces only the root-chain envelope
 described above.
 
@@ -1570,6 +1574,11 @@ global subject for the user, mutually trust each other's issuers (for example, a
 single SPIFFE-style trust domain), and accept the loss of mid-chain revocation,
 direct inter-domain propagation is appropriate; that is a different problem from
 the pairwise-subject, per-boundary-trust case this profile addresses.
+Delegated Authorization {{I-D.li-oauth-delegated-authorization}} illustrates
+the boundary from the other side: its client-issued delegation tokens are
+forbidden to carry a subject at all, so that stack composes with this profile
+as the intra-domain layer of {{decision-rule}} and stops exactly where
+re-subjecting begins.
 
 ## Alternative Topology: Resolution at the Target {#rationale-pull}
 
