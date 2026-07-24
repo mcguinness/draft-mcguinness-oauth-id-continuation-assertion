@@ -156,6 +156,7 @@ Table of Contents
      D.2.  Chained Exchange: the Gateway Continues
      D.3.  Points Worth Noticing
    Acknowledgments
+   Document History
    Author's Address
 
 1.  Introduction
@@ -2531,6 +2532,14 @@ Acknowledgments
    The author thanks the authors of OAuth Identity and Authorization
    Chaining Across Domains and the Identity Assertion JWT Authorization
    Grant, on whose work this profile builds.
+
+Document History
+
+   [[ To be removed from the final specification ]]
+
+   -00
+
+   *  Initial revision
 
 Author's Address
 
