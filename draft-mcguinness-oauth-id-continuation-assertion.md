@@ -404,6 +404,12 @@ The claims have the following meanings and requirements:
 
 `act`:
 : REQUIRED. The current actor, encoded as an `act` claim per {{RFC8693}}.
+  Each `act` object contains a REQUIRED `iss` and a REQUIRED `sub`, both
+  non-empty strings, and an OPTIONAL nested `act` object with this same
+  schema. Additional members MAY carry further identity attributes of that
+  actor; a recipient MUST ignore members it does not understand, and the
+  non-identity members `exp`, `nbf`, `aud`, `scope`, and `cnf` MUST NOT be
+  present.
 
   * The outermost `act` identifies the current actor presenting the Token
     Exchange request.
@@ -414,9 +420,8 @@ The claims have the following meanings and requirements:
   * The assertion MUST NOT assert actors outside the issuing Chain
     Authority's trust domain: cross-boundary lineage is constructed by the
     IdP ({{onward-id-jag}}).
-  * Claims inside `act` are identity claims only; non-identity claims such
-    as `exp`, `nbf`, `aud`, `scope`, and `cnf` MUST NOT be used inside
-    `act`.
+  * The IdP MUST reject an assertion whose `act` does not conform to this
+    schema.
 
   The Chain Authority MAY retain audit evidence for the offline segment
   separately from the `act` object, for example per-hop issuer receipts
@@ -464,6 +469,7 @@ Identity Continuation Assertion:
 audience (target)
 resource
 scope
+authorization_details
 requested_token_type
 ~~~
 
@@ -594,11 +600,12 @@ The following rules apply:
    and for each continuation hop. Handle values MUST NOT be reused across
    hops.
 
-2. `continuation_handle` MUST contain at least 128 bits of entropy, MUST NOT contain
-   user-identifying information, and MUST consist of 22 to 256 characters
-   drawn from the URL-safe set `A`-`Z`, `a`-`z`, `0`-`9`, `-`, and `_`,
-   making it safe for use in URLs and HTTP field values
-   ({{context-binding}}).
+2. `continuation_handle` MUST contain at least 128 bits of entropy, MUST NOT
+   contain user-identifying information, and MUST consist of 22 to 256
+   characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`, `0`-`9`,
+   `-`, `_`), making it safe for use in HTTP field values
+   ({{context-binding}}). Participants SHOULD NOT place handles in URLs,
+   which are prone to logging and referrer exposure.
 
 3. `continuation_handle` lives in the control plane only: Token Exchange responses,
    propagated chain context, and Identity Continuation Assertions.
@@ -678,7 +685,8 @@ comparable management model for standing grants.
 An Identity Continuation Assertion is used as the `subject_token` of an OAuth
 2.0 Token Exchange request {{RFC8693}}. A direct request and a chained request
 have the same shape: the client changes only `subject_token` and
-`subject_token_type`.
+`subject_token_type`, and a root request that establishes a chain
+additionally carries `continuation` ({{root-establishment}}).
 
 ## Direct ID-JAG Request
 
@@ -700,25 +708,46 @@ actor_token_type=<actor-token-type>
 ## Establishing a Chain {#root-establishment}
 
 A chain exists only if the root Token Exchange requests one. This document
-defines the `continuation` Token Exchange request parameter: a JSON object
-whose presence in a direct request asks the IdP to establish a chain for the
-delegation being created. Its value is the JSON object serialized as a
-string, following the convention of `authorization_details` {{RFC9396}}. Its
-members, each OPTIONAL, are:
+defines the `continuation` Token Exchange request parameter: its presence in
+a direct request asks the IdP to establish a chain for the delegation being
+created. Its value is a JSON object serialized as a JSON string and carried
+form-encoded like any other Token Exchange parameter, following the
+convention of `authorization_details` {{RFC9396}}. A request MUST NOT
+contain more than one `continuation` parameter. The IdP MUST reject a
+request whose `continuation` value is not a JSON object or whose members do
+not conform to the definitions below, using `invalid_request`, and MUST
+ignore unrecognized members. The members, each OPTIONAL, are:
 
 `basis`:
-: The requested authorization-basis form: `enumerated`, or `policy` for the
-  policy-reference form.
+: String. The requested authorization-basis form: `enumerated`, or `policy`
+  for the policy-reference form.
 
 `lifetime`:
-: The requested maximum chain lifetime, in seconds.
+: JSON number. The requested maximum chain lifetime in seconds, a positive
+  integer.
 
 `max_depth`:
-: The requested maximum actor-chain depth.
+: JSON number. The requested maximum actor-chain depth, a positive integer.
 
 `continuers`:
-: An array of actor or trust-domain identifiers requested as permitted
-  continuers.
+: JSON array of requested permitted continuers. Each element is either a
+  string containing a trust-domain identifier, or a JSON object with `iss`
+  and `sub` members (non-empty strings) naming a specific actor. The IdP
+  grants only identifiers it recognizes for the tenant.
+
+The following is a non-normative example of the object, shown before
+serialization and form encoding:
+
+~~~ json
+{
+  "basis": "policy",
+  "lifetime": 2592000,
+  "max_depth": 4,
+  "continuers": [
+    { "iss": "https://gateway.example/", "sub": "tool-gateway" }
+  ]
+}
+~~~
 
 The IdP decides what to grant, bounded by the user's authentication and
 consent and by policy:
@@ -730,10 +759,12 @@ consent and by policy:
 
 The response returns the root hop's handle in `continuation_handle`, and MAY
 include the chain's expiry in `chain_exp` and echo the granted values in a
-`continuation` response member ({{response-param}}). If the IdP cannot
-establish the requested chain, it MAY still issue the requested grant without
-one; the absence of `continuation_handle` in the response tells the client
-that no chain exists.
+`continuation` response member ({{response-param}}). When echoed, the
+response's `continuation` member is a JSON object (not a serialized string)
+whose members carry the granted values using the definitions above. If the
+IdP cannot establish the requested chain, it MAY still issue the requested
+grant without one; the absence of `continuation_handle` in the response
+tells the client that no chain exists.
 
 ## Chained ID-JAG Request
 
@@ -755,8 +786,9 @@ actor_token_type=<actor-token-type>
 The `subject_token_type` value above is
 `urn:ietf:params:oauth:token-type:identity-continuation`.
 
-The requested `audience`, `resource`, `scope`, and `requested_token_type` are
-supplied by the Token Exchange request and never by the assertion. Following
+The requested `audience`, `resource`, `scope`, `requested_token_type`, and
+any `authorization_details` are supplied by the Token Exchange request and
+never by the assertion. Following
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}, `audience` identifies the
 target Resource Authorization Server and `resource` ({{RFC8693}}, originally
 defined in {{RFC8707}}) identifies the protected resource.
@@ -821,13 +853,19 @@ and the current actor is that client:
 * The exchange MUST be authenticated as an OAuth client. As with the direct
   ID-JAG exchange, this profile is intended for confidential clients.
 * The IdP MUST verify that the authenticated client and the current actor
-  are the same entity, using the exact comparison of
+  are the same entity. That binding is established at registration: the
+  IdP's client registration for a workload records the workload's actor
+  identity (its `iss` and `sub` pair), and the IdP compares the registered
+  actor identity of the authenticated client with the `actor_token` and the
+  outermost `act`, using the exact comparison of
   {{sender-constrained-presentation}}.
-* A deployment MAY register the workload so that a single sender-constrained
-  JWT credential serves as both the client authentication (a JWT client
-  assertion per {{RFC7523}}) and the `actor_token`; otherwise the client
-  authenticates with its registered method and additionally presents the
-  `actor_token`.
+* A deployment MAY use a single sender-constrained JWT as both the client
+  authentication and the `actor_token`, but only where the requirements of
+  both roles coincide: per {{RFC7523}} the JWT's `sub` MUST be the
+  workload's `client_id`, and the IdP MUST be configured to accept the
+  workload identity issuer as an authorized issuer of client assertions for
+  that client. Otherwise the client authenticates with its registered
+  method and additionally presents the `actor_token`.
 
 The `client_id` of the onward ID-JAG is the identifier under which the
 current actor is registered for the target Resource Authorization Server.
@@ -984,12 +1022,13 @@ unless all of the following hold:
    unrevoked chain, on a branch with remaining actor-chain depth;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`, or
-   `amr` claim, nor an `audience`, `resource`, `scope`, or
-   `requested_token_type` claim ({{excluded-claims}});
+   `amr` claim, nor an `audience`, `resource`, `scope`,
+   `authorization_details`, or `requested_token_type` claim
+   ({{excluded-claims}});
 
 9. the assertion's `act` claim:
-   * is present, contains only identity claims, and identifies the current
-     actor as the outermost actor;
+   * is present, conforms to the schema of {{assertion-claims}}, and
+     identifies the current actor as the outermost actor;
    * asserts no actor outside the issuing Chain Authority's trust domain;
      and
    * yields a composed actor chain (the presented hop's lineage plus any
@@ -1065,7 +1104,9 @@ or internally inconsistent requests, including requests with unsupported
 parameter cardinality or the wrong `subject_token_type`; `invalid_target` for
 a requested audience and resource pair not authorized for the chain; and
 `invalid_scope` for a requested scope not permitted by the chain's
-authorization basis or by IdP policy for the current actor.
+authorization basis or by IdP policy for the current actor; and
+`invalid_authorization_details` {{RFC9396}} for a malformed
+`authorization_details` value or one not permitted by that basis.
 
 The IdP SHOULD use `invalid_grant` when the `continuation_handle` is unknown, expired,
 revoked, or otherwise no longer eligible for continuation (rule 7): the chain
