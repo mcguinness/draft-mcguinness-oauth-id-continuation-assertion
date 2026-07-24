@@ -1996,7 +1996,9 @@ Continuation-Handle: Yw5pD8kFq3RtN6vBx1LzHe
 <a href="#context-provenance" class="auto internal xref">Section 4.5</a> (authenticated, confidential, and integrity-protected;
 for example, mutual TLS between the workloads). A receiver <span class="bcp14">MUST</span> treat the
 value per <a href="#context-provenance" class="auto internal xref">Section 4.5</a>: it identifies a chain but conveys no
-authority. Participants <span class="bcp14">SHOULD</span> exclude the field value from logs.<a href="#section-4.6-3" class="pilcrow">¶</a></p>
+authority. Participants <span class="bcp14">SHOULD</span> exclude the field value from logs. The chain
+participant to which the field is addressed consumes it; a receiver <span class="bcp14">MUST NOT</span>
+forward the field to a party that is not a participant in the chain.<a href="#section-4.6-3" class="pilcrow">¶</a></p>
 <p id="section-4.6-4">The field is a singleton: a sender <span class="bcp14">MUST NOT</span> generate more than one
 <code>Continuation-Handle</code> field in a message, and a receiver <span class="bcp14">MUST</span> reject a message
 containing multiple instances, or a list-valued instance, as malformed,
@@ -2203,6 +2205,10 @@ include the chain's expiry in <code>chain_exp</code> (<a href="#response-param" 
 cannot establish the requested chain, it <span class="bcp14">MAY</span> still issue the requested grant
 without one; the absence of <code>continuation_handle</code> in the response tells the
 client that no chain exists.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
+at-least-once: a retry after a lost response <span class="bcp14">MAY</span> establish a second chain.
+Both chains are bounded by the same consent and policy, and an unused chain
+expires.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chained-id-jag-request">
@@ -2267,8 +2273,13 @@ the IdP <span class="bcp14">MUST</span> verify a <code>cnf.jkt</code> value that
 the live proof. For an opaque actor token, the IdP <span class="bcp14">MUST</span> obtain the
 equivalent confirmation value from authoritative token metadata, such as a
 token introspection response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. A bearer actor token <span class="bcp14">MUST NOT</span> be
-accepted. These checks bind the authenticated workload identity, the
-assertion, and the demonstrated key to one actor.<a href="#section-7.4-2.2.1" class="pilcrow">¶</a></p>
+accepted. The <code>actor_token</code> <span class="bcp14">MUST</span> be of a type the IdP accepts for
+continuation and currently valid under that type's rules, and where its
+type defines an audience or equivalent applicability restriction, that
+restriction <span class="bcp14">MUST</span> designate the IdP: a token a trusted issuer minted for
+another service is not a valid <code>actor_token</code>. These checks bind the
+authenticated workload identity, the assertion, and the demonstrated key
+to one actor.<a href="#section-7.4-2.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-7.4-3">Actor identity comparison is exact: two actor identities are the same entity
@@ -2541,8 +2552,10 @@ entity as the current actor (<a href="#client-identity" class="auto internal xre
 </li>
             <li class="normal" id="section-9-2.10.2.2">
               <p id="section-9-2.10.2.2.1">the <code>actor_token</code> was issued by a workload identity issuer the IdP
-trusts for the current actor's trust domain and tenant, and it
-authenticates the current actor;<a href="#section-9-2.10.2.2.1" class="pilcrow">¶</a></p>
+trusts for the current actor's trust domain and tenant, is of an
+accepted type and currently valid, designates the IdP where its type
+defines an audience or applicability restriction, and authenticates
+the current actor;<a href="#section-9-2.10.2.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-9-2.10.2.3">
               <p id="section-9-2.10.2.3.1">that actor is the actor named in <code>act</code>; and<a href="#section-9-2.10.2.3.1" class="pilcrow">¶</a></p>
@@ -2578,8 +2591,9 @@ request, and by IdP policy for the current actor;<a href="#section-9-2.14.1" cla
 <code>urn:ietf:params:oauth:token-type:id-jag</code>; and<a href="#section-9-2.15.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.16">
-          <p id="section-9-2.16.1">the IdP can resolve the target-audience subject for the requested
-<code>audience</code>.<a href="#section-9-2.16.1" class="pilcrow">¶</a></p>
+          <p id="section-9-2.16.1">the IdP can resolve, for the requested <code>audience</code>, both the
+target-audience subject and the current actor's client identifier
+(<a href="#client-identity" class="auto internal xref">Section 7.5</a>).<a href="#section-9-2.16.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="section-9-3">After all other validation succeeds, the IdP <span class="bcp14">MUST</span>, as part of issuing the
@@ -4632,15 +4646,12 @@ actor-signed hop proofs <span>[<a href="#I-D.mcguinness-oauth-actor-proofs" clas
 alternative carrier.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-E-3.7">
-          <p id="appendix-E-3.7.1"><strong>Actor-token acceptance constraints.</strong> Rule 10 of <a href="#validation" class="auto internal xref">Section 9</a>
-requires a trusted issuer and sender constraint, but a token that a
-trusted issuer minted for a different audience or purpose is not
-thereby a valid <code>actor_token</code>. The sketched tightening: the IdP accepts
-only configured actor-token classes whose audience or purpose
-designates the continuation exchange, with tenant binding and liveness
-checks, and advertises the accepted profiles in its metadata
-(<a href="#metadata" class="auto internal xref">Section 7.7</a>). Should this become normative, and how much of it
-belongs in discovery?<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.7.1"><strong>Actor-token profile discovery.</strong> This profile constrains accepted
+actor-token types, validity, and applicability
+(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>; <a href="#validation" class="auto internal xref">Section 9</a>, rule 10). How much
+of an IdP's accepted actor-token profile (types, issuers, proof
+methods) should be advertised in its metadata (<a href="#metadata" class="auto internal xref">Section 7.7</a>) rather
+than learned out of band?<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 </section>
