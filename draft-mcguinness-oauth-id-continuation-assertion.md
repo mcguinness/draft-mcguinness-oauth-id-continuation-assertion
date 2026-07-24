@@ -33,7 +33,6 @@ author:
 
 normative:
   RFC6749:
-  RFC6755:
   RFC7519:
   RFC7638:
   RFC7662:
@@ -41,17 +40,19 @@ normative:
   RFC8414:
   RFC8693:
   RFC8705:
+  RFC8725:
   RFC9110:
   RFC9449:
-  I-D.ietf-oauth-identity-chaining:
   I-D.ietf-oauth-identity-assertion-authz-grant:
 
 informative:
+  RFC6755:
+  RFC6838:
   RFC7523:
   RFC8417:
   RFC8707:
-  RFC8725:
   RFC9700:
+  I-D.ietf-oauth-identity-chaining:
   I-D.ietf-oauth-transaction-tokens:
   I-D.ietf-wimse-arch:
   I-D.mcguinness-oauth-actor-receipts:
@@ -74,13 +75,14 @@ informative:
 --- abstract
 
 This document profiles OAuth 2.0 Token Exchange to define the Identity
-Continuation Assertion: a short-lived, sender-constrained JWT that carries
-verifiable evidence of a delegation chain into a Token Exchange request. A
-Continuation Authorization Server can then issue an onward authorization grant
-without subjecting the user to a new interactive authentication. The primary
-use case is same-Identity-Provider (same-IdP) SaaS-to-SaaS chaining, in which
-several Resource Authorization Servers trust a single enterprise IdP and each
-names the user under its own audience-local (pairwise) subject identifier.
+Continuation Assertion: a short-lived, sender-constrained JSON Web Token (JWT)
+that carries verifiable evidence of a delegation chain into a Token Exchange
+request. A Continuation Authorization Server can then issue an onward
+authorization grant without subjecting the user to a new interactive
+authentication. The primary use case is same-Identity-Provider (same-IdP)
+chaining between software-as-a-service (SaaS) applications, in which several
+Resource Authorization Servers trust a single enterprise IdP and each names
+the user under its own audience-local (pairwise) subject identifier.
 Because each Resource Authorization Server trusts only the IdP to name the
 user, because only the IdP holds the map from a root delegation to each
 audience's subject, and because crossing a boundary that renames the user is a
@@ -438,8 +440,9 @@ These stay in the Token Exchange request ({{token-exchange}}) so that direct
 and chained Token Exchange calls have an identical shape. The requested
 `audience`, `resource`, `scope`, and `requested_token_type` always come from
 the Token Exchange request, never from the assertion. The assertion's `aud`
-claim is different: it identifies the continuation IdP that consumes the
-assertion, not the target audience requested in the Token Exchange request.
+claim is different: it identifies the Continuation Authorization Server that
+consumes the assertion, not the target audience requested in the Token
+Exchange request.
 
 ## Assertion Issuance and Key Binding {#assertion-issuance}
 
@@ -510,7 +513,10 @@ A sender MUST transmit this field only over a channel that satisfies
 {{context-provenance}} (authenticated, confidential, and integrity-protected;
 for example, mutual TLS between the workloads). A receiver MUST treat the
 value per {{context-provenance}}: it identifies a chain but conveys no
-authority, and possession alone does not authorize continuation. Participants
+authority, and possession alone does not authorize continuation. The field is
+a singleton: a sender MUST NOT generate more than one `Chain-Id` field in a
+message, and a receiver MUST treat a message containing multiple instances, or
+a list-valued instance, as carrying no chain context. Participants
 SHOULD exclude the field value from logs. Actor lineage and other chain
 context are conveyed by deployment-specific means (for example, a transaction
 token) and are validated by the Chain Authority before issuance
@@ -572,8 +578,8 @@ The following rules apply:
    NOT modify `chain_id`.
 
 7. `chain_id` alone is not proof of authorization and MUST NOT be treated as a
-   bearer credential. The IdP MUST use it only as a lookup handle for root
-   chain state, subject resolution, and policy evaluation.
+   bearer credential. The IdP MUST use it only as a lookup handle for
+   root-chain state, subject resolution, and policy evaluation.
 
 ## Per-Audience Chain References {#chain-id-privacy}
 
@@ -670,8 +676,9 @@ The `subject_token_type` value above is
 The requested `audience`, `resource`, `scope`, and `requested_token_type` are
 supplied by the Token Exchange request and never by the assertion. Following
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}, `audience` identifies the
-target Resource Authorization Server and `resource` {{RFC8707}} identifies the
-protected resource for which access is ultimately requested.
+target Resource Authorization Server and `resource` ({{RFC8693}}, originally
+defined in {{RFC8707}}) identifies the protected resource for which access is
+ultimately requested.
 
 ## Sender-Constrained Presentation {#sender-constrained-presentation}
 
@@ -775,14 +782,16 @@ BookingRAS).
    ExpenseRAS subject, with `scope` and `cnf`) and returns `chain_id` as a
    Token Exchange response parameter. The IdP records the root-chain envelope
    keyed by `chain_id`: the user, the authentication context
-   (`auth_time`/`acr`/`amr`), the authorized target entries (each an audience,
-   resource, and permitted scopes), the maximum actor-chain depth, the expiry,
-   and the authenticated root actor (`expense-app`), which begins the chain's
-   authenticated actor history. `chain_id` is not a claim inside the
+   (`auth_time`/`acr`/`amr`), the authorization basis (enumerated target
+   entries, each an audience, resource, and permitted scopes, or a policy
+   reference evaluated at continuation time), the maximum actor-chain depth,
+   the expiry, and the authenticated root actor (`expense-app`), which begins
+   the chain's authenticated actor history. `chain_id` is not a claim inside the
    ExpenseRAS ID-JAG.
 
-4. ExpenseApp exchanges the ID-JAG at ExpenseRAS for AT1 and invokes
-   ExpenseSaaS, conveying `chain_id` to ExpenseSaaS over an authenticated,
+4. ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access token (AT1) and
+   invokes ExpenseSaaS, conveying `chain_id` to ExpenseSaaS over an
+   authenticated,
    confidential, and integrity-protected control-plane channel associated with
    the request. `chain_id` is not carried in the ID-JAG or AT1.
 
@@ -812,8 +821,8 @@ BookingRAS).
     and `cnf`) and returns `chain_id` again as a response parameter for any
     further hop. The TravelRAS ID-JAG carries no `chain_id` claim.
 
-12. TravelService exchanges the new ID-JAG at TravelRAS for AT2. Steps 6 through
-    12 repeat for BookingRAS.
+12. TravelService exchanges the new ID-JAG at TravelRAS for an access token
+    (AT2). Steps 6 through 12 repeat for BookingRAS.
 
 # IdP Validation for ID-JAG Output {#validation}
 
@@ -848,7 +857,8 @@ unless all of the following hold:
 7. `chain_id` is known, active, unexpired, and eligible for continuation;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`, or
-   `amr` claim;
+   `amr` claim, nor a `resource`, `scope`, or `requested_token_type` claim
+   ({{excluded-claims}});
 
 9. the assertion's `act` claim is present, identifies the current actor as the
    outermost actor, contains only identity claims, asserts no actor outside the
@@ -1144,10 +1154,8 @@ participants that require it to continue or administer the chain.
 does not reveal the user and cannot be guessed.
 
 Where "same delegation" correlation among colluding chain participants is in
-scope, the IdP SHOULD adopt per-audience chain references ({{chain-id-privacy}}),
-issuing a distinct reference per audience that maps internally to one root
-delegation. This prevents participants at different audiences from linking their
-observations to a single shared identifier.
+scope, the IdP SHOULD adopt per-audience chain references
+({{chain-id-privacy}}).
 
 # IANA Considerations {#iana}
 
@@ -1165,14 +1173,14 @@ Common Name:
 Change Controller:
 : IETF
 
-Reference:
+Specification Document:
 : This document, {{names}}
 
 ## Media Type Registration
 
 IANA is requested to register the following media type in the "Media Types"
-registry, corresponding to the JOSE `typ` header value
-`oauth-identity-continuation+jwt`.
+registry, in the manner described in {{RFC6838}}, corresponding to the JOSE
+`typ` header value `oauth-identity-continuation+jwt`.
 
 Type name:
 : application
@@ -1254,28 +1262,28 @@ IANA is requested to register the following values in the "OAuth Parameters"
 registry established by {{RFC6749}}. Both parameters are used in the OAuth 2.0
 Token Exchange {{RFC8693}} response.
 
-Name:
+Parameter name:
 : chain_id
 
-Parameter Usage Location:
+Parameter usage location:
 : token response
 
-Change Controller:
+Change controller:
 : IETF
 
-Reference:
+Specification document(s):
 : This document, {{response-param}}
 
-Name:
+Parameter name:
 : chain_exp
 
-Parameter Usage Location:
+Parameter usage location:
 : token response
 
-Change Controller:
+Change controller:
 : IETF
 
-Reference:
+Specification document(s):
 : This document, {{response-param}}
 
 ## OAuth Authorization Server Metadata Registration
@@ -1293,7 +1301,7 @@ Metadata Description:
 Change Controller:
 : IETF
 
-Reference:
+Specification Document(s):
 : This document, {{metadata}}
 
 ## HTTP Field Name Registration
@@ -1503,30 +1511,34 @@ The participants and values used throughout:
 | TravelRAS | `https://ras.travel.example/` | Resource Authorization Server for TravelAPI. |
 | TravelAPI | `https://api.travel.example/` | Protected resource behind TravelRAS. |
 | Chain Authority | `https://ca.travel.example/` | TravelSaaS's Chain Authority; issues the Identity Continuation Assertion for TravelSaaS workloads. |
+| BookingSaaS | `https://booking.example/` | Third SaaS, reached in the third hop. |
+| BookingWorker | `booking-worker` | TravelSaaS workload delegated offline for the Booking hop. |
+| BookingRAS | `https://ras.booking.example/` | Resource Authorization Server for BookingAPI. |
+| BookingAPI | `https://api.booking.example/` | Protected resource behind BookingRAS. |
 | `chain_id` | `01JZ8F4J9J8Y3NDK5WQ4P9K7Q2` | Root-delegation correlation handle. |
-| Subjects | `expense-local-subject`, `travel-local-subject` | The user's pairwise subject at ExpenseRAS and TravelRAS, respectively. |
+| Subjects | `expense-local-subject`, `travel-local-subject`, `booking-local-subject` | The user's pairwise subject at ExpenseRAS, TravelRAS, and BookingRAS, respectively. |
 
 At a glance, the message flow is:
 
 ~~~
 User authenticates once at the IdP.
 
-ExpenseApp -> IdP: (1) exchange ID Token
-IdP -> ExpenseApp: (2) ID-JAG(ExpenseRAS) + chain_id
-ExpenseApp -> ExpenseRAS: (3) ID-JAG
-ExpenseRAS -> ExpenseApp: (4) AT1
-ExpenseApp -> ExpenseSaaS: (5) API request + chain_id
+ExpenseApp -> IdP: exchange ID Token
+IdP -> ExpenseApp: ID-JAG(ExpenseRAS) + chain_id
+ExpenseApp -> ExpenseRAS: ID-JAG
+ExpenseRAS -> ExpenseApp: AT1
+ExpenseApp -> ExpenseSaaS: API request + chain_id
 
 ExpenseService -> TravelSaaS: protected request + chain context
 TravelSaaS -> TravelService: verified chain context
 
-TravelService -> CA: (6) request assertion
-CA -> TravelService: (7) Identity Continuation Assertion
-TravelService -> IdP: (8) assertion exchange + DPoP
-IdP -> TravelService: (9) ID-JAG(TravelRAS) + chain_id
-TravelService -> TravelRAS: (10) ID-JAG
-TravelRAS -> TravelService: (11) AT2
-TravelService -> TravelAPI: (12) API call
+TravelService -> ChainAuthority: request assertion
+ChainAuthority -> TravelService: Identity Continuation Assertion
+TravelService -> IdP: assertion exchange + DPoP
+IdP -> TravelService: ID-JAG(TravelRAS) + chain_id
+TravelService -> TravelRAS: ID-JAG
+TravelRAS -> TravelService: AT2
+TravelService -> TravelAPI: API call
 ~~~
 
 The subsections below detail each step.
@@ -1571,9 +1583,9 @@ entries in the root-chain envelope keyed by a freshly generated `chain_id`:
     permitted scopes: stays.book
 ~~~
 
-The root exchange does not authorize either target merely by requesting the
-other. Both entries must already be supported by the authentication, consent,
-and policy from which the IdP constructs the envelope. This example uses the
+The root exchange does not authorize the later targets merely by requesting
+the first. All three entries must already be supported by the authentication,
+consent, and policy from which the IdP constructs the envelope. This example uses the
 enumerated form of the authorization basis; a deployment whose onward targets
 are not knowable at root issuance would record a policy reference instead and
 evaluate the Travel target at continuation time ({{validation}}, rule 14). The
@@ -1825,6 +1837,7 @@ The participants and values used throughout:
 | User | (none) | The human, Alice; present at setup, absent at every run. |
 | IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
 | BriefingAgent | `briefing-agent` | Agent platform workload that runs the scheduled task. |
+| Platform | `https://platform.example/` | BriefingAgent's trust domain and actor issuer. |
 | Chain Authority | `https://ca.platform.example/` | The platform's Chain Authority; issues assertions for its workloads. |
 | CalendarRAS | `https://ras.calendar.example/` | Resource Authorization Server for the calendar service. |
 | CalendarAPI | `https://api.calendar.example/` | Protected resource behind CalendarRAS. |
@@ -1864,18 +1877,20 @@ task: morning-calendar-brief
 
 ## Each Run (Alice Absent)
 
+At a glance, each run proceeds as follows:
+
 ~~~
-Scheduler      -> Agent:          run task, here is chain_id
-Agent          -> ChainAuthority: assertion for chain_id, bound to
+Scheduler      -> BriefingAgent:  run task, here is chain_id
+BriefingAgent  -> ChainAuthority: assertion for chain_id, bound to
                                   the briefing-agent key
-ChainAuthority -> Agent:          Identity Continuation Assertion
-Agent          -> IdP:            Token Exchange (assertion + DPoP)
+ChainAuthority -> BriefingAgent:  Identity Continuation Assertion
+BriefingAgent  -> IdP:            Token Exchange (assertion + DPoP)
 IdP:                              validate per the rules of the
                                   validation section; resolve Alice's
                                   Calendar subject; mint
-IdP            -> Agent:          ID-JAG(CalendarRAS) [+ chain_id]
-Agent          -> CalendarRAS:    ID-JAG -> access token (DPoP)
-Agent          -> CalendarAPI:    read calendar -> summarize
+IdP            -> BriefingAgent:  ID-JAG(CalendarRAS) + chain_id
+BriefingAgent  -> CalendarRAS:    ID-JAG -> access token (DPoP)
+BriefingAgent  -> CalendarAPI:    read calendar -> summarize
 ~~~
 
 The assertion is the ordinary artifact of {{assertion-claims}}, issued by the
@@ -1892,6 +1907,7 @@ context from setup:
   "iss": "https://idp.example/",
   "aud": "https://ras.calendar.example/",
   "sub": "alice-calendar-subject",
+
   "client_id": "briefing-agent",
   "resource": "https://api.calendar.example/",
   "scope": "calendar.read",
@@ -1904,6 +1920,7 @@ context from setup:
     "iss": "https://platform.example/",
     "sub": "briefing-agent"
   },
+
   "cnf": {
     "jkt": "base64url-briefing-agent-key-thumbprint"
   },
@@ -1956,7 +1973,7 @@ Content-Type: application/json
 }
 ~~~
 
-A deployment expecting dynamic needs instead records the policy-reference
+A deployment that expects dynamic targets instead records the policy-reference
 form of the authorization basis at setup ({{validation}}, rule 14): the
 envelope references Alice's standing consent (for example, a productivity
 read-access grant she holds) and tenant policy, and the IdP evaluates that
@@ -1993,7 +2010,9 @@ The participants and values used throughout:
 | User | (none) | The human, Alice; her session runs in AgentApp. |
 | IdP | `https://idp.example/` | Trust anchor and Continuation Authorization Server. |
 | AgentApp | `agent-app` | Confidential agent runtime; hosts Alice's session and roots the chain. |
+| AgentPlatform | `https://agent.example/` | AgentApp's trust domain and actor issuer. |
 | Gateway | `tool-gateway` | Tool gateway workload; continues the chain per tool call. |
+| GatewayPlatform | `https://gateway.example/` | The gateway's trust domain and actor issuer. |
 | GatewayRAS | `https://ras.gateway.example/` | Resource Authorization Server protecting the gateway. |
 | Chain Authority | `https://ca.gateway.example/` | The gateway platform's Chain Authority; issues assertions for its workloads. |
 | WikiRAS | `https://ras.wiki.example/` | Resource Authorization Server for the wiki upstream. |
@@ -2006,26 +2025,26 @@ At a glance, the message flow is:
 ~~~
 Alice authenticates in agent-app.
 
-AgentApp -> IdP:        (1) direct exchange: Alice's ID Token
-IdP -> AgentApp:        (2) ID-JAG(GatewayRAS) + chain_id
-AgentApp -> GatewayRAS: (3) ID-JAG
-GatewayRAS -> AgentApp: (4) gateway access token
-AgentApp -> Gateway:    (5) tool call + Chain-Id header
+AgentApp -> IdP:            (1) direct exchange: Alice's ID Token
+IdP -> AgentApp:            (2) ID-JAG(GatewayRAS) + chain_id
+AgentApp -> GatewayRAS:     (3) ID-JAG
+GatewayRAS -> AgentApp:     (4) gateway access token
+AgentApp -> Gateway:        (5) tool call + Chain-Id header
 
 Gateway resolves the tool call to the wiki upstream.
 
-Gateway -> CA:          (6) request assertion for chain_id
-CA -> Gateway:          (7) Identity Continuation Assertion
-Gateway -> IdP:         (8) chained exchange (assertion + DPoP)
-IdP -> Gateway:         (9) ID-JAG(WikiRAS) + chain_id
-Gateway -> WikiRAS:     (10) ID-JAG
-WikiRAS -> Gateway:     (11) wiki access token
-Gateway -> WikiAPI:     (12) tool call executes
+Gateway -> ChainAuthority:  (6) request assertion for chain_id
+ChainAuthority -> Gateway:  (7) Identity Continuation Assertion
+Gateway -> IdP:             (8) chained exchange (assertion + DPoP)
+IdP -> Gateway:             (9) ID-JAG(WikiRAS) + chain_id
+Gateway -> WikiRAS:         (10) ID-JAG
+WikiRAS -> Gateway:         (11) wiki access token
+Gateway -> WikiAPI:         (12) tool call executes
 ~~~
 
 The subsections below detail each step.
 
-## Root Exchange: the Runtime Establishes the Chain
+## Root Exchange: The Runtime Establishes the Chain
 
 Alice authenticates in `agent-app`, a confidential client whose `client_id`
 is the audience of her identity assertion, so `agent-app` performs the
@@ -2039,15 +2058,14 @@ actor permitted to continue chains rooted this way ({{validation}}, rule 10).
 The response returns `chain_id` `01K5D3W8YAZE6QNMB2TVXH94RC`.
 
 `agent-app` exchanges its gateway ID-JAG at `ras.gateway.example` for an
-access token (steps 3 and 4) and invokes the gateway, conveying the chain
-reference with the request per the HTTP binding ({{context-binding}})
-(step 5):
+access token (steps 3 and 4) and invokes the gateway, conveying the `chain_id`
+with the request per the HTTP binding ({{context-binding}}) (step 5):
 
 ~~~
 Chain-Id: 01K5D3W8YAZE6QNMB2TVXH94RC
 ~~~
 
-## Chained Exchange: the Gateway Continues
+## Chained Exchange: The Gateway Continues
 
 A tool call in Alice's session requires the wiki service. Only the gateway
 knows this routing. `tool-gateway` requests an Identity Continuation
@@ -2167,8 +2185,8 @@ the IdP ({{lifecycle}}).
 This example assumes a confidential runtime. Where the session runtime is a
 public client, the continuation flow after root establishment is unchanged,
 but bootstrapping the root exchange from a public client raises
-considerations in the underlying ID-JAG profile, which recommends Token
-Exchange for confidential clients, and is not addressed here.
+considerations in the underlying ID-JAG profile (which recommends Token
+Exchange for confidential clients) and is not addressed here.
 
 # Acknowledgments
 {:numbered="false"}
