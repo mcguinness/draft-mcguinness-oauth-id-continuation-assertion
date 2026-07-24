@@ -209,6 +209,9 @@ OPTIONAL HTTP binding for conveying chain context ({{context-binding}}), and
 an authorization server metadata signal ({{metadata}}). The onward ID-JAG
 and the way a Resource Authorization Server consumes it are unchanged.
 
+Open design questions on which the author seeks working group feedback are
+collected in {{open-items}}.
+
 # Conventions and Definitions
 
 {::boilerplate bcp14-tagged}
