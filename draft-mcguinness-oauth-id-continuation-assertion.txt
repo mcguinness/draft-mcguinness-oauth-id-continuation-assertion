@@ -312,10 +312,10 @@ Table of Contents
    Resource Server (RS):  The service that hosts a protected API and
       consumes the access tokens issued by its Resource Authorization
       Server.  A Resource Server never consumes an Identity Continuation
-      Assertion, no token it consumes carries a
+      Assertion, no token it consumes carries an
       identity_continuation_handle, and its authorization decisions
       never depend on one.  A workload co-located with a Resource Server
-      MAY receive a identity_continuation_handle as control-plane
+      MAY receive an identity_continuation_handle as control-plane
       context accompanying a request (Section 4.6).
 
    ID-JAG:  An Identity Assertion JWT Authorization Grant
@@ -653,7 +653,7 @@ Table of Contents
 
 5.  Continuation Handles (identity_continuation_handle)
 
-   A identity_continuation_handle is an opaque, unguessable, IdP-
+   An identity_continuation_handle is an opaque, unguessable, IdP-
    generated reference to one hop of a delegation chain.  The IdP
    creates the root hop when it establishes a chain (Section 7.2) and a
    child hop for each successful continuation; each child holds an
@@ -815,8 +815,8 @@ Table of Contents
    a chain for the delegation being created, and the IdP MUST NOT
    establish a chain if the parameter is absent.  The parameter takes a
    single value, the string true.  The IdP MUST reject a request
-   carrying more than one identity_continuation parameter, a
-   identity_continuation value other than true, or a
+   carrying more than one identity_continuation parameter, an
+   identity_continuation value other than true, or an
    identity_continuation parameter on a chained request (Section 7) as
    malformed ([RFC6749], invalid_request).  Future specifications may
    define richer values to negotiate chain properties.
@@ -1214,8 +1214,8 @@ Table of Contents
    On success, the IdP records the continuation as a new hop whose
    immutable parent is the presented handle, resolves the audience-local
    subject for the requested RAS, and issues the onward ID-JAG with that
-   sub.  The onward ID-JAG MUST NOT carry a identity_continuation_handle
-   claim.
+   sub.  The onward ID-JAG MUST NOT carry an
+   identity_continuation_handle claim.
 
    If validation fails, the IdP MUST return an OAuth error response as
    defined by [RFC8693] and [RFC6749].  The IdP SHOULD use
@@ -1406,7 +1406,7 @@ Table of Contents
    continuation patterns.  Because the IdP enforces the root-chain
    envelope, a compromised Chain Authority cannot obtain a target or
    scope outside the chain's authorization basis.  Neither possession of
-   a identity_continuation_handle nor trusted-Chain-Authority status
+   an identity_continuation_handle nor trusted-Chain-Authority status
    alone authorizes continuation: the IdP independently requires that
    the authenticated current actor is permitted by IdP policy to
    continue the specific chain (Section 9, rule 10).
@@ -1475,7 +1475,7 @@ Table of Contents
 
 12.  Privacy Considerations
 
-   A identity_continuation_handle correlates the control-plane
+   An identity_continuation_handle correlates the control-plane
    participants on its conveyance path, and the rules in Section 5 keep
    it out of the data plane.  Because identity_continuation_handle MUST
    NOT appear in any ID-JAG or access token consumed by a Resource
@@ -1501,7 +1501,7 @@ Table of Contents
 
    identity_continuation_handle MUST NOT contain user-identifying
    information and MUST carry at least 128 bits of entropy (Section 5,
-   rule 2), so that a identity_continuation_handle neither reveals the
+   rule 2), so that an identity_continuation_handle neither reveals the
    user nor can be guessed.
 
    Continuation handles are hop-specific by construction (Section 5.1),
@@ -2573,7 +2573,7 @@ C.3.  Points Worth Noticing
 
    Each run consumes a fresh, single-use assertion; between runs the
    platform holds nothing presentable.  Theft of the stored record
-   yields a identity_continuation_handle that is useless without the
+   yields an identity_continuation_handle that is useless without the
    agent's key (Section 5).  Each run presents the stored root handle
    and creates its own hop, receiving that hop's fresh handle for any
    onward hops within the run; sibling runs are independent branches of
