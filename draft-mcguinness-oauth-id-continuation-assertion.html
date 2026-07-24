@@ -1478,11 +1478,11 @@ present and TravelSaaS holds no end-user credential it could present to the
 IdP; the only thing that crossed the ExpenseSaaS-to-TravelSaaS boundary is
 chain context. TravelSaaS therefore cannot perform a normal identity assertion
 exchange to obtain the next grant, even though the same IdP could mint it.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
-<p id="section-1.1-2">This document defines the missing input. An Identity Continuation Assertion is a
-short-lived, sender-constrained, verifiable statement about the in-flight
-delegation chain that a service presents to the IdP in place of an end-user
-credential, so that the IdP can resolve the next audience's subject and issue
-the next onward grant. It is the evidence; the ID-JAG that comes back is the
+<p id="section-1.1-2">This document defines the missing input. An Identity Continuation Assertion
+is a short-lived, sender-constrained, verifiable statement about the
+in-flight delegation chain. A service presents it to the IdP in place of an
+end-user credential, so that the IdP can resolve the next audience's subject
+and issue the next onward grant. It is the evidence; the ID-JAG that comes back is the
 authority.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1661,7 +1661,7 @@ hop to the root.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
         <dd style="margin-left: 1.5em" id="section-2-3.26">
           <p id="section-2-3.26.1">The state the IdP records when it establishes a chain and evaluates every
 continuation against. It is derived from the user's authentication and
-consent and from IdP policy, and comprises:<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
+consent and from tenant policy, and comprises:<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-2-3.26.2.1">
               <p id="section-2-3.26.2.1.1">the authenticated user;<a href="#section-2-3.26.2.1.1" class="pilcrow">¶</a></p>
@@ -1860,9 +1860,9 @@ control plane (<a href="#privacy" class="auto internal xref">Section 12</a>).<a 
 key of the actor that will present it to the IdP. <code>cnf</code> <span class="bcp14">MUST</span> contain exactly
 one confirmation method: <code>jkt</code>, the JWK SHA-256 thumbprint <span>[<a href="#RFC7638" class="cite xref">RFC7638</a>]</span> of
 the key whose possession the actor demonstrates with Demonstrating Proof of
-Possession (DPoP) <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>. The presenting actor demonstrates live
-possession of the confirmed key on the Token Exchange request, and the
-Chain Authority binds the assertion to it at issuance. The
+Possession (DPoP) <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>. The Chain Authority binds the assertion to the key at issuance, and the
+presenting actor demonstrates live possession of that key on the Token
+Exchange request. The
 proof-of-possession model is specified in
 <a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>.<a href="#section-4.2-4.10.1" class="pilcrow">¶</a></p>
 </dd>
@@ -2123,9 +2123,9 @@ cross-boundary hop is an exchange at the IdP (<a href="#flow" class="auto intern
 at each hop and can stop a chain at any point.<a href="#section-6-1" class="pilcrow">¶</a></p>
 <p id="section-6-2">The IdP <span class="bcp14">MUST</span> bound the continuation lifetime of a chain. That lifetime
 <span class="bcp14">MUST NOT</span> exceed the lifetime of the authentication context and authorization
-that established the chain (for example, the user's session, the governing
-refresh token, or an explicit maximum chain lifetime set by policy), and the
-IdP <span class="bcp14">MUST</span> reject a continuation of an expired chain (<a href="#validation" class="auto internal xref">Section 9</a>).
+that established the chain (for example, the user's session or the
+governing refresh token), or any explicit maximum chain lifetime set by
+policy, whichever is shorter, and the IdP <span class="bcp14">MUST</span> reject a continuation of an expired chain (<a href="#validation" class="auto internal xref">Section 9</a>).
 Continuing a chain <span class="bcp14">MUST NOT</span> extend the root authentication context: <code>auth_time</code>,
 <code>acr</code>, and <code>amr</code> are fixed at root issuance, and onward grants inherit them
 unchanged (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>).<a href="#section-6-2" class="pilcrow">¶</a></p>
@@ -2191,16 +2191,17 @@ actor_token_type=&lt;actor-token-type&gt;
 <p id="section-7.2-1">A chain exists only if the root Token Exchange requests one. This document
 defines the <code>continuation</code> Token Exchange request parameter: its presence in
 a direct request asks the IdP to establish a chain for the delegation being
-created. This document defines a single value, the string <code>true</code>. A request
-<span class="bcp14">MUST NOT</span> contain more than one <code>continuation</code> parameter, and the IdP <span class="bcp14">MUST</span>
-reject a request carrying any other value as malformed (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>,
-<code>invalid_request</code>). Future specifications may define richer values to
-negotiate chain properties.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+created, and the IdP <span class="bcp14">MUST NOT</span> establish a chain if the parameter is absent.
+The parameter takes a single value, the string <code>true</code>. The IdP <span class="bcp14">MUST</span> reject a
+request carrying more than one <code>continuation</code> parameter, any other value, or
+a <code>continuation</code> parameter on a chained request (<a href="#token-exchange" class="auto internal xref">Section 7</a>) as
+malformed (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, <code>invalid_request</code>). Future specifications may define
+richer values to negotiate chain properties.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">The chain's properties are not negotiated in this profile. The authorization
 basis and its form, the continuation authorization, any maximum actor-chain
-depth, and the chain's lifetime are determined by the user's authentication
+depth, and the chain's expiry are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
-envelope. The IdP <span class="bcp14">MUST NOT</span> establish a chain if the parameter is absent.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
+envelope.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
 <p id="section-7.2-3">The response returns the root hop's handle in <code>continuation_handle</code> and <span class="bcp14">MAY</span>
 include the chain's expiry in <code>chain_exp</code> (<a href="#response-param" class="auto internal xref">Section 7.6</a>). If the IdP
 cannot establish the requested chain, it <span class="bcp14">MAY</span> still issue the requested grant
@@ -2303,7 +2304,7 @@ coordination with the IdP.<a href="#section-7.4-5" class="pilcrow">¶</a></p>
 and the current actor is that client:<a href="#section-7.5-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-7.5-2.1">
-            <p id="section-7.5-2.1.1">The exchange <span class="bcp14">MUST</span> be authenticated as an OAuth client. As with the direct
+            <p id="section-7.5-2.1.1">The requester <span class="bcp14">MUST</span> authenticate as an OAuth client. As with the direct
 ID-JAG exchange, this profile is intended for confidential clients.<a href="#section-7.5-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-7.5-2.2">
@@ -2317,7 +2318,7 @@ namespace such as Client ID Metadata Documents.<a href="#section-7.5-2.2.1" clas
 </li>
           <li class="normal" id="section-7.5-2.3">
             <p id="section-7.5-2.3.1">A deployment <span class="bcp14">MAY</span> use a single sender-constrained JWT as both the client
-authentication and the <code>actor_token</code> where the requirements of both roles
+assertion and the <code>actor_token</code> where the requirements of both roles
 coincide: <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> requires such a JWT's <code>sub</code> to be the workload's
 <code>client_id</code>, and the IdP <span class="bcp14">MUST</span> be configured to accept the workload
 identity issuer as an authorized issuer of client assertions for that
@@ -2344,9 +2345,9 @@ workload identifier doubles as that client identifier.<a href="#section-7.5-3" c
 <p id="section-7.6-1">When the IdP establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>) or continues one, it
 <span class="bcp14">MUST</span> return a fresh continuation handle for the newly created hop as the
 <code>continuation_handle</code> top-level member of the Token Exchange response (alongside
-<code>access_token</code>, <code>issued_token_type</code>, and so forth), so that an authorized
-continuer can construct the next Identity Continuation Assertion from that
-hop. Each hop's handle is distinct and its parent reference is immutable
+<code>access_token</code>, <code>issued_token_type</code>, and so forth). An authorized continuer obtains the next Identity Continuation
+Assertion for that hop from its Chain Authority (<a href="#assertion-issuance" class="auto internal xref">Section 4.4</a>).
+Each hop's handle is distinct and its parent reference is immutable
 (<a href="#chain-id" class="auto internal xref">Section 5</a>, rules 1 and 8). <code>continuation_handle</code> <span class="bcp14">MUST NOT</span> be carried as a claim
 inside the issued ID-JAG (rule 4).<a href="#section-7.6-1" class="pilcrow">¶</a></p>
 <p id="section-7.6-2"><code>continuation_handle</code> stays in the control plane: it is delivered to the party that
@@ -2388,8 +2389,9 @@ metadata <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span> with th
 <code>identity_continuation_supported</code>:</dt>
           <dd style="margin-left: 1.5em" id="section-7.7-2.2">
             <p id="section-7.7-2.2.1"><span class="bcp14">OPTIONAL</span>. Boolean value indicating support for the
-<code>urn:ietf:params:oauth:token-type:identity-continuation</code> subject token type
-and the <code>continuation_handle</code> Token Exchange response parameter. Default <code>false</code>.<a href="#section-7.7-2.2.1" class="pilcrow">¶</a></p>
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code> subject token
+type, the <code>continuation</code> request parameter, and the <code>continuation_handle</code>
+and <code>chain_exp</code> Token Exchange response parameters. Default <code>false</code>.<a href="#section-7.7-2.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -2437,9 +2439,10 @@ the request. <code>continuation_handle</code> is not carried in the ID-JAG or AT
 </li>
         <li id="section-8-2.5">
           <p id="section-8-2.5.1">ExpenseService, the ExpenseSaaS workload handling the request, propagates
-authenticated, confidential, and integrity-protected chain context
-(<code>continuation_handle</code> and verified actor lineage) to TravelService. No hop-local
-subject is propagated across the SaaS boundary by default; local fan-out
+chain context (<code>continuation_handle</code> and verified actor lineage) to
+TravelService over an authenticated, confidential, and integrity-protected
+channel. No audience-local subject is propagated across the SaaS boundary
+by default; local fan-out
 inside a domain <span class="bcp14">MAY</span> use an offline attenuated stack.<a href="#section-8-2.5.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.6">
@@ -2517,7 +2520,7 @@ configured allowlist (the <code>none</code> algorithm <span class="bcp14">MUST</
           <p id="section-9-2.6.1">the assertion <code>iss</code> is a trusted Chain Authority for this tenant;<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.7">
-          <p id="section-9-2.7.1"><code>continuation_handle</code> identifies a known, active continuation handle of an unexpired,
+          <p id="section-9-2.7.1"><code>continuation_handle</code> identifies a known, active hop of an unexpired,
 unrevoked chain, on a branch within any actor-chain depth bound set by
 policy;<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
 </li>
@@ -2608,9 +2611,10 @@ the current actor;<a href="#section-9-2.14.2.3.1" class="pilcrow">¶</a></p>
 <code>audience</code>.<a href="#section-9-2.16.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
-<p id="section-9-3">After all other validation succeeds, the IdP <span class="bcp14">MUST</span> atomically check and record
-the tuple (<code>iss</code>, <code>jti</code>) as consumed as part of issuing the onward grant. At
-most one concurrent exchange using the same tuple may succeed, and the IdP
+<p id="section-9-3">After all other validation succeeds, the IdP <span class="bcp14">MUST</span>, as part of issuing the
+onward grant, atomically verify that the tuple (<code>iss</code>, <code>jti</code>) has not been
+consumed and record it as consumed. At most one concurrent exchange using the
+same tuple may succeed, and the IdP
 <span class="bcp14">MUST</span> retain a successfully consumed tuple until at least the assertion's
 <code>exp</code>, allowing for its permitted clock skew. A request that fails validation
 before grant issuance does not consume the tuple; how an implementation
@@ -2634,7 +2638,7 @@ requested RAS, and issues the onward ID-JAG with that <code>sub</code>. The onwa
 <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> and <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. The IdP <span class="bcp14">SHOULD</span> use <code>invalid_request</code> for malformed
 or internally inconsistent requests, including requests with unsupported
 parameter cardinality or the wrong <code>subject_token_type</code>; <code>invalid_target</code> for
-a requested audience and resource pair not authorized for the chain; and
+a requested audience and resource pair not authorized for the chain;
 <code>invalid_scope</code> for a requested scope not permitted by the chain's
 authorization basis or by IdP policy for the current actor; and
 <code>invalid_authorization_details</code> <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span> for a malformed
@@ -2698,8 +2702,8 @@ Authority verified and asserted (<a href="#assertion-claims" class="auto interna
 never contribute to one another's lineage. The asserted segment is placed
 atop the lineage with the current actor outermost; when the segment's
 innermost actor names the same actor as the lineage's most recent entry,
-they are the same hop and appear once. Depth policy (<a href="#validation" class="auto internal xref">Section 9</a>, rule 9)
-applies to the composed chain.<a href="#section-10-3" class="pilcrow">¶</a></p>
+they are the same hop and appear once. Any actor-chain depth bound set by policy
+applies to the composed chain (<a href="#validation" class="auto internal xref">Section 9</a>, rule 9).<a href="#section-10-3" class="pilcrow">¶</a></p>
 <p id="section-10-4">Nested lineage in an onward ID-JAG is therefore authenticated, not
 self-reported. In this example the chain is <code>travel-service</code> (authenticated
 at this continuation) acting for a delegation rooted by <code>expense-app</code>
@@ -2739,9 +2743,9 @@ the authentication context, bounded by the root-chain envelope and the actor
 binding (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>, the envelope enforcement below);<a href="#section-11-2.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-11-2.3">
-          <p id="section-11-2.3.1">a compromised Chain Authority, which can request continuations only within
-the envelope of chains it is trusted for (the Chain Authority trust section
-below);<a href="#section-11-2.3.1" class="pilcrow">¶</a></p>
+          <p id="section-11-2.3.1">a compromised Chain Authority, which can issue assertions only for chains
+it is trusted for, and whose assertions still require an authenticated,
+permitted actor (the Chain Authority trust section below);<a href="#section-11-2.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-11-2.4">
           <p id="section-11-2.4.1">a malicious or curious Resource Server or Resource Authorization Server
@@ -2799,9 +2803,9 @@ authorization basis (<a href="#validation" class="auto internal xref">Section 9<
 intermediate actor from broadening the chain beyond what the root delegation
 and its governing consent and policy authorize.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
 <p id="section-11.4-2">Where an offline attenuated delegation stack feeds an Identity Continuation
-Assertion, monotonic attenuation, bounded delegation depth, and parent
-linkage along that offline segment are provided and verified by that stack's
-own specification (for example, <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>,
+Assertion, that stack's own specification provides and verifies monotonic
+attenuation, bounded delegation depth, and parent linkage along the offline
+segment (for example, <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>,
 whose client-issued tokens are key-linked, monotonically downscoped, and
 depth-bounded). The Chain Authority validates the segment before issuing
 (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); the IdP itself enforces only the root-chain envelope
@@ -2815,8 +2819,9 @@ described above.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
         </h3>
 <p id="section-11.5-1">The IdP <span class="bcp14">MUST</span> accept assertions only from Chain Authorities it trusts for the
 relevant tenant (<a href="#validation" class="auto internal xref">Section 9</a>). A compromised Chain
-Authority can request continuations within the envelope of chains it is trusted
-for. Deployments <span class="bcp14">SHOULD</span> scope Chain Authority trust as narrowly as practical
+Authority can issue assertions for chains it is trusted for; a continuation
+additionally requires an authenticated actor permitted by the chain's
+continuation authorization. Deployments <span class="bcp14">SHOULD</span> scope Chain Authority trust as narrowly as practical
 and <span class="bcp14">SHOULD</span> monitor for anomalous continuation patterns. Because the IdP
 enforces the root-chain envelope, a compromised Chain Authority cannot obtain
 a target or scope outside the chain's authorization basis. Neither possession
@@ -2917,8 +2922,8 @@ channel and <span class="bcp14">MAY</span> limit the nested lineage exposed to e
 their audit requirements. Deployments <span class="bcp14">SHOULD</span> limit disclosure of <code>continuation_handle</code> to
 participants that require it to continue or administer the chain.<a href="#section-12-2" class="pilcrow">¶</a></p>
 <p id="section-12-3"><code>continuation_handle</code> <span class="bcp14">MUST NOT</span> contain user-identifying information and <span class="bcp14">MUST</span> carry at least
-128 bits of entropy (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2), so that possession of a <code>continuation_handle</code>
-does not reveal the user and cannot be guessed.<a href="#section-12-3" class="pilcrow">¶</a></p>
+128 bits of entropy (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2), so that a <code>continuation_handle</code> neither
+reveals the user nor can be guessed.<a href="#section-12-3" class="pilcrow">¶</a></p>
 <p id="section-12-4">Continuation handles are hop-specific by construction (<a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>),
 so audiences and branches do not share a correlatable identifier. A handle's
 conveyance path still observes its value, and a workload co-located with a
@@ -3841,8 +3846,9 @@ IdP then responds:<a href="#appendix-B.1-5" class="pilcrow">¶</a></p>
 <p id="appendix-B.1-9">ExpenseApp exchanges this ID-JAG at ExpenseRAS for an access token (AT1) and
 invokes ExpenseSaaS, exactly as for any ID-JAG
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> (not shown). ExpenseApp
-conveys <code>continuation_handle</code> to ExpenseSaaS in authenticated, confidential, and
-integrity-protected control-plane context associated with that API request.
+conveys <code>continuation_handle</code> to ExpenseSaaS over an authenticated,
+confidential, and integrity-protected control-plane channel associated with
+that API request.
 The <code>continuation_handle</code> does not appear in the ID-JAG or AT1.<a href="#appendix-B.1-9" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -4134,7 +4140,7 @@ active session. The platform performs the direct ID-JAG exchange of
 <code>briefing-agent</code> as the authenticated actor, including the <code>continuation</code>
 parameter (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). Because the task will outlive
 Alice's session, the consent captured here establishes an explicit maximum
-chain lifetime as the chain's governing authorization (<a href="#lifecycle" class="auto internal xref">Section 6</a>), with
+chain lifetime as the chain's governing bound (<a href="#lifecycle" class="auto internal xref">Section 6</a>), with
 <code>briefing-agent</code> as the permitted continuer, and the
 envelope's authorized target entry is exactly the task's need:
 (<code>https://ras.calendar.example/</code>, <code>https://api.calendar.example/</code>,
@@ -4241,8 +4247,9 @@ the chain.<a href="#appendix-C.3-2" class="pilcrow">¶</a></p>
 passes, the next exchange returns <code>invalid_grant</code> (<a href="#validation" class="auto internal xref">Section 9</a>): the
 signal to seek re-authorization from Alice rather than retry. <code>chain_exp</code>
 lets the platform anticipate expiry and prompt her before the task silently
-stops, and the chain is visible and revocable in the IdP's management
-interfaces (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#appendix-C.3-3" class="pilcrow">¶</a></p>
+stops, and, where the IdP
+provides the management interfaces encouraged by <a href="#lifecycle" class="auto internal xref">Section 6</a>, the chain is
+visible and revocable there.<a href="#appendix-C.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-C.3-4">This pattern requires a user-present setup event to root the chain. Where no
 such event exists (for example, an administratively mandated agent acting
 for users who never authorized it), there is no delegation to continue and
@@ -4277,15 +4284,15 @@ envelope references Alice's standing consent (for example, a productivity
 read-access grant she holds) and tenant policy, and the IdP evaluates that
 reference at continuation time. The same exchange then succeeds if, and only
 if, read access to the mail service is within Alice's standing consent and
-tenant policy permits <code>briefing-agent</code> to reach it. A request for
+if tenant policy permits <code>briefing-agent</code> to reach it. A request for
 <code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-C.4-3" class="pilcrow">¶</a></p>
 <p id="appendix-C.4-4">The envelope guardrail applies: evaluation is bounded by the consent and
 policy in force when the chain was established. If the tenant later broadens
 policy, existing chains do not gain the new authority; if it narrows, they
-lose it at the next run. Either failure is per-request (<code>invalid_target</code>,
+lose it at the next run. Both failures are per-request (<code>invalid_target</code>,
 <code>invalid_scope</code>), and the chain remains continuable for authorized targets,
-in contrast to <code>invalid_grant</code>, which reports the chain itself no longer
-continuable (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#appendix-C.4-4" class="pilcrow">¶</a></p>
+in contrast to <code>invalid_grant</code>, which reports that the chain itself is no
+longer continuable (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#appendix-C.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4503,8 +4510,9 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 </div>
 <p id="appendix-D.2-5">The <code>subject_token_type</code> value above is
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code>. The IdP verifies
-that <code>tool-gateway</code> is a permitted continuer, that the DPoP key matches both
-the assertion's <code>cnf.jkt</code> and the actor token's confirmation, and evaluates
+that <code>tool-gateway</code> is a permitted continuer and that the DPoP key matches
+both the assertion's <code>cnf.jkt</code> and the actor token's confirmation, and
+evaluates
 the policy reference now: wiki read access is within Alice's standing
 consent, and tenant policy permits the gateway to reach it. It resolves
 Alice's wiki-local subject and mints (step 9):<a href="#appendix-D.2-5" class="pilcrow">¶</a></p>
