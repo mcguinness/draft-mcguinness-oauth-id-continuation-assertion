@@ -710,62 +710,23 @@ actor_token_type=<actor-token-type>
 A chain exists only if the root Token Exchange requests one. This document
 defines the `continuation` Token Exchange request parameter: its presence in
 a direct request asks the IdP to establish a chain for the delegation being
-created. Its value is a JSON object serialized as a JSON string and carried
-form-encoded like any other Token Exchange parameter, following the
-convention of `authorization_details` {{RFC9396}}. A request MUST NOT
-contain more than one `continuation` parameter. The IdP MUST reject a
-request whose `continuation` value is not a JSON object or whose members do
-not conform to the definitions below (a malformed request, per {{RFC6749}},
-`invalid_request`), and MUST ignore unrecognized members. The members, each
-OPTIONAL, are:
+created. This document defines a single value, the string `true`. A request
+MUST NOT contain more than one `continuation` parameter, and the IdP MUST
+reject a request carrying any other value as malformed ({{RFC6749}},
+`invalid_request`). Future specifications may define richer values to
+negotiate chain properties.
 
-`basis`:
-: String. The requested authorization-basis form: `enumerated`, or `policy`
-  for the policy-reference form.
+The chain's properties are not negotiated in this profile. The authorization
+basis and its form, the continuation authorization, the maximum actor-chain
+depth, and the chain's lifetime are determined by the user's authentication
+and consent and by tenant policy, and are recorded in the root-chain
+envelope. The IdP MUST NOT establish a chain if the parameter is absent.
 
-`lifetime`:
-: JSON number. The requested maximum chain lifetime in seconds, a positive
-  integer.
-
-`max_depth`:
-: JSON number. The requested maximum actor-chain depth, a positive integer.
-
-`continuers`:
-: JSON array of requested permitted continuers. Each element is either a
-  string containing a trust-domain identifier, or a JSON object with `iss`
-  and `sub` members (non-empty strings) naming a specific actor. The IdP
-  grants only identifiers it recognizes for the tenant.
-
-The following is a non-normative example of the object, shown before
-serialization and form encoding:
-
-~~~ json
-{
-  "basis": "policy",
-  "lifetime": 2592000,
-  "max_depth": 4,
-  "continuers": [
-    { "iss": "https://gateway.example/", "sub": "tool-gateway" }
-  ]
-}
-~~~
-
-The IdP decides what to grant, bounded by the user's authentication and
-consent and by policy:
-
-* It MUST NOT establish a chain if the parameter is absent.
-* Where a member is present, it MUST NOT grant a longer lifetime, greater
-  depth, or broader continuation authorization than requested.
-* What was granted is recorded in the root-chain envelope.
-
-The response returns the root hop's handle in `continuation_handle`, and MAY
-include the chain's expiry in `chain_exp` and echo the granted values in a
-`continuation` response member ({{response-param}}). When echoed, the
-response's `continuation` member is a JSON object (not a serialized string)
-whose members carry the granted values using the definitions above. If the
-IdP cannot establish the requested chain, it MAY still issue the requested
-grant without one; the absence of `continuation_handle` in the response
-tells the client that no chain exists.
+The response returns the root hop's handle in `continuation_handle` and MAY
+include the chain's expiry in `chain_exp` ({{response-param}}). If the IdP
+cannot establish the requested chain, it MAY still issue the requested grant
+without one; the absence of `continuation_handle` in the response tells the
+client that no chain exists.
 
 ## Chained ID-JAG Request
 
@@ -1461,7 +1422,7 @@ Parameter name:
 : continuation
 
 Parameter usage location:
-: token request, token response
+: token request
 
 Change controller:
 : IESG
@@ -1776,7 +1737,7 @@ requested_token_type=urn:ietf:params:oauth:token-type:id-jag
 audience=https://ras.expenses.example/
 resource=https://api.expenses.example/
 scope=expenses.read
-continuation={"basis":"enumerated"}
+continuation=true
 subject_token=<id_token>
 subject_token_type=urn:ietf:params:oauth:token-type:id_token
 actor_token=<sender-constrained expense-app credential>
@@ -2055,11 +2016,11 @@ The participants and values used throughout:
 Alice schedules "summarize my calendar every morning" and authorizes it in an
 active session. The platform performs the direct ID-JAG exchange of
 {{token-exchange}} with Alice's session as the `subject_token` and
-`briefing-agent` as the authenticated actor, including a `continuation`
-parameter ({{root-establishment}}) that requests an explicit `lifetime` and
-names `briefing-agent` as the continuer. Because the task will outlive
-Alice's session, the consent captured here establishes that lifetime as the
-chain's governing authorization ({{lifecycle}}), and the
+`briefing-agent` as the authenticated actor, including the `continuation`
+parameter ({{root-establishment}}). Because the task will outlive
+Alice's session, the consent captured here establishes an explicit maximum
+chain lifetime as the chain's governing authorization ({{lifecycle}}), with
+`briefing-agent` as the permitted continuer, and the
 envelope's authorized target entry is exactly the task's need:
 (`https://ras.calendar.example/`, `https://api.calendar.example/`,
 `calendar.read`). The IdP records the envelope, with `briefing-agent` as the
@@ -2260,7 +2221,7 @@ The subsections below detail each step.
 Alice authenticates in `agent-app`, a confidential client whose `client_id`
 is the audience of her identity assertion, so `agent-app` performs the
 direct exchange of {{token-exchange}}, including the `continuation` parameter
-with `basis` `policy` ({{root-establishment}}), for the one audience it does
+({{root-establishment}}), for the one audience it does
 know: the gateway (`audience=https://ras.gateway.example/`) (steps 1 and 2).
 Because tool routing is dynamic, the IdP records the envelope with the
 policy-reference authorization basis ({{validation}}, rule 14), referencing
