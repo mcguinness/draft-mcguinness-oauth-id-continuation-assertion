@@ -398,8 +398,9 @@ Table of Contents
 
    *  If the _same_ subject identifier, or a key-based workload
       identity, suffices down a local fan-out, the parties SHOULD NOT
-      round-trip the IdP.  An offline attenuated delegation token is
-      used instead, and the IdP is reserved for the boundary hops.
+      round-trip the IdP.  An offline attenuated delegation token (for
+      example, [I-D.li-oauth-delegated-authorization]) is used instead,
+      and the IdP is reserved for the boundary hops.
 
    In the canonical flow both appear: an offline attenuated stack inside
    TravelSaaS as it fans out to sub-agents, and an Identity Continuation
@@ -1314,10 +1315,12 @@ Table of Contents
 
    Where an offline attenuated delegation stack feeds an Identity
    Continuation Assertion, monotonic attenuation, bounded delegation
-   depth, and parent-hash linkage along that offline segment are
-   provided and verified by that stack's own specification.  The Chain
-   Authority validates the segment before issuing (Section 4.5); the IdP
-   itself enforces only the root-chain envelope described above.
+   depth, and parent linkage along that offline segment are provided and
+   verified by that stack's own specification (for example,
+   [I-D.li-oauth-delegated-authorization], whose client-issued tokens
+   are key-linked, monotonically downscoped, and depth-bounded).  The
+   Chain Authority validates the segment before issuing (Section 4.5);
+   the IdP itself enforces only the root-chain envelope described above.
 
 11.5.  Trust in the Chain Authority
 
@@ -1677,6 +1680,13 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-ietf-wimse-
               arch-08>.
 
+   [I-D.li-oauth-delegated-authorization]
+              Ruochen, L., Wang, W., Liu, P. C., and T. Li, "OAuth 2.0
+              Delegated Authorization", Work in Progress, Internet-
+              Draft, draft-li-oauth-delegated-authorization-03, 24 July
+              2026, <https://datatracker.ietf.org/doc/html/draft-li-
+              oauth-delegated-authorization-03>.
+
    [I-D.mcguinness-oauth-actor-proofs]
               McGuinness, K., "OAuth Actor-Signed Hop Proofs", Work in
               Progress, Internet-Draft, draft-mcguinness-oauth-actor-
@@ -1834,7 +1844,12 @@ A.3.  Why Not a Cross-Domain Propagation Token
    example, a single SPIFFE-style trust domain), and accept the loss of
    mid-chain revocation, direct inter-domain propagation is appropriate;
    that is a different problem from the pairwise-subject, per-boundary-
-   trust case this profile addresses.
+   trust case this profile addresses.  Delegated Authorization
+   [I-D.li-oauth-delegated-authorization] illustrates the boundary from
+   the other side: its client-issued delegation tokens are forbidden to
+   carry a subject at all, so that stack composes with this profile as
+   the intra-domain layer of Section 3 and stops exactly where re-
+   subjecting begins.
 
 A.4.  Alternative Topology: Resolution at the Target
 

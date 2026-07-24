@@ -1712,8 +1712,9 @@ produce the next audience's <code>sub</code>.<a href="#section-3-2.1.1" class="p
         <li class="normal" id="section-3-2.2">
           <p id="section-3-2.2.1">If the <em>same</em> subject identifier, or a key-based workload identity, suffices
 down a local fan-out, the parties <span class="bcp14">SHOULD NOT</span> round-trip the IdP. An offline
-attenuated delegation token is used instead, and the IdP is reserved for the
-boundary hops.<a href="#section-3-2.2.1" class="pilcrow">¶</a></p>
+attenuated delegation token (for example,
+<span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>) is used instead, and the IdP is
+reserved for the boundary hops.<a href="#section-3-2.2.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-3-3">In the canonical flow both appear: an offline attenuated stack inside
@@ -2800,9 +2801,11 @@ authorization basis (<a href="#validation" class="auto internal xref">Section 9<
 intermediate actor from broadening the chain beyond what the root delegation
 and its governing consent and policy authorize.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
 <p id="section-11.4-2">Where an offline attenuated delegation stack feeds an Identity Continuation
-Assertion, monotonic attenuation, bounded delegation depth, and parent-hash
+Assertion, monotonic attenuation, bounded delegation depth, and parent
 linkage along that offline segment are provided and verified by that stack's
-own specification. The Chain Authority validates the segment before issuing
+own specification (for example, <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>,
+whose client-issued tokens are key-linked, monotonically downscoped, and
+depth-bounded). The Chain Authority validates the segment before issuing
 (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); the IdP itself enforces only the root-chain envelope
 described above.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
 </section>
@@ -3326,6 +3329,10 @@ this document is registered by
         <dd>
 <span class="refAuthor">Salowey, J. A.</span>, <span class="refAuthor">Rosomakho, Y.</span>, and <span class="refAuthor">H. Tschofenig</span>, <span class="refTitle">"Workload Identity in a Multi System Environment (WIMSE) Architecture"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-wimse-arch-08</span>, <time datetime="2026-07-06" class="refDate">6 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-08">https://datatracker.ietf.org/doc/html/draft-ietf-wimse-arch-08</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="I-D.li-oauth-delegated-authorization">[I-D.li-oauth-delegated-authorization]</dt>
+        <dd>
+<span class="refAuthor">Ruochen, L.</span>, <span class="refAuthor">Wang, W.</span>, <span class="refAuthor">Liu, P. C.</span>, and <span class="refAuthor">T. Li</span>, <span class="refTitle">"OAuth 2.0 Delegated Authorization"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-li-oauth-delegated-authorization-03</span>, <time datetime="2026-07-24" class="refDate">24 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-li-oauth-delegated-authorization-03">https://datatracker.ietf.org/doc/html/draft-li-oauth-delegated-authorization-03</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="I-D.mcguinness-oauth-actor-proofs">[I-D.mcguinness-oauth-actor-proofs]</dt>
         <dd>
 <span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"OAuth Actor-Signed Hop Proofs"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-mcguinness-oauth-actor-proofs-00</span>, <time datetime="2026-07-04" class="refDate">4 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-mcguinness-oauth-actor-proofs-00">https://datatracker.ietf.org/doc/html/draft-mcguinness-oauth-actor-proofs-00</a>&gt;</span>. </dd>
@@ -3487,7 +3494,12 @@ exactly an Identity Continuation Assertion. Where all domains share a single
 global subject for the user, mutually trust each other's issuers (for example, a
 single SPIFFE-style trust domain), and accept the loss of mid-chain revocation,
 direct inter-domain propagation is appropriate; that is a different problem from
-the pairwise-subject, per-boundary-trust case this profile addresses.<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
+the pairwise-subject, per-boundary-trust case this profile addresses.
+Delegated Authorization <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span> illustrates
+the boundary from the other side: its client-issued delegation tokens are
+forbidden to carry a subject at all, so that stack composes with this profile
+as the intra-domain layer of <a href="#decision-rule" class="auto internal xref">Section 3</a> and stops exactly where
+re-subjecting begins.<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-pull">
