@@ -279,6 +279,9 @@ Table of Contents
    (Section 7.7).  The onward ID-JAG and the way a Resource
    Authorization Server consumes it are unchanged.
 
+   Open design questions on which the author seeks working group
+   feedback are collected in Appendix E.
+
 2.  Conventions and Definitions
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
