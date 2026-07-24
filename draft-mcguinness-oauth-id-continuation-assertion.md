@@ -299,7 +299,7 @@ Root-chain envelope:
   * the continuation authorization: the actors or trust domains permitted to
     continue the chain, and the basis on which that permission was
     established ({{root-establishment}});
-  * the maximum actor-chain depth; and
+  * any maximum actor-chain depth set by policy; and
   * the chain's expiry.
 
   The authorization basis takes one of two forms. In *enumerated* form it is
@@ -674,7 +674,7 @@ for their own lifetimes and are governed by that server's revocation
 mechanisms.
 
 Revocation is a control-plane capability, but the delegation belongs to the
-user. The IdP SHOULD make active chains visible and revocable through user-
+user. IdPs are encouraged to make active chains visible and revocable through user-
 and administrator-facing management interfaces, presenting the root context,
 the chain's hop graph and actor lineage, the targets granted so far, and the
 chain's expiry. Grant Management for OAuth 2.0 {{GRANT-MGMT}} provides a
@@ -717,7 +717,7 @@ reject a request carrying any other value as malformed ({{RFC6749}},
 negotiate chain properties.
 
 The chain's properties are not negotiated in this profile. The authorization
-basis and its form, the continuation authorization, the maximum actor-chain
+basis and its form, the continuation authorization, any maximum actor-chain
 depth, and the chain's lifetime are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
 envelope. The IdP MUST NOT establish a chain if the parameter is absent.
@@ -909,7 +909,7 @@ BookingRAS).
    (`auth_time`/`acr`/`amr`), the authorization basis (enumerated target
    entries or a policy reference evaluated at continuation time), the
    continuation authorization (here, designated TravelSaaS and BookingSaaS
-   workloads), the maximum actor-chain depth, the expiry, and the root hop
+   workloads), any maximum actor-chain depth, the expiry, and the root hop
    with its authenticated actor (`expense-app`). `continuation_handle` is not a claim
    inside the ExpenseRAS ID-JAG.
 
@@ -981,7 +981,8 @@ unless all of the following hold:
 6. the assertion `iss` is a trusted Chain Authority for this tenant;
 
 7. `continuation_handle` identifies a known, active continuation handle of an unexpired,
-   unrevoked chain, on a branch with remaining actor-chain depth;
+   unrevoked chain, on a branch within any actor-chain depth bound set by
+   policy;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`, or
    `amr` claim, nor an `audience`, `resource`, `scope`,
@@ -995,7 +996,7 @@ unless all of the following hold:
      and
    * yields a composed actor chain (the presented hop's lineage plus any
      asserted intra-domain segment, per {{onward-id-jag}}) that is
-     acceptable and within max-depth policy;
+     acceptable and within any max-depth policy;
 
 10. the request and the current actor are bound together:
     * the request is authenticated as an OAuth client that is the same
@@ -1036,12 +1037,12 @@ unless all of the following hold:
 
 After all other validation succeeds, the IdP MUST atomically check and record
 the tuple (`iss`, `jti`) as consumed as part of issuing the onward grant. At
-most one concurrent exchange using the same tuple may succeed. An
-implementation MUST NOT permanently consume the tuple solely because a
-request failed validation before grant issuance; if it reserves a tuple
-before completing issuance, it MUST release the reservation after failure or
-expire it promptly. The IdP MUST retain a successfully consumed tuple until
-at least the assertion's `exp`, allowing for its permitted clock skew.
+most one concurrent exchange using the same tuple may succeed, and the IdP
+MUST retain a successfully consumed tuple until at least the assertion's
+`exp`, allowing for its permitted clock skew. A request that fails validation
+before grant issuance does not consume the tuple; how an implementation
+ensures this (for example, by releasing reservations on failure) is an
+implementation detail.
 
 These requirements imply per-chain state and, within the assertion validity
 window, strongly consistent replay state at the IdP; the 300-second lifetime
@@ -1298,7 +1299,7 @@ a transaction from actor lineage and timing alone, regardless of how
 `continuation_handle` is handled. Deployments requiring unlinkability across audiences
 must weigh the audit value of deep actor lineage against this correlation
 channel and MAY limit the nested lineage exposed to each audience, subject to
-their audit requirements. Deployments MUST limit disclosure of `continuation_handle` to
+their audit requirements. Deployments SHOULD limit disclosure of `continuation_handle` to
 participants that require it to continue or administer the chain.
 
 `continuation_handle` MUST NOT contain user-identifying information and MUST carry at least
