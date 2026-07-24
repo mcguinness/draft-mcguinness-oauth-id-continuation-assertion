@@ -2382,6 +2382,46 @@ but bootstrapping the root exchange from a public client raises
 considerations in the underlying ID-JAG profile (which recommends Token
 Exchange for confidential clients) and is not addressed here.
 
+# Open Items for Working Group Discussion {#open-items}
+
+This appendix is non-normative. It lists design questions the author has
+deliberately left open for working group discussion; feedback on any of them
+is welcome.
+
+\[\[ To be removed before publication as an RFC ]]
+
+1. **Nested own-domain `act` segments.** The assertion may carry a Chain
+   Authority's verified intra-domain segment as nested `act` values, which
+   the IdP composes with the hop lineage ({{assertion-claims}},
+   {{onward-id-jag}}, {{example-offline-segment}}). This is the most
+   intricate machinery in the profile, and its common shallow case adds
+   nothing the IdP has not already authenticated. Should a future revision
+   retain it, or restrict `act` to the single current actor and leave
+   offline-actor audit to the evidence layer
+   ({{I-D.mcguinness-oauth-actor-receipts}},
+   {{I-D.mcguinness-oauth-actor-proofs}})?
+
+2. **Signed assertion versus a bare grant type.** {{rationale-grant-type}}
+   documents the alternative in which the continuing workload presents the
+   handle directly under client authentication, with no assertion, Chain
+   Authority, or per-assertion replay state. Which do implementers prefer,
+   and is the Chain Authority's remaining role (actor and key vouching plus
+   a domain-local gate) worth its trust configuration?
+
+3. **Pull topology.** {{rationale-pull}} documents resolution at the target
+   Resource Authorization Server as a candidate companion profile that moves
+   the integration cost from the IdP side to the target side.
+
+4. **Mutual-TLS binding.** Deliberately not specified while the ID-JAG
+   profile defines only DPoP-based binding
+   ({{sender-constrained-presentation}}). Should the two profiles add
+   mutual-TLS binding together?
+
+5. **Richer `continuation` values.** The request parameter is a flag, and
+   negotiation of lifetime, depth, or permitted continuers is reserved for
+   future values ({{root-establishment}}). Is client-side negotiation of
+   chain properties needed at all?
+
 # Acknowledgments
 {:numbered="false"}
 
