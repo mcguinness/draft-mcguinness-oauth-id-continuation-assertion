@@ -261,7 +261,7 @@ Chain Authority:
 
 Current actor (presenting actor):
 : The workload that presents the Identity Continuation Assertion and the Token
-  Exchange request to the IdP. It is identified by the outermost `act` claim
+  Exchange request to the IdP. It is identified by the `act` claim
   and authenticated by the `actor_token`.
 
 Tenant:
@@ -403,28 +403,20 @@ The claims have the following meanings and requirements:
   user, and the target-audience subject from it. See {{chain-id}}.
 
 `act`:
-: REQUIRED. The current actor, encoded as an `act` claim per {{RFC8693}}.
-  Each `act` object contains a REQUIRED `iss` and a REQUIRED `sub`, both
-  non-empty strings, and an OPTIONAL nested `act` object with this same
-  schema. Additional members MAY carry further identity attributes of that
-  actor; a recipient MUST ignore members it does not understand, and the
-  non-identity members `exp`, `nbf`, `aud`, `scope`, and `cnf` MUST NOT be
-  present.
+: REQUIRED. The current actor presenting the Token Exchange request, encoded
+  as a single-level `act` claim per {{RFC8693}}. The `act` object contains a
+  REQUIRED `iss` and a REQUIRED `sub`, both non-empty strings. Additional
+  members MAY carry further identity attributes of the actor; a recipient
+  MUST ignore members it does not understand, and the members `exp`, `nbf`,
+  `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present. The IdP MUST
+  reject an assertion whose `act` does not conform to this schema. The
+  assertion names no other actor: all lineage is constructed by the IdP
+  ({{onward-id-jag}}), and nested `act` values are reserved for a future
+  extension ({{open-items}}).
 
-  * The outermost `act` identifies the current actor presenting the Token
-    Exchange request.
-  * Nested `act` claims MAY appear only for actors within the issuing Chain
-    Authority's own trust domain that it has verified, for example the
-    intra-domain segment of an offline attenuated stack, with the verified
-    leaf actor outermost.
-  * The assertion MUST NOT assert actors outside the issuing Chain
-    Authority's trust domain: cross-boundary lineage is constructed by the
-    IdP ({{onward-id-jag}}).
-  * The IdP MUST reject an assertion whose `act` does not conform to this
-    schema.
-
-  The Chain Authority MAY retain audit evidence for the offline segment
-  separately from the `act` object, for example per-hop issuer receipts
+  Where an offline attenuated stack delegated to the current actor, the
+  Chain Authority MAY retain audit evidence for that offline segment
+  separately from the assertion, for example per-hop issuer receipts
   {{I-D.mcguinness-oauth-actor-receipts}} or actor-signed hop proofs
   {{I-D.mcguinness-oauth-actor-proofs}}; such evidence SHOULD remain in the
   control plane ({{privacy}}).
@@ -451,7 +443,7 @@ The claims have the following meanings and requirements:
 The assertion MUST NOT contain a top-level `sub`, `auth_time`, `acr`, or `amr`
 claim. The IdP obtains the user and root authentication context from the
 root-chain envelope indexed by `continuation_handle`, and identifies the current workload
-from the outermost `act` claim and the `actor_token`; repeating those values in
+from the `act` claim and the `actor_token`; repeating those values in
 the assertion would only create competing sources of identity without adding
 authority.
 
@@ -488,7 +480,7 @@ Authority:
 * MUST bind the assertion to the requesting actor's key via `cnf`
   ({{assertion-claims}}), and MUST do so only after establishing that the
   requesting actor controls that key and is the actor recorded in the
-  outermost `act` claim; and
+  `act` claim; and
 
 * SHOULD be in the requesting actor's trust domain. It can satisfy these
   requirements only for actors it can directly authenticate, so each trust
@@ -521,12 +513,11 @@ the following:
 
 3. the requesting actor controls the key placed in `cnf`; and
 
-4. the actors placed in `act` (the current actor and any verified intra-domain
-   segment) were derived from authenticated context or from a verifiable
-   delegation artifact whose integrity and delegation rules the Chain
-   Authority has validated, such as an actor-signed hop-proof chain
-   {{I-D.mcguinness-oauth-actor-proofs}}; actors outside the Chain Authority's
-   trust domain are not placed in `act` ({{assertion-claims}}).
+4. the actor placed in `act` is the authenticated requesting actor
+   ({{assertion-claims}}), and, where an offline attenuated stack delegated
+   to that actor, the Chain Authority has validated the delegation
+   artifact's integrity and delegation rules (for example, an actor-signed
+   hop-proof chain {{I-D.mcguinness-oauth-actor-proofs}}) before issuing.
 
 Possession of `continuation_handle` alone is insufficient to satisfy these
 requirements, and values received as propagated context, including actor
@@ -787,8 +778,8 @@ uses proof of possession aligned with the direct ID-JAG request
   possession of the confirmed key.
 
 * The Token Exchange request MUST include an `actor_token`, which authenticates
-  the workload identity of the current actor, the outermost actor in the
-  assertion's `act` chain. The `actor_token` MUST itself be sender-constrained
+  the workload identity of the current actor, the actor named in the
+  assertion's `act` claim. The `actor_token` MUST itself be sender-constrained
   to the same key confirmed by the assertion's `cnf`. For a JWT actor token,
   the IdP MUST verify a `cnf.jkt` value that matches both the assertion and
   the live proof. For an opaque actor token, the IdP MUST obtain the
@@ -800,7 +791,7 @@ uses proof of possession aligned with the direct ID-JAG request
 Actor identity comparison is exact: two actor identities are the same entity
 only if their issuer and subject identifiers are octet-for-octet equal. The
 IdP MUST apply this comparison when matching the `actor_token` to the
-outermost `act` and to the authenticated client ({{client-identity}}).
+`act` claim and to the authenticated client ({{client-identity}}).
 Comparison occurs within the tenant context already established for the
 exchange ({{validation}}, rule 10); identities from different tenants are
 never compared equal.
@@ -830,7 +821,7 @@ and the current actor is that client:
   ID-JAG exchange, this profile is intended for confidential clients.
 * The IdP MUST verify that the authenticated client and the current actor
   are the same entity, comparing the client's actor identity (its `iss` and
-  `sub` pair) with the `actor_token` and the outermost `act` using the exact
+  `sub` pair) with the `actor_token` and the `act` claim using the exact
   comparison of {{sender-constrained-presentation}}. The IdP learns the
   client's actor identity from an authoritative mapping, typically recorded
   in the client registration or resolvable from a shared client identifier
@@ -1004,14 +995,8 @@ unless all of the following hold:
    `authorization_details`, or `requested_token_type` claim
    ({{excluded-claims}});
 
-9. the assertion's `act` claim:
-   * is present, conforms to the schema of {{assertion-claims}}, and
-     identifies the current actor as the outermost actor;
-   * asserts no actor outside the issuing Chain Authority's trust domain;
-     and
-   * yields a composed actor chain (the presented hop's lineage plus any
-     asserted intra-domain segment, per {{onward-id-jag}}) that is
-     acceptable and within any max-depth policy;
+9. the assertion's `act` claim is present, conforms to the schema of
+   {{assertion-claims}}, and identifies the current actor;
 
 10. the request and the current actor are bound together:
     * the request is authenticated as an OAuth client that is the same
@@ -1019,7 +1004,7 @@ unless all of the following hold:
     * the `actor_token` was issued by a workload identity issuer the IdP
       trusts for the current actor's trust domain and tenant, and it
       authenticates the current actor;
-    * that actor is the outermost actor in the `act` chain; and
+    * that actor is the actor named in `act`; and
     * that actor is permitted by the chain's continuation authorization
       ({{root-establishment}}) to continue from the presented hop;
 
@@ -1135,15 +1120,11 @@ IdP:
 ~~~
 
 The `act` chain in an onward ID-JAG is constructed by the IdP, not copied
-from the assertion. The cross-boundary lineage is the presented hop's
-lineage, the actors the IdP itself authenticated along that hop's parent path
-({{chain-id}}, rule 8), extended by any intra-domain segment the Chain
-Authority verified and asserted ({{assertion-claims}}); sibling branches
-never contribute to one another's lineage. The asserted segment is placed
-atop the lineage with the current actor outermost; when the segment's
-innermost actor names the same actor as the lineage's most recent entry,
-they are the same hop and appear once. Any actor-chain depth bound set by policy
-applies to the composed chain ({{validation}}, rule 9).
+from the assertion: it is the newly authenticated current actor placed atop
+the presented hop's lineage, the actors the IdP itself authenticated along
+that hop's parent path ({{chain-id}}, rule 8). Sibling branches never
+contribute to one another's lineage, and any actor-chain depth bound set by
+policy applies to the resulting chain ({{validation}}, rule 7).
 
 Nested lineage in an onward ID-JAG is therefore authenticated, not
 self-reported. In this example the chain is `travel-service` (authenticated
@@ -1271,17 +1252,16 @@ Continuation Assertion that accompanies it.
 
 ## Actor Chain Integrity
 
-Cross-boundary actor lineage in an onward ID-JAG is constructed by the IdP
-from the actors it authenticated at the root exchange and at each
-continuation, so nested lineage is authenticated rather than self-reported
-({{onward-id-jag}}). The only reported segment is the intra-domain lineage a
-Chain Authority asserts for its own trust domain, which it MUST verify before
-issuance ({{context-provenance}}); the IdP MUST reject an assertion that names
-actors outside the issuing Chain Authority's trust domain ({{validation}},
-rule 9). The IdP bases authorization decisions on the root-chain state, the
-authenticated current actor, and the requested `audience`, `resource`, and
-`scope`; asserted intra-domain lineage informs audit and depth policy, not
-authority.
+Actor lineage in an onward ID-JAG is constructed by the IdP from the actors
+it authenticated at the root exchange and at each continuation, so lineage
+is authenticated rather than self-reported ({{onward-id-jag}}). An assertion
+names only the current actor, and the IdP MUST reject an assertion whose
+`act` names anyone else ({{validation}}, rule 9). The IdP bases
+authorization decisions on the root-chain state, the authenticated current
+actor, and the requested `audience`, `resource`, and `scope`. Actors of an
+offline attenuated segment appear in deployment audit records and the
+evidence layer rather than in lineage; asserting a verified own-domain
+segment is reserved for a future extension ({{open-items}}).
 
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
@@ -1666,10 +1646,10 @@ boundary is crossed, and vouching first-hand for its own workloads' identity,
 keys, and provenance. The Chain Authority does not see the target of the
 eventual exchange ({{excluded-claims}}) and therefore gates only continuation
 itself, never target or scope, which are solely the IdP's to authorize. With
-cross-boundary lineage constructed by the IdP ({{onward-id-jag}}), the
+all lineage constructed by the IdP ({{onward-id-jag}}), the
 assertion carries exactly what the Chain Authority can attest first-hand: the
-authenticated current actor, its key binding, and its own-domain verified
-segment. Deployments needing neither capability reduce the Chain Authority to
+authenticated current actor and its key binding. Deployments needing neither
+capability reduce the Chain Authority to
 a co-signature over `continuation_handle` and the current actor; the bare grant type
 remains a candidate simplification should working group feedback favor it.
 
@@ -1859,7 +1839,7 @@ Continuation Assertion from the Chain Authority for this `continuation_handle`, 
 control of its key so the Chain Authority can bind `cnf` to it
 ({{assertion-issuance}}). The Chain Authority returns the assertion shown in
 {{assertion-claims}}: `iss` is the Chain Authority, `aud` is the IdP,
-`continuation_handle` is the value above, the outermost `act` is `travel-service`, and
+`continuation_handle` is the value above, the `act` names `travel-service`, and
 `cnf.jkt` is TravelService's key thumbprint.
 
 ## Chained Exchange for the TravelRAS ID-JAG {#example-chained}
@@ -1887,8 +1867,8 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 The `subject_token_type` value above is
 `urn:ietf:params:oauth:token-type:identity-continuation`. The IdP runs the
 checks of {{validation}}: the DPoP key matches both the assertion's `cnf.jkt`
-and the actor token's key confirmation, `travel-service` is the outermost
-actor, the `continuation_handle` is active, and the requested TravelRAS, TravelAPI, and
+and the actor token's key confirmation, `travel-service` is the actor
+named in `act`, the `continuation_handle` is active, and the requested TravelRAS, TravelAPI, and
 `trips.read` values match the Travel target entry in the root-chain envelope.
 It then resolves the user's TravelRAS-local subject and returns:
 
@@ -1915,7 +1895,7 @@ TravelService exchanges the TravelRAS ID-JAG at TravelRAS for an access token
 calls TravelAPI. TravelRAS processes the ID-JAG as an ordinary ID-JAG and
 never sees the Identity Continuation Assertion or the `continuation_handle`.
 
-## Third Hop with an Intra-Domain Segment {#example-offline-segment}
+## Third Hop After Offline Delegation {#example-offline-segment}
 
 Completing the itinerary requires a reservation at BookingSaaS
 (`https://booking.example/`), whose API `https://api.booking.example/` sits
@@ -1926,8 +1906,8 @@ with no IdP round trip ({{decision-rule}}). The user's subject changes at the
 Booking boundary, so that hop is a continuation.
 
 `booking-worker` requests an assertion from `https://ca.travel.example/`,
-which verifies the offline segment before issuing ({{context-provenance}})
-and asserts it as nested own-domain `act` values ({{assertion-claims}}):
+which validates the offline delegation before issuing
+({{context-provenance}}) and names `booking-worker` as the current actor:
 
 ~~~ json
 {
@@ -1937,11 +1917,7 @@ and asserts it as nested own-domain `act` values ({{assertion-claims}}):
 
   "act": {
     "iss": "https://travel.example/",
-    "sub": "booking-worker",
-    "act": {
-      "iss": "https://travel.example/",
-      "sub": "travel-service"
-    }
+    "sub": "booking-worker"
   },
 
   "cnf": {
@@ -1957,11 +1933,10 @@ and asserts it as nested own-domain `act` values ({{assertion-claims}}):
 `booking-worker` exchanges the assertion, DPoP-bound to its own key, for an
 ID-JAG with `audience=https://ras.booking.example/`,
 `resource=https://api.booking.example/`, and `scope=stays.book`, all within
-the envelope's Booking target entry. The IdP composes the onward `act` chain
-({{onward-id-jag}}): the asserted segment (`booking-worker` above
-`travel-service`) is placed atop the presented hop's lineage
-(`travel-service`, then `expense-app`), and `travel-service`, being both the
-segment's innermost actor and the lineage's most recent, appears once:
+the envelope's Booking target entry. The IdP constructs the onward `act`
+chain ({{onward-id-jag}}): `booking-worker`, authenticated at this exchange,
+placed atop the presented hop's lineage (`travel-service`, then
+`expense-app`):
 
 ~~~ json
 {
@@ -2390,14 +2365,19 @@ is welcome.
 
 \[\[ To be removed before publication as an RFC ]]
 
-1. **Nested own-domain `act` segments.** The assertion may carry a Chain
-   Authority's verified intra-domain segment as nested `act` values, which
-   the IdP composes with the hop lineage ({{assertion-claims}},
-   {{onward-id-jag}}, {{example-offline-segment}}). This is the most
-   intricate machinery in the profile, and its common shallow case adds
-   nothing the IdP has not already authenticated. Should a future revision
-   retain it, or restrict `act` to the single current actor and leave
-   offline-actor audit to the evidence layer
+1. **Nested own-domain `act` segments (designed future extension).** In
+   this version an assertion's `act` names only the current actor, and all
+   lineage is IdP-authenticated ({{assertion-claims}}, {{onward-id-jag}}).
+   The designed extension would let a Chain Authority additionally assert a
+   verified intra-domain segment (actors of an offline attenuated stack
+   within its own trust domain) as nested `act` values. The solution shape:
+   own-domain actors only, the verified leaf outermost, the IdP composing
+   the segment atop the hop lineage and collapsing an actor that appears in
+   both so each appears once, with depth policy applied to the composed
+   chain. Enabling it is additive, lifting the single-level schema
+   constraint of {{assertion-claims}}; an IdP at this version rejects
+   nested `act` values deterministically. Should that extension ship, or is
+   offline-actor audit better left to the evidence layer
    ({{I-D.mcguinness-oauth-actor-receipts}},
    {{I-D.mcguinness-oauth-actor-proofs}})?
 
