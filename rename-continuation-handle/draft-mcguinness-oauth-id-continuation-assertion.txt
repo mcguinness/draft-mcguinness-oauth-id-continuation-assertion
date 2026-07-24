@@ -2356,28 +2356,28 @@ C.1.  Setup (Alice Present)
 
    The platform stores the task.  This record contains no credential:
 
-  task: morning-calendar-brief
-    user:     alice
-    agent:    briefing-agent           # the authorized continuer
-    continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa   # non-bearer reference
-    chain_exp: 1714592000
-    schedule: "0 7 * * *"
+   task: morning-calendar-brief
+     user:     alice
+     agent:    briefing-agent           # the authorized continuer
+     continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa  # non-bearer
+     chain_exp: 1714592000
+     schedule: "0 7 * * *"
 
 C.2.  Each Run (Alice Absent)
 
    At a glance, each run proceeds as follows:
 
- Scheduler      -> BriefingAgent:  run task, here is continuation_handle
- BriefingAgent  -> ChainAuthority: assertion for the stored handle,
-                                   bound to the briefing-agent key
- ChainAuthority -> BriefingAgent:  Identity Continuation Assertion
- BriefingAgent  -> IdP:            Token Exchange (assertion + DPoP)
- IdP:                              validate per the rules of the
-                                   validation section; resolve Alice's
-                                   Calendar subject; mint
- IdP            -> BriefingAgent:  ID-JAG(CalendarRAS) + handle
- BriefingAgent  -> CalendarRAS:    ID-JAG -> access token (DPoP)
- BriefingAgent  -> CalendarAPI:    read calendar -> summarize
+   Scheduler      -> BriefingAgent:  run task, here is the handle
+   BriefingAgent  -> ChainAuthority: assertion for the stored handle,
+                                     bound to the briefing-agent key
+   ChainAuthority -> BriefingAgent:  Identity Continuation Assertion
+   BriefingAgent  -> IdP:            Token Exchange (assertion + DPoP)
+   IdP:                              validate per the rules of the
+                                     validation section; resolve Alice's
+                                     Calendar subject; mint
+   IdP            -> BriefingAgent:  ID-JAG(CalendarRAS) + handle
+   BriefingAgent  -> CalendarRAS:    ID-JAG -> access token (DPoP)
+   BriefingAgent  -> CalendarAPI:    read calendar -> summarize
 
    The assertion is the ordinary artifact of Section 4.2, issued by the
    platform's own Chain Authority for its own workload (Section 4.4):
@@ -2569,23 +2569,23 @@ Appendix D.  Gateway Example (Dynamic Upstream Audiences)
 
    At a glance, the message flow is:
 
-  Alice authenticates in agent-app.
+   Alice authenticates in agent-app.
 
-  AgentApp -> IdP:            (1) direct exchange: Alice's ID Token
-  IdP -> AgentApp:            (2) ID-JAG(GatewayRAS) + handle
-  AgentApp -> GatewayRAS:     (3) ID-JAG
-  GatewayRAS -> AgentApp:     (4) gateway access token
-  AgentApp -> Gateway:        (5) tool call + Continuation-Handle header
+   AgentApp -> IdP:            (1) direct exchange: Alice's ID Token
+   IdP -> AgentApp:            (2) ID-JAG(GatewayRAS) + handle
+   AgentApp -> GatewayRAS:     (3) ID-JAG
+   GatewayRAS -> AgentApp:     (4) gateway access token
+   AgentApp -> Gateway:        (5) tool call + Continuation-Handle
 
-  Gateway resolves the tool call to the wiki upstream.
+   Gateway resolves the tool call to the wiki upstream.
 
-  Gateway -> ChainAuthority:  (6) request assertion for the handle
-  ChainAuthority -> Gateway:  (7) Identity Continuation Assertion
-  Gateway -> IdP:             (8) chained exchange (assertion + DPoP)
-  IdP -> Gateway:             (9) ID-JAG(WikiRAS) + handle
-  Gateway -> WikiRAS:         (10) ID-JAG
-  WikiRAS -> Gateway:         (11) wiki access token
-  Gateway -> WikiAPI:         (12) tool call executes
+   Gateway -> ChainAuthority:  (6) request assertion for the handle
+   ChainAuthority -> Gateway:  (7) Identity Continuation Assertion
+   Gateway -> IdP:             (8) chained exchange (assertion + DPoP)
+   IdP -> Gateway:             (9) ID-JAG(WikiRAS) + handle
+   Gateway -> WikiRAS:         (10) ID-JAG
+   WikiRAS -> Gateway:         (11) wiki access token
+   Gateway -> WikiAPI:         (12) tool call executes
 
    The subsections below detail each step.
 

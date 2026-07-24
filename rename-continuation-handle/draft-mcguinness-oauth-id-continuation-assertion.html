@@ -4057,7 +4057,7 @@ authenticated root actor, and responds with the grant plus:<a href="#appendix-C.
 task: morning-calendar-brief
   user:     alice
   agent:    briefing-agent           # the authorized continuer
-  continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa   # non-bearer reference
+  continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa  # non-bearer
   chain_exp: 1714592000
   schedule: "0 7 * * *"
 </pre><a href="#appendix-C.1-4" class="pilcrow">¶</a>
@@ -4072,7 +4072,7 @@ task: morning-calendar-brief
 <p id="appendix-C.2-1">At a glance, each run proceeds as follows:<a href="#appendix-C.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-C.2-2">
 <pre>
-Scheduler      -&gt; BriefingAgent:  run task, here is continuation_handle
+Scheduler      -&gt; BriefingAgent:  run task, here is the handle
 BriefingAgent  -&gt; ChainAuthority: assertion for the stored handle,
                                   bound to the briefing-agent key
 ChainAuthority -&gt; BriefingAgent:  Identity Continuation Assertion
@@ -4312,7 +4312,7 @@ AgentApp -&gt; IdP:            (1) direct exchange: Alice's ID Token
 IdP -&gt; AgentApp:            (2) ID-JAG(GatewayRAS) + handle
 AgentApp -&gt; GatewayRAS:     (3) ID-JAG
 GatewayRAS -&gt; AgentApp:     (4) gateway access token
-AgentApp -&gt; Gateway:        (5) tool call + Continuation-Handle header
+AgentApp -&gt; Gateway:        (5) tool call + Continuation-Handle
 
 Gateway resolves the tool call to the wiki upstream.
 
