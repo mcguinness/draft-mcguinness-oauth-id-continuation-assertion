@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                            23 July 2026
-Expires: 24 January 2027
+Intended status: Standards Track                            24 July 2026
+Expires: 25 January 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -69,7 +69,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 24 January 2027.
+   This Internet-Draft will expire on 25 January 2027.
 
 Copyright Notice
 
@@ -587,6 +587,12 @@ Table of Contents
    and other chain context are conveyed by deployment-specific means
    (for example, a transaction token) and are validated by the Chain
    Authority before issuance (Section 4.5).
+
+   Within a trust domain, chain_id typically travels inside existing
+   context propagation such as a Transaction Token
+   [I-D.ietf-oauth-transaction-tokens].  This binding serves the inter-
+   domain hop, which a Transaction Token cannot cross under its own
+   audience rules (Appendix A.2).
 
 5.  Chain Identifier (chain_id)
 
