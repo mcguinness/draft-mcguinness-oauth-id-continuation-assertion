@@ -237,9 +237,9 @@ Resource Authorization Server (RAS):
 Resource Server (RS):
 : The service that hosts a protected API and consumes the access tokens issued
   by its Resource Authorization Server. A Resource Server never consumes an
-  Identity Continuation Assertion, no token it consumes carries a `identity_continuation_handle`,
+  Identity Continuation Assertion, no token it consumes carries an `identity_continuation_handle`,
   and its authorization decisions never depend on one. A workload co-located
-  with a Resource Server MAY receive a `identity_continuation_handle` as control-plane context
+  with a Resource Server MAY receive an `identity_continuation_handle` as control-plane context
   accompanying a request ({{context-binding}}).
 
 ID-JAG:
@@ -572,7 +572,7 @@ audience rules ({{rationale-txn}}).
 
 # Continuation Handles (`identity_continuation_handle`) {#chain-id}
 
-A `identity_continuation_handle` is an opaque, unguessable, IdP-generated reference to
+An `identity_continuation_handle` is an opaque, unguessable, IdP-generated reference to
 one hop of a delegation chain. The IdP creates the root hop when it
 establishes a chain ({{root-establishment}}) and a child hop for each
 successful continuation; each child holds an immutable reference to the hop
@@ -725,8 +725,8 @@ defines the `identity_continuation` Token Exchange request parameter: its presen
 a direct request asks the IdP to establish a chain for the delegation being
 created, and the IdP MUST NOT establish a chain if the parameter is absent.
 The parameter takes a single value, the string `true`. The IdP MUST reject a
-request carrying more than one `identity_continuation` parameter, a `identity_continuation`
-value other than `true`, or a `identity_continuation` parameter on a chained request ({{token-exchange}}) as
+request carrying more than one `identity_continuation` parameter, an `identity_continuation`
+value other than `true`, or an `identity_continuation` parameter on a chained request ({{token-exchange}}) as
 malformed ({{RFC6749}}, `invalid_request`). Future specifications may define
 richer values to negotiate chain properties.
 
@@ -953,10 +953,9 @@ BookingRAS).
    inside the ExpenseRAS ID-JAG.
 
 4. ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access token (AT1) and
-   invokes ExpenseSaaS, conveying `identity_continuation_handle` to ExpenseSaaS over an
-   authenticated,
-   confidential, and integrity-protected control-plane channel associated with
-   the request. `identity_continuation_handle` is not carried in the ID-JAG or AT1.
+   invokes ExpenseSaaS, conveying `identity_continuation_handle` to
+   ExpenseSaaS over an authenticated, confidential, and integrity-protected
+   control-plane channel associated with the request. `identity_continuation_handle` is not carried in the ID-JAG or AT1.
 
 5. ExpenseService, the ExpenseSaaS workload handling the request, propagates
    chain context (`identity_continuation_handle`, with deployment audit context such
@@ -1094,7 +1093,7 @@ basis) and a second hop, so it confers no additional authority.
 On success, the IdP records the continuation as a new hop whose immutable
 parent is the presented handle, resolves the audience-local subject for the
 requested RAS, and issues the onward ID-JAG with that `sub`. The onward ID-JAG
-MUST NOT carry a `identity_continuation_handle` claim.
+MUST NOT carry an `identity_continuation_handle` claim.
 
 If validation fails, the IdP MUST return an OAuth error response as defined
 by {{RFC8693}} and {{RFC6749}}. The IdP SHOULD use `invalid_request` for
@@ -1272,7 +1271,7 @@ continuation authorization. Deployments SHOULD scope Chain Authority trust as na
 and SHOULD monitor for anomalous continuation patterns. Because the IdP
 enforces the root-chain envelope, a compromised Chain Authority cannot obtain
 a target or scope outside the chain's authorization basis. Neither possession
-of a `identity_continuation_handle` nor trusted-Chain-Authority status alone authorizes
+of an `identity_continuation_handle` nor trusted-Chain-Authority status alone authorizes
 continuation: the IdP independently requires that the authenticated current
 actor is permitted by IdP policy to continue the specific chain
 ({{validation}}, rule 10). `identity_continuation_handle` confidentiality is defense in depth, not
@@ -1334,7 +1333,7 @@ applies.
 
 # Privacy Considerations {#privacy}
 
-A `identity_continuation_handle` correlates the control-plane participants on its
+An `identity_continuation_handle` correlates the control-plane participants on its
 conveyance path, and the rules in {{chain-id}} keep it out of the data plane. Because `identity_continuation_handle`
 MUST NOT appear in any ID-JAG or access token consumed by a Resource Server,
 and because each RAS sees only its own pairwise subject, a Resource Server or
@@ -1354,7 +1353,7 @@ their audit requirements. Deployments SHOULD limit disclosure of `identity_conti
 participants that require it to continue or administer the chain.
 
 `identity_continuation_handle` MUST NOT contain user-identifying information and MUST carry at least
-128 bits of entropy ({{chain-id}}, rule 2), so that a `identity_continuation_handle` neither
+128 bits of entropy ({{chain-id}}, rule 2), so that an `identity_continuation_handle` neither
 reveals the user nor can be guessed.
 
 Continuation handles are hop-specific by construction ({{chain-id-privacy}}),
@@ -2166,7 +2165,7 @@ authenticated at setup, possibly days before this run
 acceptable for `calendar.read`; nothing presents the run as a fresh login.
 
 Each run consumes a fresh, single-use assertion; between runs the platform
-holds nothing presentable. Theft of the stored record yields a `identity_continuation_handle`
+holds nothing presentable. Theft of the stored record yields an `identity_continuation_handle`
 that is useless without the agent's key ({{chain-id}}). Each run presents the
 stored root handle and creates its own hop, receiving that hop's fresh handle
 for any onward hops within the run; sibling runs are independent branches of
@@ -2350,8 +2349,7 @@ The `subject_token_type` value above is
 `urn:ietf:params:oauth:token-type:identity-continuation`. The IdP verifies
 that `tool-gateway` is a permitted continuer and that the DPoP key matches
 both the assertion's `cnf.jkt` and the actor token's confirmation, and
-evaluates
-the basis now: wiki read access is within Alice's standing
+evaluates the basis now: wiki read access is within Alice's standing
 consent, and tenant policy permits the gateway to reach it. It resolves
 Alice's wiki-local subject and mints (step 9):
 
