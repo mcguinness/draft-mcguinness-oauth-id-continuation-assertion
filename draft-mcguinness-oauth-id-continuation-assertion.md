@@ -456,9 +456,9 @@ the assertion would only create competing sources of identity without adding
 authority.
 
 In deployments that already maintain a delegation or mission identifier, the
-IdP MAY derive each hop's handle from that identifier using a keyed one-way
-derivation, provided every value remains distinct per hop, unguessable, and
-unlinkable, per {{chain-id}}.
+IdP MAY derive hop handles from that identifier internally (for example, by a
+keyed one-way derivation), provided every value remains distinct per hop,
+unguessable, and unlinkable, per {{chain-id}}.
 
 ## Claims That Are Deliberately Excluded {#excluded-claims}
 
@@ -604,8 +604,8 @@ The following rules apply:
    contain user-identifying information, and MUST consist of 22 to 256
    characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`, `0`-`9`,
    `-`, `_`), making it safe for use in HTTP field values
-   ({{context-binding}}). Participants SHOULD NOT place handles in URLs,
-   which are prone to logging and referrer exposure.
+   ({{context-binding}}). Note that URLs are a poor carrier for handles,
+   being prone to logging and referrer exposure.
 
 3. `continuation_handle` lives in the control plane only: Token Exchange responses,
    propagated chain context, and Identity Continuation Assertions.
@@ -715,8 +715,9 @@ form-encoded like any other Token Exchange parameter, following the
 convention of `authorization_details` {{RFC9396}}. A request MUST NOT
 contain more than one `continuation` parameter. The IdP MUST reject a
 request whose `continuation` value is not a JSON object or whose members do
-not conform to the definitions below, using `invalid_request`, and MUST
-ignore unrecognized members. The members, each OPTIONAL, are:
+not conform to the definitions below (a malformed request, per {{RFC6749}},
+`invalid_request`), and MUST ignore unrecognized members. The members, each
+OPTIONAL, are:
 
 `basis`:
 : String. The requested authorization-basis form: `enumerated`, or `policy`
@@ -853,19 +854,19 @@ and the current actor is that client:
 * The exchange MUST be authenticated as an OAuth client. As with the direct
   ID-JAG exchange, this profile is intended for confidential clients.
 * The IdP MUST verify that the authenticated client and the current actor
-  are the same entity. That binding is established at registration: the
-  IdP's client registration for a workload records the workload's actor
-  identity (its `iss` and `sub` pair), and the IdP compares the registered
-  actor identity of the authenticated client with the `actor_token` and the
-  outermost `act`, using the exact comparison of
-  {{sender-constrained-presentation}}.
+  are the same entity, comparing the client's actor identity (its `iss` and
+  `sub` pair) with the `actor_token` and the outermost `act` using the exact
+  comparison of {{sender-constrained-presentation}}. The IdP learns the
+  client's actor identity from an authoritative mapping, typically recorded
+  in the client registration or resolvable from a shared client identifier
+  namespace such as Client ID Metadata Documents.
 * A deployment MAY use a single sender-constrained JWT as both the client
-  authentication and the `actor_token`, but only where the requirements of
-  both roles coincide: per {{RFC7523}} the JWT's `sub` MUST be the
-  workload's `client_id`, and the IdP MUST be configured to accept the
-  workload identity issuer as an authorized issuer of client assertions for
-  that client. Otherwise the client authenticates with its registered
-  method and additionally presents the `actor_token`.
+  authentication and the `actor_token` where the requirements of both roles
+  coincide: {{RFC7523}} requires such a JWT's `sub` to be the workload's
+  `client_id`, and the IdP MUST be configured to accept the workload
+  identity issuer as an authorized issuer of client assertions for that
+  client. Otherwise the client authenticates with its registered method and
+  additionally presents the `actor_token`.
 
 The `client_id` of the onward ID-JAG is the identifier under which the
 current actor is registered for the target Resource Authorization Server.
