@@ -1396,7 +1396,7 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
                 <p id="section-toc.1-1.17.2.3.1"><a href="#appendix-C.3" class="auto internal xref">C.3</a>.  <a href="#name-points-worth-noticing" class="internal xref">Points Worth Noticing</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.17.2.4">
-                <p id="section-toc.1-1.17.2.4.1"><a href="#appendix-C.4" class="auto internal xref">C.4</a>.  <a href="#name-a-dynamic-target-under-a-po" class="internal xref">A Dynamic Target Under a Policy-Reference Basis</a></p>
+                <p id="section-toc.1-1.17.2.4.1"><a href="#appendix-C.4" class="auto internal xref">C.4</a>.  <a href="#name-a-dynamic-target" class="internal xref">A Dynamic Target</a></p>
 </li>
             </ul>
 </li>
@@ -1684,17 +1684,17 @@ established (<a href="#root-establishment" class="auto internal xref">Section 7.
               <p id="section-2-3.26.2.6.1">the chain's expiry.<a href="#section-2-3.26.2.6.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="section-2-3.26.3">The authorization basis takes one of two forms. In <em>enumerated</em> form it is
-a set of target entries, each binding one audience and resource to the
-scopes, and optionally the authorization details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, that may be
-requested for that target. In <em>policy-reference</em> form it is a reference to
-the user's standing consent and tenant policy, evaluated at continuation
-time; this form supports dynamic fan-out, in which onward targets are not
-enumerable at root issuance. Policy-reference evaluation is bounded by the
-consent and policy in force at establishment: the IdP records that ceiling
-(for example, a policy version or an evaluated maximal grant), and later
-changes <span class="bcp14">MAY</span> narrow, but <span class="bcp14">MUST NOT</span> broaden, what a continuation can obtain.
-See <a href="#validation" class="auto internal xref">Section 9</a> and <a href="#lifecycle" class="auto internal xref">Section 6</a>.<a href="#section-2-3.26.3" class="pilcrow">¶</a></p>
+<p id="section-2-3.26.3">The authorization basis is the ceiling on onward targets captured at
+establishment from the user's consent and tenant policy; the IdP evaluates
+every continuation against it at the time of the request. The IdP records
+that ceiling (for example, a policy version or an evaluated maximal
+grant), and later changes <span class="bcp14">MAY</span> narrow, but <span class="bcp14">MUST NOT</span> broaden, what a
+continuation can obtain. A deployment whose onward targets are known at
+establishment may record the basis as explicit target entries, each
+binding one audience and resource to the scopes, and optionally the
+authorization details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, that may be requested for that target;
+dynamic fan-out, in which onward targets are not enumerable at
+establishment, needs no enumeration. See <a href="#validation" class="auto internal xref">Section 9</a> and <a href="#lifecycle" class="auto internal xref">Section 6</a>.<a href="#section-2-3.26.3" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.27">Audience-local (pairwise) subject:</dt>
@@ -2198,7 +2198,7 @@ a <code>continuation</code> parameter on a chained request (<a href="#token-exch
 malformed (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, <code>invalid_request</code>). Future specifications may define
 richer values to negotiate chain properties.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">The chain's properties are not negotiated in this profile. The authorization
-basis and its form, the continuation authorization, any maximum actor-chain
+basis, the continuation authorization, any maximum actor-chain
 depth, and the chain's expiry are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
 envelope.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
@@ -2423,8 +2423,7 @@ the <code>continuation</code> parameter to request a continuable chain
 ExpenseRAS subject, with <code>scope</code> and <code>cnf</code>) and returns the root hop's
 continuation handle as the <code>continuation_handle</code> response parameter. The IdP records
 the root-chain envelope: the user, the authentication context
-(<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorization basis (enumerated target
-entries or a policy reference evaluated at continuation time), the
+(<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorization basis, the
 continuation authorization (here, designated TravelSaaS and BookingSaaS
 workloads), any maximum actor-chain depth, the expiry, and the root hop
 with its authenticated actor (<code>expense-app</code>). <code>continuation_handle</code> is not a claim
@@ -2584,23 +2583,10 @@ beyond the IdP's permitted clock skew, <code>exp</code> is after <code>iat</code
 has not expired, and the assertion lifetime is no more than 300 seconds;<a href="#section-9-2.13.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.14">
-          <p id="section-9-2.14.1">the requested <code>audience</code> and <code>resource</code> are authorized by the root-chain
-envelope's authorization basis:<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-9-2.14.2.1">
-              <p id="section-9-2.14.2.1.1">in enumerated form, an authorized target entry exactly matches the
-requested values;<a href="#section-9-2.14.2.1.1" class="pilcrow">¶</a></p>
-</li>
-            <li class="normal" id="section-9-2.14.2.2">
-              <p id="section-9-2.14.2.2.1">in policy-reference form, the IdP evaluates the referenced consent and
-policy for this chain at the time of the request; and<a href="#section-9-2.14.2.2.1" class="pilcrow">¶</a></p>
-</li>
-            <li class="normal" id="section-9-2.14.2.3">
-              <p id="section-9-2.14.2.3.1">in both forms, every requested scope, and any requested authorization
-details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, is permitted by that basis and by IdP policy for
-the current actor;<a href="#section-9-2.14.2.3.1" class="pilcrow">¶</a></p>
-</li>
-          </ul>
+          <p id="section-9-2.14.1">the requested <code>audience</code> and <code>resource</code>, every requested scope, and any
+requested authorization details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span> are authorized by the
+root-chain envelope's authorization basis, evaluated at the time of the
+request, and by IdP policy for the current actor;<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.15">
           <p id="section-9-2.15.1">the requested output token type is
@@ -3801,10 +3787,10 @@ root-chain envelope:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
 expiry. The root exchange does not authorize the later targets merely by
 requesting the first: all three entries must already be supported by the
 authentication, consent, and policy from which the IdP constructs the
-envelope. This example uses the enumerated form of the authorization basis; a
-deployment whose onward targets are not knowable at root issuance would
-record a policy reference instead and evaluate the Travel target at
-continuation time (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14). The
+envelope. This example records the basis as explicit target entries; a
+deployment whose onward targets are not knowable at establishment records
+the consent-and-policy ceiling without enumeration and evaluates the Travel
+target at continuation time (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14). The
 IdP then responds:<a href="#appendix-B.1-5" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1-6">
 <pre>
@@ -4260,13 +4246,13 @@ scope for this document.<a href="#appendix-C.3-4" class="pilcrow">¶</a></p>
 </div>
 <div id="example-dynamic">
 <section id="appendix-C.4">
-        <h3 id="name-a-dynamic-target-under-a-po">
-<a href="#appendix-C.4" class="section-number selfRef">C.4. </a><a href="#name-a-dynamic-target-under-a-po" class="section-name selfRef">A Dynamic Target Under a Policy-Reference Basis</a>
+        <h3 id="name-a-dynamic-target">
+<a href="#appendix-C.4" class="section-number selfRef">C.4. </a><a href="#name-a-dynamic-target" class="section-name selfRef">A Dynamic Target</a>
         </h3>
 <p id="appendix-C.4-1">Suppose the platform later extends the briefing to include unread mail,
 which requires <code>https://api.mail.example/</code> behind
 <code>https://ras.mail.example/</code>: a target nobody named when Alice created the
-task. Under the enumerated basis recorded in the setup above, the agent's
+task. Under the target entries recorded in the setup above, the agent's
 exchange for that audience fails, and the chain is otherwise unaffected:<a href="#appendix-C.4-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-C.4-2">
 <pre>
@@ -4278,11 +4264,10 @@ Content-Type: application/json
 }
 </pre><a href="#appendix-C.4-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-C.4-3">A deployment that expects dynamic targets instead records the policy-reference
-form of the authorization basis at setup (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14): the
-envelope references Alice's standing consent (for example, a productivity
-read-access grant she holds) and tenant policy, and the IdP evaluates that
-reference at continuation time. The same exchange then succeeds if, and only
+<p id="appendix-C.4-3">For a deployment that expects dynamic targets, the envelope's basis is
+Alice's standing consent (for example, a productivity read-access grant she
+holds) and tenant policy, with no enumerated targets, and the IdP evaluates
+it at continuation time (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14). The same exchange then succeeds if, and only
 if, read access to the mail service is within Alice's standing consent and
 if tenant policy permits <code>briefing-agent</code> to reach it. A request for
 <code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-C.4-3" class="pilcrow">¶</a></p>
@@ -4440,9 +4425,9 @@ is the audience of her identity assertion, so <code>agent-app</code> performs th
 direct exchange of <a href="#token-exchange" class="auto internal xref">Section 7</a>, including the <code>continuation</code> parameter
 (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), for the one audience it does
 know: the gateway (<code>audience=https://ras.gateway.example/</code>) (steps 1 and 2).
-Because tool routing is dynamic, the IdP records the envelope with the
-policy-reference authorization basis (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), referencing
-Alice's standing consent and tenant policy, with <code>agent-app</code> as the
+Because tool routing is dynamic, the IdP records the envelope's
+authorization basis as Alice's standing consent and tenant policy, with no
+enumerated targets (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), and <code>agent-app</code> as the
 authenticated root actor. Enterprise policy registers <code>tool-gateway</code> as an
 actor permitted to continue chains rooted this way (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10).
 The response returns <code>continuation_handle</code> <code>Gm2sVe7XpB5tK9nLw4QzCd</code>.<a href="#appendix-D.1-1" class="pilcrow">¶</a></p>
@@ -4513,7 +4498,7 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 that <code>tool-gateway</code> is a permitted continuer and that the DPoP key matches
 both the assertion's <code>cnf.jkt</code> and the actor token's confirmation, and
 evaluates
-the policy reference now: wiki read access is within Alice's standing
+the basis now: wiki read access is within Alice's standing
 consent, and tenant policy permits the gateway to reach it. It resolves
 Alice's wiki-local subject and mints (step 9):<a href="#appendix-D.2-5" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-D.2-6">
@@ -4577,7 +4562,7 @@ The lineage is authenticated by the IdP, not reported by the gateway
 (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#appendix-D.3-2" class="pilcrow">¶</a></p>
 <p id="appendix-D.3-3">Neither party ever holds the other's power. The runtime performed one
 exchange for one audience it already knew; the gateway can request only what
-the envelope's policy reference permits, per target, per hop, revocable at
+the envelope's basis permits, per target, per hop, revocable at
 the IdP (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#appendix-D.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-D.3-4">This example assumes a confidential runtime. Where the session runtime is a
 public client, the continuation flow after root establishment is unchanged,
