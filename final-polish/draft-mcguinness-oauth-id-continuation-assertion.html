@@ -1889,9 +1889,9 @@ from the outermost <code>act</code> claim and the <code>actor_token</code>; repe
 the assertion would only create competing sources of identity without adding
 authority.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
 <p id="section-4.2-6">In deployments that already maintain a delegation or mission identifier, the
-IdP <span class="bcp14">MAY</span> derive each hop's handle from that identifier using a keyed one-way
-derivation, provided every value remains distinct per hop, unguessable, and
-unlinkable, per <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
+IdP <span class="bcp14">MAY</span> derive hop handles from that identifier internally (for example, by a
+keyed one-way derivation), provided every value remains distinct per hop,
+unguessable, and unlinkable, per <a href="#chain-id" class="auto internal xref">Section 5</a>.<a href="#section-4.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="excluded-claims">
@@ -2064,8 +2064,8 @@ hops.<a href="#section-5-5.1.1" class="pilcrow">¶</a></p>
 contain user-identifying information, and <span class="bcp14">MUST</span> consist of 22 to 256
 characters drawn from the base64url alphabet (<code>A</code>-<code>Z</code>, <code>a</code>-<code>z</code>, <code>0</code>-<code>9</code>,
 <code>-</code>, <code>_</code>), making it safe for use in HTTP field values
-(<a href="#context-binding" class="auto internal xref">Section 4.6</a>). Participants <span class="bcp14">SHOULD NOT</span> place handles in URLs,
-which are prone to logging and referrer exposure.<a href="#section-5-5.2.1" class="pilcrow">¶</a></p>
+(<a href="#context-binding" class="auto internal xref">Section 4.6</a>). Note that URLs are a poor carrier for handles,
+being prone to logging and referrer exposure.<a href="#section-5-5.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-5.3">
           <p id="section-5-5.3.1"><code>continuation_handle</code> lives in the control plane only: Token Exchange responses,
@@ -2196,8 +2196,9 @@ form-encoded like any other Token Exchange parameter, following the
 convention of <code>authorization_details</code> <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>. A request <span class="bcp14">MUST NOT</span>
 contain more than one <code>continuation</code> parameter. The IdP <span class="bcp14">MUST</span> reject a
 request whose <code>continuation</code> value is not a JSON object or whose members do
-not conform to the definitions below, using <code>invalid_request</code>, and <span class="bcp14">MUST</span>
-ignore unrecognized members. The members, each <span class="bcp14">OPTIONAL</span>, are:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+not conform to the definitions below (a malformed request, per <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>,
+<code>invalid_request</code>), and <span class="bcp14">MUST</span> ignore unrecognized members. The members, each
+<span class="bcp14">OPTIONAL</span>, are:<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-7.2-2">
           <dt id="section-7.2-2.1">
 <code>basis</code>:</dt>
@@ -2367,21 +2368,21 @@ ID-JAG exchange, this profile is intended for confidential clients.<a href="#sec
 </li>
           <li class="normal" id="section-7.5-2.2">
             <p id="section-7.5-2.2.1">The IdP <span class="bcp14">MUST</span> verify that the authenticated client and the current actor
-are the same entity. That binding is established at registration: the
-IdP's client registration for a workload records the workload's actor
-identity (its <code>iss</code> and <code>sub</code> pair), and the IdP compares the registered
-actor identity of the authenticated client with the <code>actor_token</code> and the
-outermost <code>act</code>, using the exact comparison of
-<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>.<a href="#section-7.5-2.2.1" class="pilcrow">¶</a></p>
+are the same entity, comparing the client's actor identity (its <code>iss</code> and
+<code>sub</code> pair) with the <code>actor_token</code> and the outermost <code>act</code> using the exact
+comparison of <a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>. The IdP learns the
+client's actor identity from an authoritative mapping, typically recorded
+in the client registration or resolvable from a shared client identifier
+namespace such as Client ID Metadata Documents.<a href="#section-7.5-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-7.5-2.3">
             <p id="section-7.5-2.3.1">A deployment <span class="bcp14">MAY</span> use a single sender-constrained JWT as both the client
-authentication and the <code>actor_token</code>, but only where the requirements of
-both roles coincide: per <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> the JWT's <code>sub</code> <span class="bcp14">MUST</span> be the
-workload's <code>client_id</code>, and the IdP <span class="bcp14">MUST</span> be configured to accept the
-workload identity issuer as an authorized issuer of client assertions for
-that client. Otherwise the client authenticates with its registered
-method and additionally presents the <code>actor_token</code>.<a href="#section-7.5-2.3.1" class="pilcrow">¶</a></p>
+authentication and the <code>actor_token</code> where the requirements of both roles
+coincide: <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> requires such a JWT's <code>sub</code> to be the workload's
+<code>client_id</code>, and the IdP <span class="bcp14">MUST</span> be configured to accept the workload
+identity issuer as an authorized issuer of client assertions for that
+client. Otherwise the client authenticates with its registered method and
+additionally presents the <code>actor_token</code>.<a href="#section-7.5-2.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-7.5-3">The <code>client_id</code> of the onward ID-JAG is the identifier under which the
