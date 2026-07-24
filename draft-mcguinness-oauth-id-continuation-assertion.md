@@ -302,17 +302,17 @@ Root-chain envelope:
   * any maximum actor-chain depth set by policy; and
   * the chain's expiry.
 
-  The authorization basis takes one of two forms. In *enumerated* form it is
-  a set of target entries, each binding one audience and resource to the
-  scopes, and optionally the authorization details {{RFC9396}}, that may be
-  requested for that target. In *policy-reference* form it is a reference to
-  the user's standing consent and tenant policy, evaluated at continuation
-  time; this form supports dynamic fan-out, in which onward targets are not
-  enumerable at root issuance. Policy-reference evaluation is bounded by the
-  consent and policy in force at establishment: the IdP records that ceiling
-  (for example, a policy version or an evaluated maximal grant), and later
-  changes MAY narrow, but MUST NOT broaden, what a continuation can obtain.
-  See {{validation}} and {{lifecycle}}.
+  The authorization basis is the ceiling on onward targets captured at
+  establishment from the user's consent and tenant policy; the IdP evaluates
+  every continuation against it at the time of the request. The IdP records
+  that ceiling (for example, a policy version or an evaluated maximal
+  grant), and later changes MAY narrow, but MUST NOT broaden, what a
+  continuation can obtain. A deployment whose onward targets are known at
+  establishment may record the basis as explicit target entries, each
+  binding one audience and resource to the scopes, and optionally the
+  authorization details {{RFC9396}}, that may be requested for that target;
+  dynamic fan-out, in which onward targets are not enumerable at
+  establishment, needs no enumeration. See {{validation}} and {{lifecycle}}.
 
 Audience-local (pairwise) subject:
 : The subject identifier under which a particular RAS names the user. Distinct
@@ -718,7 +718,7 @@ malformed ({{RFC6749}}, `invalid_request`). Future specifications may define
 richer values to negotiate chain properties.
 
 The chain's properties are not negotiated in this profile. The authorization
-basis and its form, the continuation authorization, any maximum actor-chain
+basis, the continuation authorization, any maximum actor-chain
 depth, and the chain's expiry are determined by the user's authentication
 and consent and by tenant policy, and are recorded in the root-chain
 envelope.
@@ -908,8 +908,7 @@ BookingRAS).
    ExpenseRAS subject, with `scope` and `cnf`) and returns the root hop's
    continuation handle as the `continuation_handle` response parameter. The IdP records
    the root-chain envelope: the user, the authentication context
-   (`auth_time`/`acr`/`amr`), the authorization basis (enumerated target
-   entries or a policy reference evaluated at continuation time), the
+   (`auth_time`/`acr`/`amr`), the authorization basis, the
    continuation authorization (here, designated TravelSaaS and BookingSaaS
    workloads), any maximum actor-chain depth, the expiry, and the root hop
    with its authenticated actor (`expense-app`). `continuation_handle` is not a claim
@@ -1022,15 +1021,10 @@ unless all of the following hold:
     beyond the IdP's permitted clock skew, `exp` is after `iat`, the assertion
     has not expired, and the assertion lifetime is no more than 300 seconds;
 
-14. the requested `audience` and `resource` are authorized by the root-chain
-    envelope's authorization basis:
-    * in enumerated form, an authorized target entry exactly matches the
-      requested values;
-    * in policy-reference form, the IdP evaluates the referenced consent and
-      policy for this chain at the time of the request; and
-    * in both forms, every requested scope, and any requested authorization
-      details {{RFC9396}}, is permitted by that basis and by IdP policy for
-      the current actor;
+14. the requested `audience` and `resource`, every requested scope, and any
+    requested authorization details {{RFC9396}} are authorized by the
+    root-chain envelope's authorization basis, evaluated at the time of the
+    request, and by IdP policy for the current actor;
 
 15. the requested output token type is
     `urn:ietf:params:oauth:token-type:id-jag`; and
@@ -1774,10 +1768,10 @@ The envelope also records the continuation authorization and the chain's
 expiry. The root exchange does not authorize the later targets merely by
 requesting the first: all three entries must already be supported by the
 authentication, consent, and policy from which the IdP constructs the
-envelope. This example uses the enumerated form of the authorization basis; a
-deployment whose onward targets are not knowable at root issuance would
-record a policy reference instead and evaluate the Travel target at
-continuation time ({{validation}}, rule 14). The
+envelope. This example records the basis as explicit target entries; a
+deployment whose onward targets are not knowable at establishment records
+the consent-and-policy ceiling without enumeration and evaluates the Travel
+target at continuation time ({{validation}}, rule 14). The
 IdP then responds:
 
 ~~~ json
@@ -2136,12 +2130,12 @@ this profile does not apply; such deployments need a differently rooted
 authorization, such as administrative policy at the IdP, which is out of
 scope for this document.
 
-## A Dynamic Target Under a Policy-Reference Basis {#example-dynamic}
+## A Dynamic Target {#example-dynamic}
 
 Suppose the platform later extends the briefing to include unread mail,
 which requires `https://api.mail.example/` behind
 `https://ras.mail.example/`: a target nobody named when Alice created the
-task. Under the enumerated basis recorded in the setup above, the agent's
+task. Under the target entries recorded in the setup above, the agent's
 exchange for that audience fails, and the chain is otherwise unaffected:
 
 ~~~
@@ -2153,11 +2147,10 @@ Content-Type: application/json
 }
 ~~~
 
-A deployment that expects dynamic targets instead records the policy-reference
-form of the authorization basis at setup ({{validation}}, rule 14): the
-envelope references Alice's standing consent (for example, a productivity
-read-access grant she holds) and tenant policy, and the IdP evaluates that
-reference at continuation time. The same exchange then succeeds if, and only
+For a deployment that expects dynamic targets, the envelope's basis is
+Alice's standing consent (for example, a productivity read-access grant she
+holds) and tenant policy, with no enumerated targets, and the IdP evaluates
+it at continuation time ({{validation}}, rule 14). The same exchange then succeeds if, and only
 if, read access to the mail service is within Alice's standing consent and
 if tenant policy permits `briefing-agent` to reach it. A request for
 `mail.send`, outside that consent, fails with `invalid_scope`.
@@ -2231,9 +2224,9 @@ is the audience of her identity assertion, so `agent-app` performs the
 direct exchange of {{token-exchange}}, including the `continuation` parameter
 ({{root-establishment}}), for the one audience it does
 know: the gateway (`audience=https://ras.gateway.example/`) (steps 1 and 2).
-Because tool routing is dynamic, the IdP records the envelope with the
-policy-reference authorization basis ({{validation}}, rule 14), referencing
-Alice's standing consent and tenant policy, with `agent-app` as the
+Because tool routing is dynamic, the IdP records the envelope's
+authorization basis as Alice's standing consent and tenant policy, with no
+enumerated targets ({{validation}}, rule 14), and `agent-app` as the
 authenticated root actor. Enterprise policy registers `tool-gateway` as an
 actor permitted to continue chains rooted this way ({{validation}}, rule 10).
 The response returns `continuation_handle` `Gm2sVe7XpB5tK9nLw4QzCd`.
@@ -2300,7 +2293,7 @@ The `subject_token_type` value above is
 that `tool-gateway` is a permitted continuer and that the DPoP key matches
 both the assertion's `cnf.jkt` and the actor token's confirmation, and
 evaluates
-the policy reference now: wiki read access is within Alice's standing
+the basis now: wiki read access is within Alice's standing
 consent, and tenant policy permits the gateway to reach it. It resolves
 Alice's wiki-local subject and mints (step 9):
 
@@ -2362,7 +2355,7 @@ The lineage is authenticated by the IdP, not reported by the gateway
 
 Neither party ever holds the other's power. The runtime performed one
 exchange for one audience it already knew; the gateway can request only what
-the envelope's policy reference permits, per target, per hop, revocable at
+the envelope's basis permits, per target, per hop, revocable at
 the IdP ({{lifecycle}}).
 
 This example assumes a confidential runtime. Where the session runtime is a
