@@ -4581,12 +4581,22 @@ offline-actor audit better left to the evidence layer
 <span>[<a href="#I-D.mcguinness-oauth-actor-proofs" class="cite xref">I-D.mcguinness-oauth-actor-proofs</a>]</span>)?<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-E-3.2">
-          <p id="appendix-E-3.2.1"><strong>Signed assertion versus a bare grant type.</strong> <a href="#rationale-grant-type" class="auto internal xref">Appendix A.5</a>
-documents the alternative in which the continuing workload presents the
-handle directly under client authentication, with no assertion, Chain
-Authority, or per-assertion replay state. Which do implementers prefer,
-and is the Chain Authority's remaining role (actor and key vouching plus
-a domain-local gate) worth its trust configuration?<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.2.1"><strong>Signed assertion versus a recipient-bound direct profile.</strong>
+            <a href="#rationale-grant-type" class="auto internal xref">Appendix A.5</a> documents an alternative in which the
+continuing workload presents the handle directly under client
+authentication, with no assertion, Chain Authority, or per-assertion
+replay state. Implementer review indicates that a raw handle is not an
+adequate subject token for such a profile: an actor credential proves
+who the actor is, not that this actor was authorized to receive and
+continue this particular chain. The sketched direct profile instead
+uses a recipient-bound continuation credential: when the IdP returns a
+hop's handle, it binds it to an intended successor (a specific actor,
+an actor class, a trust domain, or a confirmation key), and a
+continuation presenting it succeeds only for that successor, alongside
+client authentication, a sender-constrained actor token, and live proof
+of possession. Which profile should ship, and is the Chain Authority's
+remaining role (actor and key vouching plus a domain-local gate) worth
+its trust configuration where recipient binding is available?<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-E-3.3">
           <p id="appendix-E-3.3.1"><strong>Pull topology.</strong> <a href="#rationale-pull" class="auto internal xref">Appendix A.4</a> documents resolution at the target
@@ -4604,6 +4614,33 @@ mutual-TLS binding together?<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></
 negotiation of lifetime, depth, or permitted continuers is reserved for
 future values (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). Is client-side negotiation of
 chain properties needed at all?<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="appendix-E-3.6">
+          <p id="appendix-E-3.6.1"><strong>Binding chain context to the local transaction.</strong> Chain-context
+provenance (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>) requires an authorized channel but
+does not bind a received handle to the inbound request, the prior actor,
+or the user context the receiver observed. A multi-user gateway holds
+many valid handles, and if it associates the wrong handle with a
+request, the IdP resolves the user from whichever chain the handle
+names. Should a future revision standardize one interoperable
+provenance profile? The sketched candidate carries the handle inside a
+Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> together with
+the parent actor and request context, so the Chain Authority verifies
+an integrity-protected association among chain, actor, and local
+transaction rather than relying on channel authentication alone;
+actor-signed hop proofs <span>[<a href="#I-D.mcguinness-oauth-actor-proofs" class="cite xref">I-D.mcguinness-oauth-actor-proofs</a>]</span> are an
+alternative carrier.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li id="appendix-E-3.7">
+          <p id="appendix-E-3.7.1"><strong>Actor-token acceptance constraints.</strong> Rule 10 of <a href="#validation" class="auto internal xref">Section 9</a>
+requires a trusted issuer and sender constraint, but a token that a
+trusted issuer minted for a different audience or purpose is not
+thereby a valid <code>actor_token</code>. The sketched tightening: the IdP accepts
+only configured actor-token classes whose audience or purpose
+designates the continuation exchange, with tenant binding and liveness
+checks, and advertises the accepted profiles in its metadata
+(<a href="#metadata" class="auto internal xref">Section 7.7</a>). Should this become normative, and how much of it
+belongs in discovery?<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 </section>
