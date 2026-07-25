@@ -615,8 +615,9 @@ Resource Server consumes (rule 4; see also {{privacy}}).
 
 The following rules apply:
 
-1. The IdP MUST establish a chain for every direct ID-JAG issuance where
-   continuation is enabled by policy ({{root-establishment}}), and MUST
+1. The IdP MUST establish a chain for every direct ID-JAG issuance under a
+   continuation-capable governing authorization ({{root-establishment}}),
+   and MUST
    return a fresh continuation handle as a
    Token Exchange *response* parameter ({{response-param}}) for the root hop
    and for each continuation hop. Handle values MUST NOT be reused across
@@ -678,8 +679,9 @@ A chain is continuable only while the IdP considers it active. Because every
 cross-boundary hop is an exchange at the IdP ({{flow}}), the IdP is in the loop
 at each hop and can stop a chain at any point.
 
-Every chain has a governing authorization, resolved at establishment from
-the root subject token: the OAuth authorization grant behind a refresh
+Every chain has a continuation-capable governing authorization
+({{root-establishment}}), resolved at establishment from the root subject
+token: the OAuth authorization grant behind a refresh
 token, or the IdP session resolved from an ID Token's `sid`
 ({{root-establishment}}). The binding is to the server-side record, not to
 a token value: refresh-token rotation does not affect a grant-governed
@@ -751,26 +753,40 @@ On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}).
 A chain is established by the IdP, not requested by the client: the party
 performing the root exchange cannot generally know whether downstream
 services will need to continue the delegation, and requiring it to predict
-would foreclose continuation for the entire downstream graph. Where
-continuation is enabled by tenant policy (the profile-support signal is
-{{metadata}}), the IdP MUST
-establish a chain for each direct exchange in which it issues an ID-JAG and
-MUST return the root hop's handle ({{response-param}}); chain state MAY be
+would foreclose continuation for the entire downstream graph. The IdP MUST
+establish a chain for each direct exchange in which it issues an ID-JAG
+under a continuation-capable governing authorization (below), and MUST
+return the root hop's handle ({{response-param}}); chain state MAY be
 materialized lazily, on first continuation, and the root handle remains
-resolvable to its chain regardless ({{validation}}, rule 7). Where continuation is not
-enabled for the delegation, no handle is returned, and its absence tells
-the client that the delegation is not continuable.
+resolvable to its chain regardless ({{validation}}, rule 7). Where the governing authorization does not permit continuation, no chain
+is established and no handle is returned; its absence tells the client
+that the delegation is not continuable. Tenant enablement ({{metadata}})
+is a capability signal and authorizes nothing.
 
-The chain's properties are not negotiated. The authorization basis, the
-continuation authorization, any maximum actor-chain depth, and the chain's
-expiry are determined by the user's authentication and consent and by
-tenant policy, and are recorded in the root-chain envelope. The chain's
-governing authorization is the OAuth grant under which the root subject
-token was issued, where such a grant exists (for a refresh-token subject
-token, the grant behind that token; for an ID Token, the authorization
-grant under which it was issued), and otherwise the establishing
-authentication session ({{lifecycle}}). An unused chain is inert state bounded by that
-governing authorization: establishing it grants no authority.
+The chain's properties are not negotiated. The governing authorization is
+resolved from the root subject token, and the IdP MUST NOT establish a
+chain from a subject token it cannot resolve to one. Two rooting paths are
+defined:
+
+* a refresh token resolves to the OAuth authorization grant it belongs to,
+  and the chain is bound to that grant; only grant-governed chains may
+  outlive the establishing session ({{lifecycle}}); and
+
+* an ID Token carrying a `sid` claim {{OIDC.FrontChannelLogout}} that the
+  IdP resolves to an active session it established for this user and
+  client binds the chain to that session.
+
+A chain is established only where that governing authorization is
+continuation-capable: its consent and policy explicitly permit
+continuation and establish the authorization basis, the continuation
+authorization (the permitted actors or trust domains), the maximum
+actor-chain depth where bounded, and the chain's lifetime and revocation
+behavior, all of which are recorded in the root-chain envelope. These
+always come from server-side consent and policy state, never from token
+claims. The IdP consumes `sid` solely to resolve the session; it MUST NOT
+appear in assertions or conveyed chain context ({{privacy}}). An unused
+chain is inert state: its establishment exercises no authority beyond
+what the continuation-capable governing authorization already granted.
 
 When establishing a chain, the IdP MUST determine the root actor: the
 authenticated OAuth client of the direct request, identified through the
@@ -1831,11 +1847,13 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 
 The IdP authenticates the user from the ID Token, resolves the governing
 session from its `sid` ({{root-establishment}}), and verifies that
-ExpenseApp's actor credential is constrained to the DPoP key. Continuation
-is enabled for the tenant, so the IdP establishes a chain. For this example, existing user consent and enterprise policy authorize the immediate Expense
-target and the later Travel and Booking targets, and enterprise policy
-designates the Travel and Booking workloads as permitted continuers. It records
-the following target entries in the root-chain envelope:
+ExpenseApp's actor credential is constrained to the DPoP key. The session
+is continuation-capable: existing user consent and enterprise policy
+permit continuation, authorize the immediate Expense target and the later
+Travel and Booking targets, and designate the Travel and Booking workloads
+as permitted continuers, so the IdP establishes a chain
+({{root-establishment}}). It records the following target entries in the
+root-chain envelope:
 
 ~~~
 (https://ras.expenses.example/, https://api.expenses.example/)
@@ -2134,8 +2152,8 @@ Alice schedules "summarize my calendar every morning" and authorizes it in an
 active session. `briefing-agent`, the platform workload, authenticates as
 the OAuth client and performs the direct ID-JAG exchange of
 {{token-exchange}}. Because the task must outlive Alice's session, her
-consent takes the form OAuth already has for durable delegation: a grant to
-the platform with refresh capability and an explicit maximum lifetime. The
+consent takes the form OAuth already has for durable delegation: a continuation-capable grant to the platform with
+refresh capability and an explicit maximum lifetime. The
 platform presents a refresh token from that grant as the `subject_token`,
 so the grant is the chain's governing authorization
 ({{root-establishment}}, {{lifecycle}}), with `briefing-agent` as the
@@ -2342,8 +2360,9 @@ Alice authenticates in `agent-app`, a confidential client whose `client_id`
 is the audience of her identity assertion, so `agent-app` performs the
 direct exchange of {{token-exchange}} for the one audience it does
 know: the gateway (`audience=https://ras.gateway.example/`) (steps 1 and 2).
-The IdP establishes a chain ({{root-establishment}}); because tool routing
-is dynamic, it records the envelope's
+Alice's standing consent makes the session continuation-capable, and the
+IdP establishes a chain ({{root-establishment}}); because tool routing is
+dynamic, it records the envelope's
 authorization basis as Alice's standing consent and tenant policy, with no
 enumerated targets ({{validation}}, rule 14), and `agent-app` as the
 authenticated root actor. Enterprise policy registers `tool-gateway` as an
@@ -2532,7 +2551,8 @@ is welcome.
    ({{sender-constrained-presentation}}). Should the two profiles add
    mutual-TLS binding together?
 
-5. **A client establishment parameter.** Establishment is policy-driven,
+5. **A client establishment parameter.** Establishment is
+   authorization-driven,
    with no request parameter ({{root-establishment}}), because the
    first-hop client cannot generally predict downstream chaining. Should a
    future parameter let a client require establishment (failing fast when
