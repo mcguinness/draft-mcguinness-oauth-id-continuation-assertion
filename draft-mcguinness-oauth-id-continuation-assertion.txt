@@ -278,7 +278,6 @@ Table of Contents
 
    Concretely, this profile adds to the ID-JAG exchange: a new
    subject_token type (Section 4.1) for the continuation evidence, the
-   identity_continuation request parameter and the
    identity_continuation_handle and identity_continuation_exp response
    parameters with their control-plane handling (Section 7.2,
    Section 5), the IdP validation rules for a continuation request
@@ -695,11 +694,11 @@ Table of Contents
 
    The following rules apply:
 
-   1.  The IdP MUST create a chain only when the root Token Exchange
-       requests it (Section 7.2), and MUST return a fresh continuation
-       handle as a Token Exchange _response_ parameter (Section 7.6) for
-       the root hop and for each continuation hop.  Handle values MUST
-       NOT be reused across hops.
+   1.  The IdP MUST establish a chain for every direct ID-JAG issuance
+       where continuation is enabled by policy (Section 7.2), and MUST
+       return a fresh continuation handle as a Token Exchange _response_
+       parameter (Section 7.6) for the root hop and for each
+       continuation hop.  Handle values MUST NOT be reused across hops.
 
    2.  identity_continuation_handle MUST contain at least 128 bits of
        entropy, MUST NOT contain user-identifying information, and MUST
@@ -763,24 +762,28 @@ Table of Contents
    (Section 8), the IdP is in the loop at each hop and can stop a chain
    at any point.
 
-   Every chain has a governing authorization: the consent or policy
-   grant under which it was established, such as the user's session, a
-   governing refresh token, or a durable consent with an explicit
-   maximum lifetime set by policy.  The IdP MUST bound the continuation
-   lifetime of a chain by the lifetime of its governing authorization,
-   and MUST reject a continuation of an expired chain (Section 9).  The
-   governing authorization is distinct from the root authentication
-   context: continuing a chain MUST NOT extend that context, and
-   auth_time, acr, and amr are fixed at root issuance and inherited
-   unchanged by onward grants (Section 11.3).
+   Every chain has a governing authorization: the OAuth grant under
+   which the root subject token was issued, where one exists, and
+   otherwise the establishing authentication session (Section 7.2).  The
+   binding is to the grant, not to a token value: refresh-token rotation
+   does not affect the chain, while revocation or expiry of the grant
+   ends it.  The IdP MUST bound the continuation lifetime of a chain by
+   the lifetime of its governing authorization, and MUST reject a
+   continuation of an expired chain (Section 9).  The governing
+   authorization is distinct from the root authentication context:
+   continuing a chain MUST NOT extend that context, and auth_time, acr,
+   and amr are fixed at root issuance and inherited unchanged by onward
+   grants (Section 11.3).
 
    The IdP MUST be able to revoke a chain, and MUST stop honoring
    continuation for a revoked chain.  Ending the governing authorization
-   revokes the chain: termination of the user's session does so when the
-   session governs, as does revocation of a governing refresh token or
-   withdrawal of the underlying policy.  An IdP MAY additionally revoke
-   an individual hop's subtree, stopping continuation along one branch
-   while the rest of the chain remains continuable.
+   revokes the chain: revocation of the governing grant does so (for
+   example, through token revocation [RFC7009] or a grant management
+   interface), as does termination of the user's session where the
+   session governs, or withdrawal of the underlying policy.  An IdP MAY
+   additionally revoke an individual hop's subtree, stopping
+   continuation along one branch while the rest of the chain remains
+   continuable.
 
    Because each onward grant requires a fresh exchange at the IdP,
    revocation takes effect at the next hop, with no need to reach or
@@ -804,9 +807,8 @@ Table of Contents
    An Identity Continuation Assertion is used as the subject_token of an
    OAuth 2.0 Token Exchange request [RFC8693].  A direct request and a
    chained request have the same shape: the client changes only
-   subject_token and subject_token_type, and a root request that
-   establishes a chain additionally carries identity_continuation
-   (Section 7.2).
+   subject_token and subject_token_type.  Chain establishment is the
+   IdP's act, not a request parameter (Section 7.2).
 
 7.1.  Direct ID-JAG Request
 
@@ -827,23 +829,28 @@ Table of Contents
 
 7.2.  Establishing a Chain
 
-   A chain exists only if the root Token Exchange requests one.  This
-   document defines the identity_continuation Token Exchange request
-   parameter: its presence in a direct request asks the IdP to establish
-   a chain for the delegation being created, and the IdP MUST NOT
-   establish a chain if the parameter is absent.  The parameter takes a
-   single value, the string true.  The IdP MUST reject a request
-   carrying more than one identity_continuation parameter, an
-   identity_continuation value other than true, or an
-   identity_continuation parameter on a chained request (Section 7) as
-   malformed ([RFC6749], invalid_request).  Future specifications may
-   define richer values to negotiate chain properties.
+   A chain is established by the IdP, not requested by the client: the
+   party performing the root exchange cannot generally know whether
+   downstream services will need to continue the delegation, and
+   requiring it to predict would foreclose continuation for the entire
+   downstream graph.  Where continuation is enabled by tenant policy
+   (Section 7.7), the IdP MUST establish a chain for each direct
+   exchange in which it issues an ID-JAG and MUST return the root hop's
+   handle (Section 7.6); chain state MAY be materialized lazily, on
+   first continuation.  Where continuation is not enabled for the
+   delegation, no handle is returned, and its absence tells the client
+   that the delegation is not continuable.
 
-   The chain's properties are not negotiated in this profile.  The
-   authorization basis, the continuation authorization, any maximum
-   actor-chain depth, and the chain's expiry are determined by the
-   user's authentication and consent and by tenant policy, and are
-   recorded in the root-chain envelope.
+   The chain's properties are not negotiated.  The authorization basis,
+   the continuation authorization, any maximum actor-chain depth, and
+   the chain's expiry are determined by the user's authentication and
+   consent and by tenant policy, and are recorded in the root-chain
+   envelope.  The chain's governing authorization is the OAuth grant
+   under which the root subject token was issued (the grant whose
+   artifact is the client's refresh token), where such a grant exists,
+   and otherwise the establishing authentication session (Section 6).
+   An unused chain is inert state bounded by that governing
+   authorization: establishing it grants no authority.
 
    When establishing a chain, the IdP MUST determine the root actor: the
    authenticated OAuth client of the direct request, identified through
@@ -859,10 +866,7 @@ Table of Contents
 
    The response returns the root hop's handle in
    identity_continuation_handle and MAY include the chain's expiry in
-   identity_continuation_exp (Section 7.6).  If the IdP cannot establish
-   the requested chain, it MAY still issue the requested grant without
-   one; the absence of identity_continuation_handle in the response
-   tells the client that no chain exists.
+   identity_continuation_exp (Section 7.6).
 
    Like the continuation exchange (Section 9), root establishment is at-
    least-once: a retry after a lost response MAY establish a second
@@ -1045,10 +1049,9 @@ Table of Contents
 
    identity_continuation_supported:  OPTIONAL.  Boolean value indicating
       support for the urn:ietf:params:oauth:token-type:identity-
-      continuation subject token type, the identity_continuation request
-      parameter, and the identity_continuation_handle and
-      identity_continuation_exp Token Exchange response parameters.
-      Default false.
+      continuation subject token type and the
+      identity_continuation_handle and identity_continuation_exp Token
+      Exchange response parameters.  Default false.
 
    Absent this signal, a client learns of support out of band or by
    attempting an exchange.
@@ -1061,21 +1064,19 @@ Table of Contents
 
    1.   ExpenseApp authenticates the user at the IdP.
 
-   2.   ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange,
-        including the identity_continuation parameter to request a
-        continuable chain (Section 7.2).
+   2.   ExpenseApp requests an ID-JAG for ExpenseRAS via Token Exchange.
 
    3.   The IdP issues an ID-JAG (iss=IdP, aud=ExpenseRAS, sub=the
-        user's ExpenseRAS subject, with scope and cnf) and returns the
-        root hop's continuation handle as the
-        identity_continuation_handle response parameter.  The IdP
-        records the root-chain envelope: the user, the authentication
-        context (auth_time/acr/amr), the authorization basis, the
-        continuation authorization (here, designated TravelSaaS and
-        BookingSaaS workloads), any maximum actor-chain depth, the
-        expiry, and the root hop with its authenticated actor (expense-
-        app). identity_continuation_handle is not a claim inside the
-        ExpenseRAS ID-JAG.
+        user's ExpenseRAS subject, with scope and cnf), establishes a
+        chain (Section 7.2), and returns the root hop's continuation
+        handle as the identity_continuation_handle response parameter.
+        The IdP records the root-chain envelope: the user, the
+        authentication context (auth_time/acr/amr), the authorization
+        basis, the continuation authorization (here, designated
+        TravelSaaS and BookingSaaS workloads), any maximum actor-chain
+        depth, the expiry, and the root hop with its authenticated actor
+        (expense-app). identity_continuation_handle is not a claim
+        inside the ExpenseRAS ID-JAG.
 
    4.   ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access
         token (AT1) and invokes ExpenseSaaS, conveying
@@ -1621,18 +1622,8 @@ Table of Contents
 13.4.  OAuth Parameters Registration
 
    IANA is requested to register the following values in the "OAuth
-   Parameters" registry established by [RFC6749].  The
-   identity_continuation parameter is used in the OAuth 2.0 Token
-   Exchange [RFC8693] request; identity_continuation_handle and
-   identity_continuation_exp are used in the response.
-
-   Parameter name:  identity_continuation
-
-   Parameter usage location:  token request
-
-   Change controller:  IETF
-
-   Specification document(s):  This document, Section 7.2
+   Parameters" registry established by [RFC6749].  Both parameters are
+   used in the OAuth 2.0 Token Exchange [RFC8693] response.
 
    Parameter name:  identity_continuation_handle
 
@@ -1828,6 +1819,10 @@ Table of Contents
               Specifications and Registration Procedures", BCP 13,
               RFC 6838, DOI 10.17487/RFC6838, January 2013,
               <https://www.rfc-editor.org/rfc/rfc6838>.
+
+   [RFC7009]  Lodderstedt, T., Ed., Dronia, S., and M. Scurtescu, "OAuth
+              2.0 Token Revocation", RFC 7009, DOI 10.17487/RFC7009,
+              August 2013, <https://www.rfc-editor.org/rfc/rfc7009>.
 
    [RFC8417]  Hunt, P., Ed., Jones, M., Denniss, W., and M. Ansari,
               "Security Event Token (SET)", RFC 8417,
@@ -2205,16 +2200,15 @@ B.1.  First Hop: Direct ID-JAG for ExpenseRAS
    audience=https://ras.expenses.example/
    resource=https://api.expenses.example/
    scope=expenses.read
-   identity_continuation=true
    subject_token=<id_token>
    subject_token_type=urn:ietf:params:oauth:token-type:id_token
    actor_token=<sender-constrained expense-app credential>
    actor_token_type=urn:ietf:params:oauth:token-type:jwt
 
    The IdP authenticates the user from the ID Token and verifies that
-   ExpenseApp's actor credential is constrained to the DPoP key.  The
-   identity_continuation parameter requests a continuable chain
-   (Section 7.2).  For this example, existing user consent and
+   ExpenseApp's actor credential is constrained to the DPoP key.
+   Continuation is enabled for the tenant, so the IdP establishes a
+   chain (Section 7.2).  For this example, existing user consent and
    enterprise policy authorize the immediate Expense target and the
    later Travel and Booking targets, and enterprise policy designates
    the Travel and Booking workloads as permitted continuers.  The IdP
@@ -2560,10 +2554,10 @@ C.1.  Setup (Alice Present)
    it in an active session. briefing-agent, the platform workload,
    authenticates as the OAuth client and performs the direct ID-JAG
    exchange of Section 7, with a token from Alice's active session (an
-   ID Token) as the subject_token and the identity_continuation
-   parameter present (Section 7.2).  Because the task will outlive
-   Alice's session, the consent captured here (a durable consent with an
-   explicit maximum lifetime) is the chain's governing authorization
+   ID Token) as the subject_token.  Because the task must outlive
+   Alice's session, her consent takes the form OAuth already has for
+   durable delegation: a grant to the platform with an explicit maximum
+   lifetime, whose lifecycle is the chain's governing authorization
    (Section 6), with briefing-agent as the permitted continuer, and the
    envelope's authorized target entry is exactly the task's need:
    (https://ras.calendar.example/, https://api.calendar.example/,
@@ -2651,7 +2645,7 @@ C.3.  Points Worth Noticing
    onward hops within the run; sibling runs are independent branches of
    the chain.
 
-   The chain fails closed.  When Alice's authorization is revoked or
+   The chain fails closed.  When Alice revokes the governing grant or
    identity_continuation_exp passes, the next exchange fails validation
    (Section 9, rule 7) and cannot succeed by retrying: the platform's
    signal to seek re-authorization from Alice. identity_continuation_exp
@@ -2815,16 +2809,16 @@ D.1.  Root Exchange: The Runtime Establishes the Chain
 
    Alice authenticates in agent-app, a confidential client whose
    client_id is the audience of her identity assertion, so agent-app
-   performs the direct exchange of Section 7, including the
-   identity_continuation parameter (Section 7.2), for the one audience
-   it does know: the gateway (audience=https://ras.gateway.example/)
-   (steps 1 and 2).  Because tool routing is dynamic, the IdP records
-   the envelope's authorization basis as Alice's standing consent and
-   tenant policy, with no enumerated targets (Section 9, rule 14), and
-   agent-app as the authenticated root actor.  Enterprise policy
-   registers tool-gateway as an actor permitted to continue chains
-   rooted this way (Section 9, rule 10).  The response returns
-   identity_continuation_handle Gm2sVe7XpB5tK9nLw4QzCd.
+   performs the direct exchange of Section 7 for the one audience it
+   does know: the gateway (audience=https://ras.gateway.example/) (steps
+   1 and 2).  The IdP establishes a chain (Section 7.2); because tool
+   routing is dynamic, it records the envelope's authorization basis as
+   Alice's standing consent and tenant policy, with no enumerated
+   targets (Section 9, rule 14), and agent-app as the authenticated root
+   actor.  Enterprise policy registers tool-gateway as an actor
+   permitted to continue chains rooted this way (Section 9, rule 10).
+   The response returns identity_continuation_handle
+   Gm2sVe7XpB5tK9nLw4QzCd.
 
    agent-app exchanges its gateway ID-JAG at ras.gateway.example for an
    access token (steps 3 and 4) and invokes the gateway, conveying the
@@ -3008,14 +3002,13 @@ Appendix E.  Open Items for Working Group Discussion
         JAG profile defines only DPoP-based binding (Section 7.4).
         Should the two profiles add mutual-TLS binding together?
 
-   5.   *Richer identity_continuation values.* The request parameter is
-        a flag, and negotiation of lifetime, depth, or permitted
-        continuers is reserved for future values (Section 7.2).  Is
-        client-side negotiation of chain properties needed at all?  A
-        related question is establishment strictness: values such as
-        required and preferred could let a client fail fast when a chain
-        cannot be established, rather than accept the grant-without-
-        chain downgrade of Section 7.2.
+   5.   *A client establishment parameter.* Establishment is policy-
+        driven, with no request parameter (Section 7.2), because the
+        first-hop client cannot generally predict downstream chaining.
+        Should a future parameter let a client require establishment
+        (failing fast when policy will not root a chain), suppress it
+        (declining a handle it does not want), or negotiate lifetime,
+        depth, or permitted continuers?
 
    6.   *Binding chain context to the local transaction.* Chain-context
         provenance (Section 4.5) requires an authorized channel but does
