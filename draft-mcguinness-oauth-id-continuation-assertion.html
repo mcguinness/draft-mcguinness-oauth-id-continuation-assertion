@@ -1407,7 +1407,7 @@ subject identifier.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             <p id="section-toc.1-1.18.1"><a href="#appendix-D" class="auto internal xref">Appendix D</a>.  <a href="#name-gateway-example-dynamic-ups" class="internal xref">Gateway Example (Dynamic Upstream Audiences)</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.1">
-                <p id="section-toc.1-1.18.2.1.1"><a href="#appendix-D.1" class="auto internal xref">D.1</a>.  <a href="#name-root-exchange-the-runtime-e" class="internal xref">Root Exchange: The Runtime Establishes the Chain</a></p>
+                <p id="section-toc.1-1.18.2.1.1"><a href="#appendix-D.1" class="auto internal xref">D.1</a>.  <a href="#name-root-exchange-the-runtime-r" class="internal xref">Root Exchange: The Runtime Roots the Chain</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18.2.2">
                 <p id="section-toc.1-1.18.2.2.1"><a href="#appendix-D.2" class="auto internal xref">D.2</a>.  <a href="#name-chained-exchange-the-gatewa" class="internal xref">Chained Exchange: The Gateway Continues</a></p>
@@ -2069,8 +2069,9 @@ Resource Server consumes (rule 4; see also <a href="#privacy" class="auto intern
 <p id="section-5-4">The following rules apply:<a href="#section-5-4" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-5-5">
 <li id="section-5-5.1">
-          <p id="section-5-5.1.1">The IdP <span class="bcp14">MUST</span> establish a chain for every direct ID-JAG issuance where
-continuation is enabled by policy (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), and <span class="bcp14">MUST</span>
+          <p id="section-5-5.1.1">The IdP <span class="bcp14">MUST</span> establish a chain for every direct ID-JAG issuance under a
+continuation-capable governing authorization (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>),
+and <span class="bcp14">MUST</span>
 return a fresh continuation handle as a
 Token Exchange <em>response</em> parameter (<a href="#response-param" class="auto internal xref">Section 7.6</a>) for the root hop
 and for each continuation hop. Handle values <span class="bcp14">MUST NOT</span> be reused across
@@ -2145,11 +2146,16 @@ next exchange.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 <p id="section-6-1">A chain is continuable only while the IdP considers it active. Because every
 cross-boundary hop is an exchange at the IdP (<a href="#flow" class="auto internal xref">Section 8</a>), the IdP is in the loop
 at each hop and can stop a chain at any point.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">Every chain has a governing authorization: the OAuth grant under which the
-root subject token was issued, where one exists, and otherwise the
-establishing authentication session (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). The binding is
-to the grant, not to a token value: refresh-token rotation does not affect
-the chain, while revocation or expiry of the grant ends it. The IdP <span class="bcp14">MUST</span>
+<p id="section-6-2">Every chain has a continuation-capable governing authorization
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), resolved at establishment from the root subject
+token: the OAuth authorization grant behind a refresh
+token, or the IdP session resolved from an ID Token's <code>sid</code>
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). The binding is to the server-side record, not to
+a token value: refresh-token rotation does not affect a grant-governed
+chain, while revocation or expiry of the grant ends every chain rooted in
+it, and termination of a governing session ends every chain rooted in that
+session. A session-governed chain's lifetime <span class="bcp14">MUST NOT</span> exceed the
+session's, so only grant-governed chains outlive logout. The IdP <span class="bcp14">MUST</span>
 bound the continuation lifetime of a chain by the lifetime of
 its governing authorization, and <span class="bcp14">MUST</span> reject a continuation of an expired
 chain (<a href="#validation" class="auto internal xref">Section 9</a>). The governing authorization is distinct from the
@@ -2157,7 +2163,7 @@ root authentication context: continuing a chain <span class="bcp14">MUST NOT</sp
 context, and <code>auth_time</code>, <code>acr</code>, and <code>amr</code> are fixed at root issuance and
 inherited unchanged by onward grants (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>).<a href="#section-6-2" class="pilcrow">¶</a></p>
 <p id="section-6-3">The IdP <span class="bcp14">MUST</span> be able to revoke a chain, and <span class="bcp14">MUST</span> stop honoring continuation
-for a revoked chain. Ending the governing authorization revokes the chain:
+for a revoked chain. Ending the governing authorization revokes every chain rooted in it:
 revocation of the governing grant does so (for example, through token
 revocation <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> or a grant management interface), as does
 termination of the user's session where the session governs, or withdrawal
@@ -2221,23 +2227,43 @@ actor_token_type=&lt;actor-token-type&gt;
 <p id="section-7.2-1">A chain is established by the IdP, not requested by the client: the party
 performing the root exchange cannot generally know whether downstream
 services will need to continue the delegation, and requiring it to predict
-would foreclose continuation for the entire downstream graph. Where
-continuation is enabled by tenant policy (<a href="#metadata" class="auto internal xref">Section 7.7</a>), the IdP <span class="bcp14">MUST</span>
-establish a chain for each direct exchange in which it issues an ID-JAG and
-<span class="bcp14">MUST</span> return the root hop's handle (<a href="#response-param" class="auto internal xref">Section 7.6</a>); chain state <span class="bcp14">MAY</span> be
-materialized lazily, on first continuation. Where continuation is not
-enabled for the delegation, no handle is returned, and its absence tells
-the client that the delegation is not continuable.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
-<p id="section-7.2-2">The chain's properties are not negotiated. The authorization basis, the
-continuation authorization, any maximum actor-chain depth, and the chain's
-expiry are determined by the user's authentication and consent and by
-tenant policy, and are recorded in the root-chain envelope. The chain's
-governing authorization is the OAuth grant under which the root subject
-token was issued (the grant whose artifact is the client's refresh token),
-where such a grant exists, and otherwise the establishing authentication
-session (<a href="#lifecycle" class="auto internal xref">Section 6</a>). An unused chain is inert state bounded by that
-governing authorization: establishing it grants no authority.<a href="#section-7.2-2" class="pilcrow">¶</a></p>
-<p id="section-7.2-3">When establishing a chain, the IdP <span class="bcp14">MUST</span> determine the root actor: the
+would foreclose continuation for the entire downstream graph. The IdP <span class="bcp14">MUST</span>
+establish a chain for each direct exchange in which it issues an ID-JAG
+under a continuation-capable governing authorization (below), and <span class="bcp14">MUST</span>
+return the root hop's handle (<a href="#response-param" class="auto internal xref">Section 7.6</a>); chain state <span class="bcp14">MAY</span> be
+materialized lazily, on first continuation, and the root handle remains
+resolvable to its chain regardless (<a href="#validation" class="auto internal xref">Section 9</a>, rule 7). Where the governing authorization does not permit continuation, no chain
+is established and no handle is returned; its absence tells the client
+that the delegation is not continuable. Tenant enablement (<a href="#metadata" class="auto internal xref">Section 7.7</a>)
+is a capability signal and authorizes nothing.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
+<p id="section-7.2-2">The chain's properties are not negotiated. The governing authorization is
+resolved from the root subject token, and the IdP <span class="bcp14">MUST NOT</span> establish a
+chain from a subject token it cannot resolve to one. Two rooting paths are
+defined:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-7.2-3.1">
+            <p id="section-7.2-3.1.1">a refresh token resolves to the OAuth authorization grant it belongs to,
+and the chain is bound to that grant; only grant-governed chains may
+outlive the establishing session (<a href="#lifecycle" class="auto internal xref">Section 6</a>); and<a href="#section-7.2-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-7.2-3.2">
+            <p id="section-7.2-3.2.1">an ID Token carrying a <code>sid</code> claim <span>[<a href="#OIDC.FrontChannelLogout" class="cite xref">OIDC.FrontChannelLogout</a>]</span> that the
+IdP resolves to an active session it established for this user and
+client binds the chain to that session.<a href="#section-7.2-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-7.2-4">A chain is established only where that governing authorization is
+continuation-capable: its consent and policy explicitly permit
+continuation and establish the authorization basis, the continuation
+authorization (the permitted actors or trust domains), the maximum
+actor-chain depth where bounded, and the chain's lifetime and revocation
+behavior, all of which are recorded in the root-chain envelope. These
+always come from server-side consent and policy state, never from token
+claims. The IdP consumes <code>sid</code> solely to resolve the session; it <span class="bcp14">MUST NOT</span>
+appear in assertions or conveyed chain context (<a href="#privacy" class="auto internal xref">Section 12</a>). An unused
+chain is inert state: its establishment exercises no authority beyond
+what the continuation-capable governing authorization already granted.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">When establishing a chain, the IdP <span class="bcp14">MUST</span> determine the root actor: the
 authenticated OAuth client of the direct request, identified through the
 authoritative client-to-actor mapping of <a href="#client-identity" class="auto internal xref">Section 7.5</a>. An
 <code>actor_token</code> is <span class="bcp14">OPTIONAL</span> on a direct request. If present, it <span class="bcp14">MUST</span> be of a
@@ -2247,14 +2273,14 @@ the IdP where its type defines an audience or applicability restriction,
 (for example, the request's DPoP proof key), and <span class="bcp14">MUST</span> identify the same
 entity as the authenticated client. The IdP <span class="bcp14">MUST</span> record the root actor in
 the root hop only after this validation; the root actor begins every
-branch's lineage (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-7.2-3" class="pilcrow">¶</a></p>
-<p id="section-7.2-4">The response returns the root hop's handle in <code>identity_continuation_handle</code>
+branch's lineage (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+<p id="section-7.2-6">The response returns the root hop's handle in <code>identity_continuation_handle</code>
 and <span class="bcp14">MAY</span> include the chain's expiry in <code>identity_continuation_exp</code>
-(<a href="#response-param" class="auto internal xref">Section 7.6</a>).<a href="#section-7.2-4" class="pilcrow">¶</a></p>
-<p id="section-7.2-5">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
+(<a href="#response-param" class="auto internal xref">Section 7.6</a>).<a href="#section-7.2-6" class="pilcrow">¶</a></p>
+<p id="section-7.2-7">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
 at-least-once: a retry after a lost response <span class="bcp14">MAY</span> establish a second chain.
 Both chains are bounded by the same consent and policy, and an unused chain
-expires.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+expires.<a href="#section-7.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chained-id-jag-request">
@@ -2482,8 +2508,8 @@ continuation handle as the <code>identity_continuation_handle</code> response pa
 the root-chain envelope: the user, the authentication context
 (<code>auth_time</code>/<code>acr</code>/<code>amr</code>), the authorization basis, the
 continuation authorization (here, designated TravelSaaS and BookingSaaS
-workloads), any maximum actor-chain depth, the expiry, and the root hop
-with its authenticated actor (<code>expense-app</code>). <code>identity_continuation_handle</code> is not a claim
+workloads), any maximum actor-chain depth, the governing authorization, the expiry,
+and the root hop with its authenticated actor (<code>expense-app</code>). <code>identity_continuation_handle</code> is not a claim
 inside the ExpenseRAS ID-JAG.<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.4">
@@ -3828,12 +3854,14 @@ actor_token=&lt;sender-constrained expense-app credential&gt;
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
 </pre><a href="#appendix-B.1-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1-3">The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
-actor credential is constrained to the DPoP key. Continuation is enabled for the tenant, so the IdP establishes a chain
-(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). For this example, existing user consent and enterprise policy authorize the immediate Expense
-target and the later Travel and Booking targets, and enterprise policy
-designates the Travel and Booking workloads as permitted continuers. The IdP
-establishes the chain and records the following target entries in the
+<p id="appendix-B.1-3">The IdP authenticates the user from the ID Token, resolves the governing
+session from its <code>sid</code> (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), and verifies that
+ExpenseApp's actor credential is constrained to the DPoP key. The session
+is continuation-capable: existing user consent and enterprise policy
+permit continuation, authorize the immediate Expense target and the later
+Travel and Booking targets, and designate the Travel and Booking workloads
+as permitted continuers, so the IdP establishes a chain
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). It records the following target entries in the
 root-chain envelope:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1-4">
 <pre>
@@ -3847,8 +3875,8 @@ root-chain envelope:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
     permitted scopes: stays.book
 </pre><a href="#appendix-B.1-4" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1-5">The envelope also records the continuation authorization and the chain's
-expiry. The root exchange does not authorize the later targets merely by
+<p id="appendix-B.1-5">The envelope also records the continuation authorization, the governing
+authorization, and the chain's expiry. The root exchange does not authorize the later targets merely by
 requesting the first: all three entries must already be supported by the
 authentication, consent, and policy from which the IdP constructs the
 envelope. This example records the basis as explicit target entries; a
@@ -4130,9 +4158,12 @@ transaction identifier and the evidence layer of <a href="#assertion-claims" cla
 document to a background agent: the user is present once, when the task is
 created, and absent at every run. The example is the same protocol as
 <a href="#example" class="auto internal xref">Appendix B</a>, time-shifted; nothing new is defined. The property that makes it
-work is that the platform stores only the non-bearer <code>identity_continuation_handle</code>; no refresh
-token or other user credential is vaulted, and run-time authority comes from a
-fresh, sender-constrained assertion evaluated against the root-chain envelope.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+work is that the task record stores only the non-bearer
+<code>identity_continuation_handle</code>. The platform's refresh token is its
+ordinary client credential for its own grant, used only at the IdP; no
+per-target user credential is ever vaulted, and run-time authority comes
+from a fresh, sender-constrained assertion evaluated against the
+root-chain envelope.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
 <p id="appendix-C-2">The participants and values used throughout:<a href="#appendix-C-2" class="pilcrow">¶</a></p>
 <table class="center" id="table-2">
         <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
@@ -4234,16 +4265,17 @@ fresh, sender-constrained assertion evaluated against the root-chain envelope.<a
 <p id="appendix-C.1-1">Alice schedules "summarize my calendar every morning" and authorizes it in an
 active session. <code>briefing-agent</code>, the platform workload, authenticates as
 the OAuth client and performs the direct ID-JAG exchange of
-<a href="#token-exchange" class="auto internal xref">Section 7</a>, with a token from Alice's active session (an ID Token)
-as the <code>subject_token</code>. Because the task must outlive Alice's session, her
-consent takes the form OAuth already has for durable delegation: a grant to
-the platform with an explicit maximum lifetime, whose lifecycle is the
-chain's governing authorization (<a href="#lifecycle" class="auto internal xref">Section 6</a>), with
-<code>briefing-agent</code> as the permitted continuer, and the
-envelope's authorized target entry is exactly the task's need:
+<a href="#token-exchange" class="auto internal xref">Section 7</a>. Because the task must outlive Alice's session, her
+consent takes the form OAuth already has for durable delegation: a continuation-capable grant to the platform with
+refresh capability and an explicit maximum lifetime. The
+platform presents a refresh token from that grant as the <code>subject_token</code>,
+so the grant is the chain's governing authorization
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>), with <code>briefing-agent</code> as the
+permitted continuer; the envelope's authorized target entry is exactly the
+task's need:
 (<code>https://ras.calendar.example/</code>, <code>https://api.calendar.example/</code>,
 <code>calendar.read</code>). The IdP records the envelope, with <code>briefing-agent</code> as the
-authenticated root actor, and responds with the grant plus:<a href="#appendix-C.1-1" class="pilcrow">¶</a></p>
+authenticated root actor, and responds with the ID-JAG plus:<a href="#appendix-C.1-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-C.1-2">
 <pre>
 {
@@ -4528,17 +4560,18 @@ Gateway -&gt; WikiAPI:         (12) tool call executes
 </pre><a href="#appendix-D-5" class="pilcrow">¶</a>
 </div>
 <p id="appendix-D-6">The subsections below detail each step.<a href="#appendix-D-6" class="pilcrow">¶</a></p>
-<div id="root-exchange-the-runtime-establishes-the-chain">
+<div id="root-exchange-the-runtime-roots-the-chain">
 <section id="appendix-D.1">
-        <h3 id="name-root-exchange-the-runtime-e">
-<a href="#appendix-D.1" class="section-number selfRef">D.1. </a><a href="#name-root-exchange-the-runtime-e" class="section-name selfRef">Root Exchange: The Runtime Establishes the Chain</a>
+        <h3 id="name-root-exchange-the-runtime-r">
+<a href="#appendix-D.1" class="section-number selfRef">D.1. </a><a href="#name-root-exchange-the-runtime-r" class="section-name selfRef">Root Exchange: The Runtime Roots the Chain</a>
         </h3>
 <p id="appendix-D.1-1">Alice authenticates in <code>agent-app</code>, a confidential client whose <code>client_id</code>
 is the audience of her identity assertion, so <code>agent-app</code> performs the
 direct exchange of <a href="#token-exchange" class="auto internal xref">Section 7</a> for the one audience it does
 know: the gateway (<code>audience=https://ras.gateway.example/</code>) (steps 1 and 2).
-The IdP establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>); because tool routing
-is dynamic, it records the envelope's
+Alice's standing consent makes the session continuation-capable, and the
+IdP establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>); because tool routing is
+dynamic, it records the envelope's
 authorization basis as Alice's standing consent and tenant policy, with no
 enumerated targets (<a href="#validation" class="auto internal xref">Section 9</a>, rule 14), and <code>agent-app</code> as the
 authenticated root actor. Enterprise policy registers <code>tool-gateway</code> as an
@@ -4742,7 +4775,8 @@ profile defines only DPoP-based binding
 mutual-TLS binding together?<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-E-3.5">
-          <p id="appendix-E-3.5.1"><strong>A client establishment parameter.</strong> Establishment is policy-driven,
+          <p id="appendix-E-3.5.1"><strong>A client establishment parameter.</strong> Establishment is
+authorization-driven,
 with no request parameter (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>), because the
 first-hop client cannot generally predict downstream chaining. Should a
 future parameter let a client require establishment (failing fast when

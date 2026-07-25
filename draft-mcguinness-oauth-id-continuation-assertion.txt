@@ -155,7 +155,7 @@ Table of Contents
      C.3.  Points Worth Noticing
      C.4.  A Dynamic Target
    Appendix D.  Gateway Example (Dynamic Upstream Audiences)
-     D.1.  Root Exchange: The Runtime Establishes the Chain
+     D.1.  Root Exchange: The Runtime Roots the Chain
      D.2.  Chained Exchange: The Gateway Continues
      D.3.  Points Worth Noticing
    Appendix E.  Open Items for Working Group Discussion
@@ -695,10 +695,11 @@ Table of Contents
    The following rules apply:
 
    1.  The IdP MUST establish a chain for every direct ID-JAG issuance
-       where continuation is enabled by policy (Section 7.2), and MUST
-       return a fresh continuation handle as a Token Exchange _response_
-       parameter (Section 7.6) for the root hop and for each
-       continuation hop.  Handle values MUST NOT be reused across hops.
+       under a continuation-capable governing authorization
+       (Section 7.2), and MUST return a fresh continuation handle as a
+       Token Exchange _response_ parameter (Section 7.6) for the root
+       hop and for each continuation hop.  Handle values MUST NOT be
+       reused across hops.
 
    2.  identity_continuation_handle MUST contain at least 128 bits of
        entropy, MUST NOT contain user-identifying information, and MUST
@@ -762,26 +763,30 @@ Table of Contents
    (Section 8), the IdP is in the loop at each hop and can stop a chain
    at any point.
 
-   Every chain has a governing authorization: the OAuth grant under
-   which the root subject token was issued, where one exists, and
-   otherwise the establishing authentication session (Section 7.2).  The
-   binding is to the grant, not to a token value: refresh-token rotation
-   does not affect the chain, while revocation or expiry of the grant
-   ends it.  The IdP MUST bound the continuation lifetime of a chain by
-   the lifetime of its governing authorization, and MUST reject a
-   continuation of an expired chain (Section 9).  The governing
-   authorization is distinct from the root authentication context:
-   continuing a chain MUST NOT extend that context, and auth_time, acr,
-   and amr are fixed at root issuance and inherited unchanged by onward
-   grants (Section 11.3).
+   Every chain has a continuation-capable governing authorization
+   (Section 7.2), resolved at establishment from the root subject token:
+   the OAuth authorization grant behind a refresh token, or the IdP
+   session resolved from an ID Token's sid (Section 7.2).  The binding
+   is to the server-side record, not to a token value: refresh-token
+   rotation does not affect a grant-governed chain, while revocation or
+   expiry of the grant ends every chain rooted in it, and termination of
+   a governing session ends every chain rooted in that session.  A
+   session-governed chain's lifetime MUST NOT exceed the session's, so
+   only grant-governed chains outlive logout.  The IdP MUST bound the
+   continuation lifetime of a chain by the lifetime of its governing
+   authorization, and MUST reject a continuation of an expired chain
+   (Section 9).  The governing authorization is distinct from the root
+   authentication context: continuing a chain MUST NOT extend that
+   context, and auth_time, acr, and amr are fixed at root issuance and
+   inherited unchanged by onward grants (Section 11.3).
 
    The IdP MUST be able to revoke a chain, and MUST stop honoring
    continuation for a revoked chain.  Ending the governing authorization
-   revokes the chain: revocation of the governing grant does so (for
-   example, through token revocation [RFC7009] or a grant management
-   interface), as does termination of the user's session where the
-   session governs, or withdrawal of the underlying policy.  An IdP MAY
-   additionally revoke an individual hop's subtree, stopping
+   revokes every chain rooted in it: revocation of the governing grant
+   does so (for example, through token revocation [RFC7009] or a grant
+   management interface), as does termination of the user's session
+   where the session governs, or withdrawal of the underlying policy.
+   An IdP MAY additionally revoke an individual hop's subtree, stopping
    continuation along one branch while the rest of the chain remains
    continuable.
 
@@ -833,24 +838,43 @@ Table of Contents
    party performing the root exchange cannot generally know whether
    downstream services will need to continue the delegation, and
    requiring it to predict would foreclose continuation for the entire
-   downstream graph.  Where continuation is enabled by tenant policy
-   (Section 7.7), the IdP MUST establish a chain for each direct
-   exchange in which it issues an ID-JAG and MUST return the root hop's
+   downstream graph.  The IdP MUST establish a chain for each direct
+   exchange in which it issues an ID-JAG under a continuation-capable
+   governing authorization (below), and MUST return the root hop's
    handle (Section 7.6); chain state MAY be materialized lazily, on
-   first continuation.  Where continuation is not enabled for the
-   delegation, no handle is returned, and its absence tells the client
-   that the delegation is not continuable.
+   first continuation, and the root handle remains resolvable to its
+   chain regardless (Section 9, rule 7).  Where the governing
+   authorization does not permit continuation, no chain is established
+   and no handle is returned; its absence tells the client that the
+   delegation is not continuable.  Tenant enablement (Section 7.7) is a
+   capability signal and authorizes nothing.
 
-   The chain's properties are not negotiated.  The authorization basis,
-   the continuation authorization, any maximum actor-chain depth, and
-   the chain's expiry are determined by the user's authentication and
-   consent and by tenant policy, and are recorded in the root-chain
-   envelope.  The chain's governing authorization is the OAuth grant
-   under which the root subject token was issued (the grant whose
-   artifact is the client's refresh token), where such a grant exists,
-   and otherwise the establishing authentication session (Section 6).
-   An unused chain is inert state bounded by that governing
-   authorization: establishing it grants no authority.
+   The chain's properties are not negotiated.  The governing
+   authorization is resolved from the root subject token, and the IdP
+   MUST NOT establish a chain from a subject token it cannot resolve to
+   one.  Two rooting paths are defined:
+
+   *  a refresh token resolves to the OAuth authorization grant it
+      belongs to, and the chain is bound to that grant; only grant-
+      governed chains may outlive the establishing session (Section 6);
+      and
+
+   *  an ID Token carrying a sid claim [OIDC.FrontChannelLogout] that
+      the IdP resolves to an active session it established for this user
+      and client binds the chain to that session.
+
+   A chain is established only where that governing authorization is
+   continuation-capable: its consent and policy explicitly permit
+   continuation and establish the authorization basis, the continuation
+   authorization (the permitted actors or trust domains), the maximum
+   actor-chain depth where bounded, and the chain's lifetime and
+   revocation behavior, all of which are recorded in the root-chain
+   envelope.  These always come from server-side consent and policy
+   state, never from token claims.  The IdP consumes sid solely to
+   resolve the session; it MUST NOT appear in assertions or conveyed
+   chain context (Section 12).  An unused chain is inert state: its
+   establishment exercises no authority beyond what the continuation-
+   capable governing authorization already granted.
 
    When establishing a chain, the IdP MUST determine the root actor: the
    authenticated OAuth client of the direct request, identified through
@@ -1074,9 +1098,10 @@ Table of Contents
         authentication context (auth_time/acr/amr), the authorization
         basis, the continuation authorization (here, designated
         TravelSaaS and BookingSaaS workloads), any maximum actor-chain
-        depth, the expiry, and the root hop with its authenticated actor
-        (expense-app). identity_continuation_handle is not a claim
-        inside the ExpenseRAS ID-JAG.
+        depth, the governing authorization, the expiry, and the root hop
+        with its authenticated actor (expense-app).
+        identity_continuation_handle is not a claim inside the
+        ExpenseRAS ID-JAG.
 
    4.   ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access
         token (AT1) and invokes ExpenseSaaS, conveying
@@ -2205,15 +2230,15 @@ B.1.  First Hop: Direct ID-JAG for ExpenseRAS
    actor_token=<sender-constrained expense-app credential>
    actor_token_type=urn:ietf:params:oauth:token-type:jwt
 
-   The IdP authenticates the user from the ID Token and verifies that
-   ExpenseApp's actor credential is constrained to the DPoP key.
-   Continuation is enabled for the tenant, so the IdP establishes a
-   chain (Section 7.2).  For this example, existing user consent and
-   enterprise policy authorize the immediate Expense target and the
-   later Travel and Booking targets, and enterprise policy designates
-   the Travel and Booking workloads as permitted continuers.  The IdP
-   establishes the chain and records the following target entries in the
-   root-chain envelope:
+   The IdP authenticates the user from the ID Token, resolves the
+   governing session from its sid (Section 7.2), and verifies that
+   ExpenseApp's actor credential is constrained to the DPoP key.  The
+   session is continuation-capable: existing user consent and enterprise
+   policy permit continuation, authorize the immediate Expense target
+   and the later Travel and Booking targets, and designate the Travel
+   and Booking workloads as permitted continuers, so the IdP establishes
+   a chain (Section 7.2).  It records the following target entries in
+   the root-chain envelope:
 
    (https://ras.expenses.example/, https://api.expenses.example/)
        permitted scopes: expenses.read
@@ -2224,15 +2249,16 @@ B.1.  First Hop: Direct ID-JAG for ExpenseRAS
    (https://ras.booking.example/, https://api.booking.example/)
        permitted scopes: stays.book
 
-   The envelope also records the continuation authorization and the
-   chain's expiry.  The root exchange does not authorize the later
-   targets merely by requesting the first: all three entries must
-   already be supported by the authentication, consent, and policy from
-   which the IdP constructs the envelope.  This example records the
-   basis as explicit target entries; a deployment whose onward targets
-   are not knowable at establishment records the consent-and-policy
-   ceiling without enumeration and evaluates the Travel target at
-   continuation time (Section 9, rule 14).  The IdP then responds:
+   The envelope also records the continuation authorization, the
+   governing authorization, and the chain's expiry.  The root exchange
+   does not authorize the later targets merely by requesting the first:
+   all three entries must already be supported by the authentication,
+   consent, and policy from which the IdP constructs the envelope.  This
+   example records the basis as explicit target entries; a deployment
+   whose onward targets are not knowable at establishment records the
+   consent-and-policy ceiling without enumeration and evaluates the
+   Travel target at continuation time (Section 9, rule 14).  The IdP
+   then responds:
 
    {
      "access_token": "<ID-JAG for ExpenseRAS>",
@@ -2476,11 +2502,12 @@ Appendix C.  Background Agent Example (User-Scheduled Continuation)
    machinery of this document to a background agent: the user is present
    once, when the task is created, and absent at every run.  The example
    is the same protocol as Appendix B, time-shifted; nothing new is
-   defined.  The property that makes it work is that the platform stores
-   only the non-bearer identity_continuation_handle; no refresh token or
-   other user credential is vaulted, and run-time authority comes from a
-   fresh, sender-constrained assertion evaluated against the root-chain
-   envelope.
+   defined.  The property that makes it work is that the task record
+   stores only the non-bearer identity_continuation_handle.  The
+   platform's refresh token is its ordinary client credential for its
+   own grant, used only at the IdP; no per-target user credential is
+   ever vaulted, and run-time authority comes from a fresh, sender-
+   constrained assertion evaluated against the root-chain envelope.
 
    The participants and values used throughout:
 
@@ -2553,16 +2580,17 @@ C.1.  Setup (Alice Present)
    Alice schedules "summarize my calendar every morning" and authorizes
    it in an active session. briefing-agent, the platform workload,
    authenticates as the OAuth client and performs the direct ID-JAG
-   exchange of Section 7, with a token from Alice's active session (an
-   ID Token) as the subject_token.  Because the task must outlive
-   Alice's session, her consent takes the form OAuth already has for
-   durable delegation: a grant to the platform with an explicit maximum
-   lifetime, whose lifecycle is the chain's governing authorization
-   (Section 6), with briefing-agent as the permitted continuer, and the
-   envelope's authorized target entry is exactly the task's need:
+   exchange of Section 7.  Because the task must outlive Alice's
+   session, her consent takes the form OAuth already has for durable
+   delegation: a continuation-capable grant to the platform with refresh
+   capability and an explicit maximum lifetime.  The platform presents a
+   refresh token from that grant as the subject_token, so the grant is
+   the chain's governing authorization (Section 7.2, Section 6), with
+   briefing-agent as the permitted continuer; the envelope's authorized
+   target entry is exactly the task's need:
    (https://ras.calendar.example/, https://api.calendar.example/,
    calendar.read).  The IdP records the envelope, with briefing-agent as
-   the authenticated root actor, and responds with the grant plus:
+   the authenticated root actor, and responds with the ID-JAG plus:
 
    {
      "identity_continuation_handle": "Pz6vTq1NcY4kM8bJf3RxWa",
@@ -2805,13 +2833,14 @@ Appendix D.  Gateway Example (Dynamic Upstream Audiences)
 
    The subsections below detail each step.
 
-D.1.  Root Exchange: The Runtime Establishes the Chain
+D.1.  Root Exchange: The Runtime Roots the Chain
 
    Alice authenticates in agent-app, a confidential client whose
    client_id is the audience of her identity assertion, so agent-app
    performs the direct exchange of Section 7 for the one audience it
    does know: the gateway (audience=https://ras.gateway.example/) (steps
-   1 and 2).  The IdP establishes a chain (Section 7.2); because tool
+   1 and 2).  Alice's standing consent makes the session continuation-
+   capable, and the IdP establishes a chain (Section 7.2); because tool
    routing is dynamic, it records the envelope's authorization basis as
    Alice's standing consent and tenant policy, with no enumerated
    targets (Section 9, rule 14), and agent-app as the authenticated root
@@ -3002,13 +3031,13 @@ Appendix E.  Open Items for Working Group Discussion
         JAG profile defines only DPoP-based binding (Section 7.4).
         Should the two profiles add mutual-TLS binding together?
 
-   5.   *A client establishment parameter.* Establishment is policy-
-        driven, with no request parameter (Section 7.2), because the
-        first-hop client cannot generally predict downstream chaining.
-        Should a future parameter let a client require establishment
-        (failing fast when policy will not root a chain), suppress it
-        (declining a handle it does not want), or negotiate lifetime,
-        depth, or permitted continuers?
+   5.   *A client establishment parameter.* Establishment is
+        authorization-driven, with no request parameter (Section 7.2),
+        because the first-hop client cannot generally predict downstream
+        chaining.  Should a future parameter let a client require
+        establishment (failing fast when policy will not root a chain),
+        suppress it (declining a handle it does not want), or negotiate
+        lifetime, depth, or permitted continuers?
 
    6.   *Binding chain context to the local transaction.* Chain-context
         provenance (Section 4.5) requires an authorized channel but does
