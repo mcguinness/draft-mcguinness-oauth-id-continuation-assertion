@@ -748,10 +748,12 @@ A chain is established by the IdP, not requested by the client: the party
 performing the root exchange cannot generally know whether downstream
 services will need to continue the delegation, and requiring it to predict
 would foreclose continuation for the entire downstream graph. Where
-continuation is enabled by tenant policy ({{metadata}}), the IdP MUST
+continuation is enabled by tenant policy (the profile-support signal is
+{{metadata}}), the IdP MUST
 establish a chain for each direct exchange in which it issues an ID-JAG and
 MUST return the root hop's handle ({{response-param}}); chain state MAY be
-materialized lazily, on first continuation. Where continuation is not
+materialized lazily, on first continuation, and the root handle remains
+resolvable to its chain regardless ({{validation}}, rule 7). Where continuation is not
 enabled for the delegation, no handle is returned, and its absence tells
 the client that the delegation is not continuable.
 
@@ -760,9 +762,10 @@ continuation authorization, any maximum actor-chain depth, and the chain's
 expiry are determined by the user's authentication and consent and by
 tenant policy, and are recorded in the root-chain envelope. The chain's
 governing authorization is the OAuth grant under which the root subject
-token was issued (the grant whose artifact is the client's refresh token),
-where such a grant exists, and otherwise the establishing authentication
-session ({{lifecycle}}). An unused chain is inert state bounded by that
+token was issued, where such a grant exists (for a refresh-token subject
+token, the grant behind that token; for an ID Token, the authorization
+grant under which it was issued), and otherwise the establishing
+authentication session ({{lifecycle}}). An unused chain is inert state bounded by that
 governing authorization: establishing it grants no authority.
 
 When establishing a chain, the IdP MUST determine the root actor: the
@@ -976,8 +979,8 @@ BookingRAS).
    the root-chain envelope: the user, the authentication context
    (`auth_time`/`acr`/`amr`), the authorization basis, the
    continuation authorization (here, designated TravelSaaS and BookingSaaS
-   workloads), any maximum actor-chain depth, the expiry, and the root hop
-   with its authenticated actor (`expense-app`). `identity_continuation_handle` is not a claim
+   workloads), any maximum actor-chain depth, the governing authorization, the expiry,
+   and the root hop with its authenticated actor (`expense-app`). `identity_continuation_handle` is not a claim
    inside the ExpenseRAS ID-JAG.
 
 4. ExpenseApp exchanges the ID-JAG at ExpenseRAS for an access token (AT1) and
@@ -1826,9 +1829,8 @@ The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
 actor credential is constrained to the DPoP key. Continuation is enabled for the tenant, so the IdP establishes a chain
 ({{root-establishment}}). For this example, existing user consent and enterprise policy authorize the immediate Expense
 target and the later Travel and Booking targets, and enterprise policy
-designates the Travel and Booking workloads as permitted continuers. The IdP
-establishes the chain and records the following target entries in the
-root-chain envelope:
+designates the Travel and Booking workloads as permitted continuers. It records
+the following target entries in the root-chain envelope:
 
 ~~~
 (https://ras.expenses.example/, https://api.expenses.example/)
@@ -1841,8 +1843,8 @@ root-chain envelope:
     permitted scopes: stays.book
 ~~~
 
-The envelope also records the continuation authorization and the chain's
-expiry. The root exchange does not authorize the later targets merely by
+The envelope also records the continuation authorization, the governing
+authorization, and the chain's expiry. The root exchange does not authorize the later targets merely by
 requesting the first: all three entries must already be supported by the
 authentication, consent, and policy from which the IdP constructs the
 envelope. This example records the basis as explicit target entries; a
@@ -2126,13 +2128,14 @@ the OAuth client and performs the direct ID-JAG exchange of
 {{token-exchange}}, with a token from Alice's active session (an ID Token)
 as the `subject_token`. Because the task must outlive Alice's session, her
 consent takes the form OAuth already has for durable delegation: a grant to
-the platform with an explicit maximum lifetime, whose lifecycle is the
-chain's governing authorization ({{lifecycle}}), with
-`briefing-agent` as the permitted continuer, and the
-envelope's authorized target entry is exactly the task's need:
+the platform with an explicit maximum lifetime. The ID Token presented as
+the `subject_token` is issued under that grant, so the grant is the chain's
+governing authorization ({{lifecycle}}), with `briefing-agent` as the
+permitted continuer; the envelope's authorized target entry is exactly the
+task's need:
 (`https://ras.calendar.example/`, `https://api.calendar.example/`,
 `calendar.read`). The IdP records the envelope, with `briefing-agent` as the
-authenticated root actor, and responds with the grant plus:
+authenticated root actor, and responds with the ID-JAG plus:
 
 ~~~ json
 {
@@ -2325,7 +2328,7 @@ Gateway -> WikiAPI:         (12) tool call executes
 
 The subsections below detail each step.
 
-## Root Exchange: The Runtime Establishes the Chain
+## Root Exchange: The Runtime Roots the Chain
 
 Alice authenticates in `agent-app`, a confidential client whose `client_id`
 is the audience of her identity assertion, so `agent-app` performs the
