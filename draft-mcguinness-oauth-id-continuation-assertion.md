@@ -678,11 +678,15 @@ A chain is continuable only while the IdP considers it active. Because every
 cross-boundary hop is an exchange at the IdP ({{flow}}), the IdP is in the loop
 at each hop and can stop a chain at any point.
 
-Every chain has a governing authorization: the OAuth grant under which the
-root subject token was issued, where one exists, and otherwise the
-establishing authentication session ({{root-establishment}}). The binding is
-to the grant, not to a token value: refresh-token rotation does not affect
-the chain, while revocation or expiry of the grant ends it. The IdP MUST
+Every chain has a governing authorization, resolved at establishment from
+the root subject token: the OAuth authorization grant behind a refresh
+token, or the IdP session resolved from an ID Token's `sid`
+({{root-establishment}}). The binding is to the server-side record, not to
+a token value: refresh-token rotation does not affect a grant-governed
+chain, while revocation or expiry of the grant ends every chain rooted in
+it, and termination of a governing session ends every chain rooted in that
+session. A session-governed chain's lifetime MUST NOT exceed the
+session's, so only grant-governed chains outlive logout. The IdP MUST
 bound the continuation lifetime of a chain by the lifetime of
 its governing authorization, and MUST reject a continuation of an expired
 chain ({{validation}}). The governing authorization is distinct from the
@@ -691,7 +695,7 @@ context, and `auth_time`, `acr`, and `amr` are fixed at root issuance and
 inherited unchanged by onward grants ({{security-assurance}}).
 
 The IdP MUST be able to revoke a chain, and MUST stop honoring continuation
-for a revoked chain. Ending the governing authorization revokes the chain:
+for a revoked chain. Ending the governing authorization revokes every chain rooted in it:
 revocation of the governing grant does so (for example, through token
 revocation {{RFC7009}} or a grant management interface), as does
 termination of the user's session where the session governs, or withdrawal
@@ -1825,9 +1829,10 @@ actor_token=<sender-constrained expense-app credential>
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
-The IdP authenticates the user from the ID Token and verifies that ExpenseApp's
-actor credential is constrained to the DPoP key. Continuation is enabled for the tenant, so the IdP establishes a chain
-({{root-establishment}}). For this example, existing user consent and enterprise policy authorize the immediate Expense
+The IdP authenticates the user from the ID Token, resolves the governing
+session from its `sid` ({{root-establishment}}), and verifies that
+ExpenseApp's actor credential is constrained to the DPoP key. Continuation
+is enabled for the tenant, so the IdP establishes a chain. For this example, existing user consent and enterprise policy authorize the immediate Expense
 target and the later Travel and Booking targets, and enterprise policy
 designates the Travel and Booking workloads as permitted continuers. It records
 the following target entries in the root-chain envelope:
@@ -2099,9 +2104,12 @@ This appendix is non-normative. It applies the continuation machinery of this
 document to a background agent: the user is present once, when the task is
 created, and absent at every run. The example is the same protocol as
 {{example}}, time-shifted; nothing new is defined. The property that makes it
-work is that the platform stores only the non-bearer `identity_continuation_handle`; no refresh
-token or other user credential is vaulted, and run-time authority comes from a
-fresh, sender-constrained assertion evaluated against the root-chain envelope.
+work is that the task record stores only the non-bearer
+`identity_continuation_handle`. The platform's refresh token is its
+ordinary client credential for its own grant, used only at the IdP; no
+per-target user credential is ever vaulted, and run-time authority comes
+from a fresh, sender-constrained assertion evaluated against the
+root-chain envelope.
 
 The participants and values used throughout:
 
@@ -2125,12 +2133,12 @@ The participants and values used throughout:
 Alice schedules "summarize my calendar every morning" and authorizes it in an
 active session. `briefing-agent`, the platform workload, authenticates as
 the OAuth client and performs the direct ID-JAG exchange of
-{{token-exchange}}, with a token from Alice's active session (an ID Token)
-as the `subject_token`. Because the task must outlive Alice's session, her
+{{token-exchange}}. Because the task must outlive Alice's session, her
 consent takes the form OAuth already has for durable delegation: a grant to
-the platform with an explicit maximum lifetime. The ID Token presented as
-the `subject_token` is issued under that grant, so the grant is the chain's
-governing authorization ({{lifecycle}}), with `briefing-agent` as the
+the platform with refresh capability and an explicit maximum lifetime. The
+platform presents a refresh token from that grant as the `subject_token`,
+so the grant is the chain's governing authorization
+({{root-establishment}}, {{lifecycle}}), with `briefing-agent` as the
 permitted continuer; the envelope's authorized target entry is exactly the
 task's need:
 (`https://ras.calendar.example/`, `https://api.calendar.example/`,
