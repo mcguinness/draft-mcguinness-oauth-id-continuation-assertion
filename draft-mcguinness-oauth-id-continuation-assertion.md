@@ -177,6 +177,11 @@ and still represents this user. The Identity Continuation Assertion is that
 evidence; it is used as a Token Exchange subject token to obtain an onward
 ID-JAG, the output profile of this document.
 
+The profile therefore serves two inseparable requirements of this deployment
+model: identity continuity, resolving the same root user into each new
+audience-local subject, and authorization continuity, proving that the
+requested onward authority remains within the root delegation.
+
 This document defines the evidence format, Token Exchange parameters,
 validation rules, and IANA registrations needed for that exchange. It does not
 define a new access token format, does not allow a Resource Server to consume
@@ -443,7 +448,9 @@ The claims have the following meanings and requirements:
 
 `iat`, `exp`:
 : REQUIRED. The assertion lifetime MUST be short. `exp` MUST be after `iat`,
-  and `exp - iat` MUST be no more than 300 seconds; see {{validation}}.
+  and `exp - iat` MUST be no more than 300 seconds; see {{validation}}. The
+  bound accommodates issuance-to-presentation latency while keeping the
+  replay-state retention window small.
 
 `jti`:
 : REQUIRED. A unique identifier used by the IdP for replay detection. The value
@@ -500,7 +507,9 @@ Authority:
 
 How the actor authenticates to the Chain Authority and proves control of its
 key is deployment-specific; it is typically the workload's existing mutually
-authenticated credential. An assertion whose `cnf` is not bound to the
+authenticated credential. The issuance interaction itself (endpoint, request
+parameters, and responses) is out of scope for this document; a standard
+issuance profile is an open item ({{open-items}}). An assertion whose `cnf` is not bound to the
 requesting actor's key is not presentable, because the IdP requires live
 proof of possession of the confirmed key
 ({{sender-constrained-presentation}}).
@@ -539,7 +548,7 @@ exchange.
 
 ## An HTTP Binding for Chain Context {#context-binding}
 
-Interoperability between independently developed participants requires at
+Interoperability between independently developed participants benefits from at
 least one common representation for conveying `identity_continuation_handle` with a request. This
 document defines an OPTIONAL HTTP binding that participants SHOULD support
 when they convey chain context over HTTP: the `Identity-Continuation-Handle` request header field
@@ -557,6 +566,10 @@ value per {{context-provenance}}: it identifies a chain but conveys no
 authority. Participants SHOULD exclude the field value from logs. The chain
 participant to which the field is addressed consumes it; a receiver MUST NOT
 forward the field to a party that is not a participant in the chain.
+Transparent intermediaries that convey the request without processing the
+field (proxies, load balancers, service meshes) are not participants and do
+not consume it; the participant to which the request is addressed remains
+responsible for consuming it and not forwarding it.
 
 The field is a singleton: a sender MUST NOT generate more than one
 `Identity-Continuation-Handle` field in a message, and a receiver MUST reject a message
@@ -592,7 +605,9 @@ comes from the sender-constrained assertion and the root-chain envelope. This
 follows the pattern of the OpenID Connect `sid` claim
 {{OIDC.FrontChannelLogout}} and the `txn` claim {{RFC8417}}: opaque,
 issuer-generated identifiers that index server-side state. It differs in
-being confined to the control plane: unlike `sid`, which a Resource Server
+sensitivity as well as scope: a handle is a non-authorizing reference to
+grant state, not a passive correlation identifier, and it is confined to
+the control plane: unlike `sid`, which a Resource Server
 can see in an ID Token, `identity_continuation_handle` MUST NOT appear in any token a
 Resource Server consumes (rule 4; see also {{privacy}}).
 
@@ -616,8 +631,10 @@ The following rules apply:
 
 4. `identity_continuation_handle` MUST NOT appear in any ID-JAG or access token that a Resource
    Server consumes. This preserves the audience-local subject property: a
-   Resource Server sees only its own subject, audience, scope, and actor chain,
-   and nothing that correlates the user across SaaS boundaries.
+   Resource Server sees only its own subject, audience, scope, and actor
+   chain, and nothing that correlates the user across SaaS boundaries from
+   those tokens (actor lineage and timing remain correlation channels;
+   {{privacy}}).
 
 5. End-to-end audit correlation is performed at the IdP, which holds the hop
    graph for every chain. Per-Resource-Server logs use that server's own
@@ -833,8 +850,10 @@ never compared equal.
 
 The onward ID-JAG the IdP issues is itself sender-constrained to the same key
 through its own `cnf`, using the DPoP-based binding the ID-JAG profile defines
-({{onward-id-jag}}). A mutual-TLS-bound variant {{RFC8705}} is deliberately
-not specified: the ID-JAG profile currently defines only DPoP-based binding,
+({{onward-id-jag}}). This version deliberately standardizes a single mandatory-to-implement
+confirmation method for interoperability. A mutual-TLS-bound variant
+{{RFC8705}} is not specified: the ID-JAG profile currently defines only
+DPoP-based binding,
 and a different confirmation method in the onward grant would break the
 property that the target Resource Authorization Server processes an unchanged
 ID-JAG. The presenting actor proves possession of the key again when it
@@ -1089,7 +1108,9 @@ repeats the exchange, so Chain Authority issuance SHOULD be inexpensive
 relative to the exchange itself. The retry path is at-least-once: a retry
 after a lost response mints a second, equivalent grant (short-lived,
 sender-constrained to the same key, and bounded by the same authorization
-basis) and a second hop, so it confers no additional authority.
+basis) and a second hop, so it confers no additional authority. Equivalent
+grants do not deduplicate the application operations they authorize;
+operation idempotency remains the application's concern.
 
 On success, the IdP records the continuation as a new hop whose immutable
 parent is the presented handle, resolves the audience-local subject for the
@@ -1254,6 +1275,13 @@ whose client-issued tokens are key-linked, monotonically downscoped, and
 depth-bounded). The Chain Authority validates the segment before issuing
 ({{context-provenance}}); the IdP itself enforces only the root-chain envelope
 described above.
+
+The assertion is deliberately target-agnostic ({{excluded-claims}}): within
+the envelope and IdP policy, the presenting actor chooses the target at
+exchange time, so a compromised permitted actor can select among all
+authorities the ceiling allows during the assertion's lifetime. This is a
+tradeoff for the uniform request shape; optional issuance-time narrowing
+constraints are an open item ({{open-items}}).
 
 A related risk for a multi-user intermediary is association error rather
 than broadening: a workload holding many valid handles that attaches the
@@ -1533,7 +1561,7 @@ Field Name:
 : Identity-Continuation-Handle
 
 Status:
-: permanent
+: provisional
 
 Reference:
 : This document, {{context-binding}}
@@ -2503,7 +2531,10 @@ is welcome.
 5. **Richer `identity_continuation` values.** The request parameter is a flag, and
    negotiation of lifetime, depth, or permitted continuers is reserved for
    future values ({{root-establishment}}). Is client-side negotiation of
-   chain properties needed at all?
+   chain properties needed at all? A related question is establishment
+   strictness: values such as `required` and `preferred` could let a
+   client fail fast when a chain cannot be established, rather than accept
+   the grant-without-chain downgrade of {{root-establishment}}.
 
 6. **Binding chain context to the local transaction.** Chain-context
    provenance ({{context-provenance}}) requires an authorized channel but
@@ -2524,15 +2555,60 @@ is welcome.
    actor-token types, validity, and applicability
    ({{sender-constrained-presentation}}; {{validation}}, rule 10). How much
    of an IdP's accepted actor-token profile (types, issuers, proof
-   methods) should be advertised in its metadata ({{metadata}}) rather
-   than learned out of band?
+   methods), and of its other capabilities (confirmation methods, maximum
+   assertion lifetime, an issuance endpoint, HTTP binding support, and
+   error-detail support), should be advertised in its metadata
+   ({{metadata}}) rather than learned out of band?
 
 8. **A continuation-specific error code.** A dead hop ({{validation}},
    rule 7) returns `invalid_request` per Section 2.2.2 of {{RFC8693}}, the
    same code as a malformed request, so an unattended client cannot
    distinguish "seek re-authorization" from "fix the request" by the code
    alone. Should this profile register a continuation-specific error code
-   (for example, `invalid_continuation`) to restore that signal?
+   (for example, `invalid_continuation`), or define a supplementary
+   `error_details` member carrying a reason taxonomy (for example,
+   `assertion_expired`, `handle_not_continuable`, `continuation_revoked`,
+   `actor_not_permitted`, `target_outside_envelope`,
+   `reauthentication_required`) so unattended clients get
+   machine-actionable failure semantics without new top-level codes?
+
+9. **A Chain Authority issuance profile.** How an actor obtains an
+   assertion is out of scope ({{assertion-issuance}}), which limits
+   end-to-end interoperability between independently implemented actors
+   and Chain Authorities. The sketch is a token endpoint-style request:
+
+   ~~~
+   POST /identity-continuation-assertion HTTP/1.1
+   DPoP: <proof>
+
+   identity_continuation_handle=<handle>
+   audience=https://idp.example/
+   ~~~
+
+   The authenticated workload identity and proof key determine `act` and
+   `cnf`, never caller-supplied values, with errors, discovery, and retry
+   behavior defined. Such a profile could also let the Chain Authority
+   bind optional narrowing constraints into the assertion (an intended
+   target, resource, or authorization-details digest) that the IdP would
+   enforce as ceilings on the exchange, reducing assertion-repurposing
+   risk without making the Chain Authority a target authority.
+
+10. **A normative authorization-basis representation.** The envelope's
+    authorization basis is internal IdP state, so conformance with its
+    MAY-narrow, MUST NOT-broaden rule is observable only through
+    behavior. Implementer review asks for a testable representation: for
+    explicit targets, for example,
+
+    ~~~ json
+    { "targets": [ { "audience": "https://ras.travel.example/",
+        "resource": "https://api.travel.example/",
+        "scope": ["trips.read"] } ] }
+    ~~~
+
+    and, for dynamic ceilings, a concrete form such as an RAR
+    authorization detail {{RFC9396}}, a policy-bound intent object, or an
+    immutable policy-evaluation artifact. Should a future revision
+    standardize one?
 
 # Acknowledgments
 {:numbered="false"}
