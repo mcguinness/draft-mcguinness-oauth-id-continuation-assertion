@@ -53,6 +53,7 @@ informative:
   RFC8705:
   RFC8707:
   RFC9700:
+  I-D.fletcher-transaction-token-chaining-profile:
   I-D.ietf-oauth-identity-chaining:
   I-D.ietf-oauth-transaction-tokens:
   I-D.ietf-wimse-arch:
@@ -1619,7 +1620,9 @@ already has, it does not synthesize a subject it was never issued
    domain's issuer, to name the user and scope authority over its resources.
    Direct propagation asks domain B to accept domain A's signature as authority
    over domain B. Obtaining a grant from an authority that domain B already
-   trusts is the model of {{I-D.ietf-oauth-identity-chaining}}.
+   trusts is the model of {{I-D.ietf-oauth-identity-chaining}}
+   (instantiated, for example, by the Transaction Token chaining profile
+   {{I-D.fletcher-transaction-token-chaining-profile}}).
 
 3. **Revocation.** An offline propagation token is usable for its lifetime
    without contacting an authority, removing the ability to revoke mid-chain.
@@ -1743,6 +1746,7 @@ The participants and values used throughout:
 | BookingWorker | `booking-worker` | TravelSaaS workload delegated offline for the Booking hop. |
 | BookingRAS | `https://ras.booking.example/` | Resource Authorization Server for BookingAPI. |
 | BookingAPI | `https://api.booking.example/` | Protected resource behind BookingRAS. |
+| PartnerSaaS | `https://partner.example/` | SaaS outside the trust circle ({{example-federation-edge}}). |
 | Handles | `kW4uJ8pTe2NxA6rQvD1zYs` (root hop), `Uc9fB3mHs5LdK7gEnX2wRj` (Travel hop) | Continuation handles; one per hop. |
 | Subjects | `expense-local-subject`, `travel-local-subject`, `booking-local-subject` | The user's pairwise subject at ExpenseRAS, TravelRAS, and BookingRAS, respectively. |
 
@@ -2039,6 +2043,32 @@ deployment records and the evidence layer ({{assertion-claims}}). BookingRAS
 processes an ordinary ID-JAG whose every actor was authenticated by the IdP,
 including an actor that was delegated to offline, which BookingRAS could
 never have verified itself.
+
+## Reaching a Target Outside the Trust Circle {#example-federation-edge}
+
+Suppose TravelSaaS must also call PartnerSaaS at `https://partner.example/`,
+whose Resource Authorization Server does not trust `idp.example`. The chain
+cannot continue there: the IdP holds no pairwise subject for that audience
+and no authorization basis covers it, so a continuation request for that
+target fails ({{validation}}, rules 14 and 16; `invalid_target`). This is
+the profile's boundary, not a deployment error: continuation serves the set
+of Resource Authorization Servers that trust the common IdP.
+
+The crossing instead follows the identity-chaining model
+{{I-D.ietf-oauth-identity-chaining}}: travel.example's own authorization
+server issues a grant that PartnerSaaS's server accepts under a bilateral
+trust agreement, for example by exchanging TravelService's intra-domain
+Transaction Token under the Transaction Token chaining profile
+{{I-D.fletcher-transaction-token-chaining-profile}}. The subject presented
+to the partner is mapped by travel.example's authorization server under
+that agreement, not by the IdP: the trust direction of
+{{rationale-propagation}}, inverted by explicit federation.
+
+The handle stays behind. It is conveyed only to chain participants
+({{context-binding}}), and PartnerSaaS is not one; the chain simply ends at
+the federation edge. Audit continuity across the two legs is
+deployment-defined, for example through the chaining profile's `txn`
+transaction identifier and the evidence layer of {{assertion-claims}}.
 
 # Background Agent Example (User-Scheduled Continuation) {#example-background}
 
