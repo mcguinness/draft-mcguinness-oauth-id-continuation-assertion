@@ -2252,7 +2252,16 @@ IdP resolves to an active session it established for this user and
 client binds the chain to that session.<a href="#section-7.2-3.2.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-7.2-4">A chain is established only where that governing authorization is
+<p id="section-7.2-4">These correspond to the two functions that subject tokens perform in the
+ID-JAG profile, identity assertion (an ID Token conveying the
+authenticated subject) and identity continuity (a refresh token continuing
+an existing authorization grant); the distinction is implicit in that
+profile's choice of subject tokens rather than stated by it. Each rooting
+path binds the chain to the record its function references. An access
+token is a resource-authorization credential, constructed for presentation
+to a protected resource rather than for identity brokering; it is not an
+ID-JAG subject token and roots nothing here.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">A chain is established only where that governing authorization is
 continuation-capable: its consent and policy explicitly permit
 continuation and establish the authorization basis, the continuation
 authorization (the permitted actors or trust domains), the maximum
@@ -2262,8 +2271,8 @@ always come from server-side consent and policy state, never from token
 claims. The IdP consumes <code>sid</code> solely to resolve the session; it <span class="bcp14">MUST NOT</span>
 appear in assertions or conveyed chain context (<a href="#privacy" class="auto internal xref">Section 12</a>). An unused
 chain is inert state: its establishment exercises no authority beyond
-what the continuation-capable governing authorization already granted.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
-<p id="section-7.2-5">When establishing a chain, the IdP <span class="bcp14">MUST</span> determine the root actor: the
+what the continuation-capable governing authorization already granted.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+<p id="section-7.2-6">When establishing a chain, the IdP <span class="bcp14">MUST</span> determine the root actor: the
 authenticated OAuth client of the direct request, identified through the
 authoritative client-to-actor mapping of <a href="#client-identity" class="auto internal xref">Section 7.5</a>. An
 <code>actor_token</code> is <span class="bcp14">OPTIONAL</span> on a direct request. If present, it <span class="bcp14">MUST</span> be of a
@@ -2273,14 +2282,14 @@ the IdP where its type defines an audience or applicability restriction,
 (for example, the request's DPoP proof key), and <span class="bcp14">MUST</span> identify the same
 entity as the authenticated client. The IdP <span class="bcp14">MUST</span> record the root actor in
 the root hop only after this validation; the root actor begins every
-branch's lineage (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-7.2-5" class="pilcrow">¶</a></p>
-<p id="section-7.2-6">The response returns the root hop's handle in <code>identity_continuation_handle</code>
+branch's lineage (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-7.2-6" class="pilcrow">¶</a></p>
+<p id="section-7.2-7">The response returns the root hop's handle in <code>identity_continuation_handle</code>
 and <span class="bcp14">MAY</span> include the chain's expiry in <code>identity_continuation_exp</code>
-(<a href="#response-param" class="auto internal xref">Section 7.6</a>).<a href="#section-7.2-6" class="pilcrow">¶</a></p>
-<p id="section-7.2-7">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
+(<a href="#response-param" class="auto internal xref">Section 7.6</a>).<a href="#section-7.2-7" class="pilcrow">¶</a></p>
+<p id="section-7.2-8">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
 at-least-once: a retry after a lost response <span class="bcp14">MAY</span> establish a second chain.
 Both chains are bounded by the same consent and policy, and an unused chain
-expires.<a href="#section-7.2-7" class="pilcrow">¶</a></p>
+expires.<a href="#section-7.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chained-id-jag-request">
@@ -3408,6 +3417,10 @@ this document is registered by
         <dd>
 <span class="refAuthor">McGuinness, K.</span>, <span class="refTitle">"OAuth Actor Receipts for Delegation Provenance"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-mcguinness-oauth-actor-receipts-00</span>, <time datetime="2026-07-04" class="refDate">4 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-mcguinness-oauth-actor-receipts-00">https://datatracker.ietf.org/doc/html/draft-mcguinness-oauth-actor-receipts-00</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="OIDC.Core">[OIDC.Core]</dt>
+        <dd>
+<span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Core 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-core-1_0.html">https://openid.net/specs/openid-connect-core-1_0.html</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="OIDC.FrontChannelLogout">[OIDC.FrontChannelLogout]</dt>
         <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
@@ -3490,6 +3503,10 @@ defining claim of an Identity Continuation Assertion. "An ID-JAG carrying
 <p id="appendix-A.1-3">An Identity Continuation Assertion is also not a grant: presenting it to a
 Resource Authorization Server is meaningless. It is the input that <em>produces</em> a
 chained ID-JAG, not a kind of ID-JAG.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-4">It is instead a further identity-continuity credential in the sense of
+<a href="#root-establishment" class="auto internal xref">Section 7.2</a>: where a refresh token continues an authorization
+grant for its own client, the assertion continues the delegation for
+downstream actors, with the chain as the record it references.<a href="#appendix-A.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-txn">
@@ -4266,8 +4283,12 @@ root-chain envelope.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
 active session. <code>briefing-agent</code>, the platform workload, authenticates as
 the OAuth client and performs the direct ID-JAG exchange of
 <a href="#token-exchange" class="auto internal xref">Section 7</a>. Because the task must outlive Alice's session, her
-consent takes the form OAuth already has for durable delegation: a continuation-capable grant to the platform with
-refresh capability and an explicit maximum lifetime. The
+consent takes the form OAuth already has for durable delegation: a
+continuation-capable grant to the platform with refresh capability and an
+explicit maximum lifetime. In an OpenID Connect deployment this is
+typically a grant requested with the <code>offline_access</code> scope <span>[<a href="#OIDC.Core" class="cite xref">OIDC.Core</a>]</span>,
+combined with the consent that makes it continuation-capable
+(<a href="#root-establishment" class="auto internal xref">Section 7.2</a>). The
 platform presents a refresh token from that grant as the <code>subject_token</code>,
 so the grant is the chain's governing authorization
 (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>), with <code>briefing-agent</code> as the
@@ -4862,7 +4883,10 @@ explicit targets, for example,<a href="#appendix-E-3.10.1" class="pilcrow">¶</a
 and, for dynamic ceilings, a concrete form such as an RAR
 authorization detail <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, a policy-bound intent object, or an
 immutable policy-evaluation artifact. Should a future revision
-standardize one?<a href="#appendix-E-3.10.3" class="pilcrow">¶</a></p>
+standardize one? A companion question is how continuation permission
+itself is represented in consent: a dedicated scope value is the
+obvious candidate, though establishment must remain possible without a
+client-requested scope (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#appendix-E-3.10.3" class="pilcrow">¶</a></p>
 </li>
       </ol>
 </section>

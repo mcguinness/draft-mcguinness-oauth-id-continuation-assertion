@@ -863,6 +863,17 @@ Table of Contents
       the IdP resolves to an active session it established for this user
       and client binds the chain to that session.
 
+   These correspond to the two functions that subject tokens perform in
+   the ID-JAG profile, identity assertion (an ID Token conveying the
+   authenticated subject) and identity continuity (a refresh token
+   continuing an existing authorization grant); the distinction is
+   implicit in that profile's choice of subject tokens rather than
+   stated by it.  Each rooting path binds the chain to the record its
+   function references.  An access token is a resource-authorization
+   credential, constructed for presentation to a protected resource
+   rather than for identity brokering; it is not an ID-JAG subject token
+   and roots nothing here.
+
    A chain is established only where that governing authorization is
    continuation-capable: its consent and policy explicitly permit
    continuation and establish the authorization basis, the continuation
@@ -1831,6 +1842,10 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-mcguinness-
               oauth-actor-receipts-00>.
 
+   [OIDC.Core]
+              OpenID Foundation, "OpenID Connect Core 1.0",
+              <https://openid.net/specs/openid-connect-core-1_0.html>.
+
    [OIDC.FrontChannelLogout]
               OpenID Foundation, "OpenID Connect Front-Channel Logout
               1.0", <https://openid.net/specs/openid-connect-
@@ -1908,6 +1923,11 @@ A.1.  Why Not a Profile of ID-JAG
    An Identity Continuation Assertion is also not a grant: presenting it
    to a Resource Authorization Server is meaningless.  It is the input
    that _produces_ a chained ID-JAG, not a kind of ID-JAG.
+
+   It is instead a further identity-continuity credential in the sense
+   of Section 7.2: where a refresh token continues an authorization
+   grant for its own client, the assertion continues the delegation for
+   downstream actors, with the chain as the record it references.
 
 A.2.  Why Not a Profile of a Transaction Token
 
@@ -2583,7 +2603,10 @@ C.1.  Setup (Alice Present)
    exchange of Section 7.  Because the task must outlive Alice's
    session, her consent takes the form OAuth already has for durable
    delegation: a continuation-capable grant to the platform with refresh
-   capability and an explicit maximum lifetime.  The platform presents a
+   capability and an explicit maximum lifetime.  In an OpenID Connect
+   deployment this is typically a grant requested with the
+   offline_access scope [OIDC.Core], combined with the consent that
+   makes it continuation-capable (Section 7.2).  The platform presents a
    refresh token from that grant as the subject_token, so the grant is
    the chain's governing authorization (Section 7.2, Section 6), with
    briefing-agent as the permitted continuer; the envelope's authorized
@@ -3111,7 +3134,11 @@ Appendix E.  Open Items for Working Group Discussion
         and, for dynamic ceilings, a concrete form such as an RAR
         authorization detail [RFC9396], a policy-bound intent object, or
         an immutable policy-evaluation artifact.  Should a future
-        revision standardize one?
+        revision standardize one?  A companion question is how
+        continuation permission itself is represented in consent: a
+        dedicated scope value is the obvious candidate, though
+        establishment must remain possible without a client-requested
+        scope (Section 7.2).
 
 Acknowledgments
 
