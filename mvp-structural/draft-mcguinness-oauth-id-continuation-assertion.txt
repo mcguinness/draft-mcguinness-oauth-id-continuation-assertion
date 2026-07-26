@@ -202,7 +202,7 @@ Table of Contents
    [I-D.ietf-oauth-identity-assertion-authz-grant].  Every subsequent
    hop is different: by the time TravelSaaS must call BookingSaaS, the
    user is no longer present and TravelSaaS holds no end-user credential
-   to present, only chain context crossed the boundary, so it cannot
+   to present.  Only chain context crossed the boundary, so it cannot
    perform a normal exchange even though the same IdP could mint the
    next grant.
 
@@ -1924,18 +1924,19 @@ A.3.  Why Not a Cross-Domain Propagation Token
    issuer, to name the user, which is the model of
    [I-D.ietf-oauth-identity-chaining] (for example
    [I-D.fletcher-transaction-token-chaining-profile]); an offline token
-   cannot be revoked mid-chain, whereas a continuation is an IdP
-   exchange (Section 6); and a stolen assertion permits only an
-   envelope-bounded IdP exchange (Section 11).  Built honestly such a
-   token collapses into this profile.  Direct propagation fits only
-   where all domains share one global subject, mutually trust each
-   other's issuers (for example, a single SPIFFE-style trust domain),
-   and accept the loss of mid-chain revocation, a different problem from
-   the pairwise-subject case this profile addresses.  Delegated
-   Authorization [I-D.li-oauth-delegated-authorization], whose client-
-   issued tokens carry no subject at all, composes with this profile as
-   the intra-domain layer (Section 3) and stops exactly where re-
-   subjecting begins.
+   remains usable without consulting the IdP, whereas continuation
+   checks current IdP state at every hop (Section 6); and a stolen
+   assertion permits only an envelope-bounded IdP exchange (Section 11).
+   Built honestly such a token collapses into this profile.  Direct
+   propagation fits only where all domains share one global subject,
+   mutually trust each other's issuers (for example, a single SPIFFE-
+   style trust domain), and accept the loss of mid-chain revocation, a
+   different problem from the pairwise-subject case this profile
+   addresses.  Delegated Authorization
+   [I-D.li-oauth-delegated-authorization], whose client-issued tokens
+   carry no subject at all, composes with this profile as the intra-
+   domain layer (Section 3) and stops exactly where re-subjecting
+   begins.
 
 A.4.  Alternative Topology: Resolution at the Target
 
@@ -1943,30 +1944,32 @@ A.4.  Alternative Topology: Resolution at the Target
    the target RAS under a new grant type, which resolves it at the IdP
    over a back channel [RFC7662]; a variant returns the ID-JAG itself,
    so the target uses unchanged ID-JAG processing.  It removes the Chain
-   Authority and a round trip, but every target RAS must implement the
-   new grant type and sees the reference.  This document standardizes
-   push because the target consumes an ordinary ID-JAG unchanged,
+   Authority and moves one token round trip from the workload to the
+   target's back channel, but every target RAS must implement the new
+   grant type and sees the reference.  This document standardizes push
+   because the target consumes an ordinary ID-JAG unchanged,
    concentrating new behavior in the few (IdP, Chain Authority) rather
    than the many (RAS).  Pull remains a candidate companion profile over
    the same envelope.
 
 A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
 
-   A bare grant type (the handle as a request parameter, no assertion
-   JWT or Chain Authority) loses little where the continuing domain has
-   no offline segment and no domain-local policy.  The signed assertion
-   was retained for what the Chain Authority attests first-hand and the
-   IdP cannot: validating an intra-domain offline segment before the
-   boundary, and vouching for its own workloads' identity and keys.
-   Because the Chain Authority does not see the target of the eventual
-   exchange (Section 4.3), it gates only continuation, never target or
-   scope, which are solely the IdP's to authorize; with all lineage IdP-
-   constructed (Section 10), the assertion carries exactly what the
-   Chain Authority can attest first-hand, the authenticated current
-   actor and its key binding.  Where a deployment needs neither
-   capability, the Chain Authority reduces to a co-signature over the
-   handle and the current actor, and the bare grant type remains a
-   candidate simplification.
+   A bare grant type would present the handle under client
+   authentication, with a sender-constrained actor_token and live proof
+   of possession, but without an assertion JWT or Chain Authority.  It
+   loses little where the continuing domain has no offline segment and
+   no domain-local policy.  The signed assertion was retained for what
+   the Chain Authority attests first-hand and the IdP cannot: validating
+   an intra-domain offline segment before the boundary, and vouching for
+   its own workloads' identity and keys.  Because the Chain Authority
+   does not see the target of the eventual exchange (Section 4.3), it
+   gates only continuation, never target or scope, which are solely the
+   IdP's to authorize; with all lineage IdP-constructed (Section 10),
+   the assertion carries exactly what the Chain Authority can attest
+   first-hand, the authenticated current actor and its key binding.
+   Where a deployment needs neither capability, the Chain Authority
+   reduces to a co-signature over the handle and the current actor, and
+   the bare grant type remains a candidate simplification.
 
 Appendix B.  Worked Example (Same-IdP)
 

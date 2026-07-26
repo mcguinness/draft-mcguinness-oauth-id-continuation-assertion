@@ -1478,7 +1478,7 @@ token) and exchanges it at the IdP for an Identity Assertion JWT Authorization
 Grant (ID-JAG), exactly as in
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. Every subsequent hop is
 different: by the time TravelSaaS must call BookingSaaS, the user is no longer
-present and TravelSaaS holds no end-user credential to present, only chain
+present and TravelSaaS holds no end-user credential to present. Only chain
 context crossed the boundary, so it cannot perform a normal exchange even
 though the same IdP could mint the next grant.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
 <p id="section-1.1-2">This document defines the missing input. An Identity Continuation Assertion
@@ -3525,9 +3525,9 @@ source-minted token cannot compute the next audience's pairwise subject
 (<a href="#motivation" class="auto internal xref">Section 1.1</a>); the receiver trusts the IdP, not the source issuer, to name
 the user, which is the model of <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (for
 example <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>); an offline token
-cannot be revoked mid-chain, whereas a continuation is an IdP exchange
-(<a href="#lifecycle" class="auto internal xref">Section 6</a>); and a stolen assertion permits only an envelope-bounded IdP
-exchange (<a href="#security" class="auto internal xref">Section 11</a>). Built honestly such a token collapses into this
+remains usable without consulting the IdP, whereas continuation checks current
+IdP state at every hop (<a href="#lifecycle" class="auto internal xref">Section 6</a>); and a stolen assertion permits only an
+envelope-bounded IdP exchange (<a href="#security" class="auto internal xref">Section 11</a>). Built honestly such a token collapses into this
 profile. Direct propagation fits only where all domains share one global
 subject, mutually trust each other's issuers (for example, a single
 SPIFFE-style trust domain), and accept the loss of mid-chain revocation, a
@@ -3546,8 +3546,9 @@ re-subjecting begins.<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-A.4-1">A pull topology was evaluated: the workload presents its reference to the
 target RAS under a new grant type, which resolves it at the IdP over a back
 channel <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>; a variant returns the ID-JAG itself, so the target uses
-unchanged ID-JAG processing. It removes the Chain Authority and a round trip,
-but every target RAS must implement the new grant type and sees the reference.
+unchanged ID-JAG processing. It removes the Chain Authority and moves one
+token round trip from the workload to the target's back channel, but every
+target RAS must implement the new grant type and sees the reference.
 This document standardizes push because the target consumes an ordinary
 ID-JAG unchanged, concentrating new behavior in the few (IdP, Chain
 Authority) rather than the many (RAS). Pull remains a candidate companion
@@ -3559,9 +3560,10 @@ profile over the same envelope.<a href="#appendix-A.4-1" class="pilcrow">¶</a><
         <h3 id="name-why-a-signed-assertion-rath">
 <a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-a-signed-assertion-rath" class="section-name selfRef">Why a Signed Assertion Rather Than a Bare Grant Type</a>
         </h3>
-<p id="appendix-A.5-1">A bare grant type (the handle as a request parameter, no assertion JWT or
-Chain Authority) loses little where the continuing domain has no offline
-segment and no domain-local policy. The signed assertion was retained for
+<p id="appendix-A.5-1">A bare grant type would present the handle under client authentication, with
+a sender-constrained <code>actor_token</code> and live proof of possession, but without
+an assertion JWT or Chain Authority. It loses little where the continuing
+domain has no offline segment and no domain-local policy. The signed assertion was retained for
 what the Chain Authority attests first-hand and the IdP cannot: validating an
 intra-domain offline segment before the boundary, and vouching for its own
 workloads' identity and keys. Because the Chain Authority does not see the
