@@ -1630,8 +1630,9 @@ authorization, with lineage read along each hop's parent path
 evidence for a given tenant and to issue Identity Continuation Assertions.
 It is a role, not a new component: commonly an existing party the IdP
 already trusts (a Resource Authorization Server, a transaction-token
-service, or a domain gateway), though it <span class="bcp14">MAY</span> be a dedicated service. It
-never resolves the target audience's user subject identifier.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
+service, or a domain gateway), though it <span class="bcp14">MAY</span> be a dedicated service. It is
+never the authority for resolving the target audience's user subject
+identifier.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.17">Current actor (presenting actor):</dt>
@@ -3491,8 +3492,8 @@ rule 4) is the assertion's defining claim, so "an ID-JAG carrying
 grant: presenting it to a Resource Authorization Server is meaningless, it is
 the input that produces a chained ID-JAG. It is instead a further
 identity-continuity credential (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>): where a refresh token
-continues a grant for its own client, it continues the delegation for
-downstream actors.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+continues a grant for its own client, the assertion continues the delegation
+for downstream actors.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-txn">

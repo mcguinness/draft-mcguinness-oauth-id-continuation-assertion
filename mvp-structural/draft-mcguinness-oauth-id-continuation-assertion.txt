@@ -341,8 +341,9 @@ Table of Contents
       Identity Continuation Assertions.  It is a role, not a new
       component: commonly an existing party the IdP already trusts (a
       Resource Authorization Server, a transaction-token service, or a
-      domain gateway), though it MAY be a dedicated service.  It never
-      resolves the target audience's user subject identifier.
+      domain gateway), though it MAY be a dedicated service.  It is
+      never the authority for resolving the target audience's user
+      subject identifier.
 
    Current actor (presenting actor):  The workload that presents the
       Identity Continuation Assertion and the Token Exchange request to
@@ -1896,8 +1897,8 @@ A.1.  Why Not a Profile of ID-JAG
    Resource Authorization Server is meaningless, it is the input that
    produces a chained ID-JAG.  It is instead a further identity-
    continuity credential (Section 7.2): where a refresh token continues
-   a grant for its own client, it continues the delegation for
-   downstream actors.
+   a grant for its own client, the assertion continues the delegation
+   for downstream actors.
 
 A.2.  Why Not a Transaction Token
 
