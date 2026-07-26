@@ -281,8 +281,9 @@ Chain Authority:
   evidence for a given tenant and to issue Identity Continuation Assertions.
   It is a role, not a new component: commonly an existing party the IdP
   already trusts (a Resource Authorization Server, a transaction-token
-  service, or a domain gateway), though it MAY be a dedicated service. It
-  never resolves the target audience's user subject identifier.
+  service, or a domain gateway), though it MAY be a dedicated service. It is
+  never the authority for resolving the target audience's user subject
+  identifier.
 
 Current actor (presenting actor):
 : The workload that presents the Identity Continuation Assertion and the Token
@@ -1634,8 +1635,8 @@ rule 4) is the assertion's defining claim, so "an ID-JAG carrying
 grant: presenting it to a Resource Authorization Server is meaningless, it is
 the input that produces a chained ID-JAG. It is instead a further
 identity-continuity credential ({{root-establishment}}): where a refresh token
-continues a grant for its own client, it continues the delegation for
-downstream actors.
+continues a grant for its own client, the assertion continues the delegation
+for downstream actors.
 
 ## Why Not a Transaction Token {#rationale-txn}
 
