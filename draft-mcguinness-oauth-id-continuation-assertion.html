@@ -1451,22 +1451,14 @@ subject identifier.<a href="#section-1-1" class="pilcrow">¶</a></p>
 <p id="section-1-2">The key use case addressed by this document is therefore:<a href="#section-1-2" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-1-3">
 <pre>
-ExpenseSaaS calls TravelSaaS. TravelSaaS must call BookingSaaS.
-Each SaaS API is protected by its own Resource Authorization Server.
-All Resource Authorization Servers trust the same enterprise IdP for
-SSO, delegation continuity, and audience-local subject resolution.
-</pre><a href="#section-1-3" class="pilcrow">¶</a>
-</div>
-<div class="alignLeft art-text artwork" id="section-1-4">
-<pre>
 ExpenseApp -&gt; ExpenseSaaS/ExpenseRAS -&gt; TravelSaaS/TravelRAS
            -&gt; BookingSaaS/BookingRAS
-</pre><a href="#section-1-4" class="pilcrow">¶</a>
+</pre><a href="#section-1-3" class="pilcrow">¶</a>
 </div>
-<p id="section-1-5">The user authenticates once at the enterprise IdP and is never redirected
+<p id="section-1-4">The user authenticates once at the enterprise IdP and is never redirected
 through a new interactive flow for an onward hop. The IdP remains the trust
 anchor, and each onward grant is audience-scoped and carries the subject
-identifier appropriate for its target RAS.<a href="#section-1-5" class="pilcrow">¶</a></p>
+identifier appropriate for its target RAS.<a href="#section-1-4" class="pilcrow">¶</a></p>
 <div id="motivation">
 <section id="section-1.1">
         <h3 id="name-why-a-new-input-is-needed">
@@ -1479,8 +1471,8 @@ Grant (ID-JAG), exactly as in
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. Every subsequent hop is
 different: by the time TravelSaaS must call BookingSaaS, the user is no longer
 present and TravelSaaS holds no end-user credential to present. Only chain
-context crossed the boundary, so it cannot perform a normal exchange even
-though the same IdP could mint the next grant.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+context crossed the boundary, so TravelSaaS cannot perform a normal exchange
+even though the same IdP could mint the next grant.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
 <p id="section-1.1-2">This document defines the missing input. An Identity Continuation Assertion
 is a short-lived, sender-constrained, verifiable statement about the
 in-flight delegation chain, presented to the IdP in place of an end-user
@@ -1510,7 +1502,7 @@ attenuation. A holder can only narrow authority it already possesses; it
 cannot synthesize a subject it was never issued. The Identity Continuation
 Assertion supplies the fresh, sender-constrained evidence the IdP needs to
 mint the next grant, used as a Token Exchange subject token to obtain an
-onward ID-JAG, the output profile of this document.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+onward ID-JAG, the output of this profile.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
 <p id="section-1.2-3">The profile therefore serves two inseparable requirements of this deployment
 model: identity continuity, resolving the same root user into each new
 audience-local subject, and authorization continuity, proving that the
@@ -1547,7 +1539,7 @@ type (<a href="#names" class="auto internal xref">Section 4.1</a>) for the conti
 parameters with their control-plane handling (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>,
 <a href="#chain-id" class="auto internal xref">Section 5</a>),
 the IdP validation rules for a continuation request (<a href="#validation" class="auto internal xref">Section 9</a>), an
-<span class="bcp14">OPTIONAL</span> HTTP binding for conveying chain context (<a href="#context-binding" class="auto internal xref">Section 4.6</a>), and
+optional HTTP binding for conveying chain context (<a href="#context-binding" class="auto internal xref">Section 4.6</a>), and
 an authorization server metadata signal (<a href="#metadata" class="auto internal xref">Section 7.7</a>). The onward ID-JAG
 and the way a Resource Authorization Server consumes it are unchanged.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
 <p id="section-1.3-4">Open design questions on which the author seeks working group feedback are
@@ -1596,9 +1588,9 @@ by its Resource Authorization Server. A Resource Server never consumes an
 Identity Continuation Assertion, no token it consumes carries an <code>identity_continuation_handle</code>,
 and its authorization decisions never depend on one. A workload co-located
 with a Resource Server <span class="bcp14">MAY</span> receive an <code>identity_continuation_handle</code> as control-plane context
-accompanying a request (<a href="#context-binding" class="auto internal xref">Section 4.6</a>); such a workload <span class="bcp14">MUST NOT</span>
-place a received handle into any token it issues or expose it to Resource
-Server application code, logs, or traces (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+accompanying a request (<a href="#context-binding" class="auto internal xref">Section 4.6</a>); it <span class="bcp14">MUST NOT</span> place a received
+handle into any token it issues (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4) and is otherwise
+subject to the disclosure limits of <a href="#privacy" class="auto internal xref">Section 12</a>.<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.9">ID-JAG:</dt>
@@ -1630,7 +1622,7 @@ authorization, with lineage read along each hop's parent path
 evidence for a given tenant and to issue Identity Continuation Assertions.
 It is a role, not a new component: commonly an existing party the IdP
 already trusts (a Resource Authorization Server, a transaction-token
-service, or a domain gateway), though it <span class="bcp14">MAY</span> be a dedicated service. It is
+service, or a domain gateway), though it may be a dedicated service. It is
 never the authority for resolving the target audience's user subject
 identifier.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
 </dd>
@@ -1721,7 +1713,7 @@ establishment, needs no enumeration. See <a href="#validation" class="auto inter
 <dt id="section-2-3.29">Audience-local (pairwise) subject:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.30">
           <p id="section-2-3.30.1">The subject identifier under which a particular RAS names the user. Distinct
-Resource Authorization Servers <span class="bcp14">MAY</span> name the same user with different
+Resource Authorization Servers may name the same user with different
 identifiers; only the IdP holds the map between them.<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
@@ -1889,9 +1881,10 @@ replay-state retention window small.<a href="#section-4.2-4.12.1" class="pilcrow
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-4.2-5">The assertion <span class="bcp14">MUST NOT</span> contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, or <code>amr</code>
-claim. The IdP obtains the user and root authentication context from the
-root-chain envelope indexed by <code>identity_continuation_handle</code>, and identifies the current workload
+<p id="section-4.2-5">The assertion <span class="bcp14">MUST NOT</span> contain a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, <code>amr</code>,
+or <code>sid</code> claim (<a href="#validation" class="auto internal xref">Section 9</a>, rule 8). The IdP obtains the user and root
+authentication context from the
+root-chain envelope indexed by <code>identity_continuation_handle</code>, and identifies the current actor
 from the <code>act</code> claim and the <code>actor_token</code>; the assertion is evidence, not
 a second source of identity.<a href="#section-4.2-5" class="pilcrow">¶</a></p>
 <p id="section-4.2-6">The assertion <span class="bcp14">MAY</span> carry other top-level claims. A recipient <span class="bcp14">MUST</span> ignore
@@ -2155,14 +2148,15 @@ ends every chain rooted in that session. Withdrawal of the consent or
 policy that made the authorization continuation-capable likewise ends its
 chains, even while the anchor itself remains active. A session-anchored
 chain's lifetime <span class="bcp14">MUST NOT</span> exceed the session's, so only grant-anchored
-chains outlive logout. The IdP <span class="bcp14">MUST</span>
-bound the continuation lifetime of a chain by the lifetime of
+chains outlive logout.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">The IdP <span class="bcp14">MUST</span> bound the continuation lifetime of a chain by the lifetime of
 its governing authorization, and <span class="bcp14">MUST</span> reject a continuation of an expired
-chain (<a href="#validation" class="auto internal xref">Section 9</a>). The governing authorization is distinct from the
+chain (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4">The governing authorization is distinct from the
 root authentication context: continuing a chain <span class="bcp14">MUST NOT</span> extend that
 context, and <code>auth_time</code>, <code>acr</code>, and <code>amr</code> are fixed at root issuance and
-inherited unchanged by onward grants (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>).<a href="#section-6-2" class="pilcrow">¶</a></p>
-<p id="section-6-3">The IdP <span class="bcp14">MUST</span> be able to revoke a chain, and <span class="bcp14">MUST</span> stop honoring continuation
+inherited unchanged by onward grants (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>).<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-5">The IdP <span class="bcp14">MUST</span> be able to revoke a chain, and <span class="bcp14">MUST</span> stop honoring continuation
 for a revoked chain. Ending the governing authorization or its anchor revokes every chain rooted in it:
 revocation of the anchoring grant does so (for example, through a grant
 management interface, or through token revocation <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> where the
@@ -2171,19 +2165,19 @@ specification leaves to server policy), as does
 termination of the user's session where the session anchors, or withdrawal
 of the underlying consent or policy. An IdP <span class="bcp14">MAY</span> additionally revoke an individual hop's subtree, stopping
 continuation along one branch while the rest of the chain remains
-continuable.<a href="#section-6-3" class="pilcrow">¶</a></p>
-<p id="section-6-4">Revocation therefore takes effect at the next hop, with no need to reach
+continuable.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">Revocation therefore takes effect at the next hop, with no need to reach
 chain evidence already held by intermediate services, unlike an offline
 attenuated delegation token whose minted child remains usable for its
 lifetime without contacting an authority. Access tokens already issued by a
 Resource Authorization Server remain valid for their own lifetimes under
-that server's revocation mechanisms.<a href="#section-6-4" class="pilcrow">¶</a></p>
-<p id="section-6-5">Revocation is a control-plane capability, but the delegation belongs to the
+that server's revocation mechanisms.<a href="#section-6-6" class="pilcrow">¶</a></p>
+<p id="section-6-7">Revocation is a control-plane capability, but the delegation belongs to the
 user. IdPs are encouraged to make active chains visible and revocable through user-
 and administrator-facing management interfaces, presenting the root context,
 the chain's hop graph and actor lineage, the targets granted so far, and the
 chain's expiry. Grant Management for OAuth 2.0 <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> provides a
-comparable management model for standing grants.<a href="#section-6-5" class="pilcrow">¶</a></p>
+comparable management model for standing grants.<a href="#section-6-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-exchange">
@@ -2237,7 +2231,7 @@ is established and no handle is returned; its absence tells the client
 that the delegation is not continuable. Tenant enablement (<a href="#metadata" class="auto internal xref">Section 7.7</a>)
 is a capability signal and authorizes nothing.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">The chain's properties are not negotiated. The root subject token resolves
-the chain's lifecycle anchor, and the IdP then locates the continuation
+the chain's lifecycle anchor, and the IdP then locates the governing
 authorization attached to that anchor; the IdP <span class="bcp14">MUST NOT</span> establish a chain
 from a subject token it cannot resolve to an anchor. Three rooting paths
 are defined:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
@@ -2377,8 +2371,8 @@ entity only if their issuer and subject identifiers are octet-for-octet equal. T
 IdP <span class="bcp14">MUST</span> apply this comparison when matching the <code>actor_token</code> to the
 <code>act</code> claim and to the authenticated client (<a href="#client-identity" class="auto internal xref">Section 7.5</a>).
 Comparison occurs within the tenant context already established for the
-exchange (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10); identities from different tenants are
-never compared equal.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+exchange (<a href="#validation" class="auto internal xref">Section 9</a>, rules 6 and 10); identities from different tenants
+are never compared equal.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
 <p id="section-7.4-4">The onward ID-JAG the IdP issues is itself sender-constrained to the same key
 through its own <code>cnf</code>, using the DPoP-based binding the ID-JAG profile defines
 (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>). This version deliberately standardizes a single mandatory-to-implement
@@ -2406,7 +2400,7 @@ coordination with the IdP.<a href="#section-7.4-5" class="pilcrow">¶</a></p>
 and the current actor is that client:<a href="#section-7.5-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-7.5-2.1">
-            <p id="section-7.5-2.1.1">The requester <span class="bcp14">MUST</span> authenticate as an OAuth client. As with the direct
+            <p id="section-7.5-2.1.1">The current actor <span class="bcp14">MUST</span> authenticate as an OAuth client. As with the direct
 ID-JAG exchange, this profile is intended for confidential clients.<a href="#section-7.5-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-7.5-2.2">
@@ -2511,9 +2505,9 @@ exchange.<a href="#section-7.7-3" class="pilcrow">¶</a></p>
       <h2 id="name-same-idp-core-flow">
 <a href="#section-8" class="section-number selfRef">8. </a><a href="#name-same-idp-core-flow" class="section-name selfRef">Same-IdP Core Flow</a>
       </h2>
-<p id="section-8-1">The canonical same-IdP SaaS-to-SaaS flow proceeds as follows. Steps 5 through
+<p id="section-8-1">The canonical same-IdP SaaS-to-SaaS flow proceeds as follows. Steps 4 through
 7 repeat for each additional cross-boundary hop (for example, TravelRAS to
-BookingRAS).<a href="#section-8-1" class="pilcrow">¶</a></p>
+BookingRAS), each conveying the fresh handle from step 6 onward.<a href="#section-8-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-8-2">
 <li id="section-8-2.1">
           <p id="section-8-2.1.1">ExpenseApp authenticates the user and requests an ID-JAG for ExpenseRAS
@@ -2532,10 +2526,10 @@ invokes ExpenseSaaS, conveying <code>identity_continuation_handle</code> as
 control-plane context (<a href="#context-binding" class="auto internal xref">Section 4.6</a>).<a href="#section-8-2.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.4">
-          <p id="section-8-2.4.1">ExpenseSaaS propagates chain context to TravelService
-(<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); no audience-local subject crosses the SaaS
-boundary, and local fan-out within a domain <span class="bcp14">MAY</span> use an offline attenuated
-stack.<a href="#section-8-2.4.1" class="pilcrow">¶</a></p>
+          <p id="section-8-2.4.1">ExpenseSaaS propagates chain context to TravelService, the TravelSaaS
+workload that will continue the chain (<a href="#context-provenance" class="auto internal xref">Section 4.5</a>); no
+audience-local subject crosses the SaaS boundary, and local fan-out within
+a domain may use an offline attenuated stack (<a href="#decision-rule" class="auto internal xref">Section 3</a>).<a href="#section-8-2.4.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-2.5">
           <p id="section-8-2.5.1">To call TravelRAS, TravelService obtains an Identity Continuation
@@ -2645,8 +2639,8 @@ assertion's <code>cnf</code> (<a href="#sender-constrained-presentation" class="
 </li>
         <li id="section-9-2.11">
           <p id="section-9-2.11.1">the request proves possession of the key confirmed by <code>cnf</code> with a DPoP
-   proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <code>cnf.jkt</code>
-   (<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>);<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
+proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <code>cnf.jkt</code>
+(<a href="#sender-constrained-presentation" class="auto internal xref">Section 7.4</a>);<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-9-2.12">
           <p id="section-9-2.12.1"><code>jti</code> has not been successfully consumed before for the assertion issuer;<a href="#section-9-2.12.1" class="pilcrow">¶</a></p>
@@ -2796,8 +2790,8 @@ verifiable form for such records.<a href="#section-10-4" class="pilcrow">¶</a><
 understand the Identity Continuation Assertion, and it never sees <code>identity_continuation_handle</code>.
 The <code>client_id</code> is the current actor's client identifier for the target
 Resource Authorization Server (<a href="#client-identity" class="auto internal xref">Section 7.5</a>); in this document's
-examples the workload identifier serves as both, so it matches the outer
-<code>act.sub</code>.<a href="#section-10-5" class="pilcrow">¶</a></p>
+examples the workload identifier serves as both the client identifier and
+the <code>act.sub</code> value, so the two match.<a href="#section-10-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security">
@@ -2819,12 +2813,12 @@ consumption (<a href="#sender-constrained-presentation" class="auto internal xre
           <p id="section-11-2.2.1">a compromised or curious intermediate workload that holds propagated chain
 context and attempts to broaden authority, impersonate the user, or inflate
 the authentication context, bounded by the root-chain envelope and the actor
-binding (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>, the envelope enforcement below);<a href="#section-11-2.2.1" class="pilcrow">¶</a></p>
+binding (<a href="#security-assurance" class="auto internal xref">Section 11.3</a>, <a href="#security-envelope" class="auto internal xref">Section 11.4</a>);<a href="#section-11-2.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-11-2.3">
           <p id="section-11-2.3.1">a compromised Chain Authority, which can issue assertions only for chains
 it is trusted for, and whose assertions still require an authenticated,
-permitted actor (the Chain Authority trust section below);<a href="#section-11-2.3.1" class="pilcrow">¶</a></p>
+permitted actor (<a href="#security-chain-authority" class="auto internal xref">Section 11.5</a>);<a href="#section-11-2.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-11-2.4">
           <p id="section-11-2.4.1">a party that can influence the client-to-actor mapping
@@ -2858,9 +2852,9 @@ key holder.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
         <h3 id="name-short-lifetime-and-replay">
 <a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-short-lifetime-and-replay" class="section-name selfRef">Short Lifetime and Replay</a>
         </h3>
-<p id="section-11.2-1">The 300-second lifetime ceiling (rule 13) and the atomic single-use
-consumption of (<code>iss</code>, <code>jti</code>) (the consume-and-record step following the
-numbered rules) are enforced at validation (<a href="#validation" class="auto internal xref">Section 9</a>).
+<p id="section-11.2-1">The 300-second lifetime ceiling and the atomic single-use consumption of
+(<code>iss</code>, <code>jti</code>) are enforced at validation (<a href="#validation" class="auto internal xref">Section 9</a>, rule 13 and the
+consume-and-record step following the numbered rules).
 Because the assertion is consumed only at the IdP and never by a Resource
 Server, its blast radius on replay is confined to the continuation exchange.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 </section>
@@ -2877,7 +2871,7 @@ the IdP <span class="bcp14">MUST</span> copy it unchanged into an onward ID-JAG 
 requires those claims.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="envelope-enforcement-and-offline-attenuation">
+<div id="security-envelope">
 <section id="section-11.4">
         <h3 id="name-envelope-enforcement-and-of">
 <a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-envelope-enforcement-and-of" class="section-name selfRef">Envelope Enforcement and Offline Attenuation</a>
@@ -2907,16 +2901,17 @@ inbound transaction and its handle (<a href="#context-provenance" class="auto in
 carrier for that association is an open item (<a href="#open-items" class="auto internal xref">Appendix E</a>).<a href="#section-11.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="trust-in-the-chain-authority">
+<div id="security-chain-authority">
 <section id="section-11.5">
         <h3 id="name-trust-in-the-chain-authorit">
 <a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-trust-in-the-chain-authorit" class="section-name selfRef">Trust in the Chain Authority</a>
         </h3>
 <p id="section-11.5-1">The IdP <span class="bcp14">MUST</span> accept assertions only from Chain Authorities it trusts for the
-relevant tenant (<a href="#validation" class="auto internal xref">Section 9</a>). A compromised Chain Authority can issue
+relevant tenant (<a href="#validation" class="auto internal xref">Section 9</a>, rule 6). A compromised Chain Authority can issue
 assertions only for chains it is trusted for, and a continuation still
 requires an authenticated actor permitted by the chain's continuation
-authorization (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10), within the envelope ceiling above.
+authorization (<a href="#validation" class="auto internal xref">Section 9</a>, rule 10), within the ceiling of
+<a href="#security-envelope" class="auto internal xref">Section 11.4</a>.
 Deployments <span class="bcp14">SHOULD</span> scope Chain Authority trust as narrowly as practical
 and <span class="bcp14">SHOULD</span> monitor for anomalous continuation patterns.
 <code>identity_continuation_handle</code> confidentiality is defense in depth, not
@@ -2994,7 +2989,7 @@ applies.<a href="#section-11.8-1" class="pilcrow">¶</a></p>
       </h2>
 <p id="section-12-1">An <code>identity_continuation_handle</code> correlates the control-plane participants on its
 conveyance path, and the rules in <a href="#chain-id" class="auto internal xref">Section 5</a> keep it out of the data
-plane: because no consumed data-plane token carries it (rule 4) and each
+plane: because no consumed data-plane token carries it (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4) and each
 RAS sees only its own pairwise subject, a Resource Server or RAS cannot
 directly correlate the user across SaaS boundaries from those tokens.<a href="#section-12-1" class="pilcrow">¶</a></p>
 <p id="section-12-2">This property does not make the complete chain unlinkable. The IdP necessarily
@@ -3008,7 +3003,7 @@ must weigh the audit value of deep actor lineage against this correlation
 channel and <span class="bcp14">MAY</span> limit the nested lineage exposed to each audience, subject to
 their audit requirements. Deployments <span class="bcp14">SHOULD</span> limit disclosure of <code>identity_continuation_handle</code> to
 participants that require it to continue or administer the chain.<a href="#section-12-2" class="pilcrow">¶</a></p>
-<p id="section-12-3">The content and entropy constraints of <a href="#chain-id" class="auto internal xref">Section 5</a> rule 2 keep an
+<p id="section-12-3">The content and entropy constraints of <a href="#chain-id" class="auto internal xref">Section 5</a>, rule 2, keep an
 <code>identity_continuation_handle</code> from revealing the user or being guessed.<a href="#section-12-3" class="pilcrow">¶</a></p>
 <p id="section-12-4">Continuation handles are hop-specific by construction (<a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>),
 so audiences and branches do not share a correlatable identifier. A workload
@@ -3168,7 +3163,7 @@ registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]
           <dd class="break"></dd>
 <dt id="section-13.3-2.3">Claim Description:</dt>
           <dd style="margin-left: 1.5em" id="section-13.3-2.4">
-            <p id="section-13.3-2.4.1">Continuation Handle: an opaque, IdP-generated reference to one hop of a
+            <p id="section-13.3-2.4.1">An opaque, IdP-generated reference to one hop of a
 delegation chain, used to correlate a continuation to its chain
 and parent hop and to resolve the per-audience subject.<a href="#section-13.3-2.4.1" class="pilcrow">¶</a></p>
 </dd>
@@ -3470,9 +3465,9 @@ this document is registered by
       <h2 id="name-design-rationale">
 <a href="#appendix-A" class="section-number selfRef">Appendix A. </a><a href="#name-design-rationale" class="section-name selfRef">Design Rationale</a>
       </h2>
-<p id="appendix-A-1">This appendix is non-normative. The recurring reason the Identity
-Continuation Assertion is a distinct subject token, and a cross-boundary hop
-cannot reuse an existing token, is per-boundary trust: each target trusts
+<p id="appendix-A-1">This appendix is non-normative. It explains why the Identity Continuation
+Assertion is a distinct subject token and why a cross-boundary hop cannot
+reuse an existing token. Both trace to per-boundary trust: each target trusts
 only the IdP to name the user and scope authority, and where subjects are
 pairwise only the IdP can mint the next audience's subject (<a href="#motivation" class="auto internal xref">Section 1.1</a>,
 <a href="#core-principle" class="auto internal xref">Section 1.2</a>).<a href="#appendix-A-1" class="pilcrow">¶</a></p>
@@ -3489,7 +3484,7 @@ ID-JAG would force a <code>sub</code> to mean what this profile forbids, and the
 <code>identity_continuation_handle</code> that every ID-JAG excludes (<a href="#chain-id" class="auto internal xref">Section 5</a>,
 rule 4) is the assertion's defining claim, so "an ID-JAG carrying
 <code>identity_continuation_handle</code>" is self-contradictory. Nor is the assertion a
-grant: presenting it to a Resource Authorization Server is meaningless, it is
+grant: presenting it to a Resource Authorization Server is meaningless; it is
 the input that produces a chained ID-JAG. It is instead a further
 identity-continuity credential (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>): where a refresh token
 continues a grant for its own client, the assertion continues the delegation
@@ -3501,11 +3496,11 @@ for downstream actors.<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
         <h3 id="name-why-not-a-transaction-token">
 <a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-why-not-a-transaction-token" class="section-name selfRef">Why Not a Transaction Token</a>
         </h3>
-<p id="appendix-A.2-1">Transaction Tokens <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> are the closest
+<p id="appendix-A.2-1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> is the closest
 neighbor, a short-lived signed JWT carrying delegation context, often issued
-by a service that could also be the Chain Authority, but they sit at a
-different layer. A Transaction Token is intra-domain: its <code>aud</code> is a trust
-domain it "<span class="bcp14">MUST NOT</span> be accepted outside", it is re-minted as it propagates,
+by a service that could also be the Chain Authority, but it sits at a
+different layer. It is intra-domain: its <code>aud</code> is a trust
+domain that it "<span class="bcp14">MUST NOT</span> be accepted outside", it is re-minted as it propagates,
 and its <code>sub</code> is domain-local. The assertion instead crosses to the IdP, is
 consumed only there, is single-use, and carries neither the target subject
 nor the request context a Transaction Token carries. It is derived from a
@@ -3522,14 +3517,15 @@ that is the offline attenuated delegation layer, used when the subject does
 not change (<a href="#decision-rule" class="auto internal xref">Section 3</a>). It cannot serve the boundary where the subject
 changes: re-subjecting is a mint only the
 IdP can perform, not an attenuation a holder can carry (<a href="#core-principle" class="auto internal xref">Section 1.2</a>). A
-source-minted token cannot compute the next audience's pairwise subject
-(<a href="#motivation" class="auto internal xref">Section 1.1</a>); the receiver trusts the IdP, not the source issuer, to name
-the user, which is the model of <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (for
-example <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>); an offline token
-remains usable without consulting the IdP, whereas continuation checks current
-IdP state at every hop (<a href="#lifecycle" class="auto internal xref">Section 6</a>); and a stolen assertion permits only an
-envelope-bounded IdP exchange (<a href="#security" class="auto internal xref">Section 11</a>). Built honestly such a token collapses into this
-profile. Direct propagation fits only where all domains share one global
+source-minted token cannot compute the next audience's pairwise subject;
+only the IdP holds the map (<a href="#motivation" class="auto internal xref">Section 1.1</a>). The receiver trusts the IdP, not
+the source issuer, to name the user; obtaining a grant from an
+already-trusted authority is the model of <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>
+(for example <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>). An offline
+token remains usable without consulting the IdP, whereas a continuation
+checks current IdP state at every hop (<a href="#lifecycle" class="auto internal xref">Section 6</a>). And a stolen assertion
+permits only an envelope-bounded IdP exchange (<a href="#security" class="auto internal xref">Section 11</a>). Built honestly,
+such a token collapses into this profile. Direct propagation fits only where all domains share one global
 subject, mutually trust each other's issuers (for example, a single
 SPIFFE-style trust domain), and accept the loss of mid-chain revocation, a
 different problem from the pairwise-subject case this profile addresses.
@@ -3545,7 +3541,7 @@ re-subjecting begins.<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
 <a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-alternative-topology-resolu" class="section-name selfRef">Alternative Topology: Resolution at the Target</a>
         </h3>
 <p id="appendix-A.4-1">A pull topology was evaluated: the workload presents its reference to the
-target RAS under a new grant type, which resolves it at the IdP over a back
+target RAS under a new grant type; the RAS resolves it at the IdP over a back
 channel <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>; a variant returns the ID-JAG itself, so the target uses
 unchanged ID-JAG processing. It removes the Chain Authority and moves one
 token round trip from the workload to the target's back channel, but every
@@ -4070,7 +4066,9 @@ the profile's boundary, not a deployment error: continuation serves the set
 of Resource Authorization Servers that trust the common IdP.<a href="#appendix-B.7-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.7-2">The crossing instead follows the identity-chaining model
 <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>: travel.example's own authorization
-server issues a grant that PartnerSaaS's server accepts under a bilateral
+server (a distinct role from TravelSaaS's Chain Authority, which never
+resolves target subjects) issues a grant that PartnerSaaS's server accepts
+under a bilateral
 trust agreement, for example by exchanging TravelService's intra-domain
 Transaction Token under the Transaction Token chaining profile
 <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>. The subject presented
@@ -4097,7 +4095,7 @@ created, and absent at every run. The example is the same protocol as
 <a href="#example" class="auto internal xref">Appendix B</a>, time-shifted; nothing new is defined. The property that makes it
 work is that the task record stores only the non-bearer
 <code>identity_continuation_handle</code>. The platform's refresh token is the
-ordinary grant-bound credential of its own authorization grant, used only at the IdP; no
+ordinary grant-bound credential, used only at the IdP; no
 per-target user credential is ever vaulted, and run-time authority comes
 from a fresh, sender-constrained assertion evaluated against the
 root-chain envelope.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
@@ -4637,11 +4635,11 @@ handle and become sibling hops with independent lineage.<a href="#appendix-D.2-7
         </h3>
 <p id="appendix-D.3-1">The identity assertion's audience check is never weakened. Alice's assertion
 is presented exactly once, by the client that is its audience. The gateway
-never presents it; the gateway's authority is a continuation assertion bound
+never presents it; the gateway's authority is the Identity Continuation Assertion bound
 to the gateway's own key, evaluated against the envelope. Strict audience
 validation for identity assertions and a working proxy topology coexist.<a href="#appendix-D.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-D.3-2">The upstream Resource Authorization Server consumes an ordinary ID-JAG whose
-<code>act</code> chain states precisely what a proxy topology needs stated: this
+<code>act</code> chain states precisely what a proxy topology must state: this
 gateway, acting for a delegation rooted by this runtime for this user, for
 this audience and scope, under a policy decision made at continuation time,
 with lineage authenticated by the IdP, not reported by the gateway
@@ -4788,7 +4786,8 @@ risk without making the Chain Authority a target authority.<a href="#appendix-E-
         <li id="appendix-E-3.10">
           <p id="appendix-E-3.10.1"><strong>A normative authorization-basis representation.</strong> The envelope's
 authorization basis is internal IdP state, so conformance with its
-<span class="bcp14">MAY</span>-narrow, <span class="bcp14">MUST NOT</span>-broaden rule is observable only through
+rule that a policy <span class="bcp14">MAY</span> narrow but <span class="bcp14">MUST NOT</span> broaden the authorization
+basis is observable only through
 behavior. Implementer review asks for a testable representation: for
 explicit targets, for example,<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-E-3.10.2">
