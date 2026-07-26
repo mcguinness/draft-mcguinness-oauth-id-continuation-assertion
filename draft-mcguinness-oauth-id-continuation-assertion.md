@@ -153,7 +153,7 @@ token) and exchanges it at the IdP for an Identity Assertion JWT Authorization
 Grant (ID-JAG), exactly as in
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}. Every subsequent hop is
 different: by the time TravelSaaS must call BookingSaaS, the user is no longer
-present and TravelSaaS holds no end-user credential to present, only chain
+present and TravelSaaS holds no end-user credential to present. Only chain
 context crossed the boundary, so it cannot perform a normal exchange even
 though the same IdP could mint the next grant.
 
@@ -1660,9 +1660,9 @@ source-minted token cannot compute the next audience's pairwise subject
 ({{motivation}}); the receiver trusts the IdP, not the source issuer, to name
 the user, which is the model of {{I-D.ietf-oauth-identity-chaining}} (for
 example {{I-D.fletcher-transaction-token-chaining-profile}}); an offline token
-cannot be revoked mid-chain, whereas a continuation is an IdP exchange
-({{lifecycle}}); and a stolen assertion permits only an envelope-bounded IdP
-exchange ({{security}}). Built honestly such a token collapses into this
+remains usable without consulting the IdP, whereas continuation checks current
+IdP state at every hop ({{lifecycle}}); and a stolen assertion permits only an
+envelope-bounded IdP exchange ({{security}}). Built honestly such a token collapses into this
 profile. Direct propagation fits only where all domains share one global
 subject, mutually trust each other's issuers (for example, a single
 SPIFFE-style trust domain), and accept the loss of mid-chain revocation, a
@@ -1677,8 +1677,9 @@ re-subjecting begins.
 A pull topology was evaluated: the workload presents its reference to the
 target RAS under a new grant type, which resolves it at the IdP over a back
 channel {{RFC7662}}; a variant returns the ID-JAG itself, so the target uses
-unchanged ID-JAG processing. It removes the Chain Authority and a round trip,
-but every target RAS must implement the new grant type and sees the reference.
+unchanged ID-JAG processing. It removes the Chain Authority and moves one
+token round trip from the workload to the target's back channel, but every
+target RAS must implement the new grant type and sees the reference.
 This document standardizes push because the target consumes an ordinary
 ID-JAG unchanged, concentrating new behavior in the few (IdP, Chain
 Authority) rather than the many (RAS). Pull remains a candidate companion
@@ -1686,9 +1687,10 @@ profile over the same envelope.
 
 ## Why a Signed Assertion Rather Than a Bare Grant Type {#rationale-grant-type}
 
-A bare grant type (the handle as a request parameter, no assertion JWT or
-Chain Authority) loses little where the continuing domain has no offline
-segment and no domain-local policy. The signed assertion was retained for
+A bare grant type would present the handle under client authentication, with
+a sender-constrained `actor_token` and live proof of possession, but without
+an assertion JWT or Chain Authority. It loses little where the continuing
+domain has no offline segment and no domain-local policy. The signed assertion was retained for
 what the Chain Authority attests first-hand and the IdP cannot: validating an
 intra-domain offline segment before the boundary, and vouching for its own
 workloads' identity and keys. Because the Chain Authority does not see the
