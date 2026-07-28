@@ -126,8 +126,9 @@ Table of Contents
      12.5.  Trust in the Transaction Token Service
      12.6.  Trust in the Chain Authority
      12.7.  Trust in Actor Token Issuers
-     12.8.  Actor Chain Integrity
-     12.9.  Token, Type, and Algorithm Confusion
+     12.8.  Conjunctive Trust and Issuer Pairing
+     12.9.  Actor Chain Integrity
+     12.10. Token, Type, and Algorithm Confusion
    13. Privacy Considerations
    14. IANA Considerations
      14.1.  OAuth URI Registration
@@ -1317,7 +1318,7 @@ Table of Contents
    4.   the assertion signature validates using a key authorized for the
         assertion issuer, and the JOSE alg is an asymmetric signature
         algorithm on the IdP's configured allowlist (the none algorithm
-        MUST be rejected; see Section 12.9);
+        MUST be rejected; see Section 12.10);
 
    5.   the assertion aud exactly matches the IdP's issuer identifier;
 
@@ -1325,7 +1326,10 @@ Table of Contents
         tenant and that is mapped to the presented hop's target Resource
         Authorization Server (Section 7.2); a tenant-trusted Chain
         Authority not mapped to that hop MUST be rejected.  This mapping
-        is what makes an accepted hop continuable (Section 11);
+        is what makes an accepted hop continuable (Section 11).  That
+        Chain Authority and the request's actor_token issuer (rule 10)
+        MUST be a pairing the IdP authorizes for the tenant
+        (Section 12.8);
 
    7.   identity_continuation_handle identifies a known hop that the
         target Resource Authorization Server has accepted and bound
@@ -1393,13 +1397,29 @@ Table of Contents
 
    After all other validation succeeds, the IdP MUST, as part of issuing
    the onward grant, atomically verify that the tuple (iss, jti) has not
-   been consumed and record it as consumed.  At most one concurrent
-   exchange using the same tuple may succeed, and the IdP MUST retain a
-   successfully consumed tuple until at least the assertion's exp,
-   allowing for the IdP's permitted clock skew.  A request that fails
-   validation before grant issuance does not consume the tuple; how an
-   implementation ensures this (for example, by releasing reservations
-   on failure) is an implementation detail.
+   been consumed and record it as consumed, bound to a canonical request
+   fingerprint: the assertion's iss and jti, the requested audience and
+   resource, the requested scope as an order-independent set and any
+   authorization_details, the current actor identity, and the confirmed
+   key.  A request carries exactly one audience and one resource (rule
+   2).
+
+   The (iss, jti) record moves through the states PENDING, ISSUED, and
+   FAILED.  The IdP MUST NOT reserve the tuple (PENDING) before target
+   and policy validation (rules 14 and 16) succeed, so a request that
+   fails earlier does not consume it and MAY be corrected and retried.
+   Once reserved, the IdP MUST NOT release the tuple for a different
+   request: a retry presenting the same fingerprint recovers the
+   persisted ISSUED result, while any request presenting a different
+   fingerprint under the same (iss, jti) MUST be rejected.  At most one
+   concurrent exchange for a tuple may reach ISSUED.  The IdP MUST
+   retain a consumed tuple until at least the assertion's exp, allowing
+   for permitted clock skew.
+
+   Replay uniqueness is the (iss, jti) tuple itself and MUST NOT be
+   partitioned by a tenant value the assertion does not
+   cryptographically bind; a tenant carried only as an unbound index
+   could otherwise permit cross-tenant replay.
 
    These requirements imply per-chain state and, within the assertion
    validity window, strongly consistent replay state at the IdP; the
@@ -1410,20 +1430,22 @@ Table of Contents
    per chain) and SHOULD prune hop state when its chain expires or is
    revoked.
 
-   A client that does not receive the response to an exchange cannot
-   retry with the same assertion: it obtains a fresh assertion from its
-   Chain Authority and repeats the exchange, so Chain Authority issuance
-   SHOULD be inexpensive relative to the exchange itself.  The retry
-   path is at-least-once: a retry after a lost response mints a second,
-   equivalent grant (short-lived, sender-constrained to the same key,
-   and bounded by the same authorization basis) and a second hop, so it
-   confers no additional authority.  Equivalent grants do not
-   deduplicate the application operations they authorize; operation
-   idempotency remains the application's concern.  A Chain Authority
-   SHOULD account for retry-driven re-issuance separately from the fan-
-   out limits it applies per (transaction, actor) (Section 4.5), so that
-   legitimate retries are not starved by a fan-out cap and repeated
-   "lost response" claims cannot evade one.
+   A client that does not receive the response MAY re-present the same
+   assertion to recover the persisted ISSUED result while the IdP still
+   retains it (above); otherwise, because the assertion is single-use,
+   it obtains a fresh assertion from its Chain Authority and repeats the
+   exchange, so Chain Authority issuance SHOULD be inexpensive relative
+   to the exchange itself.  The retry path is at-least-once: a retry
+   after a lost response mints a second, equivalent grant (short-lived,
+   sender-constrained to the same key, and bounded by the same
+   authorization basis) and a second hop, so it confers no additional
+   authority.  Equivalent grants do not deduplicate the application
+   operations they authorize; operation idempotency remains the
+   application's concern.  A Chain Authority SHOULD account for retry-
+   driven re-issuance separately from the fan-out limits it applies per
+   (transaction, actor) (Section 4.5), so that legitimate retries are
+   not starved by a fan-out cap and repeated "lost response" claims
+   cannot evade one.
 
    On success, the IdP records the continuation as a new pending hop
    whose immutable parent is the presented handle, resolves the
@@ -1816,15 +1838,78 @@ Table of Contents
    scope issuer MUST be rejected regardless of the validity of the
    accompanying assertion.
 
-   A Chain Authority and the workload identity issuer for its domain are
-   commonly the same operator, such as a Resource Authorization Server
-   or domain gateway performing both roles; this is an expected
-   deployment shape.  It concentrates the two trust anchors in one
-   party, so a compromise of that operator affects both; the root-chain
-   envelope and IdP actor policy remain the effective bound in that
-   event.
+12.8.  Conjunctive Trust and Issuer Pairing
 
-12.8.  Actor Chain Integrity
+   A legitimate continuation requires several trust anchors to agree,
+   and no one of them suffices.  For each anchor the IdP MUST know its
+   issuer identifier, its authorized signing keys, and its tenant and
+   trust-domain scope, established out of band as for any issuer whose
+   assertions an Authorization Server consumes [RFC7523]:
+
+   *  the Chain Authority mapped to the presented hop's target Resource
+      Authorization Server, which attests the chain-to-actor transition
+      (Section 9, rule 6);
+
+   *  the workload identity issuer trusted for the current actor's trust
+      domain, which authenticates the actor through the actor_token
+      (Section 9, rule 10);
+
+   *  live proof of possession of the confirmed key (Section 9, rule
+      11); and
+
+   *  the IdP's own root-chain envelope and current-actor policy
+      (Section 9, rule 14).
+
+   Trust in these anchors is not transitive across them.  The IdP MUST
+   record, per tenant, which (Chain Authority, workload identity issuer)
+   pairings may combine, and MUST reject a continuation whose Chain
+   Authority and actor_token issuer are not an authorized pairing even
+   when each is independently trusted; otherwise an actor authenticated
+   by one domain's issuer could be spliced onto a transition attested by
+   an unrelated domain's Chain Authority.
+
+   The anchors MAY be operated by one party; this is an expected
+   deployment shape, but its blast radius should be understood:
+
+    +==============+=====================+===========================+
+    | Compromised  | What it yields      | What still bounds it      |
+    +==============+=====================+===========================+
+    | Chain        | Attests transitions | Still needs a live,       |
+    | Authority    | for hops it is      | permitted, proof-of-      |
+    | alone        | trusted for         | possession actor;         |
+    |              |                     | envelope-bounded          |
+    +--------------+---------------------+---------------------------+
+    | Actor-token  | Mints actor tokens  | Still needs a valid       |
+    | issuer alone | for its domain's    | mapped-CA assertion for   |
+    |              | actors              | the specific hop and live |
+    |              |                     | proof; envelope-bounded   |
+    +--------------+---------------------+---------------------------+
+    | Chain        | Defeats the         | Target, scope, and        |
+    | Authority +  | "authorized actor   | subject remain bounded by |
+    | actor issuer | for this chain"     | the envelope, evaluated   |
+    | (paired or   | gate; can fabricate | per request at the IdP    |
+    | co-located)  | a continuation for  |                           |
+    |              | any hop the Chain   |                           |
+    |              | Authority is        |                           |
+    |              | trusted for         |                           |
+    +--------------+---------------------+---------------------------+
+    | RAS + TTS +  | Can record a        | Envelope-bounded; SHOULD  |
+    | Chain        | rejected hop as     | separate these roles or   |
+    | Authority    | accepted, derive    | independently audit the   |
+    | (co-located, | it, and attest it,  | acceptance-to-attestation |
+    | Section      | with no independent | path where assurance      |
+    | 12.5)        | party in the        | matters                   |
+    |              | acceptance path     |                           |
+    +--------------+---------------------+---------------------------+
+
+                                 Table 2
+
+   No single-anchor compromise, and no whole-domain compromise, yields
+   authority beyond the root-chain envelope, which the IdP evaluates on
+   every continuation.  Concentrating anchors in one operator trades
+   away the defense in depth the conjunction otherwise provides.
+
+12.9.  Actor Chain Integrity
 
    Lineage in an onward ID-JAG is IdP-authenticated, never self-reported
    (Section 10): an assertion names only the current actor, and the IdP
@@ -1833,7 +1918,7 @@ Table of Contents
    layer (Section 10) rather than in lineage; asserting a verified own-
    domain segment is reserved for a future extension (Appendix E).
 
-12.9.  Token, Type, and Algorithm Confusion
+12.10.  Token, Type, and Algorithm Confusion
 
    The IdP MUST verify the JOSE typ header value oauth-identity-
    continuation+jwt and MUST NOT process an Identity Continuation
@@ -2446,7 +2531,7 @@ Appendix B.  Worked Example (Same-IdP)
    |              |                             |respectively.         |
    +--------------+-----------------------------+----------------------+
 
-                                  Table 2
+                                  Table 3
 
    At a glance, the message flow is:
 
@@ -3061,7 +3146,7 @@ Appendix C.  Background Agent Example (User-Scheduled Continuation)
    |             |                               | respectively.       |
    +-------------+-------------------------------+---------------------+
 
-                                  Table 3
+                                  Table 4
 
 C.1.  Setup (Alice Present)
 
@@ -3481,7 +3566,7 @@ Appendix D.  Gateway Example (Dynamic Upstream Audiences)
    |                 |                              | respectively.   |
    +-----------------+------------------------------+-----------------+
 
-                                 Table 4
+                                 Table 5
 
    At a glance, the message flow is:
 
