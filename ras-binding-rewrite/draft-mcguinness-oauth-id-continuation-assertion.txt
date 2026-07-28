@@ -18,20 +18,22 @@ Abstract
    JSON Web Token (JWT) that carries verifiable evidence of a delegation
    chain into a Token Exchange request.  A Continuation Authorization
    Server can then issue an onward authorization grant without
-   subjecting the user to a new interactive authentication.  The primary
-   use case is same-Identity-Provider (same-IdP) chaining between
-   software-as-a-service (SaaS) applications, in which several Resource
-   Authorization Servers trust a single enterprise IdP and each names
-   the user under its own audience-local (pairwise) subject identifier.
-   Because only the IdP holds the map from a root delegation to each
-   audience's subject, and crossing a boundary that renames the user is
-   a re-issuance rather than an attenuation, the IdP remains the sole
-   issuer of the onward Identity Assertion JWT Authorization Grant (ID-
-   JAG) at every cross-boundary hop.  The assertion is the evidence
-   carried into the exchange; the resulting grant is the authority.
-   This profile complements, and does not replace, offline attenuated
-   delegation, which is appropriate for intra-domain fan-out that does
-   not change the user's subject identifier.
+   subjecting the user to a new interactive authentication.  It
+   addresses same-Identity-Provider (same-IdP) continuation, where a
+   user's request fans out across service and trust boundaries, several
+   Resource Authorization Servers trust a single enterprise IdP, and
+   each names the user under its own audience-local (pairwise) subject
+   identifier; application chains and gateways that continue to upstream
+   services chosen at request time are equally in scope.  Because only
+   the IdP holds the map from a root delegation to each audience's
+   subject, and crossing a boundary that renames the user is a re-
+   issuance rather than an attenuation, the IdP remains the sole issuer
+   of the onward Identity Assertion JWT Authorization Grant (ID-JAG) at
+   every cross-boundary hop.  The assertion is the evidence carried into
+   the exchange; the resulting grant is the authority.  This profile
+   complements, and does not replace, offline attenuated delegation,
+   which is appropriate for intra-domain fan-out that does not change
+   the user's subject identifier.
 
 About This Document
 
@@ -168,30 +170,45 @@ Table of Contents
 
 1.  Introduction
 
-   Modern enterprise software-as-a-service (SaaS) deployments
-   increasingly chain calls across application boundaries on behalf of a
-   single human user.  A user authenticates once at an enterprise
-   Identity Provider (IdP) and invokes an application; completing the
-   user's request requires that application to call a second
-   application, which in turn must call a third.  Increasingly the
-   calling party is an automated agent acting for the user, fanning out
-   onward calls while the user is no longer present, which makes this
-   pattern both more common and more acute.  Each application exposes an
-   API protected by its own Resource Authorization Server (RAS), and all
-   of these Resource Authorization Servers trust the same enterprise IdP
-   for single sign-on (SSO), for delegation continuity, and for
-   resolving the user's identity into an audience-local subject
-   identifier.
+   An authenticated user's request increasingly fans out across service
+   and trust boundaries.  A user authenticates once at an enterprise
+   Identity Provider (IdP) and invokes a service; completing the request
+   requires that service to call a second, which in turn calls a third.
+   Often the calling party is an automated agent acting for the user,
+   fanning out onward calls while the user is no longer present, which
+   makes the pattern both more common and more acute.  Each service is
+   protected by its own Resource Authorization Server (RAS), and these
+   Resource Authorization Servers trust the same IdP for single sign-on
+   (SSO), for delegation continuity, and for resolving the user's
+   identity into an audience-local subject identifier.
 
-   The key use case addressed by this document is therefore:
+   This shape appears in several topologies, all served by this profile:
 
-   ExpenseApp -> ExpenseSaaS/ExpenseRAS -> TravelSaaS/TravelRAS
-              -> BookingSaaS/BookingRAS
+   *  a chain of applications, each fronted by its own RAS, for example
+      an expense application that calls a travel service that calls a
+      booking service;
 
-   The user authenticates once at the enterprise IdP and is never
-   redirected through a new interactive flow for an onward hop.  The IdP
-   remains the trust anchor, and each onward grant is audience-scoped
-   and carries the subject identifier appropriate for its target RAS.
+   *  an API gateway or agent runtime that roots one delegation and
+      continues it to upstream services whose audiences are chosen per
+      request rather than fixed in advance; and
+
+   *  an autonomous agent that carries a user's delegation across
+      services while the user is absent.
+
+   The protocol does not fix the topology.  What these share is the
+   property this profile addresses: after the first hop the calling
+   service holds no end-user credential, only in-flight chain context
+   crossed the boundary, and naming the user for the next audience
+   requires a fresh grant that only the IdP can mint (Section 1.2).  The
+   user authenticates once and is never redirected through a new
+   interactive flow for an onward hop; the IdP remains the trust anchor,
+   and each onward grant is audience-scoped and carries the subject
+   identifier appropriate for its target RAS.
+
+   The application-chain topology serves as the worked example
+   throughout this document:
+
+   ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 
 1.1.  Why a New Input Is Needed
 
@@ -200,11 +217,11 @@ Table of Contents
    Token or refresh token) and exchanges it at the IdP for an Identity
    Assertion JWT Authorization Grant (ID-JAG), exactly as in
    [I-D.ietf-oauth-identity-assertion-authz-grant].  Every subsequent
-   hop is different: by the time TravelSaaS must call BookingSaaS, the
-   user is no longer present and TravelSaaS holds no end-user credential
-   to present.  Only chain context crossed the boundary, so TravelSaaS
-   cannot perform a normal exchange even though the same IdP could mint
-   the next grant.
+   hop is different: by the time the travel service must call the
+   booking service, the user is no longer present and the travel service
+   holds no end-user credential to present.  Only chain context crossed
+   the boundary, so the travel service cannot perform a normal exchange
+   even though the same IdP could mint the next grant.
 
    This document defines the missing input.  An Identity Continuation
    Assertion is a short-lived, sender-constrained, verifiable statement
@@ -215,7 +232,7 @@ Table of Contents
 1.2.  Core Principle
 
    Each RAS trusts only the IdP to name the user and to scope authority
-   over its resources; it does not accept another SaaS domain's word for
+   over its resources; it does not accept another domain's word for
    either.  The IdP therefore remains the issuer at every cross-boundary
    hop as a matter of trust direction, whatever form subject identifiers
    take.  Pairwise subjects strengthen that trust rule into a structural
@@ -353,9 +370,9 @@ Table of Contents
       the enterprise IdP at every hop.
 
    Resource Authorization Server (RAS):  An Authorization Server that
-      protects a particular SaaS API and trusts the enterprise IdP for
-      SSO and subject resolution.  It consumes an ID-JAG as an
-      authorization grant and issues access tokens for its API.
+      protects a particular API and trusts the enterprise IdP for SSO
+      and subject resolution.  It consumes an ID-JAG as an authorization
+      grant and issues access tokens for its API.
 
    Resource Server (RS):  The service that hosts a protected API and
       consumes the access tokens issued by its Resource Authorization
@@ -406,10 +423,11 @@ Table of Contents
    Trust domain:  The administrative and authentication boundary within
       which a party, such as a Chain Authority or a workload identity
       issuer, can directly authenticate workloads and vouch for their
-      identities (for example, one SaaS provider's production
-      environment).  It is comparable to the trust-domain concept of the
-      WIMSE architecture [I-D.ietf-wimse-arch]; how a trust domain is
-      identified is deployment-defined.
+      identities (for example, one software-as-a-service (SaaS)
+      provider's production environment).  It is comparable to the
+      trust-domain concept of the WIMSE architecture
+      [I-D.ietf-wimse-arch]; how a trust domain is identified is
+      deployment-defined.
 
    Continuation Handle (identity_continuation_handle):  An opaque,
       unguessable, IdP-generated reference to one hop of a delegation
