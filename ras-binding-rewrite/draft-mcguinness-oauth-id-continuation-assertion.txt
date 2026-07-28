@@ -362,9 +362,11 @@ Table of Contents
       Server.  A Resource Server never consumes an Identity Continuation
       Assertion, no token it consumes carries an
       identity_continuation_handle, and its authorization decisions
-      never depend on one; how a co-located workload may receive a
-      handle as control-plane context is governed by Section 5, rule 4
-      and Section 13.
+      never depend on one.  A co-located workload MAY receive a handle
+      only as intra-domain control-plane context (Section 4.6) and MUST
+      NOT place it in a token it issues, an access token, or an external
+      authorization claim (Section 5, rule 4); Section 13 governs
+      further disclosure.
 
    ID-JAG:  An Identity Assertion JWT Authorization Grant
       [I-D.ietf-oauth-identity-assertion-authz-grant]: the onward
@@ -1780,8 +1782,8 @@ Table of Contents
 
    The authoritative auth_time, acr, and amr values come only from the
    root-chain envelope recorded by the IdP.  They are not accepted from
-   the Chain Authority.  Continuing a chain MUST NOT strengthen or
-   refresh that context, and the IdP MUST copy it unchanged into an
+   the Chain Authority.  Continuing a chain MUST NOT extend, strengthen,
+   or refresh that context, and the IdP MUST copy it unchanged into an
    onward ID-JAG when the output profile requires those claims.
 
 12.4.  Envelope Enforcement and Offline Attenuation

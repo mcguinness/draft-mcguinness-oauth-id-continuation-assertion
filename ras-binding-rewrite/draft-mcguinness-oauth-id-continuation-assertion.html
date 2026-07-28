@@ -1666,8 +1666,10 @@ authorization grant and issues access tokens for its API.<a href="#section-2-3.6
 by its Resource Authorization Server. A Resource Server never consumes an
 Identity Continuation Assertion, no token it consumes carries an
 <code>identity_continuation_handle</code>, and its authorization decisions never depend
-on one; how a co-located workload may receive a handle as control-plane
-context is governed by <a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4 and <a href="#privacy" class="auto internal xref">Section 13</a>.<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+on one. A co-located workload <span class="bcp14">MAY</span> receive a handle only as intra-domain
+control-plane context (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>) and <span class="bcp14">MUST NOT</span> place it
+in a token it issues, an access token, or an external authorization claim
+(<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4); <a href="#privacy" class="auto internal xref">Section 13</a> governs further disclosure.<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.9">ID-JAG:</dt>
@@ -3250,7 +3252,7 @@ Server, its blast radius on replay is confined to the continuation exchange.<a h
         </h3>
 <p id="section-12.3-1">The authoritative <code>auth_time</code>, <code>acr</code>, and <code>amr</code> values come only from the
 root-chain envelope recorded by the IdP. They are not accepted from the Chain
-Authority. Continuing a chain <span class="bcp14">MUST NOT</span> strengthen or refresh that context, and
+Authority. Continuing a chain <span class="bcp14">MUST NOT</span> extend, strengthen, or refresh that context, and
 the IdP <span class="bcp14">MUST</span> copy it unchanged into an onward ID-JAG when the output profile
 requires those claims.<a href="#section-12.3-1" class="pilcrow">¶</a></p>
 </section>
