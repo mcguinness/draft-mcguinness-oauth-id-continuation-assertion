@@ -2436,7 +2436,10 @@ it. Each rooting path anchors the chain to the record its function
 references. An access token is a resource-authorization credential,
 constructed for presentation to a protected resource rather than for
 identity brokering; it is not an ID-JAG subject token and roots nothing
-here.<a href="#section-7.2-4" class="pilcrow">¶</a></p>
+here. All three paths anchor to a user; authority not rooted in a user,
+such as a tenant-wide administrative or scheduled workload
+authorization, has no root here and is out of scope for this version
+(<a href="#open-items" class="auto internal xref">Appendix E</a>).<a href="#section-7.2-4" class="pilcrow">¶</a></p>
 <p id="section-7.2-5">A chain is established only where that governing authorization is
 continuation-capable: its consent and policy explicitly permit
 continuation and establish the authorization basis, the continuation
@@ -5738,6 +5741,20 @@ standardize one? A companion question is how continuation permission
 itself is represented in consent: a dedicated scope value is the
 obvious candidate, though establishment must remain possible without a
 client-requested scope (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#appendix-E-3.10.3" class="pilcrow">¶</a></p>
+</li>
+        <li id="appendix-E-3.11">
+          <p id="appendix-E-3.11.1"><strong>A non-user continuation root.</strong> The three rooting paths of
+<a href="#root-establishment" class="auto internal xref">Section 7.2</a> all anchor a chain to a user, through a grant
+the user holds or a session the user established. Authority not rooted
+in a user, such as a tenant-wide administrative authorization or a
+scheduled workload's own authorization, has no anchor here; yet it
+still crosses trust boundaries and still needs mid-run revocation, so
+it fits neither this profile nor direct cross-domain propagation
+(<a href="#decision-rule" class="auto internal xref">Section 3</a>). Should a sibling profile define a non-user
+continuation root, anchoring a chain to a tenant-scoped or
+workload-scoped authorization while keeping this profile's envelope,
+revocation, and boundary-crossing model, or is a non-user root out of
+charter for this work?<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 </section>

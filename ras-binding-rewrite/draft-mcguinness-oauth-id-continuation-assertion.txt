@@ -1027,7 +1027,10 @@ Table of Contents
    record its function references.  An access token is a resource-
    authorization credential, constructed for presentation to a protected
    resource rather than for identity brokering; it is not an ID-JAG
-   subject token and roots nothing here.
+   subject token and roots nothing here.  All three paths anchor to a
+   user; authority not rooted in a user, such as a tenant-wide
+   administrative or scheduled workload authorization, has no root here
+   and is out of scope for this version (Appendix E).
 
    A chain is established only where that governing authorization is
    continuation-capable: its consent and policy explicitly permit
@@ -4020,6 +4023,20 @@ Appendix E.  Open Items for Working Group Discussion
         dedicated scope value is the obvious candidate, though
         establishment must remain possible without a client-requested
         scope (Section 7.2).
+
+   11.  *A non-user continuation root.* The three rooting paths of
+        Section 7.2 all anchor a chain to a user, through a grant the
+        user holds or a session the user established.  Authority not
+        rooted in a user, such as a tenant-wide administrative
+        authorization or a scheduled workload's own authorization, has
+        no anchor here; yet it still crosses trust boundaries and still
+        needs mid-run revocation, so it fits neither this profile nor
+        direct cross-domain propagation (Section 3).  Should a sibling
+        profile define a non-user continuation root, anchoring a chain
+        to a tenant-scoped or workload-scoped authorization while
+        keeping this profile's envelope, revocation, and boundary-
+        crossing model, or is a non-user root out of charter for this
+        work?
 
 Acknowledgments
 
