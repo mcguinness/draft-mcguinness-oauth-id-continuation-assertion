@@ -2282,13 +2282,27 @@ next exchange.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 <p id="section-6-1">A chain is continuable only while the IdP considers it active. Because every
 cross-boundary hop is an exchange at the IdP (<a href="#flow" class="auto internal xref">Section 8</a>), the IdP is in the loop
 at each hop and can stop a chain at any point.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">Three distinct lifetimes apply and <span class="bcp14">MUST NOT</span> be conflated. An ID-JAG's <code>exp</code>
+<p id="section-6-2">Resolving every continuation against current control-plane state at each
+boundary is the property that makes the chain enforceable: each hop is a fresh
+policy point, not a trust in an artifact minted before a decision changed.
+Resolution is per-invocation and sits on the request path. Revoking authority
+at a hop stops all further continuation from that hop, and from its subtree, at
+the next continuation check, fail-closed; it does not retroactively invalidate
+ID-JAGs or access tokens already derived downstream, which remain valid only
+for their own short lifetimes, so the revocation window is bounded by those
+lifetimes. An implementation <span class="bcp14">MAY</span> cache a resolved access token for its own
+audience and scope within that lifetime, keyed to the request fingerprint
+(<a href="#validation" class="auto internal xref">Section 9</a>); it <span class="bcp14">MUST NOT</span> reuse a continuation across audiences or past a
+revocation check, since a cross-audience cache would both bypass this
+per-boundary enforcement and reintroduce the cross-audience correlation the
+per-audience design prevents (<a href="#privacy" class="auto internal xref">Section 13</a>).<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">Three distinct lifetimes apply and <span class="bcp14">MUST NOT</span> be conflated. An ID-JAG's <code>exp</code>
 governs only how long that grant JWT may be redeemed, and is short. The
 authorization state a Resource Authorization Server binds at acceptance
 (<a href="#ras-processing" class="auto internal xref">Section 11</a>) has its own local lifetime and revocation. The chain's
 continuation lifetime is authoritative at the IdP and may be much longer than
-any single ID-JAG's <code>exp</code>; it is the lifetime bounded below.<a href="#section-6-2" class="pilcrow">¶</a></p>
-<p id="section-6-3">Every chain has a continuation-capable governing authorization
+any single ID-JAG's <code>exp</code>; it is the lifetime bounded below.<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4">Every chain has a continuation-capable governing authorization
 (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>): the server-side consent and policy record that
 permits continuation. That record has a lifecycle anchor, resolved at
 establishment from the root subject token: the OAuth authorization grant
@@ -2301,15 +2315,15 @@ ends every chain rooted in that session. Withdrawal of the consent or
 policy that made the authorization continuation-capable likewise ends its
 chains, even while the anchor itself remains active. A session-anchored
 chain's lifetime <span class="bcp14">MUST NOT</span> exceed the session's, so only grant-anchored
-chains outlive logout.<a href="#section-6-3" class="pilcrow">¶</a></p>
-<p id="section-6-4">The IdP <span class="bcp14">MUST</span> bound the continuation lifetime of a chain by the lifetime of
+chains outlive logout.<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-5">The IdP <span class="bcp14">MUST</span> bound the continuation lifetime of a chain by the lifetime of
 its governing authorization, and <span class="bcp14">MUST</span> reject a continuation of an expired
-chain (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#section-6-4" class="pilcrow">¶</a></p>
-<p id="section-6-5">The governing authorization is distinct from the
+chain (<a href="#validation" class="auto internal xref">Section 9</a>).<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6">The governing authorization is distinct from the
 root authentication context: continuing a chain <span class="bcp14">MUST NOT</span> extend that
 context, and <code>auth_time</code>, <code>acr</code>, and <code>amr</code> are fixed at root issuance and
-inherited unchanged by onward grants (<a href="#security-assurance" class="auto internal xref">Section 12.3</a>).<a href="#section-6-5" class="pilcrow">¶</a></p>
-<p id="section-6-6">The IdP <span class="bcp14">MUST</span> be able to revoke a chain, and <span class="bcp14">MUST</span> stop honoring continuation
+inherited unchanged by onward grants (<a href="#security-assurance" class="auto internal xref">Section 12.3</a>).<a href="#section-6-6" class="pilcrow">¶</a></p>
+<p id="section-6-7">The IdP <span class="bcp14">MUST</span> be able to revoke a chain, and <span class="bcp14">MUST</span> stop honoring continuation
 for a revoked chain. Ending the governing authorization or its anchor revokes every chain rooted in it:
 revocation of the anchoring grant does so (for example, through a grant
 management interface, or through token revocation <span>[<a href="#RFC7009" class="cite xref">RFC7009</a>]</span> where the
@@ -2318,19 +2332,18 @@ specification leaves to server policy), as does
 termination of the user's session where the session anchors, or withdrawal
 of the underlying consent or policy. An IdP <span class="bcp14">MAY</span> additionally revoke an individual hop's subtree, stopping
 continuation along one branch while the rest of the chain remains
-continuable.<a href="#section-6-6" class="pilcrow">¶</a></p>
-<p id="section-6-7">Revocation therefore takes effect at the next hop, with no need to reach
-chain evidence already held by intermediate services, unlike an offline
-attenuated delegation token whose minted child remains usable for its
-lifetime without contacting an authority. Access tokens already issued by a
-Resource Authorization Server remain valid for their own lifetimes under
-that server's revocation mechanisms.<a href="#section-6-7" class="pilcrow">¶</a></p>
-<p id="section-6-8">Revocation is a control-plane capability, but the delegation belongs to the
+continuable.<a href="#section-6-7" class="pilcrow">¶</a></p>
+<p id="section-6-8">This next-hop enforcement needs no way to reach chain evidence already held by
+intermediate services, the deliberate difference from an offline attenuated
+delegation token whose minted child remains usable for its lifetime without
+contacting an authority. Access tokens already issued by a Resource
+Authorization Server are governed by that server's own revocation mechanisms.<a href="#section-6-8" class="pilcrow">¶</a></p>
+<p id="section-6-9">Revocation is a control-plane capability, but the delegation belongs to the
 user. IdPs are encouraged to make active chains visible and revocable through user-
 and administrator-facing management interfaces, presenting the root context,
 the chain's hop graph and actor lineage, the targets granted so far, and the
 chain's expiry. Grant Management for OAuth 2.0 <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> provides a
-comparable management model for standing grants.<a href="#section-6-8" class="pilcrow">¶</a></p>
+comparable management model for standing grants.<a href="#section-6-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-exchange">
@@ -2439,10 +2452,20 @@ the IdP where its type defines an audience or applicability restriction,
 entity as the authenticated client. The IdP <span class="bcp14">MUST</span> record the root actor in
 the root hop only after this validation; the root actor begins every
 branch's lineage (<a href="#onward-id-jag" class="auto internal xref">Section 10</a>).<a href="#section-7.2-6" class="pilcrow">¶</a></p>
-<p id="section-7.2-7">The IdP embeds the root hop's handle as the <code>identity_continuation_handle</code>
+<p id="section-7.2-7">The origin of a chain is commonly a public client, for example a command-line
+agent holding a locally generated key and no confidential credential. The
+sender-constraining key the chain carries forward enters here: it is the root
+actor's key, a locally generated key the client proves possession of with a
+DPoP proof, confirmed in the root exchange. The assurance of the root actor's
+identity at such an origin is whatever the ID-JAG profile's public-client root
+exchange provides <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>; this
+profile inherits it and does not strengthen it, and how a public client
+bootstraps that root exchange is out of scope here. Continuation from that
+root is unchanged.<a href="#section-7.2-7" class="pilcrow">¶</a></p>
+<p id="section-7.2-8">The IdP embeds the root hop's handle as the <code>identity_continuation_handle</code>
 claim of the issued ID-JAG (<a href="#response-param" class="auto internal xref">Section 7.6</a>); the target Resource
-Authorization Server binds it on acceptance (<a href="#ras-processing" class="auto internal xref">Section 11</a>).<a href="#section-7.2-7" class="pilcrow">¶</a></p>
-<p id="section-7.2-8">Whenever the IdP issues a hop, root or continuation, it records for that hop
+Authorization Server binds it on acceptance (<a href="#ras-processing" class="auto internal xref">Section 11</a>).<a href="#section-7.2-8" class="pilcrow">¶</a></p>
+<p id="section-7.2-9">Whenever the IdP issues a hop, root or continuation, it records for that hop
 the target Resource Authorization Server and the Chain Authorities authorized
 to attest continuation from it (this mapping <span class="bcp14">MAY</span> be static, tenant-wide
 configuration resolved per hop rather than stored per hop). A continuation is
@@ -2450,8 +2473,8 @@ accepted only when its Identity Continuation Assertion comes from a Chain
 Authority mapped to the accepting Resource Authorization Server's domain
 (<a href="#validation" class="auto internal xref">Section 9</a>, rule 6). The mapped Chain Authority issues only from
 accepted, currently-active authorization state (<a href="#ras-processing" class="auto internal xref">Section 11</a>), which is
-how the IdP relies on RAS acceptance without a callback.<a href="#section-7.2-8" class="pilcrow">¶</a></p>
-<p id="section-7.2-9">Because the <code>identity_continuation_handle</code> claim is inert to a Resource
+how the IdP relies on RAS acceptance without a callback.<a href="#section-7.2-9" class="pilcrow">¶</a></p>
+<p id="section-7.2-10">Because the <code>identity_continuation_handle</code> claim is inert to a Resource
 Authorization Server that does not implement this profile, a chain is
 continuable toward a target only if that target's Resource Authorization
 Server actually implements continuation-aware processing and binds the hop
@@ -2462,11 +2485,11 @@ attempting it. Toward a target that only implements the base ID-JAG profile,
 the claim is ignored, the access token is issued, and the hop never becomes
 continuable; a party that needs to know whether onward continuation is
 possible <span class="bcp14">SHOULD</span> consult the target's advertised grant profile rather than
-infer it from a successful exchange.<a href="#section-7.2-9" class="pilcrow">¶</a></p>
-<p id="section-7.2-10">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
+infer it from a successful exchange.<a href="#section-7.2-10" class="pilcrow">¶</a></p>
+<p id="section-7.2-11">Like the continuation exchange (<a href="#validation" class="auto internal xref">Section 9</a>), root establishment is
 at-least-once: a retry after a lost response <span class="bcp14">MAY</span> establish a second chain.
 Both chains are bounded by the same consent and policy, and an unused chain
-expires.<a href="#section-7.2-10" class="pilcrow">¶</a></p>
+expires.<a href="#section-7.2-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chained-id-jag-request">
@@ -3085,14 +3108,22 @@ currently-active authorization state, so a handle copied from an
 issued-but-rejected ID-JAG is not continuable: no mapped Chain Authority will
 attest it. RAS-acceptance provenance is therefore exactly a trust in the
 mapped Chain Authority, an audit and integrity property within an honest
-domain rather than an IdP-verifiable proof of acceptance (<a href="#security" class="auto internal xref">Section 12</a>).
-This document refers to these three conditions as PENDING, ACCEPTED, and
+domain rather than an IdP-verifiable proof of acceptance (<a href="#security" class="auto internal xref">Section 12</a>).<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+<p id="section-11.1-2">A mapped Chain Authority is therefore a mandatory component on the
+continuation path in this profile: continuation requires its assertion, so if
+no mapped Chain Authority is available the IdP has no acceptance evidence and
+the continuation fails closed. There is no bypass or degraded mode; a chain
+that cannot obtain an assertion simply cannot be continued. A continuation
+path without a Chain Authority is the recipient-bound direct profile of
+<a href="#open-items" class="auto internal xref">Appendix E</a>, a distinct profile rather than a partial deployment of this
+one.<a href="#section-11.1-2" class="pilcrow">¶</a></p>
+<p id="section-11.1-3">This document refers to these three conditions as PENDING, ACCEPTED, and
 CONTINUABLE. They live at different authorities: PENDING is a hop the IdP has
 issued, ACCEPTED is active authorization state the Resource Authorization
 Server holds, and CONTINUABLE is not a stored state but a condition the IdP
 evaluates at each continuation request, from a fresh assertion by the hop's
 mapped Chain Authority. The IdP does not permanently transition a hop to
-CONTINUABLE after a first assertion; each request is evaluated on its own.<a href="#section-11.1-1" class="pilcrow">¶</a></p>
+CONTINUABLE after a first assertion; each request is evaluated on its own.<a href="#section-11.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="ras-gate">

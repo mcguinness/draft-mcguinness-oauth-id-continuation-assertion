@@ -872,6 +872,23 @@ Table of Contents
    (Section 8), the IdP is in the loop at each hop and can stop a chain
    at any point.
 
+   Resolving every continuation against current control-plane state at
+   each boundary is the property that makes the chain enforceable: each
+   hop is a fresh policy point, not a trust in an artifact minted before
+   a decision changed.  Resolution is per-invocation and sits on the
+   request path.  Revoking authority at a hop stops all further
+   continuation from that hop, and from its subtree, at the next
+   continuation check, fail-closed; it does not retroactively invalidate
+   ID-JAGs or access tokens already derived downstream, which remain
+   valid only for their own short lifetimes, so the revocation window is
+   bounded by those lifetimes.  An implementation MAY cache a resolved
+   access token for its own audience and scope within that lifetime,
+   keyed to the request fingerprint (Section 9); it MUST NOT reuse a
+   continuation across audiences or past a revocation check, since a
+   cross-audience cache would both bypass this per-boundary enforcement
+   and reintroduce the cross-audience correlation the per-audience
+   design prevents (Section 13).
+
    Three distinct lifetimes apply and MUST NOT be conflated.  An ID-
    JAG's exp governs only how long that grant JWT may be redeemed, and
    is short.  The authorization state a Resource Authorization Server
@@ -916,12 +933,12 @@ Table of Contents
    individual hop's subtree, stopping continuation along one branch
    while the rest of the chain remains continuable.
 
-   Revocation therefore takes effect at the next hop, with no need to
-   reach chain evidence already held by intermediate services, unlike an
-   offline attenuated delegation token whose minted child remains usable
-   for its lifetime without contacting an authority.  Access tokens
-   already issued by a Resource Authorization Server remain valid for
-   their own lifetimes under that server's revocation mechanisms.
+   This next-hop enforcement needs no way to reach chain evidence
+   already held by intermediate services, the deliberate difference from
+   an offline attenuated delegation token whose minted child remains
+   usable for its lifetime without contacting an authority.  Access
+   tokens already issued by a Resource Authorization Server are governed
+   by that server's own revocation mechanisms.
 
    Revocation is a control-plane capability, but the delegation belongs
    to the user.  IdPs are encouraged to make active chains visible and
@@ -1028,6 +1045,19 @@ Table of Contents
    identify the same entity as the authenticated client.  The IdP MUST
    record the root actor in the root hop only after this validation; the
    root actor begins every branch's lineage (Section 10).
+
+   The origin of a chain is commonly a public client, for example a
+   command-line agent holding a locally generated key and no
+   confidential credential.  The sender-constraining key the chain
+   carries forward enters here: it is the root actor's key, a locally
+   generated key the client proves possession of with a DPoP proof,
+   confirmed in the root exchange.  The assurance of the root actor's
+   identity at such an origin is whatever the ID-JAG profile's public-
+   client root exchange provides
+   [I-D.ietf-oauth-identity-assertion-authz-grant]; this profile
+   inherits it and does not strengthen it, and how a public client
+   bootstraps that root exchange is out of scope here.  Continuation
+   from that root is unchanged.
 
    The IdP embeds the root hop's handle as the
    identity_continuation_handle claim of the issued ID-JAG
@@ -1633,15 +1663,25 @@ Table of Contents
    RAS-acceptance provenance is therefore exactly a trust in the mapped
    Chain Authority, an audit and integrity property within an honest
    domain rather than an IdP-verifiable proof of acceptance
-   (Section 12).  This document refers to these three conditions as
-   PENDING, ACCEPTED, and CONTINUABLE.  They live at different
-   authorities: PENDING is a hop the IdP has issued, ACCEPTED is active
-   authorization state the Resource Authorization Server holds, and
-   CONTINUABLE is not a stored state but a condition the IdP evaluates
-   at each continuation request, from a fresh assertion by the hop's
-   mapped Chain Authority.  The IdP does not permanently transition a
-   hop to CONTINUABLE after a first assertion; each request is evaluated
-   on its own.
+   (Section 12).
+
+   A mapped Chain Authority is therefore a mandatory component on the
+   continuation path in this profile: continuation requires its
+   assertion, so if no mapped Chain Authority is available the IdP has
+   no acceptance evidence and the continuation fails closed.  There is
+   no bypass or degraded mode; a chain that cannot obtain an assertion
+   simply cannot be continued.  A continuation path without a Chain
+   Authority is the recipient-bound direct profile of Appendix E, a
+   distinct profile rather than a partial deployment of this one.
+
+   This document refers to these three conditions as PENDING, ACCEPTED,
+   and CONTINUABLE.  They live at different authorities: PENDING is a
+   hop the IdP has issued, ACCEPTED is active authorization state the
+   Resource Authorization Server holds, and CONTINUABLE is not a stored
+   state but a condition the IdP evaluates at each continuation request,
+   from a fresh assertion by the hop's mapped Chain Authority.  The IdP
+   does not permanently transition a hop to CONTINUABLE after a first
+   assertion; each request is evaluated on its own.
 
 11.2.  A Gate, Not a Ceiling
 
