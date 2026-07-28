@@ -90,7 +90,7 @@ Table of Contents
      1.1.  Why a New Input Is Needed
      1.2.  Core Principle
      1.3.  Relationship to ID-JAG and Identity Chaining
-     1.4.  Context Lifetimes
+     1.4.  Continuation Handle Carriers
    2.  Conventions and Definitions
    3.  When to Use This Profile Versus Offline Attenuation
    4.  The Identity Continuation Assertion
@@ -282,7 +282,7 @@ Table of Contents
    ID-JAG issuance and its acceptance at the Resource Authorization
    Server.
 
-1.4.  Context Lifetimes
+1.4.  Continuation Handle Carriers
 
    A continuation handle (Section 5) keeps its value through a hop, but
    it is carried by whichever mechanism suits the lifetime of the
@@ -295,7 +295,7 @@ Table of Contents
 
    *  *Within an active request*, inside a trust domain: the handle
       travels in a Transaction Token that the domain's Transaction Token
-      Service derives from the accepted authorization state
+      Service (TTS) derives from the accepted authorization state
       (Section 4.6).
 
    *  *Across time*, for scheduled or unattended work: the handle stays
@@ -362,11 +362,9 @@ Table of Contents
       Server.  A Resource Server never consumes an Identity Continuation
       Assertion, no token it consumes carries an
       identity_continuation_handle, and its authorization decisions
-      never depend on one.  A workload co-located with a Resource Server
-      MAY receive an identity_continuation_handle as control-plane
-      context accompanying a request (Section 4.6); it MUST NOT place a
-      received handle into any token it issues (Section 5, rule 4) and
-      is otherwise subject to the disclosure limits of Section 13.
+      never depend on one; how a co-located workload may receive a
+      handle as control-plane context is governed by Section 5, rule 4
+      and Section 13.
 
    ID-JAG:  An Identity Assertion JWT Authorization Grant
       [I-D.ietf-oauth-identity-assertion-authz-grant]: the onward
@@ -753,14 +751,14 @@ Table of Contents
 
    Authorized transaction-chain workloads, including API
    implementations, MAY read identity_continuation_handle from this
-   context.  It conveys no authority (rule 7), MUST NOT be placed in any
-   access token or external authorization claim (rule 4), MUST NOT be
-   emitted on any external-facing surface (response bodies, webhook
-   payloads, error messages, or onward calls to non-participants), and
-   SHOULD be excluded from logs and traces.  A Transaction Token is not
-   a workload credential and may be replayed within its lifetime, so a
-   Chain Authority MUST NOT treat possession of one as sufficient to
-   issue an assertion; the independent checks of Section 4.5 apply.
+   context.  It conveys no authority (Section 5, rule 7), MUST NOT be
+   placed in any access token or external authorization claim
+   (Section 5, rule 4), MUST NOT be emitted on any external-facing
+   surface (response bodies, webhook payloads, error messages, or onward
+   calls to non-participants), and SHOULD be excluded from logs and
+   traces.  Reading the handle here is not authorization to continue: a
+   Chain Authority applies the independent checks of Section 4.5 before
+   issuing.
 
 5.  Continuation Handles (identity_continuation_handle)
 
@@ -830,13 +828,9 @@ Table of Contents
        Resource Servers, and Chain Authorities MUST NOT modify the
        value.
 
-   7.  A hop is continuable only after its parent ID-JAG has been
-       accepted and bound by the target Resource Authorization Server
-       (Section 11).  The IdP records a hop as pending on issuance and
-       treats a valid assertion from the hop's mapped Chain Authority
-       (Section 7.2) as evidence that the hop reached the accepted
-       state; a handle copied from an issued-but-rejected ID-JAG is
-       therefore not continuable. identity_continuation_handle alone is
+   7.  A hop is continuable only after the target Resource Authorization
+       Server has accepted and bound its parent ID-JAG, per the hop
+       lifecycle of Section 11.1. identity_continuation_handle alone is
        not proof of authorization and MUST NOT be treated as a bearer
        credential; the IdP MUST use it only as a lookup handle for the
        hop, its chain state, subject resolution, and policy evaluation.
@@ -917,9 +911,9 @@ Table of Contents
    continuation of an expired chain (Section 9).
 
    The governing authorization is distinct from the root authentication
-   context: continuing a chain MUST NOT extend that context, and
-   auth_time, acr, and amr are fixed at root issuance and inherited
-   unchanged by onward grants (Section 12.3).
+   context: auth_time, acr, and amr are fixed at root issuance and
+   inherited unchanged by onward grants, and continuation does not
+   extend or refresh that context (Section 12.3).
 
    The IdP MUST be able to revoke a chain, and MUST stop honoring
    continuation for a revoked chain.  Ending the governing authorization
@@ -1126,7 +1120,7 @@ Table of Contents
 
    The requested audience, resource, scope, requested_token_type, and
    any authorization_details are supplied by the Token Exchange request
-   and never by the assertion.  Following
+   and never by the assertion (Section 4.3).  Following
    [I-D.ietf-oauth-identity-assertion-authz-grant], audience identifies
    the target Resource Authorization Server and resource ([RFC8693],
    originally defined in [RFC8707]) identifies the protected resource.
@@ -1446,8 +1440,8 @@ Table of Contents
    key.  A request carries exactly one audience and one resource (rule
    2).
 
-   The (iss, jti) record moves through the states PENDING, ISSUED, and
-   FAILED.  The IdP MUST NOT reserve the tuple (PENDING) before target
+   The (iss, jti) record moves through the states RESERVED, ISSUED, and
+   FAILED.  The IdP MUST NOT reserve the tuple (RESERVED) before target
    and policy validation (rules 14 and 16) succeed, so a request that
    fails earlier does not consume it and MAY be corrected and retried.
    Once reserved, the IdP MUST NOT release the tuple for a different
@@ -1594,11 +1588,11 @@ Table of Contents
    identity_continuation_handle claim to that authorization state, from
    which its domain's Transaction Token Service and Chain Authority
    later derive continuation.  The handle never enters the access token
-   or reaches TravelAPI (rule 4).  The client_id is the current actor's
-   client identifier for the target Resource Authorization Server
-   (Section 7.5); in this document's examples the workload identifier
-   serves as both the client identifier and the act.sub value, so the
-   two match.
+   or reaches TravelAPI (Section 5, rule 4).  The client_id is the
+   current actor's client identifier for the target Resource
+   Authorization Server (Section 7.5); in this document's examples the
+   workload identifier serves as both the client identifier and the
+   act.sub value, so the two match.
 
 11.  Continuation-Aware Resource Authorization Server
 
@@ -1611,7 +1605,7 @@ Table of Contents
    identity_continuation_handle claim it carries.  This confines the
    deployment cost of continuation to the Resource Authorization Servers
    that are actually continued from; the target of a final hop is an
-   unchanged ID-JAG Resource Authorization Server.
+   ordinary ID-JAG Resource Authorization Server.
 
    A continuation-aware Resource Authorization Server, one that
    implements this extension and advertises the continuation grant
@@ -1641,13 +1635,13 @@ Table of Contents
    bind to the same single hop authorization record rather than create a
    new one.  The Resource Authorization Server MUST NOT place
    identity_continuation_handle in the access token or in any external
-   authorization claim (rule 4), and it MUST NOT let the handle reach
-   the protected API as an authorization input.  It makes the binding
-   available only to its own trust domain's Transaction Token Service or
-   Chain Authority, and only privately (Section 4.6); an authorized
-   intra-domain workload, including an API implementation acting as a
-   workload, MAY receive the handle as control-plane context there.  A
-   non-normative internal record:
+   authorization claim (Section 5, rule 4), and it MUST NOT let the
+   handle reach the protected API as an authorization input.  It makes
+   the binding available only to its own trust domain's Transaction
+   Token Service or Chain Authority, and only privately (Section 4.6);
+   an authorized intra-domain workload, including an API implementation
+   acting as a workload, MAY receive the handle as control-plane context
+   there.  A non-normative internal record:
 
    authorization:
      idp_issuer: https://idp.example/
@@ -1932,8 +1926,9 @@ Table of Contents
     |              |                     | envelope-bounded          |
     +--------------+---------------------+---------------------------+
     | Actor-token  | Mints actor tokens  | Still needs a valid       |
-    | issuer alone | for its domain's    | mapped-CA assertion for   |
-    |              | actors              | the specific hop and live |
+    | issuer alone | for its domain's    | mapped Chain Authority    |
+    |              | actors              | assertion for the         |
+    |              |                     | specific hop and live     |
     |              |                     | proof; envelope-bounded   |
     +--------------+---------------------+---------------------------+
     | Chain        | Defeats the         | Target, scope, and        |
@@ -2010,10 +2005,10 @@ Table of Contents
    ID-JAG names the participating workloads, so colluding audiences can
    correlate a transaction from actor lineage and timing alone,
    regardless of how identity_continuation_handle is handled.
-   Deployments requiring unlinkability across audiences must weigh the
-   audit value of deep actor lineage against this correlation channel
-   and MAY limit the nested lineage exposed to each audience, subject to
-   their audit requirements.  Deployments SHOULD limit disclosure of
+   Deployments requiring unlinkability across audiences weigh the audit
+   value of deep actor lineage against this correlation channel and MAY
+   limit the nested lineage exposed to each audience, subject to their
+   audit requirements.  Deployments SHOULD limit disclosure of
    identity_continuation_handle to participants that require it to
    continue or administer the chain.
 
@@ -2112,7 +2107,10 @@ Table of Contents
 
    Claim Description:  An opaque, IdP-generated reference to one hop of
       a delegation chain, used to correlate a continuation to its chain
-      and parent hop and to resolve the per-audience subject.
+      and parent hop and to resolve the per-audience subject.  This
+      claim appears only in an ID-JAG or intra-domain chain context and
+      MUST NOT be placed in an access token or a Resource Server's
+      external authorization claims (Section 5, rules 3 and 4).
 
    Change Controller:  IESG
 
@@ -2333,13 +2331,10 @@ Appendix A.  Design Rationale
 
 A.1.  Relationship to ID-JAG
 
-   This document profiles ID-JAG
-   [I-D.ietf-oauth-identity-assertion-authz-grant] in two ways: the IdP
-   embeds the identity_continuation_handle claim in a continuation-
-   capable ID-JAG (Section 5, rule 1), and the accepting Resource
-   Authorization Server binds that claim to authorization state
-   (Section 11).  Both the issuance and the acceptance of the ID-JAG are
-   therefore profiled here.
+   This document profiles both the issuance and the acceptance of a
+   continuation-capable ID-JAG
+   [I-D.ietf-oauth-identity-assertion-authz-grant] (Section 5, rule 1;
+   Section 11).
 
    The Identity Continuation Assertion is nonetheless a distinct
    artifact, not itself an ID-JAG.  It is the input to a Token Exchange,
