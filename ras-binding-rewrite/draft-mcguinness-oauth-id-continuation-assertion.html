@@ -2884,8 +2884,10 @@ proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> matching <
 </li>
           <li id="section-8.8-2.13">
             <p id="section-8.8-2.13.1"><code>iat</code> and <code>exp</code> are valid NumericDate values, <code>iat</code> is not in the future
-beyond the IdP's permitted clock skew, <code>exp</code> is after <code>iat</code>, the assertion
-has not expired, and the assertion lifetime is no more than 300 seconds;<a href="#section-8.8-2.13.1" class="pilcrow">¶</a></p>
+beyond the IdP's permitted clock skew (which <span class="bcp14">SHOULD NOT</span> exceed 60 seconds,
+so it does not materially extend the assertion's effective lifetime),
+<code>exp</code> is after <code>iat</code>, the assertion has not expired, and the assertion
+lifetime is no more than 300 seconds;<a href="#section-8.8-2.13.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-8.8-2.14">
             <p id="section-8.8-2.14.1">the requested <code>audience</code> and <code>resource</code>, every requested scope, and any
@@ -3459,6 +3461,15 @@ but its blast radius should be understood:<a href="#section-10.8-4" class="pilcr
 beyond the root-chain envelope, which the IdP evaluates on every continuation.
 Concentrating anchors in one operator trades away the defense in depth the
 conjunction otherwise provides.<a href="#section-10.8-6" class="pilcrow">¶</a></p>
+<p id="section-10.8-7">These guarantees also presuppose that the IdP is a distinct trust boundary
+from the domain anchors it relies on. Where a single operator runs the IdP
+together with a domain's Resource Authorization Server, Transaction Token
+Service, and Chain Authority, the envelope backstop is self-operated and the
+conjunctive checks reduce to that operator's internal correctness; the
+assurance is then organizational rather than protocol-enforced. Such a
+deployment is legitimate, and where it has no offline segment or domain-local
+policy the Chain Authority adds little over the recipient-bound direct
+profile (<a href="#open-items" class="auto internal xref">Appendix E</a>).<a href="#section-10.8-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="actor-chain-integrity">

@@ -1433,9 +1433,11 @@ Table of Contents
         issuer;
 
    13.  iat and exp are valid NumericDate values, iat is not in the
-        future beyond the IdP's permitted clock skew, exp is after iat,
-        the assertion has not expired, and the assertion lifetime is no
-        more than 300 seconds;
+        future beyond the IdP's permitted clock skew (which SHOULD NOT
+        exceed 60 seconds, so it does not materially extend the
+        assertion's effective lifetime), exp is after iat, the assertion
+        has not expired, and the assertion lifetime is no more than 300
+        seconds;
 
    14.  the requested audience and resource, every requested scope, and
         any requested authorization details [RFC9396] are authorized by
@@ -1976,6 +1978,17 @@ Table of Contents
    authority beyond the root-chain envelope, which the IdP evaluates on
    every continuation.  Concentrating anchors in one operator trades
    away the defense in depth the conjunction otherwise provides.
+
+   These guarantees also presuppose that the IdP is a distinct trust
+   boundary from the domain anchors it relies on.  Where a single
+   operator runs the IdP together with a domain's Resource Authorization
+   Server, Transaction Token Service, and Chain Authority, the envelope
+   backstop is self-operated and the conjunctive checks reduce to that
+   operator's internal correctness; the assurance is then organizational
+   rather than protocol-enforced.  Such a deployment is legitimate, and
+   where it has no offline segment or domain-local policy the Chain
+   Authority adds little over the recipient-bound direct profile
+   (Appendix E).
 
 10.9.  Actor Chain Integrity
 
