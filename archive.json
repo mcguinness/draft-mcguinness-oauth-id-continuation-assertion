@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-07-26T02:39:48.985928+00:00",
+  "timestamp": "2026-07-28T02:26:43.091708+00:00",
   "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
   "labels": [
     {
@@ -1111,6 +1111,62 @@
       "mergedBy": "mcguinness",
       "mergeCommit": {
         "oid": "31d81c459a65f31299d9eacfdf0048c92b4827e8"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 39,
+      "id": "PR_kwDOSyPVJM72dz-d",
+      "title": "Tighten prose without normative change: compress rationale, core flow, dedup",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/pull/39",
+      "state": "MERGED",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Prose tightening only, ~840 words removed (16666 to ~15825), no normative change.\n\n**Verified lossless:** both numbered rule lists (chain-id 1-8, validation 1-16) are byte-identical so every `rule N` citation still resolves; all 366 lines of fenced content (examples, JSON, flow blocks) are byte-identical; a before/after normative-keyword census shows every removed line is a reword whose keyword survives; the load-bearing non-keyword additions from #34-#38 (SAML SessionIndex path, sid exclusion, client-to-actor adversary bullet, co-location callout, taxonomy hedge, hop-state guidance, RAR containment, IANA permanent/non-list, act denylist + ignore-unknown) all confirmed present.\n\n**Main change:** Design Rationale compressed 1347 to 768 words, dropping repetition and the bulleted layout while keeping every argument and all ecosystem/layering context. Core Flow 12 to 7 steps. Response-param/intro/Chain Authority restatements folded to cross-refs. **Worked examples left unchanged.** Builds clean, zero warnings, no em-dashes.",
+      "createdAt": "2026-07-26T04:09:53Z",
+      "updatedAt": "2026-07-26T05:02:34Z",
+      "baseRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "baseRefName": "main",
+      "baseRefOid": "31d81c459a65f31299d9eacfdf0048c92b4827e8",
+      "headRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "headRefName": "mvp-structural",
+      "headRefOid": "a55b008deb60070159ac8ce8cd38185d59c808b9",
+      "closedAt": "2026-07-26T05:02:31Z",
+      "mergedAt": "2026-07-26T05:02:31Z",
+      "mergedBy": "mcguinness",
+      "mergeCommit": {
+        "oid": "e8175820bcedc9afdfde09d1a57dcb197a97e1d2"
+      },
+      "comments": [],
+      "reviews": []
+    },
+    {
+      "number": 40,
+      "id": "PR_kwDOSyPVJM72kJY3",
+      "title": "Editorial review fixes across the draft",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/pull/40",
+      "state": "MERGED",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Resolves findings from a four-part editorial review (front-matter/concepts, assertion/state-model, validation/considerations, rationale/examples), each verified against the text before applying.\n\n**Semantic/correctness:** wrong defined term at the anchor-resolution step (`continuation` -> `governing authorization`); `sid` added to the Claims exclusion list; Core Flow repeat range corrected (5-7 -> 4-7); dangling pronoun; RS co-located-workload citation/strength clash resolved.\n\n**Cross-reference debris (from earlier compression):** two missing Security anchors added and bare prose pointers converted to `{{...}}` references; bare `(rule 4)` and `chain-id rule 2` fully qualified; rule-6 citations added; rule-11 indentation fixed.\n\n**Rationale prose (compression artifacts):** convoluted opener, 4-clause run-on, comma splice, missing comma, number-agreement, two ambiguous `which` pronouns.\n\n**Two reviewer claims rejected as incorrect:** the envelope-ceiling rule is the sole home of the non-broadening requirement (not a deletable duplicate); chain-id rule 5 not moved out of the list (would break rule-number citations).\n\nVerified: both numbered rule lists byte-identical; fenced content changed only by the intended intro trim; all cross-references resolve; build clean, no em-dashes.",
+      "createdAt": "2026-07-26T14:58:30Z",
+      "updatedAt": "2026-07-26T15:01:18Z",
+      "baseRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "baseRefName": "main",
+      "baseRefOid": "e8175820bcedc9afdfde09d1a57dcb197a97e1d2",
+      "headRepository": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
+      "headRefName": "editorial-fixes",
+      "headRefOid": "a0d83a39150fd62211977584caa3984695b6d700",
+      "closedAt": "2026-07-26T15:01:15Z",
+      "mergedAt": "2026-07-26T15:01:15Z",
+      "mergedBy": "mcguinness",
+      "mergeCommit": {
+        "oid": "9faf5379560cb3bd50988e23f6704af7a52d8547"
       },
       "comments": [],
       "reviews": []
