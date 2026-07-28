@@ -941,12 +941,21 @@ Table of Contents
    by that server's own revocation mechanisms.
 
    Revocation is a control-plane capability, but the delegation belongs
-   to the user.  IdPs are encouraged to make active chains visible and
-   revocable through user- and administrator-facing management
-   interfaces, presenting the root context, the chain's hop graph and
-   actor lineage, the targets granted so far, and the chain's expiry.
-   Grant Management for OAuth 2.0 [GRANT-MGMT] provides a comparable
-   management model for standing grants.
+   to the user.  For a chain that outlives the establishing session, any
+   grant-anchored chain and in particular a durable task chain
+   (Section 11.3), the delegation runs unattended after the user has
+   consented, so its management surface is not optional: the IdP MUST
+   make the chain visible and revocable through a user- or
+   administrator-facing interface, presenting its purpose, the root
+   context, the chain's hop graph and actor lineage, the targets granted
+   so far, and the chain's expiry; MUST support user- or administrator-
+   initiated revocation of the chain, and of an individual hop's subtree
+   where the IdP offers subtree revocation; and SHOULD notify the
+   delegating user or administrator when such a chain is established and
+   as it approaches expiry.  For a session-anchored chain, which cannot
+   outlive logout, the same surface is RECOMMENDED.  Grant Management
+   for OAuth 2.0 [GRANT-MGMT] provides a comparable management model for
+   standing grants.
 
 7.  Token Exchange Profile
 
