@@ -2472,6 +2472,16 @@ Appendix B.  Examples
    (Appendix B.2), and a gateway topology with dynamically determined
    upstream audiences (Appendix B.3).
 
+   Notation.  Message sequences are drawn as vertical lifelines with
+   time flowing downward; --> is a request and <-- a reply, and a note
+   to the right of a step records a resulting state change.  Fenced
+   blocks are tagged: "on the wire" for a protocol message that crosses
+   a boundary (a request, a reply, or a decoded token), and "internal
+   state" for server-side data that is never transmitted (an IdP chain
+   record, a Resource Authorization Server binding, or a domain's chain
+   context).  Continuation handles are written H0, H1, and H2, one per
+   hop.
+
 B.1.  Worked Example (Same-IdP)
 
    This section walks the canonical flow of Section 4 end-to-end for a
@@ -2499,169 +2509,77 @@ B.1.  Worked Example (Same-IdP)
    Transaction Token Service derives the handle from that bound state
    for its own workloads (Section 5.6).
 
-   The participants and values used throughout:
+   Participants are grouped by trust domain; all trust one IdP at
+   https://idp.example/, the Continuation Authorization Server.  Each
+   SaaS domain runs the same three components under its own stem: a
+   Resource Authorization Server (ras.) that binds each hop it accepts,
+   a Transaction Token Service (tts.) that derives a bound hop's handle
+   into the domain's chain context, and a Chain Authority (ca.) that
+   issues the assertion continuing a hop its RAS accepted, plus the
+   workloads that make the calls.
 
-   +==============+=============================+======================+
-   |Name          |Value                        |Description           |
-   +==============+=============================+======================+
-   |User          |(none)                       |The human,            |
-   |              |                             |authenticated once at |
-   |              |                             |the IdP.              |
-   +--------------+-----------------------------+----------------------+
-   |IdP           |https://idp.example/         |Trust anchor and      |
-   |              |                             |Continuation          |
-   |              |                             |Authorization Server. |
-   +--------------+-----------------------------+----------------------+
-   |ExpenseApp    |expense-app                  |User-facing           |
-   |              |                             |application; first-   |
-   |              |                             |hop client.           |
-   +--------------+-----------------------------+----------------------+
-   |ExpenseSaaS   |https://expenses.example/    |First SaaS the user   |
-   |              |                             |invokes.              |
-   +--------------+-----------------------------+----------------------+
-   |ExpenseRAS    |https://ras.expenses.example/|Resource              |
-   |              |                             |Authorization Server  |
-   |              |                             |for ExpenseAPI; binds |
-   |              |                             |each hop it accepts   |
-   |              |                             |to its authorization  |
-   |              |                             |state (Section 9).    |
-   +--------------+-----------------------------+----------------------+
-   |ExpenseAPI    |https://api.expenses.example/|Protected resource    |
-   |              |                             |behind ExpenseRAS.    |
-   +--------------+-----------------------------+----------------------+
-   |ExpenseService|expense-service              |ExpenseSaaS workload  |
-   |              |                             |that continues the    |
-   |              |                             |chain and calls       |
-   |              |                             |TravelAPI.            |
-   +--------------+-----------------------------+----------------------+
-   |Expense TTS   |https://tts.expenses.example/|ExpenseSaaS's         |
-   |              |                             |Transaction Token     |
-   |              |                             |Service; derives the  |
-   |              |                             |handle ExpenseRAS     |
-   |              |                             |bound and issues      |
-   |              |                             |ExpenseService's      |
-   |              |                             |local Transaction     |
-   |              |                             |Token (Section 5.6).  |
-   +--------------+-----------------------------+----------------------+
-   |Expense Chain |https://ca.expenses.example/ |ExpenseSaaS's Chain   |
-   |Authority     |                             |Authority; issues the |
-   |              |                             |Identity Continuation |
-   |              |                             |Assertion that        |
-   |              |                             |continues a hop       |
-   |              |                             |ExpenseRAS accepted.  |
-   +--------------+-----------------------------+----------------------+
-   |TravelSaaS    |https://travel.example/      |Downstream SaaS.      |
-   +--------------+-----------------------------+----------------------+
-   |TravelRAS     |https://ras.travel.example/  |Resource              |
-   |              |                             |Authorization Server  |
-   |              |                             |for TravelAPI; binds  |
-   |              |                             |each hop it accepts   |
-   |              |                             |to its authorization  |
-   |              |                             |state (Section 9).    |
-   +--------------+-----------------------------+----------------------+
-   |TravelAPI     |https://api.travel.example/  |Protected resource    |
-   |              |                             |behind TravelRAS.     |
-   +--------------+-----------------------------+----------------------+
-   |TravelService |travel-service               |TravelSaaS workload   |
-   |              |                             |that processes the    |
-   |              |                             |inbound request and   |
-   |              |                             |calls BookingAPI.     |
-   +--------------+-----------------------------+----------------------+
-   |Travel TTS    |https://tts.travel.example/  |TravelSaaS's          |
-   |              |                             |Transaction Token     |
-   |              |                             |Service; derives the  |
-   |              |                             |handle TravelRAS      |
-   |              |                             |bound and issues      |
-   |              |                             |TravelService's local |
-   |              |                             |Transaction Token     |
-   |              |                             |(Section 5.6).        |
-   +--------------+-----------------------------+----------------------+
-   |Travel Chain  |https://ca.travel.example/   |TravelSaaS's Chain    |
-   |Authority     |                             |Authority; issues the |
-   |              |                             |Identity Continuation |
-   |              |                             |Assertion that        |
-   |              |                             |continues a hop       |
-   |              |                             |TravelRAS accepted.   |
-   +--------------+-----------------------------+----------------------+
-   |BookingSaaS   |https://booking.example/     |Third SaaS, reached   |
-   |              |                             |in the third hop.     |
-   +--------------+-----------------------------+----------------------+
-   |BookingRAS    |https://ras.booking.example/ |Resource              |
-   |              |                             |Authorization Server  |
-   |              |                             |for BookingAPI;       |
-   |              |                             |terminal in this      |
-   |              |                             |chain, so an ordinary |
-   |              |                             |ID-JAG Resource       |
-   |              |                             |Authorization Server  |
-   |              |                             |that needs no         |
-   |              |                             |continuation support  |
-   |              |                             |(Section 9).          |
-   +--------------+-----------------------------+----------------------+
-   |BookingAPI    |https://api.booking.example/ |Protected resource    |
-   |              |                             |behind BookingRAS.    |
-   +--------------+-----------------------------+----------------------+
-   |PartnerSaaS   |https://partner.example/     |SaaS outside the      |
-   |              |                             |trust circle          |
-   |              |                             |(Appendix B.1.7).     |
-   +--------------+-----------------------------+----------------------+
-   |Handles       |kW4uJ8pTe2NxA6rQvD1zYs (H0,  |Continuation handles; |
-   |              |root hop),                   |one per hop, each a   |
-   |              |Uc9fB3mHs5LdK7gEnX2wRj (H1,  |claim of its own      |
-   |              |Travel hop),                 |continuation-capable  |
-   |              |Ht6mZ2pQe8VrKx4NcWy1Jd (H2,  |ID-JAG (Section 6).   |
-   |              |Booking hop)                 |                      |
-   +--------------+-----------------------------+----------------------+
-   |Subjects      |expense-local-subject,       |The user's pairwise   |
-   |              |travel-local-subject,        |subject at            |
-   |              |booking-local-subject        |ExpenseRAS,           |
-   |              |                             |TravelRAS, and        |
-   |              |                             |BookingRAS,           |
-   |              |                             |respectively.         |
-   +--------------+-----------------------------+----------------------+
+   *  Expense domain (expenses.example): client expense-app, workload
+      expense-service, and ExpenseRAS / Expense TTS / Expense CA, in
+      front of ExpenseAPI.
 
-                                  Table 3
+   *  Travel domain (travel.example): workload travel-service, and
+      TravelRAS / Travel TTS / Travel CA, in front of TravelAPI.
 
-   At a glance, the message flow is:
+   *  Booking domain (booking.example): BookingRAS and BookingAPI only.
+      It is terminal in this chain, an ordinary ID-JAG Resource
+      Authorization Server that needs no continuation support
+      (Section 9).
 
-   User authenticates once at the IdP.
+   *  Outside the trust circle: PartnerSaaS (partner.example), reached
+      in Appendix B.1.7.
 
-   ExpenseApp -> IdP: exchange ID Token
-   IdP -> ExpenseApp: ID-JAG(ExpenseRAS) carrying H0
-   ExpenseApp -> ExpenseRAS: ID-JAG
-   ExpenseRAS -> ExpenseApp: AT1 (ExpenseRAS binds H0)
-   ExpenseApp -> ExpenseAPI: AT1
-   Expense TTS -> ExpenseService: Transaction Token
-     (tctx.identity_continuation = H0)
+   The user has one pairwise subject per RAS (expense-local-subject,
+   travel-local-subject, booking-local-subject), which only the IdP can
+   map between.  Continuation handles are H0 (root, bound at
+   ExpenseRAS), H1 (Travel), and H2 (Booking), each a claim of its own
+   continuation-capable ID-JAG (Section 6).
 
-   ExpenseService -> Expense Chain Authority: request assertion for H0
-   Expense Chain Authority -> ExpenseService:
-     Identity Continuation Assertion
-   ExpenseService -> IdP: assertion exchange + DPoP
-   IdP -> ExpenseService: ID-JAG(TravelRAS) carrying H1
-   ExpenseService -> TravelRAS: ID-JAG
-   TravelRAS -> ExpenseService: AT2 (TravelRAS binds H1)
-   ExpenseService -> TravelAPI: AT2
-   Travel TTS -> TravelService: Transaction Token
-     (tctx.identity_continuation = H1)
+   At a glance: the root hop establishes the chain, then every
+   continuation hop repeats one exchange.  The root hop, where
+   ExpenseApp obtains and redeems the first ID-JAG and the Expense
+   domain binds and propagates H0:
 
-   TravelService -> Travel Chain Authority: request assertion for H1
-   Travel Chain Authority -> TravelService:
-     Identity Continuation Assertion
-   TravelService -> IdP: assertion exchange + DPoP
-   IdP -> TravelService: ID-JAG(BookingRAS) carrying H2
-   TravelService -> BookingRAS: ID-JAG
-   BookingRAS -> TravelService: AT3 (ordinary RAS, no binding)
-   TravelService -> BookingAPI: AT3
+    ExpenseApp     IdP        ExpenseRAS    Expense TTS
+        |           |             |              |
+        |--ID Tok-->|             |              |
+        |<-ID-JAG(H0)             |              |
+        |-----------ID-JAG------->|              |
+        |<----------AT1-----------| binds H0     |
+        |           |             |--derive H0-->|
+        |           |             |   (H0 into tctx, intra-domain)
 
-   The subsections below detail each step; Appendix B.1.6 then repeats
-   the continuation pattern for a third hop to BookingRAS, this time
+   Each continuation hop then runs the exchange below.  The Expense-to-
+   Travel hop is shown; the Travel-to-Booking hop repeats it with the
+   next domain's components, except that BookingRAS is terminal and
+   returns an access token without binding:
+
+    ExpenseService  Expense CA   IdP      TravelRAS  Travel TTS
+         |              |         |           |          |
+         |--request---->|         |           |          |
+         |<--assertion--|         |           |          |
+         |------------assertion + DPoP------->|          |
+         |<-----------ID-JAG(H1)--------------|          |
+         |---------------ID-JAG-------------->|          |
+         |<--------------AT2------------------| binds H1 |
+         |              |         |           |-derive-->|
+
+   Blocks below are tagged "on the wire" or "internal state" per the
+   notation above.  The subsections detail each step; Appendix B.1.6
+   repeats the continuation pattern for the third hop to BookingRAS,
    from within TravelSaaS.
 
 B.1.1.  First Hop: Direct ID-JAG for ExpenseRAS
 
    ExpenseApp holds an ID Token for the authenticated user and exchanges
    it at the IdP for an ID-JAG scoped to ExpenseRAS.  The request is
-   DPoP-bound to ExpenseApp's key:
+   DPoP-bound to ExpenseApp's key.
+
+   On the wire (request):
 
    POST /token HTTP/1.1
    Host: idp.example
@@ -2687,7 +2605,9 @@ B.1.1.  First Hop: Direct ID-JAG for ExpenseRAS
    Booking targets, and designate expense-service (to continue to
    Travel) and travel-service (to continue to Booking) as the permitted
    continuers, so the IdP establishes a chain (Section 8.2).  It records
-   the following target entries in the root-chain envelope:
+   the following target entries in the root-chain envelope.
+
+   Internal state (not transmitted):
 
    (https://ras.expenses.example/, https://api.expenses.example/)
        permitted scopes: expenses.read
@@ -2711,6 +2631,8 @@ B.1.1.  First Hop: Direct ID-JAG for ExpenseRAS
    (Section 9).  The Token Exchange response carries no continuation-
    specific member: the handle travels only inside the ID-JAG.
 
+   On the wire (response):
+
    {
      "access_token": "<ID-JAG for ExpenseRAS>",
      "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
@@ -2719,7 +2641,9 @@ B.1.1.  First Hop: Direct ID-JAG for ExpenseRAS
    }
 
    The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local
-   subject and the root hop's handle:
+   subject and the root hop's handle.
+
+   On the wire (decoded ID-JAG):
 
    {
      "iss": "https://idp.example/",
@@ -2763,7 +2687,9 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
 
    ExpenseRAS keeps this association in a private, own-domain record; it
    is never serialized into AT1, an external authorization claim, or
-   anything ExpenseAPI's callers observe:
+   anything ExpenseAPI's callers observe.
+
+   Internal state (not transmitted):
 
    {
      "identity_continuation_handle": "kW4uJ8pTe2NxA6rQvD1zYs",
@@ -2777,7 +2703,9 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
    own Transaction Token Service, resolves AT1 against the record
    ExpenseRAS just created over their shared, own-domain interface
    (Section 9), derives H0 from it, and issues a local Transaction Token
-   for ExpenseService, the workload that will complete the request:
+   for ExpenseService, the workload that will complete the request.
+
+   Internal state (not transmitted):
 
    {
      "iss": "https://tts.expenses.example/",
@@ -2832,7 +2760,9 @@ B.1.3.  Obtaining the Identity Continuation Assertion
    Authority's domain, and the IdP's per-hop authority map designates
    this Chain Authority for that domain (Section 8.2); a Chain Authority
    never attests a hop accepted by another domain's Resource
-   Authorization Server.  The Chain Authority returns:
+   Authorization Server.  The Chain Authority returns the following.
+
+   On the wire (decoded assertion):
 
    {
      "iss": "https://ca.expenses.example/",
@@ -2856,7 +2786,9 @@ B.1.3.  Obtaining the Identity Continuation Assertion
 B.1.4.  Chained Exchange for the TravelRAS ID-JAG
 
    ExpenseService presents the assertion to the IdP as the
-   subject_token, DPoP-bound to its own key:
+   subject_token, DPoP-bound to its own key.
+
+   On the wire (request):
 
    POST /token HTTP/1.1
    Host: idp.example
@@ -2887,7 +2819,9 @@ B.1.4.  Chained Exchange for the TravelRAS ID-JAG
    CONTINUABLE (Section 9).
 
    The IdP then resolves the user's TravelRAS-local subject, creates a
-   fresh hop H1 whose immutable parent is H0, and returns:
+   fresh hop H1 whose immutable parent is H0, and returns the following.
+
+   On the wire (response):
 
    {
      "access_token": "<ID-JAG for TravelRAS>",
@@ -2899,7 +2833,9 @@ B.1.4.  Chained Exchange for the TravelRAS ID-JAG
    The decoded ID-JAG for TravelRAS carries H1 and the newly constructed
    act chain (Section 8.9): expense-service, authenticated at this
    exchange, placed atop the root actor expense-app. travel-service has
-   not yet performed an exchange, so it is not part of the lineage:
+   not yet performed an exchange, so it is not part of the lineage.
+
+   On the wire (decoded ID-JAG):
 
    {
      "iss": "https://idp.example/",
@@ -2946,7 +2882,9 @@ B.1.5.  TravelRAS Acceptance and the Travel-Domain Chain Context
 
    ExpenseService calls TravelAPI with AT2.  The Travel TTS derives H1
    from that bound state and issues a local Transaction Token for
-   TravelService, the TravelSaaS workload that receives the request:
+   TravelService, the TravelSaaS workload that receives the request.
+
+   Internal state (not transmitted):
 
    {
      "iss": "https://tts.travel.example/",
@@ -2985,7 +2923,9 @@ B.1.6.  Third Hop: TravelService Continues to BookingRAS
    Identity Continuation Assertion from https://ca.travel.example/,
    TravelSaaS's own Chain Authority, authorized for H1 because TravelRAS
    accepted it (Section 8.2), exactly as ExpenseService did in
-   Appendix B.1.3:
+   Appendix B.1.3.
+
+   On the wire (decoded assertion):
 
    {
      "iss": "https://ca.travel.example/",
@@ -3013,7 +2953,9 @@ B.1.6.  Third Hop: TravelService Continues to BookingRAS
    hop H2 whose immutable parent is H1 and constructs the onward act
    chain (Section 8.9): travel-service, authenticated at this exchange,
    placed atop the presented hop's lineage (expense-service, then
-   expense-app):
+   expense-app).
+
+   On the wire (decoded ID-JAG):
 
    {
      "iss": "https://idp.example/",
@@ -3124,117 +3066,33 @@ B.2.  Background Agent Example (User-Scheduled Continuation)
    fall back to a trusted sidecar handle store, exactly what this
    architecture avoids.
 
-   The participants and values used throughout:
+   Participants are grouped by trust domain; all trust one IdP at
+   https://idp.example/, the Continuation Authorization Server.
 
-   +=============+===============================+=====================+
-   |Name         | Value                         | Description         |
-   +=============+===============================+=====================+
-   |User         | (none)                        | The human, Alice;   |
-   |             |                               | present at setup,   |
-   |             |                               | absent at every     |
-   |             |                               | run.                |
-   +-------------+-------------------------------+---------------------+
-   |IdP          | https://idp.example/          | Trust anchor and    |
-   |             |                               | Continuation        |
-   |             |                               | Authorization       |
-   |             |                               | Server.             |
-   +-------------+-------------------------------+---------------------+
-   |BriefingAgent| briefing-agent                | Agent platform      |
-   |             |                               | workload that       |
-   |             |                               | runs the            |
-   |             |                               | scheduled task.     |
-   +-------------+-------------------------------+---------------------+
-   |Platform     | https://platform.example/     | BriefingAgent's     |
-   |             |                               | trust domain and    |
-   |             |                               | actor issuer.       |
-   +-------------+-------------------------------+---------------------+
-   |PlatformRAS  | https://ras.platform.example/ | Resource            |
-   |(TaskRAS)    |                               | Authorization       |
-   |             |                               | Server for the      |
-   |             |                               | platform's own      |
-   |             |                               | task-provisioning   |
-   |             |                               | domain; accepts     |
-   |             |                               | the root ID-JAG     |
-   |             |                               | and creates         |
-   |             |                               | durable task        |
-   |             |                               | authorization       |
-   |             |                               | bound to the        |
-   |             |                               | resulting hop.      |
-   +-------------+-------------------------------+---------------------+
-   |TaskAPI      | https://api.platform.example/ | Protected           |
-   |             | tasks                         | resource behind     |
-   |             |                               | PlatformRAS; the    |
-   |             |                               | resource of the     |
-   |             |                               | root ID-JAG.        |
-   +-------------+-------------------------------+---------------------+
-   |Platform TTS | (internal)                    | Platform's          |
-   |             |                               | Transaction Token   |
-   |             |                               | Service; resolves   |
-   |             |                               | a task identifier   |
-   |             |                               | to its hop's        |
-   |             |                               | authorization       |
-   |             |                               | state for each      |
-   |             |                               | run and carries     |
-   |             |                               | that state intra-   |
-   |             |                               | domain.             |
-   +-------------+-------------------------------+---------------------+
-   |Chain        | https://ca.platform.example/  | The platform's      |
-   |Authority    |                               | Chain Authority;    |
-   |             |                               | issues Identity     |
-   |             |                               | Continuation        |
-   |             |                               | Assertions for      |
-   |             |                               | its workloads,      |
-   |             |                               | including the       |
-   |             |                               | run-time            |
-   |             |                               | continuation from   |
-   |             |                               | the root hop.       |
-   +-------------+-------------------------------+---------------------+
-   |CalendarRAS  | https://ras.calendar.example/ | Resource            |
-   |             |                               | Authorization       |
-   |             |                               | Server for the      |
-   |             |                               | calendar service.   |
-   +-------------+-------------------------------+---------------------+
-   |CalendarAPI  | https://api.calendar.example/ | Protected           |
-   |             |                               | resource behind     |
-   |             |                               | CalendarRAS.        |
-   +-------------+-------------------------------+---------------------+
-   |Scheduler    | (internal)                    | Platform            |
-   |             |                               | component that      |
-   |             |                               | triggers each       |
-   |             |                               | run; holds only a   |
-   |             |                               | task identifier.    |
-   +-------------+-------------------------------+---------------------+
-   |MailRAS      | https://ras.mail.example/     | Resource            |
-   |             |                               | Authorization       |
-   |             |                               | Server for the      |
-   |             |                               | mail upstream       |
-   |             |                               | (Appendix B.2.4).   |
-   +-------------+-------------------------------+---------------------+
-   |MailAPI      | https://api.mail.example/     | Mail protected      |
-   |             |                               | resource            |
-   |             |                               | (Appendix B.2.4).   |
-   +-------------+-------------------------------+---------------------+
-   |Handles      | Pz6vTq1NcY4kM8bJf3RxWa (H0,   | H0 persists         |
-   |             | the root hop),                | across runs; each   |
-   |             | Qh2xNf9LpVb6tKdWs4RzYc (this  | run's onward hop    |
-   |             | run's Calendar hop)           | is a fresh child    |
-   |             |                               | of H0.              |
-   +-------------+-------------------------------+---------------------+
-   |Task         | task-123                      | Opaque              |
-   |Identifier   |                               | identifier; the     |
-   |             |                               | only value the      |
-   |             |                               | Scheduler ever      |
-   |             |                               | stores.             |
-   +-------------+-------------------------------+---------------------+
-   |Subjects     | alice-task-subject, alice-    | Alice's pairwise    |
-   |             | calendar-subject              | subject at          |
-   |             |                               | PlatformRAS/        |
-   |             |                               | TaskAPI and at      |
-   |             |                               | CalendarRAS,        |
-   |             |                               | respectively.       |
-   +-------------+-------------------------------+---------------------+
+   *  Platform domain (platform.example): workload briefing-agent, and
+      PlatformRAS (the platform's own TaskRAS) / Platform TTS / Chain
+      Authority, in front of TaskAPI (https://api.platform.example/
+      tasks); the Scheduler is an internal platform component, holding
+      only the task identifier, that triggers each run.
 
-                                  Table 4
+   *  Calendar domain (calendar.example): CalendarRAS only, in front of
+      CalendarAPI.  It is terminal in every run, an ordinary ID-JAG
+      Resource Authorization Server that needs no continuation support
+      (Section 9).
+
+   *  Mail domain (mail.example): MailRAS in front of MailAPI, reached
+      only in the dynamic-target scenario below (Appendix B.2.4);
+      likewise terminal.
+
+   Alice, the user, is present once at setup and absent at every run;
+   the task identifier task-123 is the only value the Scheduler ever
+   stores.  Alice has one pairwise subject per RAS (alice-task-subject
+   at PlatformRAS/TaskAPI, alice-calendar-subject at CalendarRAS), which
+   only the IdP can map between.  The root hop H0
+   (Pz6vTq1NcY4kM8bJf3RxWa) persists across runs and is bound at
+   PlatformRAS; each run's onward hop, such as this run's Calendar hop
+   (Qh2xNf9LpVb6tKdWs4RzYc), is a fresh child of H0, one claim of its
+   own continuation-capable ID-JAG (Section 6).
 
 B.2.1.  Setup (Alice Present)
 
@@ -3254,7 +3112,9 @@ B.2.1.  Setup (Alice Present)
    Section 7), with briefing-agent as the permitted continuer.  The IdP
    records two target entries in the root-chain envelope: the root hop's
    own target, and the task's actual need, authorized for later
-   continuation:
+   continuation.
+
+   Internal state (not transmitted):
 
    (https://ras.platform.example/, https://api.platform.example/tasks)
        permitted scopes: task.manage
@@ -3268,7 +3128,9 @@ B.2.1.  Setup (Alice Present)
    PlatformRAS accepts and binds the hop as in Appendix B.1.2.
 
    The durable task authorization this creates, keyed by the task
-   identifier PlatformRAS assigns, holds no bearer credential:
+   identifier PlatformRAS assigns, holds no bearer credential.
+
+   Internal state (not transmitted):
 
    task_id:              task-123
      owner:               alice
@@ -3284,7 +3146,7 @@ B.2.1.  Setup (Alice Present)
        # enforced locally at PlatformRAS; not the IdP chain lifetime
      status:              active
 
-   The Scheduler stores only:
+   Internal state (not transmitted):
 
    task_id: task-123
 
@@ -3294,28 +3156,29 @@ B.2.1.  Setup (Alice Present)
 
 B.2.2.  Each Run (Alice Absent)
 
-   At a glance, each run proceeds as follows:
+   At a glance, each run has two parts: the trigger and local derivation
+   inside the platform, then the continuation exchange that reaches
+   CalendarRAS.  The trigger and local derivation:
 
-   Scheduler      -> Platform:       run task-123 (task identifier only)
-   Platform TTS   -> Platform TTS:   resolve task-123 to its ACCEPTED
-                                     PlatformRAS authorization state,
-                                     deriving H0
-   Platform TTS   -> BriefingAgent:  authenticated run context; H0
-                                     carried only by a Transaction
-                                     Token, intra-domain
-   BriefingAgent  -> ChainAuthority: assertion for H0, bound to the
-                                     briefing-agent key
-   ChainAuthority -> BriefingAgent:  Identity Continuation Assertion
-   BriefingAgent  -> IdP:            Token Exchange (assertion + DPoP)
-   IdP:                              validate per the rules of the
-                                     validation section; resolve Alice's
-                                     Calendar subject; mint a fresh
-                                     child hop of H0
-   IdP            -> BriefingAgent:  ID-JAG(CalendarRAS) carrying that
-                                     child hop as a claim
-   BriefingAgent  -> CalendarRAS:    ID-JAG -> access token (DPoP);
-                                     ordinary RAS, no binding
-   BriefingAgent  -> CalendarAPI:    read calendar -> summarize
+   Scheduler    Platform TTS           BriefingAgent
+    |                  |                     |
+    |--task-123------->|                     |
+    |                  (resolve: ACCEPTED, derive H0)
+    |                  |--run context: H0--->|
+    |                  |                        (intra-domain, via tctx)
+
+   The continuation exchange run for this call, ending at CalendarRAS,
+   this run's terminal hop:
+
+   BriefingAgent    ChainAuthority IdP    CalendarRAS
+    |               |             |           |
+    |--request----->|             |           |
+    |<---assertion--|             |           |
+    |--assertion + DPoP---------------------->|
+    |<-------------------------ID-JAG(child)--|
+    |--ID-JAG-------------------------------->|
+    |<------------------------------------AT--|
+    |               |             |           (no binding; ordinary RAS)
 
    The Scheduler's trigger carries nothing but the task identifier, so
    the trigger call itself is authenticated on its own (the task
@@ -3407,7 +3270,9 @@ B.2.4.  A Dynamic Target
    https://ras.mail.example/: a target nobody named when Alice created
    the task.  Under the target entries recorded in the setup above, a
    run's continuation exchange presenting H0 for that audience fails,
-   and the chain is otherwise unaffected:
+   and the chain is otherwise unaffected.
+
+   On the wire (response):
 
    HTTP/1.1 400 Bad Request
    Content-Type: application/json
@@ -3454,143 +3319,62 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
    cannot select which handle a continuation uses; the point in the flow
    where that matters is called out below.
 
-   The participants and values used throughout:
+   Participants are grouped by trust domain; all trust one IdP at
+   https://idp.example/, the Continuation Authorization Server.
 
-   +=================+==============================+=================+
-   | Name            | Value                        | Description     |
-   +=================+==============================+=================+
-   | User            | (none)                       | The human,      |
-   |                 |                              | Alice; her      |
-   |                 |                              | session runs in |
-   |                 |                              | AgentApp.       |
-   +-----------------+------------------------------+-----------------+
-   | IdP             | https://idp.example/         | Trust anchor    |
-   |                 |                              | and             |
-   |                 |                              | Continuation    |
-   |                 |                              | Authorization   |
-   |                 |                              | Server.         |
-   +-----------------+------------------------------+-----------------+
-   | AgentApp        | agent-app                    | Confidential    |
-   |                 |                              | agent runtime;  |
-   |                 |                              | hosts Alice's   |
-   |                 |                              | session and     |
-   |                 |                              | roots the       |
-   |                 |                              | chain.          |
-   +-----------------+------------------------------+-----------------+
-   | AgentPlatform   | https://agent.example/       | AgentApp's      |
-   |                 |                              | trust domain    |
-   |                 |                              | and actor       |
-   |                 |                              | issuer.         |
-   +-----------------+------------------------------+-----------------+
-   | Gateway         | tool-gateway                 | Tool gateway    |
-   |                 |                              | workload;       |
-   |                 |                              | receives        |
-   |                 |                              | Alice's tool    |
-   |                 |                              | calls and       |
-   |                 |                              | continues the   |
-   |                 |                              | chain per call. |
-   +-----------------+------------------------------+-----------------+
-   | GatewayPlatform | https://gateway.example/     | The gateway's   |
-   |                 |                              | trust domain    |
-   |                 |                              | and actor       |
-   |                 |                              | issuer; also    |
-   |                 |                              | the resource    |
-   |                 |                              | identifier of   |
-   |                 |                              | its tool-       |
-   |                 |                              | invocation      |
-   |                 |                              | surface,        |
-   |                 |                              | addressed as    |
-   |                 |                              | resource below. |
-   +-----------------+------------------------------+-----------------+
-   | GatewayRAS      | https://ras.gateway.example/ | Resource        |
-   |                 |                              | Authorization   |
-   |                 |                              | Server          |
-   |                 |                              | protecting the  |
-   |                 |                              | gateway.        |
-   +-----------------+------------------------------+-----------------+
-   | Gateway TTS     | (internal)                   | The gateway     |
-   |                 |                              | domain's        |
-   |                 |                              | Transaction     |
-   |                 |                              | Token Service;  |
-   |                 |                              | derives a hop's |
-   |                 |                              | handle from     |
-   |                 |                              | GatewayRAS's    |
-   |                 |                              | bound           |
-   |                 |                              | authorization   |
-   |                 |                              | state for the   |
-   |                 |                              | local           |
-   |                 |                              | transaction     |
-   |                 |                              | context.        |
-   +-----------------+------------------------------+-----------------+
-   | Chain Authority | https://ca.gateway.example/  | The gateway     |
-   |                 |                              | domain's Chain  |
-   |                 |                              | Authority;      |
-   |                 |                              | issues          |
-   |                 |                              | assertions for  |
-   |                 |                              | its own         |
-   |                 |                              | workloads only. |
-   +-----------------+------------------------------+-----------------+
-   | Tenant          | tenant-gw-01                 | Identifier      |
-   |                 |                              | scoping the     |
-   |                 |                              | gateway         |
-   |                 |                              | domain's        |
-   |                 |                              | Transaction     |
-   |                 |                              | Token context.  |
-   +-----------------+------------------------------+-----------------+
-   | WikiRAS         | https://ras.wiki.example/    | Resource        |
-   |                 |                              | Authorization   |
-   |                 |                              | Server for the  |
-   |                 |                              | wiki upstream.  |
-   +-----------------+------------------------------+-----------------+
-   | WikiAPI         | https://api.wiki.example/    | Upstream        |
-   |                 |                              | protected       |
-   |                 |                              | resource behind |
-   |                 |                              | WikiRAS.        |
-   +-----------------+------------------------------+-----------------+
-   | Handles         | Gm2sVe7XpB5tK9nLw4QzCd       | Continuation    |
-   |                 | (root/gateway hop, H0),      | handles; one    |
-   |                 | Kx9tRb3WnE6yPq2sHd8VfT (wiki | per hop.        |
-   |                 | hop, H1)                     |                 |
-   +-----------------+------------------------------+-----------------+
-   | Subjects        | alice-gateway-subject,       | Alice's         |
-   |                 | alice-wiki-subject           | pairwise        |
-   |                 |                              | subject at      |
-   |                 |                              | GatewayRAS and  |
-   |                 |                              | WikiRAS,        |
-   |                 |                              | respectively.   |
-   +-----------------+------------------------------+-----------------+
+   *  AgentPlatform domain (agent.example): client agent-app only, the
+      confidential runtime that hosts Alice's session and roots the
+      chain; it has no Resource Authorization Server of its own in this
+      example.
 
-                                 Table 5
+   *  Gateway domain (gateway.example): workload tool-gateway, and
+      GatewayRAS / Gateway TTS / Chain Authority, in front of the
+      gateway's own tool-invocation surface
+      (resource=https://gateway.example/), scoped under tenant tenant-
+      gw-01.
 
-   At a glance, the message flow is:
+   *  Wiki domain (wiki.example): WikiRAS only, in front of WikiAPI.  It
+      is terminal in this chain, an ordinary ID-JAG Resource
+      Authorization Server that needs no continuation support
+      (Section 9).
 
-   Alice authenticates in agent-app.
+   Alice's session runs in agent-app, which never holds a handle it can
+   attach to a call (Section 6).  Alice has one pairwise subject per RAS
+   (alice-gateway-subject at GatewayRAS, alice-wiki-subject at WikiRAS),
+   which only the IdP can map between.  Continuation handles are H0
+   (Gm2sVe7XpB5tK9nLw4QzCd, the root/gateway hop, bound at GatewayRAS)
+   and H1 (Kx9tRb3WnE6yPq2sHd8VfT, the wiki hop), each a claim of its
+   own continuation-capable ID-JAG (Section 6).
 
-   AgentApp       -> IdP:            (1) direct exchange: Alice's ID
-                                     Token
-   IdP            -> AgentApp:       (2) ID-JAG(GatewayRAS), carrying H0
-                                     as a claim
-   AgentApp       -> GatewayRAS:     (3) ID-JAG
-   GatewayRAS     -> AgentApp:       (4) gateway access token;
-                                     GatewayRAS binds H0
-   AgentApp       -> Gateway:        (5) tool call + access token (no
-                                     handle)
-   Gateway TTS:                      (6) derives H0; issues
-                                     tctx.identity_continuation
+   At a glance, the flow has two parts: the runtime roots the chain at
+   the gateway, then the gateway continues it per tool call.  Alice
+   authenticates in agent-app.  Root exchange, where the runtime obtains
+   and redeems the first ID-JAG and the gateway binds and derives H0:
 
-   Gateway resolves the tool call to the wiki upstream.
+        AgentApp       IdP     GatewayRAS     Gateway TTS
+         |              |         |              |
+   (1)   |--ID Tok----->|         |              |
+   (2)   |<-ID-JAG(H0)--|         |              |
+   (3)   |--ID-JAG--------------->|              |
+   (4)   |<-------------------AT--| binds H0     |
+   (5)   |  tool call + AT to Gateway (no handle)
+   (6)   |              |         |--derive H0-->|
+         |              |         |   (H0 into tctx, intra-domain)
 
-   Gateway        -> ChainAuthority: (7) request assertion for H0 (read
-                                     from tctx)
-   ChainAuthority -> Gateway:        (8) Identity Continuation Assertion
-   Gateway        -> IdP:            (9) chained exchange (assertion +
-                                     DPoP)
-   IdP            -> Gateway:        (10) ID-JAG(WikiRAS), carrying
-                                     fresh H1
-   Gateway        -> WikiRAS:        (11) ID-JAG
-   WikiRAS        -> Gateway:        (12) wiki access token; ordinary
-                                     RAS, no binding, chain ends
-   Gateway        -> WikiAPI:        (13) tool call executes
+   Gateway resolves the tool call to the wiki upstream, then continues
+   the chain per call.  Chained exchange, ending at WikiRAS, this
+   chain's terminal hop:
+
+        Gateway       ChainAuthority  IdP   WikiRAS
+         |             |             |           |
+   (7)   |--request--->|             |           |
+   (8)   |<-assertion--|             |           |
+   (9)   |--assertion + DPoP-------------------->|
+   (10)  |<--------------------------ID-JAG(H1)--|
+   (11)  |--ID-JAG------------------------------>|
+   (12)  |<----------------------------------AT--|
+         |             |             |   (no binding; chain ends)
+   (13)  |  Gateway calls WikiAPI
 
    The subsections below detail each step.
 

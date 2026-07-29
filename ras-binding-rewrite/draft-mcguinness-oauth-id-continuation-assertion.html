@@ -4069,6 +4069,14 @@ three deployment shapes this profile serves: interactive application
 chaining (<a href="#example" class="auto internal xref">Appendix B.1</a>), an unattended background agent
 (<a href="#example-background" class="auto internal xref">Appendix B.2</a>), and a gateway topology with dynamically determined
 upstream audiences (<a href="#example-gateway" class="auto internal xref">Appendix B.3</a>).<a href="#appendix-B-1" class="pilcrow">¶</a></p>
+<p id="appendix-B-2">Notation. Message sequences are drawn as vertical lifelines with time
+flowing downward; <code>--&gt;</code> is a request and <code>&lt;--</code> a reply, and a note to the
+right of a step records a resulting state change. Fenced blocks are tagged:
+"on the wire" for a protocol message that crosses a boundary (a request, a
+reply, or a decoded token), and "internal state" for server-side data that
+is never transmitted (an IdP chain record, a Resource Authorization Server
+binding, or a domain's chain context). Continuation handles are written H0,
+H1, and H2, one per hop.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
 <div id="example">
 <section id="appendix-B.1">
         <h3 id="name-worked-example-same-idp">
@@ -4096,200 +4104,73 @@ binds the handle it receives to the authorization state it establishes
 (<a href="#ras-processing" class="auto internal xref">Section 9</a>), and each domain's Transaction Token Service derives
 the handle from that bound state for its own workloads
 (<a href="#transaction-token-context" class="auto internal xref">Section 5.6</a>).<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.1-4">The participants and values used throughout:<a href="#appendix-B.1-4" class="pilcrow">¶</a></p>
-<table class="center" id="table-3">
-          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Name</th>
-              <th class="text-left" rowspan="1" colspan="1">Value</th>
-              <th class="text-left" rowspan="1" colspan="1">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">User</td>
-              <td class="text-left" rowspan="1" colspan="1">(none)</td>
-              <td class="text-left" rowspan="1" colspan="1">The human, authenticated once at the IdP.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://idp.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseApp</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>expense-app</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">User-facing application; first-hop client.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://expenses.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">First SaaS the user invokes.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.expenses.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for ExpenseAPI; binds each hop it accepts to its authorization state (<a href="#ras-processing" class="auto internal xref">Section 9</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.expenses.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Protected resource behind ExpenseRAS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseService</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>expense-service</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS workload that continues the chain and calls TravelAPI.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Expense TTS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://tts.expenses.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS's Transaction Token Service; derives the handle ExpenseRAS bound and issues ExpenseService's local Transaction Token (<a href="#transaction-token-context" class="auto internal xref">Section 5.6</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Expense Chain Authority</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ca.expenses.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">ExpenseSaaS's Chain Authority; issues the Identity Continuation Assertion that continues a hop ExpenseRAS accepted.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">TravelSaaS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://travel.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Downstream SaaS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">TravelRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.travel.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for TravelAPI; binds each hop it accepts to its authorization state (<a href="#ras-processing" class="auto internal xref">Section 9</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">TravelAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.travel.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Protected resource behind TravelRAS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">TravelService</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>travel-service</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">TravelSaaS workload that processes the inbound request and calls BookingAPI.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Travel TTS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://tts.travel.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">TravelSaaS's Transaction Token Service; derives the handle TravelRAS bound and issues TravelService's local Transaction Token (<a href="#transaction-token-context" class="auto internal xref">Section 5.6</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Travel Chain Authority</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ca.travel.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">TravelSaaS's Chain Authority; issues the Identity Continuation Assertion that continues a hop TravelRAS accepted.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">BookingSaaS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://booking.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Third SaaS, reached in the third hop.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">BookingRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.booking.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for BookingAPI; terminal in this chain, so an ordinary ID-JAG Resource Authorization Server that needs no continuation support (<a href="#ras-processing" class="auto internal xref">Section 9</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">BookingAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.booking.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Protected resource behind BookingRAS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">PartnerSaaS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://partner.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">SaaS outside the trust circle (<a href="#example-federation-edge" class="auto internal xref">Appendix B.1.7</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Handles</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>kW4uJ8pTe2NxA6rQvD1zYs</code> (H0, root hop), <code>Uc9fB3mHs5LdK7gEnX2wRj</code> (H1, Travel hop), <code>Ht6mZ2pQe8VrKx4NcWy1Jd</code> (H2, Booking hop)</td>
-              <td class="text-left" rowspan="1" colspan="1">Continuation handles; one per hop, each a claim of its own continuation-capable ID-JAG (<a href="#chain-id" class="auto internal xref">Section 6</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Subjects</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>expense-local-subject</code>, <code>travel-local-subject</code>, <code>booking-local-subject</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">The user's pairwise subject at ExpenseRAS, TravelRAS, and BookingRAS, respectively.</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="appendix-B.1-6">At a glance, the message flow is:<a href="#appendix-B.1-6" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.1-7">
+<p id="appendix-B.1-4">Participants are grouped by trust domain; all trust one IdP at
+<code>https://idp.example/</code>, the Continuation Authorization Server. Each SaaS
+domain runs the same three components under its own stem: a Resource
+Authorization Server (<code>ras.</code>) that binds each hop it accepts, a Transaction
+Token Service (<code>tts.</code>) that derives a bound hop's handle into the domain's
+chain context, and a Chain Authority (<code>ca.</code>) that issues the assertion
+continuing a hop its RAS accepted, plus the workloads that make the calls.<a href="#appendix-B.1-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.1-5.1">
+            <p id="appendix-B.1-5.1.1">Expense domain (<code>expenses.example</code>): client <code>expense-app</code>, workload
+<code>expense-service</code>, and ExpenseRAS / Expense TTS / Expense CA, in front of
+ExpenseAPI.<a href="#appendix-B.1-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.1-5.2">
+            <p id="appendix-B.1-5.2.1">Travel domain (<code>travel.example</code>): workload <code>travel-service</code>, and
+TravelRAS / Travel TTS / Travel CA, in front of TravelAPI.<a href="#appendix-B.1-5.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.1-5.3">
+            <p id="appendix-B.1-5.3.1">Booking domain (<code>booking.example</code>): BookingRAS and BookingAPI only. It is
+terminal in this chain, an ordinary ID-JAG Resource Authorization Server
+that needs no continuation support (<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.1-5.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.1-5.4">
+            <p id="appendix-B.1-5.4.1">Outside the trust circle: PartnerSaaS (<code>partner.example</code>), reached in
+<a href="#example-federation-edge" class="auto internal xref">Appendix B.1.7</a>.<a href="#appendix-B.1-5.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="appendix-B.1-6">The user has one pairwise subject per RAS (<code>expense-local-subject</code>,
+<code>travel-local-subject</code>, <code>booking-local-subject</code>), which only the IdP can map
+between. Continuation handles are H0 (root, bound at ExpenseRAS), H1
+(Travel), and H2 (Booking), each a claim of its own continuation-capable
+ID-JAG (<a href="#chain-id" class="auto internal xref">Section 6</a>).<a href="#appendix-B.1-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.1-7">At a glance: the root hop establishes the chain, then every continuation
+hop repeats one exchange. The root hop, where ExpenseApp obtains and redeems
+the first ID-JAG and the Expense domain binds and propagates H0:<a href="#appendix-B.1-7" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1-8">
 <pre>
-User authenticates once at the IdP.
-
-ExpenseApp -&gt; IdP: exchange ID Token
-IdP -&gt; ExpenseApp: ID-JAG(ExpenseRAS) carrying H0
-ExpenseApp -&gt; ExpenseRAS: ID-JAG
-ExpenseRAS -&gt; ExpenseApp: AT1 (ExpenseRAS binds H0)
-ExpenseApp -&gt; ExpenseAPI: AT1
-Expense TTS -&gt; ExpenseService: Transaction Token
-  (tctx.identity_continuation = H0)
-
-ExpenseService -&gt; Expense Chain Authority: request assertion for H0
-Expense Chain Authority -&gt; ExpenseService:
-  Identity Continuation Assertion
-ExpenseService -&gt; IdP: assertion exchange + DPoP
-IdP -&gt; ExpenseService: ID-JAG(TravelRAS) carrying H1
-ExpenseService -&gt; TravelRAS: ID-JAG
-TravelRAS -&gt; ExpenseService: AT2 (TravelRAS binds H1)
-ExpenseService -&gt; TravelAPI: AT2
-Travel TTS -&gt; TravelService: Transaction Token
-  (tctx.identity_continuation = H1)
-
-TravelService -&gt; Travel Chain Authority: request assertion for H1
-Travel Chain Authority -&gt; TravelService:
-  Identity Continuation Assertion
-TravelService -&gt; IdP: assertion exchange + DPoP
-IdP -&gt; TravelService: ID-JAG(BookingRAS) carrying H2
-TravelService -&gt; BookingRAS: ID-JAG
-BookingRAS -&gt; TravelService: AT3 (ordinary RAS, no binding)
-TravelService -&gt; BookingAPI: AT3
-</pre><a href="#appendix-B.1-7" class="pilcrow">¶</a>
+ ExpenseApp     IdP        ExpenseRAS    Expense TTS
+     |           |             |              |
+     |--ID Tok--&gt;|             |              |
+     |&lt;-ID-JAG(H0)             |              |
+     |-----------ID-JAG-------&gt;|              |
+     |&lt;----------AT1-----------| binds H0     |
+     |           |             |--derive H0--&gt;|
+     |           |             |   (H0 into tctx, intra-domain)
+</pre><a href="#appendix-B.1-8" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1-8">The subsections below detail each step; <a href="#example-third-hop" class="auto internal xref">Appendix B.1.6</a> then repeats
-the continuation pattern for a third hop to BookingRAS, this time from
-within TravelSaaS.<a href="#appendix-B.1-8" class="pilcrow">¶</a></p>
+<p id="appendix-B.1-9">Each continuation hop then runs the exchange below. The Expense-to-Travel
+hop is shown; the Travel-to-Booking hop repeats it with the next domain's
+components, except that BookingRAS is terminal and returns an access token
+without binding:<a href="#appendix-B.1-9" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1-10">
+<pre>
+ ExpenseService  Expense CA   IdP      TravelRAS  Travel TTS
+      |              |         |           |          |
+      |--request----&gt;|         |           |          |
+      |&lt;--assertion--|         |           |          |
+      |------------assertion + DPoP-------&gt;|          |
+      |&lt;-----------ID-JAG(H1)--------------|          |
+      |---------------ID-JAG--------------&gt;|          |
+      |&lt;--------------AT2------------------| binds H1 |
+      |              |         |           |-derive--&gt;|
+</pre><a href="#appendix-B.1-10" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1-11">Blocks below are tagged "on the wire" or "internal state" per the notation
+above. The subsections detail each step; <a href="#example-third-hop" class="auto internal xref">Appendix B.1.6</a> repeats the
+continuation pattern for the third hop to BookingRAS, from within TravelSaaS.<a href="#appendix-B.1-11" class="pilcrow">¶</a></p>
 <div id="example-first-hop">
 <section id="appendix-B.1.1">
           <h4 id="name-first-hop-direct-id-jag-for">
@@ -4297,8 +4178,9 @@ within TravelSaaS.<a href="#appendix-B.1-8" class="pilcrow">¶</a></p>
           </h4>
 <p id="appendix-B.1.1-1">ExpenseApp holds an ID Token for the authenticated user and exchanges it at the
 IdP for an ID-JAG scoped to ExpenseRAS. The request is DPoP-bound to
-ExpenseApp's key:<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.1.1-2">
+ExpenseApp's key.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-2">On the wire (request):<a href="#appendix-B.1.1-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1.1-3">
 <pre>
 POST /token HTTP/1.1
 Host: idp.example
@@ -4314,9 +4196,9 @@ subject_token=&lt;id_token&gt;
 subject_token_type=urn:ietf:params:oauth:token-type:id_token
 actor_token=&lt;sender-constrained expense-app credential&gt;
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
-</pre><a href="#appendix-B.1.1-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.1-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.1-3">The IdP authenticates the user from the ID Token, resolves the anchoring
+<p id="appendix-B.1.1-4">The IdP authenticates the user from the ID Token, resolves the anchoring
 session from its <code>sid</code> (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>), and verifies that
 ExpenseApp's actor credential is constrained to the DPoP key. The
 authorization attached to that session
@@ -4326,8 +4208,9 @@ Travel and Booking targets, and designate <code>expense-service</code> (to conti
 Travel) and <code>travel-service</code> (to continue to Booking) as the permitted
 continuers, so the IdP establishes a chain
 (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>). It records the following target entries in the
-root-chain envelope:<a href="#appendix-B.1.1-3" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.1.1-4">
+root-chain envelope.<a href="#appendix-B.1.1-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-5">Internal state (not transmitted):<a href="#appendix-B.1.1-5" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1.1-6">
 <pre>
 (https://ras.expenses.example/, https://api.expenses.example/)
     permitted scopes: expenses.read
@@ -4337,20 +4220,21 @@ root-chain envelope:<a href="#appendix-B.1.1-3" class="pilcrow">¶</a></p>
 
 (https://ras.booking.example/, https://api.booking.example/)
     permitted scopes: stays.book
-</pre><a href="#appendix-B.1.1-4" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.1-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.1-5">The envelope also records the continuation authorization, the governing
+<p id="appendix-B.1.1-7">The envelope also records the continuation authorization, the governing
 authorization, and the chain's expiry; the root exchange does not authorize
 the later targets merely by requesting the first (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>).
 A deployment whose onward targets are not knowable at establishment records
 the ceiling without enumeration and evaluates each target at continuation
-time (<a href="#validation" class="auto internal xref">Section 8.8</a>, rule 14).<a href="#appendix-B.1.1-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.1-6">The IdP creates a fresh root hop, H0, for this chain and embeds it as a
+time (<a href="#validation" class="auto internal xref">Section 8.8</a>, rule 14).<a href="#appendix-B.1.1-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-8">The IdP creates a fresh root hop, H0, for this chain and embeds it as a
 claim of the ID-JAG it is about to issue (<a href="#chain-id" class="auto internal xref">Section 6</a>, rule 1); the hop is
 PENDING until a Resource Authorization Server accepts it (<a href="#ras-processing" class="auto internal xref">Section 9</a>).
 The Token Exchange response carries no continuation-specific member: the
-handle travels only inside the ID-JAG.<a href="#appendix-B.1.1-6" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.1-7">
+handle travels only inside the ID-JAG.<a href="#appendix-B.1.1-8" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-9">On the wire (response):<a href="#appendix-B.1.1-9" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.1-10">
 <pre>
 {
   "access_token": "&lt;ID-JAG for ExpenseRAS&gt;",
@@ -4358,11 +4242,12 @@ handle travels only inside the ID-JAG.<a href="#appendix-B.1.1-6" class="pilcrow
   "token_type": "N_A",
   "expires_in": 300
 }
-</pre><a href="#appendix-B.1.1-7" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.1-10" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.1-8">The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local
-subject and the root hop's handle:<a href="#appendix-B.1.1-8" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.1-9">
+<p id="appendix-B.1.1-11">The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local
+subject and the root hop's handle.<a href="#appendix-B.1.1-11" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-12">On the wire (decoded ID-JAG):<a href="#appendix-B.1.1-12" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.1-13">
 <pre>
 {
   "iss": "https://idp.example/",
@@ -4387,7 +4272,7 @@ subject and the root hop's handle:<a href="#appendix-B.1.1-8" class="pilcrow">¶
   "exp": 1710000305,
   "jti": "idjag-expense-01"
 }
-</pre><a href="#appendix-B.1.1-9" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.1-13" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -4409,8 +4294,9 @@ that ExpenseRAS rejected, is not usable: no Chain Authority attests a hop
 that its Resource Authorization Server never accepted.<a href="#appendix-B.1.2-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.2-2">ExpenseRAS keeps this association in a private, own-domain record; it is
 never serialized into AT1, an external authorization claim, or anything
-ExpenseAPI's callers observe:<a href="#appendix-B.1.2-2" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.2-3">
+ExpenseAPI's callers observe.<a href="#appendix-B.1.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.2-3">Internal state (not transmitted):<a href="#appendix-B.1.2-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.2-4">
 <pre>
 {
   "identity_continuation_handle": "kW4uJ8pTe2NxA6rQvD1zYs",
@@ -4419,14 +4305,15 @@ ExpenseAPI's callers observe:<a href="#appendix-B.1.2-2" class="pilcrow">¶</a><
   "client_id": "expense-app",
   "bound_at": 1710000010
 }
-</pre><a href="#appendix-B.1.2-3" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.2-4" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.2-4">ExpenseApp calls ExpenseAPI with AT1. The Expense TTS, ExpenseSaaS's own
+<p id="appendix-B.1.2-5">ExpenseApp calls ExpenseAPI with AT1. The Expense TTS, ExpenseSaaS's own
 Transaction Token Service, resolves AT1 against the record ExpenseRAS just
 created over their shared, own-domain interface (<a href="#ras-processing" class="auto internal xref">Section 9</a>),
 derives H0 from it, and issues a local Transaction Token for
-ExpenseService, the workload that will complete the request:<a href="#appendix-B.1.2-4" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.2-5">
+ExpenseService, the workload that will complete the request.<a href="#appendix-B.1.2-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.2-6">Internal state (not transmitted):<a href="#appendix-B.1.2-6" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.2-7">
 <pre>
 {
   "iss": "https://tts.expenses.example/",
@@ -4448,9 +4335,9 @@ ExpenseService, the workload that will complete the request:<a href="#appendix-B
   "exp": 1710000072,
   "jti": "tt-expense-0007"
 }
-</pre><a href="#appendix-B.1.2-5" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.2-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.2-6">The <code>tctx</code> object is the Transaction Token's namespaced context extension
+<p id="appendix-B.1.2-8">The <code>tctx</code> object is the Transaction Token's namespaced context extension
 point; <code>identity_continuation</code> is the member this profile defines within
 it (<a href="#transaction-token-context" class="auto internal xref">Section 5.6</a>). <code>iss</code> and <code>tenant</code> name the IdP and
 tenant whose chain state the handle indexes, the same pair a Chain
@@ -4467,7 +4354,7 @@ re-derive the member. No HTTP request field and no Token Exchange response
 parameter carries H0; its only
 cross-workload representations are this Transaction Token claim inside
 ExpenseSaaS, and the ID-JAG and Identity Continuation Assertion that cross
-a trust boundary (<a href="#chain-id" class="auto internal xref">Section 6</a>, rule 3).<a href="#appendix-B.1.2-6" class="pilcrow">¶</a></p>
+a trust boundary (<a href="#chain-id" class="auto internal xref">Section 6</a>, rule 3).<a href="#appendix-B.1.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-ica">
@@ -4485,8 +4372,9 @@ the Resource Authorization Server that accepted it, belongs to this Chain
 Authority's domain, and the IdP's per-hop authority map designates this
 Chain Authority for that domain (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>); a Chain Authority
 never attests a hop accepted by another domain's Resource Authorization
-Server. The Chain Authority returns:<a href="#appendix-B.1.3-1" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.3-2">
+Server. The Chain Authority returns the following.<a href="#appendix-B.1.3-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-2">On the wire (decoded assertion):<a href="#appendix-B.1.3-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.3-3">
 <pre>
 {
   "iss": "https://ca.expenses.example/",
@@ -4506,7 +4394,7 @@ Server. The Chain Authority returns:<a href="#appendix-B.1.3-1" class="pilcrow">
   "exp": 1710000200,
   "jti": "continuation-assertion-01"
 }
-</pre><a href="#appendix-B.1.3-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.3-3" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -4516,8 +4404,9 @@ Server. The Chain Authority returns:<a href="#appendix-B.1.3-1" class="pilcrow">
 <a href="#appendix-B.1.4" class="section-number selfRef">B.1.4. </a><a href="#name-chained-exchange-for-the-tr" class="section-name selfRef">Chained Exchange for the TravelRAS ID-JAG</a>
           </h4>
 <p id="appendix-B.1.4-1">ExpenseService presents the assertion to the IdP as the <code>subject_token</code>,
-DPoP-bound to its own key:<a href="#appendix-B.1.4-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.1.4-2">
+DPoP-bound to its own key.<a href="#appendix-B.1.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-2">On the wire (request):<a href="#appendix-B.1.4-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1.4-3">
 <pre>
 POST /token HTTP/1.1
 Host: idp.example
@@ -4533,9 +4422,9 @@ subject_token=&lt;identity-continuation-assertion&gt;
 subject_token_type=&lt;identity-continuation-token-type&gt;
 actor_token=&lt;sender-constrained expense-service credential&gt;
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
-</pre><a href="#appendix-B.1.4-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.4-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-3">The <code>subject_token_type</code> value above is
+<p id="appendix-B.1.4-4">The <code>subject_token_type</code> value above is
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code>. The IdP runs the
 checks of <a href="#validation" class="auto internal xref">Section 8.8</a>: the DPoP key matches both the assertion's
 <code>cnf.jkt</code> and the actor token's key confirmation, <code>expense-service</code> is the
@@ -4546,10 +4435,11 @@ acceptance: the valid assertion from ExpenseSaaS's mapped Chain Authority,
 <code>https://ca.expenses.example/</code>, an authorized issuer for H0's domain, is
 itself the evidence the IdP relies on that ExpenseRAS reached ACCEPTED
 state for H0; that evidence is what makes H0 CONTINUABLE
-(<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.1.4-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.4-4">The IdP then resolves the user's TravelRAS-local subject, creates a fresh
-hop H1 whose immutable parent is H0, and returns:<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.4-5">
+(<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-5">The IdP then resolves the user's TravelRAS-local subject, creates a fresh
+hop H1 whose immutable parent is H0, and returns the following.<a href="#appendix-B.1.4-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-6">On the wire (response):<a href="#appendix-B.1.4-6" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.4-7">
 <pre>
 {
   "access_token": "&lt;ID-JAG for TravelRAS&gt;",
@@ -4557,13 +4447,14 @@ hop H1 whose immutable parent is H0, and returns:<a href="#appendix-B.1.4-4" cla
   "token_type": "N_A",
   "expires_in": 300
 }
-</pre><a href="#appendix-B.1.4-5" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.4-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-6">The decoded ID-JAG for TravelRAS carries H1 and the newly constructed
+<p id="appendix-B.1.4-8">The decoded ID-JAG for TravelRAS carries H1 and the newly constructed
 <code>act</code> chain (<a href="#onward-id-jag" class="auto internal xref">Section 8.9</a>): <code>expense-service</code>, authenticated at this
 exchange, placed atop the root actor <code>expense-app</code>. <code>travel-service</code> has
-not yet performed an exchange, so it is not part of the lineage:<a href="#appendix-B.1.4-6" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.4-7">
+not yet performed an exchange, so it is not part of the lineage.<a href="#appendix-B.1.4-8" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-9">On the wire (decoded ID-JAG):<a href="#appendix-B.1.4-9" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.4-10">
 <pre>
 {
   "iss": "https://idp.example/",
@@ -4597,7 +4488,7 @@ not yet performed an exchange, so it is not part of the lineage:<a href="#append
   "exp": 1710000325,
   "jti": "idjag-travel-01"
 }
-</pre><a href="#appendix-B.1.4-7" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.4-10" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -4614,8 +4505,9 @@ and, on success, atomically binds H1 to the authorization state behind
 AT2, exactly as <a href="#example-context" class="auto internal xref">Appendix B.1.2</a> describes for ExpenseRAS and H0.<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.5-2">ExpenseService calls TravelAPI with AT2. The Travel TTS derives H1 from
 that bound state and issues a local Transaction Token for TravelService,
-the TravelSaaS workload that receives the request:<a href="#appendix-B.1.5-2" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.5-3">
+the TravelSaaS workload that receives the request.<a href="#appendix-B.1.5-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.5-3">Internal state (not transmitted):<a href="#appendix-B.1.5-3" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.5-4">
 <pre>
 {
   "iss": "https://tts.travel.example/",
@@ -4637,14 +4529,14 @@ the TravelSaaS workload that receives the request:<a href="#appendix-B.1.5-2" cl
   "exp": 1710000092,
   "jti": "tt-travel-0004"
 }
-</pre><a href="#appendix-B.1.5-3" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.5-4" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.5-4">This Transaction Token stays inside TravelSaaS, minted for the
+<p id="appendix-B.1.5-5">This Transaction Token stays inside TravelSaaS, minted for the
 <code>https://travel.example/</code> trust domain, mirroring <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.
 <code>tctx.identity_continuation</code> carries the same <code>iss</code> and <code>tenant</code> as
 ExpenseSaaS's did, because both hops are rooted at the same IdP and
 tenant; only <code>handle</code> differs, from H0 to H1. The value that changes hop
-to hop is the handle, not the routing information around it.<a href="#appendix-B.1.5-4" class="pilcrow">¶</a></p>
+to hop is the handle, not the routing information around it.<a href="#appendix-B.1.5-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-third-hop">
@@ -4658,8 +4550,9 @@ sits behind <code>https://ras.booking.example/</code>. TravelService, processing
 inbound request whose Transaction Token carries H1, requests an Identity
 Continuation Assertion from <code>https://ca.travel.example/</code>, TravelSaaS's own
 Chain Authority, authorized for H1 because TravelRAS accepted it
-(<a href="#root-establishment" class="auto internal xref">Section 8.2</a>), exactly as ExpenseService did in <a href="#example-ica" class="auto internal xref">Appendix B.1.3</a>:<a href="#appendix-B.1.6-1" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.6-2">
+(<a href="#root-establishment" class="auto internal xref">Section 8.2</a>), exactly as ExpenseService did in <a href="#example-ica" class="auto internal xref">Appendix B.1.3</a>.<a href="#appendix-B.1.6-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.6-2">On the wire (decoded assertion):<a href="#appendix-B.1.6-2" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.6-3">
 <pre>
 {
   "iss": "https://ca.travel.example/",
@@ -4679,17 +4572,18 @@ Chain Authority, authorized for H1 because TravelRAS accepted it
   "exp": 1710000340,
   "jti": "continuation-assertion-02"
 }
-</pre><a href="#appendix-B.1.6-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.6-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.6-3">TravelService exchanges the assertion, DPoP-bound to its own key, for an
+<p id="appendix-B.1.6-4">TravelService exchanges the assertion, DPoP-bound to its own key, for an
 ID-JAG with <code>audience=https://ras.booking.example/</code>,
 <code>resource=https://api.booking.example/</code>, and <code>scope=stays.book</code>, all
 within the envelope's Booking target entry. The IdP creates a fresh hop
 H2 whose immutable parent is H1 and constructs the onward <code>act</code> chain
 (<a href="#onward-id-jag" class="auto internal xref">Section 8.9</a>): <code>travel-service</code>, authenticated at this exchange,
 placed atop the presented hop's lineage (<code>expense-service</code>, then
-<code>expense-app</code>):<a href="#appendix-B.1.6-3" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.6-4">
+<code>expense-app</code>).<a href="#appendix-B.1.6-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.6-5">On the wire (decoded ID-JAG):<a href="#appendix-B.1.6-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.6-6">
 <pre>
 {
   "iss": "https://idp.example/",
@@ -4727,22 +4621,22 @@ placed atop the presented hop's lineage (<code>expense-service</code>, then
   "exp": 1710000345,
   "jti": "idjag-booking-01"
 }
-</pre><a href="#appendix-B.1.6-4" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.6-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.6-5">TravelService, having performed this exchange, exchanges the ID-JAG at
+<p id="appendix-B.1.6-7">TravelService, having performed this exchange, exchanges the ID-JAG at
 BookingRAS for an access token (AT3), presenting a fresh DPoP proof with
 the same key. Booking is the last hop of this chain, so BookingRAS is an
 ordinary ID-JAG Resource Authorization Server: it issues AT3 and does not
 bind a hop, ignoring the handle claim if one is present, and the chain ends
 at Booking (<a href="#ras-processing" class="auto internal xref">Section 9</a>). Only ExpenseRAS and TravelRAS, the Resource
 Authorization Servers actually continued from, implement the binding
-extension. TravelService then calls BookingAPI with AT3.<a href="#appendix-B.1.6-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.6-6">TravelService continues the chain itself, before crossing the boundary:
+extension. TravelService then calls BookingAPI with AT3.<a href="#appendix-B.1.6-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.6-8">TravelService continues the chain itself, before crossing the boundary:
 the current-domain actor is the one that obtains the next ID-JAG, not a
 sibling workload it might hand the handle to (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>).
 Local fan-out within TravelSaaS ahead of a continuation can still use an
 offline attenuated stack where the subject does not change
-(<a href="#decision-rule" class="auto internal xref">Section 3</a>); this hop does not need one.<a href="#appendix-B.1.6-6" class="pilcrow">¶</a></p>
+(<a href="#decision-rule" class="auto internal xref">Section 3</a>); this hop does not need one.<a href="#appendix-B.1.6-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-federation-edge">
@@ -4801,124 +4695,37 @@ anything about the task. The Scheduler is given only an opaque task
 identifier; it never receives, stores, or transmits a handle. Without this
 root, the example would fall back to a trusted sidecar handle store, exactly
 what this architecture avoids.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-3">The participants and values used throughout:<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
-<table class="center" id="table-4">
-          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Name</th>
-              <th class="text-left" rowspan="1" colspan="1">Value</th>
-              <th class="text-left" rowspan="1" colspan="1">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">User</td>
-              <td class="text-left" rowspan="1" colspan="1">(none)</td>
-              <td class="text-left" rowspan="1" colspan="1">The human, Alice; present at setup, absent at every run.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://idp.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">BriefingAgent</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>briefing-agent</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Agent platform workload that runs the scheduled task.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Platform</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://platform.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">BriefingAgent's trust domain and actor issuer.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">PlatformRAS (TaskRAS)</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.platform.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the platform's own task-provisioning domain; accepts the root ID-JAG and creates durable task authorization bound to the resulting hop.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">TaskAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.platform.example/tasks</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Protected resource behind PlatformRAS; the <code>resource</code> of the root ID-JAG.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Platform TTS</td>
-              <td class="text-left" rowspan="1" colspan="1">(internal)</td>
-              <td class="text-left" rowspan="1" colspan="1">Platform's Transaction Token Service; resolves a task identifier to its hop's authorization state for each run and carries that state intra-domain.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ca.platform.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">The platform's Chain Authority; issues Identity Continuation Assertions for its workloads, including the run-time continuation from the root hop.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">CalendarRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.calendar.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the calendar service.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">CalendarAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.calendar.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Protected resource behind CalendarRAS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Scheduler</td>
-              <td class="text-left" rowspan="1" colspan="1">(internal)</td>
-              <td class="text-left" rowspan="1" colspan="1">Platform component that triggers each run; holds only a task identifier.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">MailRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.mail.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the mail upstream (<a href="#example-dynamic" class="auto internal xref">Appendix B.2.4</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">MailAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.mail.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Mail protected resource (<a href="#example-dynamic" class="auto internal xref">Appendix B.2.4</a>).</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Handles</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>Pz6vTq1NcY4kM8bJf3RxWa</code> (H0, the root hop), <code>Qh2xNf9LpVb6tKdWs4RzYc</code> (this run's Calendar hop)</td>
-              <td class="text-left" rowspan="1" colspan="1">H0 persists across runs; each run's onward hop is a fresh child of H0.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Task Identifier</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>task-123</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Opaque identifier; the only value the Scheduler ever stores.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Subjects</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>alice-task-subject</code>, <code>alice-calendar-subject</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Alice's pairwise subject at PlatformRAS/TaskAPI and at CalendarRAS, respectively.</td>
-            </tr>
-          </tbody>
-        </table>
+<p id="appendix-B.2-3">Participants are grouped by trust domain; all trust one IdP at
+<code>https://idp.example/</code>, the Continuation Authorization Server.<a href="#appendix-B.2-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.2-4.1">
+            <p id="appendix-B.2-4.1.1">Platform domain (<code>platform.example</code>): workload <code>briefing-agent</code>, and
+PlatformRAS (the platform's own TaskRAS) / Platform TTS / Chain
+Authority, in front of TaskAPI (<code>https://api.platform.example/tasks</code>);
+the Scheduler is an internal platform component, holding only the task
+identifier, that triggers each run.<a href="#appendix-B.2-4.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.2-4.2">
+            <p id="appendix-B.2-4.2.1">Calendar domain (<code>calendar.example</code>): CalendarRAS only, in front of
+CalendarAPI. It is terminal in every run, an ordinary ID-JAG Resource
+Authorization Server that needs no continuation support
+(<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.2-4.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.2-4.3">
+            <p id="appendix-B.2-4.3.1">Mail domain (<code>mail.example</code>): MailRAS in front of MailAPI, reached only
+in the dynamic-target scenario below (<a href="#example-dynamic" class="auto internal xref">Appendix B.2.4</a>); likewise
+terminal.<a href="#appendix-B.2-4.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="appendix-B.2-5">Alice, the user, is present once at setup and absent at every run; the
+task identifier <code>task-123</code> is the only value the Scheduler ever stores.
+Alice has one pairwise subject per RAS (<code>alice-task-subject</code> at
+PlatformRAS/TaskAPI, <code>alice-calendar-subject</code> at CalendarRAS), which only
+the IdP can map between. The root hop H0 (<code>Pz6vTq1NcY4kM8bJf3RxWa</code>)
+persists across runs and is bound at PlatformRAS; each run's onward hop,
+such as this run's Calendar hop (<code>Qh2xNf9LpVb6tKdWs4RzYc</code>), is a fresh
+child of H0, one claim of its own continuation-capable ID-JAG
+(<a href="#chain-id" class="auto internal xref">Section 6</a>).<a href="#appendix-B.2-5" class="pilcrow">¶</a></p>
 <div id="setup-alice-present">
 <section id="appendix-B.2.1">
           <h4 id="name-setup-alice-present">
@@ -4939,22 +4746,24 @@ grant as the <code>subject_token</code>, so the chain's governing authorization 
 anchored to the grant (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>, <a href="#lifecycle" class="auto internal xref">Section 7</a>), with
 <code>briefing-agent</code> as the permitted continuer. The IdP records two target
 entries in the root-chain envelope: the root hop's own target, and the
-task's actual need, authorized for later continuation:<a href="#appendix-B.2.1-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2.1-2">
+task's actual need, authorized for later continuation.<a href="#appendix-B.2.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.1-2">Internal state (not transmitted):<a href="#appendix-B.2.1-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2.1-3">
 <pre>
 (https://ras.platform.example/, https://api.platform.example/tasks)
     permitted scopes: task.manage
 
 (https://ras.calendar.example/, https://api.calendar.example/)
     permitted scopes: calendar.read
-</pre><a href="#appendix-B.2.1-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.2.1-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.1-3">The root exchange and issued ID-JAG have the same shape as
-<a href="#example-first-hop" class="auto internal xref">Appendix B.1.1</a>, differing only in audience and names.<a href="#appendix-B.2.1-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.1-4">PlatformRAS accepts and binds the hop as in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.2.1-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.1-5">The durable task authorization this creates, keyed by the task identifier
-PlatformRAS assigns, holds no bearer credential:<a href="#appendix-B.2.1-5" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2.1-6">
+<p id="appendix-B.2.1-4">The root exchange and issued ID-JAG have the same shape as
+<a href="#example-first-hop" class="auto internal xref">Appendix B.1.1</a>, differing only in audience and names.<a href="#appendix-B.2.1-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.1-5">PlatformRAS accepts and binds the hop as in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.2.1-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.1-6">The durable task authorization this creates, keyed by the task identifier
+PlatformRAS assigns, holds no bearer credential.<a href="#appendix-B.2.1-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.1-7">Internal state (not transmitted):<a href="#appendix-B.2.1-7" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2.1-8">
 <pre>
 task_id:              task-123
   owner:               alice
@@ -4969,17 +4778,17 @@ task_id:              task-123
   expiry:              1719450000
     # enforced locally at PlatformRAS; not the IdP chain lifetime
   status:              active
-</pre><a href="#appendix-B.2.1-6" class="pilcrow">¶</a>
-</div>
-<p id="appendix-B.2.1-7">The Scheduler stores only:<a href="#appendix-B.2.1-7" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2.1-8">
-<pre>
-task_id: task-123
 </pre><a href="#appendix-B.2.1-8" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.1-9">It never receives, stores, or transmits H0 or any other credential;
+<p id="appendix-B.2.1-9">Internal state (not transmitted):<a href="#appendix-B.2.1-9" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2.1-10">
+<pre>
+task_id: task-123
+</pre><a href="#appendix-B.2.1-10" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.2.1-11">It never receives, stores, or transmits H0 or any other credential;
 <code>task-123</code> identifies a row in PlatformRAS's own durable state and means
-nothing outside the platform.<a href="#appendix-B.2.1-9" class="pilcrow">¶</a></p>
+nothing outside the platform.<a href="#appendix-B.2.1-11" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="each-run-alice-absent">
@@ -4987,32 +4796,35 @@ nothing outside the platform.<a href="#appendix-B.2.1-9" class="pilcrow">¶</a><
           <h4 id="name-each-run-alice-absent">
 <a href="#appendix-B.2.2" class="section-number selfRef">B.2.2. </a><a href="#name-each-run-alice-absent" class="section-name selfRef">Each Run (Alice Absent)</a>
           </h4>
-<p id="appendix-B.2.2-1">At a glance, each run proceeds as follows:<a href="#appendix-B.2.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-1">At a glance, each run has two parts: the trigger and local derivation
+inside the platform, then the continuation exchange that reaches
+CalendarRAS. The trigger and local derivation:<a href="#appendix-B.2.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.2.2-2">
 <pre>
-Scheduler      -&gt; Platform:       run task-123 (task identifier only)
-Platform TTS   -&gt; Platform TTS:   resolve task-123 to its ACCEPTED
-                                  PlatformRAS authorization state,
-                                  deriving H0
-Platform TTS   -&gt; BriefingAgent:  authenticated run context; H0
-                                  carried only by a Transaction
-                                  Token, intra-domain
-BriefingAgent  -&gt; ChainAuthority: assertion for H0, bound to the
-                                  briefing-agent key
-ChainAuthority -&gt; BriefingAgent:  Identity Continuation Assertion
-BriefingAgent  -&gt; IdP:            Token Exchange (assertion + DPoP)
-IdP:                              validate per the rules of the
-                                  validation section; resolve Alice's
-                                  Calendar subject; mint a fresh
-                                  child hop of H0
-IdP            -&gt; BriefingAgent:  ID-JAG(CalendarRAS) carrying that
-                                  child hop as a claim
-BriefingAgent  -&gt; CalendarRAS:    ID-JAG -&gt; access token (DPoP);
-                                  ordinary RAS, no binding
-BriefingAgent  -&gt; CalendarAPI:    read calendar -&gt; summarize
+Scheduler    Platform TTS           BriefingAgent
+ |                  |                     |
+ |--task-123-------&gt;|                     |
+ |                  (resolve: ACCEPTED, derive H0)
+ |                  |--run context: H0---&gt;|
+ |                  |                        (intra-domain, via tctx)
 </pre><a href="#appendix-B.2.2-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.2-3">The Scheduler's trigger carries nothing but the task identifier, so the
+<p id="appendix-B.2.2-3">The continuation exchange run for this call, ending at CalendarRAS,
+this run's terminal hop:<a href="#appendix-B.2.2-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2.2-4">
+<pre>
+BriefingAgent    ChainAuthority IdP    CalendarRAS
+ |               |             |           |
+ |--request-----&gt;|             |           |
+ |&lt;---assertion--|             |           |
+ |--assertion + DPoP----------------------&gt;|
+ |&lt;-------------------------ID-JAG(child)--|
+ |--ID-JAG--------------------------------&gt;|
+ |&lt;------------------------------------AT--|
+ |               |             |           (no binding; ordinary RAS)
+</pre><a href="#appendix-B.2.2-4" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.2.2-5">The Scheduler's trigger carries nothing but the task identifier, so the
 trigger call itself is authenticated on its own (the task identifier is not a
 secret and does not authorize a run): a leaked identifier alone cannot drive
 unscheduled runs. Platform
@@ -5020,16 +4832,16 @@ TTS looks up <code>task-123</code>, confirms that PlatformRAS's authorization st
 for it is still ACCEPTED (not revoked, not expired), and starts the run
 with H0 carried only as the intra-domain chain context of a Transaction
 Token (<a href="#transaction-token-context" class="auto internal xref">Section 5.6</a>), deriving the handle into
-<code>tctx.identity_continuation</code> exactly as in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.2.2-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-4">Here <code>iss</code> names the IdP that minted H0, not PlatformRAS, whose own
+<code>tctx.identity_continuation</code> exactly as in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.2.2-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-6">Here <code>iss</code> names the IdP that minted H0, not PlatformRAS, whose own
 authorization state for H0 the Chain Authority checks separately below;
 the value lets the Chain Authority know which IdP to address its
 assertion to. That context stays inside the platform's own transaction
 chain.
 <code>briefing-agent</code>, running within it, reads H0 from this authenticated
 run context rather than fetching or storing it independently, and no
-message from the Scheduler ever carries it.<a href="#appendix-B.2.2-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-5"><code>briefing-agent</code> requests an Identity Continuation Assertion from the
+message from the Scheduler ever carries it.<a href="#appendix-B.2.2-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-7"><code>briefing-agent</code> requests an Identity Continuation Assertion from the
 platform's own Chain Authority for H0, proving control of its key. Before
 issuing, the Chain Authority independently authenticates <code>briefing-agent</code>,
 verifies its proof of possession, binds it as the actor for this
@@ -5041,10 +4853,10 @@ assertion is the ordinary artifact of <a href="#assertion-claims" class="auto in
 platform's own Chain Authority for its own workload (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>):
 <code>iss</code> is <code>https://ca.platform.example/</code>, <code>aud</code> is the IdP,
 <code>identity_continuation_handle</code> is H0, the <code>act</code> claim is <code>briefing-agent</code>,
-and <code>cnf</code> binds the agent's key.<a href="#appendix-B.2.2-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-6">The onward ID-JAG for CalendarRAS has the structure of <a href="#example-chained" class="auto internal xref">Appendix B.1.4</a>
-(single-level <code>act</code>).<a href="#appendix-B.2.2-6" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-7">The <code>identity_continuation_handle</code> above is this run's child of H0, not H0
+and <code>cnf</code> binds the agent's key.<a href="#appendix-B.2.2-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-8">The onward ID-JAG for CalendarRAS has the structure of <a href="#example-chained" class="auto internal xref">Appendix B.1.4</a>
+(single-level <code>act</code>).<a href="#appendix-B.2.2-8" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-9">The <code>identity_continuation_handle</code> above is this run's child of H0, not H0
 itself: a fresh value the IdP mints for this continuation. A run tomorrow
 presents H0 again and receives a different child of its own; both are
 sibling hops sharing only H0 as their parent (<a href="#chain-id" class="auto internal xref">Section 6</a>). <code>briefing-agent</code>
@@ -5056,12 +4868,12 @@ and issues the token without binding a hop, and the chain ends at Calendar
 chain is continued from, performs the acceptance-time binding, for H0 at
 setup.
 <code>briefing-agent</code> then calls CalendarAPI, reads Alice's calendar, and
-produces the summary.<a href="#appendix-B.2.2-7" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-8">Had this run also needed <code>https://api.mail.example/</code> behind
+produces the summary.<a href="#appendix-B.2.2-9" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.2-10">Had this run also needed <code>https://api.mail.example/</code> behind
 <code>https://ras.mail.example/</code> (<a href="#example-dynamic" class="auto internal xref">Appendix B.2.4</a>), <code>briefing-agent</code> would
 present H0 again for a second assertion and receive a second, independent
 child hop bound at MailRAS. That hop and the Calendar hop above share only
-their parent H0; neither carries the other's lineage.<a href="#appendix-B.2.2-8" class="pilcrow">¶</a></p>
+their parent H0; neither carries the other's lineage.<a href="#appendix-B.2.2-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="points-worth-noticing">
@@ -5099,8 +4911,9 @@ which requires <code>https://api.mail.example/</code> behind
 <code>https://ras.mail.example/</code>: a target nobody named when Alice created the
 task. Under the target entries recorded in the setup above, a run's
 continuation exchange presenting H0 for that audience fails, and the
-chain is otherwise unaffected:<a href="#appendix-B.2.4-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2.4-2">
+chain is otherwise unaffected.<a href="#appendix-B.2.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.4-2">On the wire (response):<a href="#appendix-B.2.4-2" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2.4-3">
 <pre>
 HTTP/1.1 400 Bad Request
 Content-Type: application/json
@@ -5108,23 +4921,23 @@ Content-Type: application/json
 {
   "error": "invalid_target"
 }
-</pre><a href="#appendix-B.2.4-2" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.2.4-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.4-3">For a deployment that expects dynamic targets, the envelope's basis is
+<p id="appendix-B.2.4-4">For a deployment that expects dynamic targets, the envelope's basis is
 Alice's standing consent (for example, a productivity read-access grant she
 holds) and tenant policy, with no enumerated targets, and the IdP evaluates
 it at continuation time (<a href="#validation" class="auto internal xref">Section 8.8</a>, rule 14). The same exchange then
 succeeds only if read access to the mail service is within Alice's standing
 consent and tenant policy permits <code>briefing-agent</code> to reach it. A request
-for <code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-B.2.4-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.4-4">The envelope guardrail applies regardless of how a hop was rooted:
+for <code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-B.2.4-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.4-5">The envelope guardrail applies regardless of how a hop was rooted:
 evaluation is bounded by the consent and policy in force when the chain
 was established, never by whatever local policy PlatformRAS applied when
 it accepted H0. If the tenant later broadens policy, existing chains do
 not gain the new authority; if it narrows, they lose it at the next run.
 Both failures are per-request (<code>invalid_target</code>, <code>invalid_scope</code>), and the
 chain remains continuable for authorized targets, in contrast to a dead
-chain, which fails every request (<a href="#validation" class="auto internal xref">Section 8.8</a>, rule 7).<a href="#appendix-B.2.4-4" class="pilcrow">¶</a></p>
+chain, which fails every request (<a href="#validation" class="auto internal xref">Section 8.8</a>, rule 7).<a href="#appendix-B.2.4-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5148,145 +4961,68 @@ client-supplied handle of an earlier design: although <code>agent-app</code> hol
 inside its own ID-JAG, it never holds a handle it can attach to or supply
 with a tool call, and cannot select which handle a continuation uses; the
 point in the flow where that matters is called out below.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.3-2">The participants and values used throughout:<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
-<table class="center" id="table-5">
-          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Name</th>
-              <th class="text-left" rowspan="1" colspan="1">Value</th>
-              <th class="text-left" rowspan="1" colspan="1">Description</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">User</td>
-              <td class="text-left" rowspan="1" colspan="1">(none)</td>
-              <td class="text-left" rowspan="1" colspan="1">The human, Alice; her session runs in AgentApp.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://idp.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Trust anchor and Continuation Authorization Server.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">AgentApp</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>agent-app</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Confidential agent runtime; hosts Alice's session and roots the chain.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">AgentPlatform</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://agent.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">AgentApp's trust domain and actor issuer.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Gateway</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>tool-gateway</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Tool gateway workload; receives Alice's tool calls and continues the chain per call.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">GatewayPlatform</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://gateway.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">The gateway's trust domain and actor issuer; also the resource identifier of its tool-invocation surface, addressed as <code>resource</code> below.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">GatewayRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.gateway.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server protecting the gateway.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Gateway TTS</td>
-              <td class="text-left" rowspan="1" colspan="1">(internal)</td>
-              <td class="text-left" rowspan="1" colspan="1">The gateway domain's Transaction Token Service; derives a hop's handle from GatewayRAS's bound authorization state for the local transaction context.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Chain Authority</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ca.gateway.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">The gateway domain's Chain Authority; issues assertions for its own workloads only.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>tenant-gw-01</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Identifier scoping the gateway domain's Transaction Token context.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">WikiRAS</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://ras.wiki.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Resource Authorization Server for the wiki upstream.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">WikiAPI</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>https://api.wiki.example/</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Upstream protected resource behind WikiRAS.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Handles</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>Gm2sVe7XpB5tK9nLw4QzCd</code> (root/gateway hop, H0), <code>Kx9tRb3WnE6yPq2sHd8VfT</code> (wiki hop, H1)</td>
-              <td class="text-left" rowspan="1" colspan="1">Continuation handles; one per hop.</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Subjects</td>
-              <td class="text-left" rowspan="1" colspan="1">
-                <code>alice-gateway-subject</code>, <code>alice-wiki-subject</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Alice's pairwise subject at GatewayRAS and WikiRAS, respectively.</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="appendix-B.3-4">At a glance, the message flow is:<a href="#appendix-B.3-4" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.3-5">
+<p id="appendix-B.3-2">Participants are grouped by trust domain; all trust one IdP at
+<code>https://idp.example/</code>, the Continuation Authorization Server.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.3-3.1">
+            <p id="appendix-B.3-3.1.1">AgentPlatform domain (<code>agent.example</code>): client <code>agent-app</code> only, the
+confidential runtime that hosts Alice's session and roots the chain; it
+has no Resource Authorization Server of its own in this example.<a href="#appendix-B.3-3.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.3-3.2">
+            <p id="appendix-B.3-3.2.1">Gateway domain (<code>gateway.example</code>): workload <code>tool-gateway</code>, and
+GatewayRAS / Gateway TTS / Chain Authority, in front of the gateway's
+own tool-invocation surface (<code>resource=https://gateway.example/</code>),
+scoped under tenant <code>tenant-gw-01</code>.<a href="#appendix-B.3-3.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.3-3.3">
+            <p id="appendix-B.3-3.3.1">Wiki domain (<code>wiki.example</code>): WikiRAS only, in front of WikiAPI. It is
+terminal in this chain, an ordinary ID-JAG Resource Authorization
+Server that needs no continuation support (<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.3-3.3.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="appendix-B.3-4">Alice's session runs in <code>agent-app</code>, which never holds a handle it can
+attach to a call (<a href="#chain-id" class="auto internal xref">Section 6</a>). Alice has one pairwise subject per RAS
+(<code>alice-gateway-subject</code> at GatewayRAS, <code>alice-wiki-subject</code> at WikiRAS),
+which only the IdP can map between. Continuation handles are H0
+(<code>Gm2sVe7XpB5tK9nLw4QzCd</code>, the root/gateway hop, bound at GatewayRAS) and
+H1 (<code>Kx9tRb3WnE6yPq2sHd8VfT</code>, the wiki hop), each a claim of its own
+continuation-capable ID-JAG (<a href="#chain-id" class="auto internal xref">Section 6</a>).<a href="#appendix-B.3-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-5">At a glance, the flow has two parts: the runtime roots the chain at the
+gateway, then the gateway continues it per tool call. Alice authenticates
+in <code>agent-app</code>. Root exchange, where the runtime obtains and redeems the
+first ID-JAG and the gateway binds and derives H0:<a href="#appendix-B.3-5" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.3-6">
 <pre>
-Alice authenticates in agent-app.
-
-AgentApp       -&gt; IdP:            (1) direct exchange: Alice's ID
-                                  Token
-IdP            -&gt; AgentApp:       (2) ID-JAG(GatewayRAS), carrying H0
-                                  as a claim
-AgentApp       -&gt; GatewayRAS:     (3) ID-JAG
-GatewayRAS     -&gt; AgentApp:       (4) gateway access token;
-                                  GatewayRAS binds H0
-AgentApp       -&gt; Gateway:        (5) tool call + access token (no
-                                  handle)
-Gateway TTS:                      (6) derives H0; issues
-                                  tctx.identity_continuation
-
-Gateway resolves the tool call to the wiki upstream.
-
-Gateway        -&gt; ChainAuthority: (7) request assertion for H0 (read
-                                  from tctx)
-ChainAuthority -&gt; Gateway:        (8) Identity Continuation Assertion
-Gateway        -&gt; IdP:            (9) chained exchange (assertion +
-                                  DPoP)
-IdP            -&gt; Gateway:        (10) ID-JAG(WikiRAS), carrying
-                                  fresh H1
-Gateway        -&gt; WikiRAS:        (11) ID-JAG
-WikiRAS        -&gt; Gateway:        (12) wiki access token; ordinary
-                                  RAS, no binding, chain ends
-Gateway        -&gt; WikiAPI:        (13) tool call executes
-</pre><a href="#appendix-B.3-5" class="pilcrow">¶</a>
+     AgentApp       IdP     GatewayRAS     Gateway TTS
+      |              |         |              |
+(1)   |--ID Tok-----&gt;|         |              |
+(2)   |&lt;-ID-JAG(H0)--|         |              |
+(3)   |--ID-JAG---------------&gt;|              |
+(4)   |&lt;-------------------AT--| binds H0     |
+(5)   |  tool call + AT to Gateway (no handle)
+(6)   |              |         |--derive H0--&gt;|
+      |              |         |   (H0 into tctx, intra-domain)
+</pre><a href="#appendix-B.3-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.3-6">The subsections below detail each step.<a href="#appendix-B.3-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-7">Gateway resolves the tool call to the wiki upstream, then continues the
+chain per call. Chained exchange, ending at WikiRAS, this chain's
+terminal hop:<a href="#appendix-B.3-7" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.3-8">
+<pre>
+     Gateway       ChainAuthority  IdP   WikiRAS
+      |             |             |           |
+(7)   |--request---&gt;|             |           |
+(8)   |&lt;-assertion--|             |           |
+(9)   |--assertion + DPoP--------------------&gt;|
+(10)  |&lt;--------------------------ID-JAG(H1)--|
+(11)  |--ID-JAG------------------------------&gt;|
+(12)  |&lt;----------------------------------AT--|
+      |             |             |   (no binding; chain ends)
+(13)  |  Gateway calls WikiAPI
+</pre><a href="#appendix-B.3-8" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.3-9">The subsections below detail each step.<a href="#appendix-B.3-9" class="pilcrow">¶</a></p>
 <div id="root-exchange-the-runtime-roots-the-chain">
 <section id="appendix-B.3.1">
           <h4 id="name-root-exchange-the-runtime-r">
