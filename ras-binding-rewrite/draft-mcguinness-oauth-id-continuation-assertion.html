@@ -1535,12 +1535,12 @@ Authorization Server (<a href="#chain-id" class="auto internal xref">Section 5</
 </li>
           <li class="normal" id="section-1.4-2.2">
             <p id="section-1.4-2.2.1"><strong>Within an active request</strong>, inside a trust domain: the handle travels in a
-Transaction Token that the domain's Transaction Token Service (TTS) derives from
-the accepted authorization state (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>).<a href="#section-1.4-2.2.1" class="pilcrow">¶</a></p>
+Transaction Token that the domain's Transaction Token Service (TTS) derives
+from accepted authorization state (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>).<a href="#section-1.4-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-1.4-2.3">
             <p id="section-1.4-2.3.1"><strong>Across time</strong>, for scheduled or unattended work: the handle stays in
-durable authorization state that a Resource Authorization Server bound,
+durable authorization state bound by a Resource Authorization Server and is
 referenced externally only by an opaque task identifier (<a href="#task-provenance" class="auto internal xref">Section 8.3</a>).<a href="#section-1.4-2.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
@@ -1879,10 +1879,9 @@ requested target.<a href="#section-4.3-3" class="pilcrow">¶</a></p>
 <p id="section-4.4-1">The Chain Authority <span class="bcp14">MUST</span> authenticate the actor, verify control of the key in
 <code>cnf</code>, and place that actor in <code>act</code>. It <span class="bcp14">MUST</span> issue only for an actor in the
 attested RAS's trust domain unless tenant configuration explicitly authorizes
-that external actor and its keys; keeping issuance in-domain prevents a
-handle-holding party from continuing outside the path that RAS acceptance
-triggered. Actor authentication and the issuance
-protocol are deployment-specific.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
+that external actor and its keys. Keeping issuance in-domain prevents a
+handle-holding party from bypassing the RAS-acceptance path. Actor
+authentication and the issuance protocol are deployment-specific.<a href="#section-4.4-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="context-provenance">
@@ -1904,18 +1903,17 @@ the chain;<a href="#section-4.5-2.2.1" class="pilcrow">¶</a></p>
             <p id="section-4.5-2.3.1">the presenting actor controls the key placed in <code>cnf</code>; and<a href="#section-4.5-2.3.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-4.5-2.4">
-            <p id="section-4.5-2.4.1"><code>act</code> names that actor; and, if offline delegation reached the actor, its
+            <p id="section-4.5-2.4.1"><code>act</code> names that actor and, if offline delegation reached the actor, its
 delegation artifact is valid.<a href="#section-4.5-2.4.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
 <p id="section-4.5-3">Possession of a handle or Transaction Token is insufficient. The Chain
 Authority <span class="bcp14">MUST</span> bind the actor to the current transaction, verify that the
 handle matches that transaction's RAS-bound state, and recheck authoritative,
-uncached RAS state for active authorization and the server's
-continuation-permitted decision. It <span class="bcp14">MUST</span> enforce per-transaction
-and per-actor rate and fan-out limits with audit records. Target or purpose
-hints <span class="bcp14">MAY</span> narrow Chain Authority issuance but <span class="bcp14">MUST NOT</span> control the IdP's
-target decision.
+uncached RAS state to confirm that the authorization remains active and
+continuation remains permitted. It <span class="bcp14">MUST</span> enforce per-transaction and per-actor
+rate and fan-out limits with audit records. Target or purpose hints <span class="bcp14">MAY</span> narrow
+Chain Authority issuance but <span class="bcp14">MUST NOT</span> control the IdP's target decision.
 Propagated context <span class="bcp14">MUST NOT</span> override the root-chain envelope.<a href="#section-4.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -1951,7 +1949,7 @@ state and places it in Transaction Token context
 </li>
         </ul>
 <p id="section-4.6-5">A recipient <span class="bcp14">MUST</span> ignore unknown members. A malformed or repeated object <span class="bcp14">MUST</span>
-be treated as no chain context.<a href="#section-4.6-5" class="pilcrow">¶</a></p>
+be treated as carrying no chain context.<a href="#section-4.6-5" class="pilcrow">¶</a></p>
 <p id="section-4.6-6">The requester <span class="bcp14">MUST NOT</span> supply or override this member. The TTS <span class="bcp14">MUST</span> derive it
 from the authorization record for the specific credential and confirmed key
 presented on the current call, never from a session or subject. The token <span class="bcp14">MUST NOT</span> be accepted outside its trust domain and is normally forwarded
@@ -1984,10 +1982,10 @@ Handle values <span class="bcp14">MUST NOT</span> be reused across hops. An ID-J
 <code>identity_continuation_handle</code> claim is continuation-capable.<a href="#section-5-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-3.2">
-          <p id="section-5-3.2.1"><code>identity_continuation_handle</code> <span class="bcp14">MUST</span> contain at least 128 bits of entropy, <span class="bcp14">MUST NOT</span>
-contain user-identifying information, and <span class="bcp14">MUST</span> consist of 22 to 256
-characters drawn from the base64url alphabet (<code>A</code>-<code>Z</code>, <code>a</code>-<code>z</code>, <code>0</code>-<code>9</code>,
-<code>-</code>, <code>_</code>).<a href="#section-5-3.2.1" class="pilcrow">¶</a></p>
+          <p id="section-5-3.2.1"><code>identity_continuation_handle</code> <span class="bcp14">MUST</span> contain at least 128 bits of entropy,
+<span class="bcp14">MUST NOT</span> contain user-identifying information, and <span class="bcp14">MUST</span> consist of 22 to
+256 characters drawn from the base64url alphabet (<code>A</code>-<code>Z</code>, <code>a</code>-<code>z</code>,
+<code>0</code>-<code>9</code>, <code>-</code>, <code>_</code>).<a href="#section-5-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-5-3.3">
           <p id="section-5-3.3.1">The handle crosses a trust boundary only inside an ID-JAG to the RAS or an
@@ -2044,15 +2042,15 @@ is a fresh policy check. Revoking a hop stops its subtree at the next
 continuation, fail-closed, but does not invalidate already issued ID-JAGs or
 access tokens; the revocation window is therefore bounded by the ID-JAG's
 short lifetime and by the access-token lifetime that the accepting Resource
-Authorization Server sets, which this profile does not constrain.
-This is the deliberate difference from an offline attenuated token, whose
+Authorization Server sets, which this profile does not constrain.<a href="#section-6-1" class="pilcrow">¶</a></p>
+<p id="section-6-2">This is the deliberate difference from an offline attenuated token, whose
 minted child stays usable for its lifetime without contacting an authority.
 An implementation <span class="bcp14">MAY</span> cache an access token only for its own audience and
 scope, within its lifetime, keyed to the request fingerprint; it <span class="bcp14">MUST NOT</span>
-reuse a continuation across audiences or after a revocation check.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">Three lifetimes <span class="bcp14">MUST NOT</span> be conflated: ID-JAG redemption, local RAS
-authorization, and the IdP-held continuation chain.<a href="#section-6-2" class="pilcrow">¶</a></p>
-<p id="section-6-3">The governing authorization is the server-side consent and policy record
+reuse a continuation across audiences or after a revocation check.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-3">Three lifetimes <span class="bcp14">MUST NOT</span> be conflated: ID-JAG redemption, local RAS
+authorization, and the IdP-held continuation chain.<a href="#section-6-3" class="pilcrow">¶</a></p>
+<p id="section-6-4">The governing authorization is the server-side consent and policy record
 resolved from the root subject token. A refresh token anchors to its OAuth
 grant; <code>sid</code> or <code>SessionIndex</code> anchors to its session. Rotation of a refresh
 token does not affect the grant anchor. Grant expiry or revocation, session
@@ -2060,19 +2058,19 @@ termination, or withdrawal of continuation consent or policy ends its chains.
 A session-anchored chain <span class="bcp14">MUST NOT</span> outlive its session; only grant-anchored
 chains may outlive logout. This bounds new continuations; an ID-JAG already
 issued remains redeemable for its own lifetime, since redemption is not a
-continuation.<a href="#section-6-3" class="pilcrow">¶</a></p>
-<p id="section-6-4">The IdP <span class="bcp14">MUST</span> bound chain lifetime by the governing authorization and reject
-expired chains.<a href="#section-6-4" class="pilcrow">¶</a></p>
-<p id="section-6-5"><code>auth_time</code>, <code>acr</code>, and <code>amr</code> are fixed at root issuance; continuation <span class="bcp14">MUST NOT</span> refresh them.<a href="#section-6-5" class="pilcrow">¶</a></p>
-<p id="section-6-6">The IdP <span class="bcp14">MUST</span> revoke whole chains and <span class="bcp14">MAY</span> revoke an individual hop's subtree.
-It <span class="bcp14">MUST</span> reject continuation from revoked state.<a href="#section-6-6" class="pilcrow">¶</a></p>
-<p id="section-6-7">Issued access tokens remain governed by their RAS.<a href="#section-6-7" class="pilcrow">¶</a></p>
-<p id="section-6-8">For a grant-anchored chain, the IdP <span class="bcp14">MUST</span> provide a user- or
+continuation.<a href="#section-6-4" class="pilcrow">¶</a></p>
+<p id="section-6-5">The IdP <span class="bcp14">MUST</span> bound chain lifetime by the governing authorization and reject
+expired chains.<a href="#section-6-5" class="pilcrow">¶</a></p>
+<p id="section-6-6"><code>auth_time</code>, <code>acr</code>, and <code>amr</code> are fixed at root issuance; continuation <span class="bcp14">MUST NOT</span> refresh them.<a href="#section-6-6" class="pilcrow">¶</a></p>
+<p id="section-6-7">The IdP <span class="bcp14">MUST</span> revoke whole chains and <span class="bcp14">MAY</span> revoke an individual hop's subtree.
+It <span class="bcp14">MUST</span> reject continuation from revoked state.<a href="#section-6-7" class="pilcrow">¶</a></p>
+<p id="section-6-8">Issued access tokens remain governed by their RAS.<a href="#section-6-8" class="pilcrow">¶</a></p>
+<p id="section-6-9">For a grant-anchored chain, the IdP <span class="bcp14">MUST</span> provide a user- or
 administrator-facing interface showing purpose, root context, hop graph,
 lineage, granted targets, and expiry; it <span class="bcp14">MUST</span> support whole-chain revocation
 and subtree revocation when offered. It <span class="bcp14">SHOULD</span> notify the user or
 administrator at establishment and near expiry. The same interface is
-<span class="bcp14">RECOMMENDED</span> for session-anchored chains. See <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span>.<a href="#section-6-8" class="pilcrow">¶</a></p>
+<span class="bcp14">RECOMMENDED</span> for session-anchored chains. See <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span>.<a href="#section-6-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="token-exchange">
@@ -2083,8 +2081,8 @@ administrator at establishment and near expiry. The same interface is
 <p id="section-7-1">An Identity Continuation Assertion is used as the <code>subject_token</code> of an OAuth
 2.0 Token Exchange request <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. A direct request and a chained request
 have the same shape: the client changes only <code>subject_token</code> and
-<code>subject_token_type</code>. Chain establishment is the IdP's act, not a request
-parameter (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#section-7-1" class="pilcrow">¶</a></p>
+<code>subject_token_type</code>. The IdP establishes the chain; no request parameter asks
+it to do so (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#section-7-1" class="pilcrow">¶</a></p>
 <div id="direct-id-jag-request">
 <section id="section-7.1">
         <h3 id="name-direct-id-jag-request">
@@ -2142,20 +2140,20 @@ Token claims cannot supply these values. Every dimension is an
 establishment-time ceiling: later policy <span class="bcp14">MAY</span> narrow or revoke it but <span class="bcp14">MUST NOT</span>
 broaden it.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
 <p id="section-7.2-6">The root actor is the authenticated OAuth client under the mapping in
-<a href="#client-identity" class="auto internal xref">Section 7.5</a>. An optional <code>actor_token</code> <span class="bcp14">MUST</span> be valid, accepted for
-continuation, applicable to the IdP where constrained, sender-constrained to
-the demonstrated key, and identify that client. Only after validation does
-the IdP record the root actor and key. This profile inherits the underlying
-ID-JAG assurance for public clients.<a href="#section-7.2-6" class="pilcrow">¶</a></p>
+<a href="#client-identity" class="auto internal xref">Section 7.5</a>. An optional <code>actor_token</code> <span class="bcp14">MUST</span> be valid, <span class="bcp14">MUST</span> be accepted
+for continuation, <span class="bcp14">MUST</span> designate the IdP where applicable, <span class="bcp14">MUST</span> be
+sender-constrained to the demonstrated key, and <span class="bcp14">MUST</span> identify that client.
+Only after validation does the IdP record the root actor and key. This profile
+inherits the underlying ID-JAG assurance for public clients.<a href="#section-7.2-6" class="pilcrow">¶</a></p>
 <p id="section-7.2-7">For every root or child hop, the IdP records the target RAS and the Chain
 Authorities mapped to it; the mapping <span class="bcp14">MAY</span> be static tenant configuration.
-Only a mapped Chain Authority may attest that hop. A base-only RAS ignores the handle and
-is terminal; only a continuation-aware RAS can bind it and make the hop
-continuable. Grant-profile advertisement is discovery only; a party that
+Only a mapped Chain Authority may attest that hop. A base-only RAS ignores the
+handle and is terminal; only a continuation-aware RAS can bind it and make the
+hop continuable. Grant-profile advertisement is discovery only; a party that
 requires onward continuation <span class="bcp14">SHOULD</span> consult it when available.<a href="#section-7.2-7" class="pilcrow">¶</a></p>
 <p id="section-7.2-8">Establishment is at-least-once: retrying a lost response <span class="bcp14">MAY</span> create a second
-chain. Both share one governing authorization, so its depth, fan-out, and
-rate budgets, and its revocation, apply across all chains rooted in it.<a href="#section-7.2-8" class="pilcrow">¶</a></p>
+chain. Both remain subject to the governing authorization's shared depth,
+fan-out, rate, and revocation limits.<a href="#section-7.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chained-id-jag-request">
@@ -2188,8 +2186,8 @@ target Resource Authorization Server and <code>resource</code> (<span>[<a href="
 defined in <span>[<a href="#RFC8707" class="cite xref">RFC8707</a>]</span>) identifies the protected resource.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
 <p id="section-7.3-5">The request <span class="bcp14">MAY</span> also include <code>authorization_details</code> <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, which the
 ID-JAG profile supports in both the exchange and the issued grant; the
-authorization-basis check (<a href="#validation" class="auto internal xref">Section 7.8</a>, rule 14) applies to it as to
-scope. Client authentication is required on every exchange
+authorization-basis check (<a href="#validation" class="auto internal xref">Section 7.8</a>, rule 14) applies equally to it and
+to scope. Client authentication is required on every exchange
 (<a href="#client-identity" class="auto internal xref">Section 7.5</a>) and is omitted from the example bodies for brevity.<a href="#section-7.3-5" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -2202,20 +2200,20 @@ scope. Client authentication is required on every exchange
 <code>cnf.jkt</code>. The IdP <span class="bcp14">MUST</span> verify the match and reject absent or invalid proof.
 DPoP is the single mandatory confirmation method for interoperability: a
 different method in the onward grant would make the target validate it
-differently from a directly issued ID-JAG, so mutual-TLS is deferred
-(<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-7.4-1" class="pilcrow">¶</a></p>
+differently from a directly issued ID-JAG. This version therefore defines no
+mutual-TLS variant <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>; see <a href="#open-items" class="auto internal xref">Appendix C</a>.<a href="#section-7.4-1" class="pilcrow">¶</a></p>
 <p id="section-7.4-2">The request <span class="bcp14">MUST</span> include a valid, accepted <code>actor_token</code> identifying the
 actor in <code>act</code>. It <span class="bcp14">MUST</span> be sender-constrained to the same key and <span class="bcp14">MUST NOT</span> be
 bearer. For a JWT, the IdP verifies <code>cnf.jkt</code>; for an opaque token, it obtains
 equivalent confirmation from authoritative metadata such as introspection
 <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. Any audience or applicability restriction <span class="bcp14">MUST</span> designate the
 IdP.<a href="#section-7.4-2" class="pilcrow">¶</a></p>
-<p id="section-7.4-3">The IdP <span class="bcp14">MUST</span> compare actor <code>iss</code> and <code>sub</code> as case-sensitive octet-for-octet
-strings after NFC normalization, across <code>actor_token</code>, <code>act</code>, and the
-authenticated client; identities in different tenants never compare equal.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
+<p id="section-7.4-3">The IdP <span class="bcp14">MUST</span> first NFC-normalize the actor <code>iss</code> and <code>sub</code> values, then compare
+them as case-sensitive, octet-for-octet strings across <code>actor_token</code>, <code>act</code>,
+and the authenticated client. Identities in different tenants never compare
+equal.<a href="#section-7.4-3" class="pilcrow">¶</a></p>
 <p id="section-7.4-4">The onward ID-JAG <span class="bcp14">MUST</span> use the same DPoP key. The actor proves possession
-again at the target RAS. This version defines no mutual-TLS variant
-<span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>.<a href="#section-7.4-4" class="pilcrow">¶</a></p>
+again at the target RAS.<a href="#section-7.4-4" class="pilcrow">¶</a></p>
 <p id="section-7.4-5">Key rotation takes effect when the actor obtains a new assertion and actor
 token bound to the new key.<a href="#section-7.4-5" class="pilcrow">¶</a></p>
 </section>
@@ -2242,13 +2240,14 @@ at each target, as required by ID-JAG.<a href="#section-7.5-3" class="pilcrow">�
         <h3 id="name-continuation-handle-deliver">
 <a href="#section-7.6" class="section-number selfRef">7.6. </a><a href="#name-continuation-handle-deliver" class="section-name selfRef">Continuation Handle Delivery</a>
         </h3>
-<p id="section-7.6-1">The IdP delivers the hop reference as the <code>identity_continuation_handle</code> claim of the
-issued ID-JAG (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 1; <a href="#onward-id-jag" class="auto internal xref">Section 7.9</a>), not as a separate
-Token Exchange response parameter. Each hop's handle is distinct and its
-parent reference is immutable (<a href="#chain-id" class="auto internal xref">Section 5</a>, rules 1 and 8). The accepting
-Resource Authorization Server binds it to authorization state
-(<a href="#ras-processing" class="auto internal xref">Section 8</a>); the current domain then surfaces it to continuers
-through intra-domain chain context (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>).<a href="#section-7.6-1" class="pilcrow">¶</a></p>
+<p id="section-7.6-1">The IdP delivers the hop reference in the issued ID-JAG's
+<code>identity_continuation_handle</code> claim (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 1;
+<a href="#onward-id-jag" class="auto internal xref">Section 7.9</a>), not as a separate Token Exchange response parameter. Each
+hop's handle is distinct and its parent reference is immutable (<a href="#chain-id" class="auto internal xref">Section 5</a>,
+rules 1 and 8). The accepting Resource Authorization Server binds it to
+authorization state (<a href="#ras-processing" class="auto internal xref">Section 8</a>); the current domain then surfaces it
+to continuers through intra-domain chain context
+(<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>).<a href="#section-7.6-1" class="pilcrow">¶</a></p>
 <p id="section-7.6-2">There is no advisory chain-expiry response parameter. Chain lifetime is
 authoritative at the IdP (<a href="#lifecycle" class="auto internal xref">Section 6</a>); a deployment that needs advance
 warning of expiry conveys it through authenticated task or authorization
@@ -2287,9 +2286,9 @@ ID-JAG, a Resource Authorization Server that advertises
 <code>urn:ietf:params:oauth:grant-profile:id-jag-continuation</code> <span class="bcp14">MUST</span> also advertise
 the base <code>urn:ietf:params:oauth:grant-profile:id-jag</code> profile and the
 <code>urn:ietf:params:oauth:grant-type:jwt-bearer</code> grant type on which ID-JAG
-depends (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>). These are distinct capabilities: the IdP
-signal is about issuing and accepting continuation, the Resource
-Authorization Server profile is about binding it.<a href="#section-7.7-3" class="pilcrow">¶</a></p>
+depends (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>). These are
+distinct capabilities: the IdP signal covers continuation issuance and
+acceptance; the Resource Authorization Server profile covers handle binding.<a href="#section-7.7-3" class="pilcrow">¶</a></p>
 <p id="section-7.7-4">Absent these signals, a party learns of support out of band or by attempting an
 exchange.<a href="#section-7.7-4" class="pilcrow">¶</a></p>
 </section>
@@ -2318,11 +2317,11 @@ presented handle.<a href="#section-7.8-1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-7.8-2.3">
             <p id="section-7.8-2.3.1">the assertion is a JWT containing exactly one value for each required claim
-defined in <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>; <code>iss</code>, <code>aud</code>, <code>identity_continuation_handle</code>, and <code>jti</code> are
-non-empty strings; <code>act</code> and <code>cnf</code> are JSON objects, <code>cnf</code> containing exactly one
-confirmation method (<a href="#assertion-claims" class="auto internal xref">Section 4.2</a>); <code>iat</code> and <code>exp</code> are
-JSON numbers representing NumericDate values; and the JOSE <code>typ</code> header
-value is <code>oauth-identity-continuation+jwt</code>;<a href="#section-7.8-2.3.1" class="pilcrow">¶</a></p>
+defined in <a href="#assertion-claims" class="auto internal xref">Section 4.2</a>; <code>iss</code>, <code>aud</code>,
+<code>identity_continuation_handle</code>, and <code>jti</code> are non-empty strings; <code>act</code> and
+<code>cnf</code> are JSON objects, with <code>cnf</code> containing exactly one confirmation
+method; <code>iat</code> and <code>exp</code> are JSON numbers representing NumericDate values;
+and the JOSE <code>typ</code> header is <code>oauth-identity-continuation+jwt</code>;<a href="#section-7.8-2.3.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-7.8-2.4">
             <p id="section-7.8-2.4.1">the assertion signature validates using a key authorized for the assertion
@@ -2393,9 +2392,9 @@ assertion is unexpired, and its lifetime does not exceed 300 seconds;<a href="#s
           <li id="section-7.8-2.14">
             <p id="section-7.8-2.14.1">requested audience, resource, scopes, and authorization details are
 within the root-chain envelope as recorded at establishment and within
-current IdP actor policy; authorization-details containment is a
-field-level subset within each detail type per <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, not a match
-on the type identifier alone;<a href="#section-7.8-2.14.1" class="pilcrow">¶</a></p>
+current IdP actor policy; containment is evaluated as a field-level subset
+within each authorization-detail type per <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, not by matching
+only the type identifier;<a href="#section-7.8-2.14.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-7.8-2.15">
             <p id="section-7.8-2.15.1">the requested output token type is
@@ -2415,22 +2414,22 @@ per <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, the actor, 
 only after target and policy validation. Once reserved, the tuple <span class="bcp14">MUST NOT</span> be
 released for another fingerprint. An identical retry <span class="bcp14">MUST</span> return the
 same previously issued grant, not a new one; a different fingerprint <span class="bcp14">MUST</span> be
-rejected. At most one concurrent request
-may reach ISSUED. The IdP <span class="bcp14">MUST</span> retain the tuple through <code>exp</code> plus the maximum
-permitted clock skew, on the same clock used for <code>exp</code>. A reservation that
-does not reach ISSUED before <code>exp</code> becomes FAILED; a FAILED tuple is terminal
-and requires a fresh assertion.<a href="#section-7.8-4" class="pilcrow">¶</a></p>
+rejected. Only one concurrent request can reach ISSUED. The IdP <span class="bcp14">MUST</span> retain
+the tuple through <code>exp</code> plus the maximum permitted clock skew, using the same
+clock used to evaluate <code>exp</code>. A reservation that does not reach ISSUED before
+<code>exp</code> becomes FAILED; a FAILED tuple is terminal and requires a fresh
+assertion.<a href="#section-7.8-4" class="pilcrow">¶</a></p>
 <p id="section-7.8-5">Replay uniqueness <span class="bcp14">MUST</span> use (<code>iss</code>, <code>jti</code>), not an unbound tenant partition.<a href="#section-7.8-5" class="pilcrow">¶</a></p>
 <p id="section-7.8-6">The IdP needs strongly consistent replay state. Because the actor-chain depth
-bound counts distinct lineage entries, not sibling fan-out or
-self-continuation, the IdP <span class="bcp14">MUST</span> bound sibling fan-out and hop count per chain
+bound counts distinct lineage entries rather than sibling fan-out or
+self-continuation, the IdP <span class="bcp14">MUST</span> bound sibling fan-out and hop count per chain,
 and <span class="bcp14">MUST</span> prune expired or revoked hop state.<a href="#section-7.8-6" class="pilcrow">¶</a></p>
 <p id="section-7.8-7">After a lost response, a client <span class="bcp14">MAY</span> retry the same assertion to recover the
 ISSUED result or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. The Chain Authority <span class="bcp14">SHOULD</span> account for retries separately
-from fan-out while preventing retry claims from bypassing limits; issuance
-<span class="bcp14">SHOULD</span> be inexpensive relative to the exchange.<a href="#section-7.8-7" class="pilcrow">¶</a></p>
+idempotency remains out of scope. The Chain Authority <span class="bcp14">SHOULD</span> account for
+retries separately from fan-out while preventing retry claims from bypassing
+limits; issuance <span class="bcp14">SHOULD</span> be inexpensive relative to the exchange.<a href="#section-7.8-7" class="pilcrow">¶</a></p>
 <p id="section-7.8-8">On success, the IdP records a PENDING child of the presented hop and issues an
 ID-JAG containing the resolved target <code>sub</code> and fresh handle.<a href="#section-7.8-8" class="pilcrow">¶</a></p>
 <p id="section-7.8-9">On failure, the IdP <span class="bcp14">MUST</span> return an OAuth error <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. It
@@ -2528,8 +2527,8 @@ confirmed key;<a href="#section-8-3.3.1" class="pilcrow">¶</a></p>
           <p id="section-8-3.5.1">issue the resulting access token; and<a href="#section-8-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-3.6">
-          <p id="section-8-3.6.1">bind <code>identity_continuation_handle</code> to the authorization state it establishes,
-recording whether continuation is permitted.<a href="#section-8-3.6.1" class="pilcrow">¶</a></p>
+          <p id="section-8-3.6.1">bind <code>identity_continuation_handle</code> to the authorization state it
+establishes, recording whether continuation is permitted.<a href="#section-8-3.6.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="section-8-4">Binding and token issuance <span class="bcp14">MUST</span> be atomic. Repeated redemption of one ID-JAG
@@ -2543,17 +2542,17 @@ domain.<a href="#section-8-4" class="pilcrow">¶</a></p>
 <a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-hop-activation" class="section-name selfRef">Hop Activation</a>
         </h3>
 <p id="section-8.1-1">The IdP creates a PENDING hop. Successful RAS binding makes it ACCEPTED. A
-fresh assertion from the mapped Chain Authority makes it CONTINUABLE for one
-IdP evaluation. There is no RAS callback and CONTINUABLE is not stored.<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+fresh assertion from the mapped Chain Authority lets the IdP evaluate it as
+CONTINUABLE for one request. There is no RAS callback, and CONTINUABLE is not
+stored.<a href="#section-8.1-1" class="pilcrow">¶</a></p>
 <p id="section-8.1-2">The Chain Authority assertion is trusted evidence of acceptance, not
 IdP-verifiable proof. A compromised mapped Chain Authority can thus attest a
 hop that its Resource Authorization Server refused, or denied continuation
 from, overriding that server's local decision; the envelope still bounds the
 result, but the accept-and-continue gate is only as trustworthy as the
-mapped Chain Authority.
-An issued-but-rejected ID-JAG cannot be continued because no mapped Chain
-Authority may attest it. A mapped Chain Authority is mandatory; absence
-fails closed.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
+mapped Chain Authority. Absent such compromise, an issued-but-rejected ID-JAG
+cannot be continued because no mapped Chain Authority may attest it. A mapped
+Chain Authority is mandatory; its absence fails closed.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="ras-gate">
@@ -2646,9 +2645,9 @@ ID-JAGs when the output profile requires those claims.<a href="#section-9.3-1" c
 <a href="#section-9.4" class="section-number selfRef">9.4. </a><a href="#name-envelope-enforcement-and-of" class="section-name selfRef">Envelope Enforcement and Offline Attenuation</a>
         </h3>
 <p id="section-9.4-1">The envelope bounds every target and authority. The Chain Authority validates
-any offline delegation segment; the IdP still enforces only the envelope. Because the
-assertion is target-agnostic, a permitted actor may select any target within
-that ceiling.<a href="#section-9.4-1" class="pilcrow">¶</a></p>
+any offline delegation segment; the IdP still enforces only the envelope.
+Because the assertion is target-agnostic, a permitted actor may select any
+target within that ceiling.<a href="#section-9.4-1" class="pilcrow">¶</a></p>
 <p id="section-9.4-2">Wrong-handle association can continue the wrong user's bounded chain. The TTS
 removes selection from the workload by deriving the handle from the current
 credential's RAS-bound state. Another carrier <span class="bcp14">MAY</span> be used only with equivalent
@@ -2662,10 +2661,10 @@ server derivation and non-overridability.<a href="#section-9.4-2" class="pilcrow
         </h3>
 <p id="section-9.5-1">A faulty TTS can splice a valid wrong-user hop into a transaction, and every
 downstream check at the Chain Authority and IdP still sees a well-formed
-continuation. It <span class="bcp14">MUST</span> key derivation to the presented credential, not a
+continuation. The TTS <span class="bcp14">MUST</span> key derivation to the presented credential, not a
 session or subject, and <span class="bcp14">MUST</span> be monitored independently.<a href="#section-9.5-1" class="pilcrow">¶</a></p>
-<p id="section-9.5-2">One operator <span class="bcp14">MAY</span> run RAS, TTS, and Chain Authority. Where independent acceptance evidence
-matters, deployments <span class="bcp14">SHOULD</span> separate them or audit the
+<p id="section-9.5-2">One operator <span class="bcp14">MAY</span> run the RAS, TTS, and Chain Authority. Where independent
+acceptance evidence matters, deployments <span class="bcp14">SHOULD</span> separate them or audit the
 binding-to-attestation path.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -2674,10 +2673,10 @@ binding-to-attestation path.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
         <h3 id="name-trust-in-the-chain-authorit">
 <a href="#section-9.6" class="section-number selfRef">9.6. </a><a href="#name-trust-in-the-chain-authorit" class="section-name selfRef">Trust in the Chain Authority</a>
         </h3>
-<p id="section-9.6-1">The IdP <span class="bcp14">MUST</span> scope Chain Authority trust by issuer, keys, tenant, and mapped RAS.
-Deployments <span class="bcp14">SHOULD</span> minimize that scope and monitor anomalies. Trust
-establishment is out of band or federated as in <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>. Handle
-confidentiality is defense in depth, not authorization.<a href="#section-9.6-1" class="pilcrow">¶</a></p>
+<p id="section-9.6-1">The IdP <span class="bcp14">MUST</span> scope Chain Authority trust by issuer, keys, tenant, and mapped
+RAS. Deployments <span class="bcp14">SHOULD</span> minimize that scope and monitor anomalies. Trust is
+established out of band or through federation, as in <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>. Handle
+confidentiality provides defense in depth, not authorization.<a href="#section-9.6-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="trust-in-actor-token-issuers">
@@ -2715,8 +2714,8 @@ rule 10);<a href="#section-9.8-2.2.1" class="pilcrow">¶</a></p>
 (<a href="#validation" class="auto internal xref">Section 7.8</a>, rule 14).<a href="#section-9.8-2.4.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-9.8-3">The IdP <span class="bcp14">MUST</span> authorize Chain Authority and actor-token issuer pairings per tenant; separate
-trust in each is insufficient.<a href="#section-9.8-3" class="pilcrow">¶</a></p>
+<p id="section-9.8-3">The IdP <span class="bcp14">MUST</span> authorize Chain Authority and actor-token issuer pairings per
+tenant; separate trust in each is insufficient.<a href="#section-9.8-3" class="pilcrow">¶</a></p>
 <p id="section-9.8-4">The anchors <span class="bcp14">MAY</span> be co-located, with this resulting blast radius:<a href="#section-9.8-4" class="pilcrow">¶</a></p>
 <table class="center" id="table-2">
           <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
@@ -2736,7 +2735,7 @@ trust in each is insufficient.<a href="#section-9.8-3" class="pilcrow">¶</a></p
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Actor issuer</td>
               <td class="text-left" rowspan="1" colspan="1">Can mint actor identities</td>
-              <td class="text-left" rowspan="1" colspan="1">Still needs mapped Chain Authority, key proof, and envelope</td>
+              <td class="text-left" rowspan="1" colspan="1">Needs mapped CA, key proof, and envelope</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Chain Authority + actor issuer</td>
@@ -2750,10 +2749,10 @@ trust in each is insufficient.<a href="#section-9.8-3" class="pilcrow">¶</a></p
             </tr>
           </tbody>
         </table>
-<p id="section-9.8-6">No single-anchor or whole-domain compromise yields authority beyond the
-root-chain envelope; co-locating anchors trades away the defense in depth the
-conjunction otherwise provides, and if the IdP is also co-located, even that
-envelope backstop becomes organizational rather than protocol-separated.<a href="#section-9.8-6" class="pilcrow">¶</a></p>
+<p id="section-9.8-6">No compromise listed above yields authority beyond the root-chain envelope.
+Co-locating anchors trades away the defense in depth that the conjunction
+otherwise provides. If the IdP is also co-located, even the envelope backstop
+becomes organizational rather than protocol-separated.<a href="#section-9.8-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="actor-chain-integrity">
@@ -2784,11 +2783,10 @@ configuration; <code>kid</code> <span class="bcp14">MAY</span> select among them
 <a href="#section-10" class="section-number selfRef">10. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
       </h2>
 <p id="section-10-1">A hop's <code>identity_continuation_handle</code> is visible only to its ID-JAG client,
-accepting Resource Authorization Server, IdP, the domain's Transaction
-Token Service, Chain Authority, and authorized workloads. It <span class="bcp14">MUST NOT</span> enter an
-access token, external authorization claims, or protected-API authorization
-input (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4). A workload receiving it as intra-domain context
-is a control-plane participant.<a href="#section-10-1" class="pilcrow">¶</a></p>
+accepting Resource Authorization Server, and IdP, plus the domain's
+Transaction Token Service, Chain Authority, and authorized workloads. It <span class="bcp14">MUST NOT</span> enter an access token, external authorization claims, or protected-API
+authorization input (<a href="#chain-id" class="auto internal xref">Section 5</a>, rule 4). A workload receiving it as
+intra-domain context is a control-plane participant.<a href="#section-10-1" class="pilcrow">¶</a></p>
 <p id="section-10-2">Handles are opaque, high-entropy, and hop-specific (<a href="#chain-id" class="auto internal xref">Section 5</a>,
 <a href="#chain-id-privacy" class="auto internal xref">Section 5.1</a>). Resource Authorization Servers therefore cannot use
 them to correlate a user across SaaS boundaries.<a href="#section-10-2" class="pilcrow">¶</a></p>
@@ -3219,9 +3217,9 @@ a Transaction Token profile.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
 It cannot cross a pairwise-subject boundary: only the IdP can resolve the next
 subject, and the target trusts the IdP rather than the source issuer to name
 that user. IdP exchange also permits current-state and envelope checks at
-every hop. Direct propagation instead fits deployments with a global subject, shared
-issuer trust, and no need for mid-chain IdP revocation, for example a single
-SPIFFE-style trust domain (<a href="#decision-rule" class="auto internal xref">Section 3</a>). Delegated Authorization
+every hop. Direct propagation instead fits deployments with a global subject,
+shared issuer trust, and no need for mid-chain IdP revocation, such as a
+single SPIFFE-style trust domain (<a href="#decision-rule" class="auto internal xref">Section 3</a>). Delegated Authorization
 <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>, whose client-issued tokens carry no
 subject, composes with this profile as the intra-domain layer and stops where
 re-subjecting begins.<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
@@ -3448,9 +3446,9 @@ authorization state behind AT1, moving the hop from PENDING to ACCEPTED. A
 hop that never reaches ACCEPTED, for example one copied from an ID-JAG
 that ExpenseRAS rejected, is not usable: no Chain Authority attests a hop
 that its Resource Authorization Server never accepted.<a href="#appendix-B.1.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.2-2">ExpenseRAS keeps this association in a private, own-domain record; it is
-never serialized into AT1, an external authorization claim, or anything
-that ExpenseAPI's callers observe.<a href="#appendix-B.1.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.2-2">ExpenseRAS keeps this association in a private internal record. It is never
+serialized into AT1, an external authorization claim, or anything that
+ExpenseAPI's callers observe.<a href="#appendix-B.1.2-2" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.2-3">Server-side state:<a href="#appendix-B.1.2-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.2-4">
 <pre>
@@ -3563,15 +3561,13 @@ actor_token_type=urn:ietf:params:oauth:token-type:jwt
 </pre><a href="#appendix-B.1.4-3" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1.4-4">The IdP runs the checks of <a href="#validation" class="auto internal xref">Section 7.8</a>: the DPoP key matches both the assertion's
-<code>cnf.jkt</code> and the actor token's key confirmation, <code>expense-service</code> is the
-actor named in <code>act</code>, H0 is CONTINUABLE, and the requested TravelRAS,
+<code>cnf.jkt</code> and the actor token's key confirmation; <code>expense-service</code> is the
+actor named in <code>act</code>; H0 is CONTINUABLE; and the requested TravelRAS,
 TravelAPI, and <code>trips.read</code> values match the Travel target entry in the
-root-chain envelope. The IdP does not call ExpenseRAS back to confirm
-acceptance: the valid assertion from ExpenseSaaS's mapped Chain Authority,
-<code>https://ca.expenses.example/</code>, an authorized issuer for H0's domain, is
-itself the evidence the IdP relies on to conclude that ExpenseRAS reached
-ACCEPTED state for H0; that evidence is what makes H0 CONTINUABLE
-(<a href="#ras-processing" class="auto internal xref">Section 8</a>).<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
+root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.
+Instead, the assertion from ExpenseSaaS's mapped Chain Authority,
+<code>https://ca.expenses.example/</code>, is the evidence that H0 reached ACCEPTED state
+and is CONTINUABLE (<a href="#ras-processing" class="auto internal xref">Section 8</a>).<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.4-5">The IdP resolves the user's TravelRAS-local subject and creates H1 as a
 child of H0. The decoded ID-JAG carries H1 and the newly constructed
 <code>act</code> chain (<a href="#onward-id-jag" class="auto internal xref">Section 7.9</a>): <code>expense-service</code>, authenticated at this
@@ -3690,17 +3686,14 @@ placed atop the presented hop's lineage (<code>expense-service</code>, then
 }
 </pre><a href="#appendix-B.1.6-4" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.6-5">TravelService, having performed this exchange, exchanges the ID-JAG at
-BookingRAS for an access token (AT3), presenting a fresh DPoP proof with
-the same key. Booking is the last hop of this chain, so BookingRAS is an
-ordinary ID-JAG Resource Authorization Server: it issues AT3 and does not
-bind a hop, ignoring H2, and the chain ends
-at Booking (<a href="#ras-processing" class="auto internal xref">Section 8</a>). Only ExpenseRAS and TravelRAS, the Resource
-Authorization Servers actually continued from, implement the binding
-extension. TravelService then calls BookingAPI with AT3.<a href="#appendix-B.1.6-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.6-6">TravelService continues the chain itself, before crossing the boundary:
-the current-domain actor is the one that obtains the next ID-JAG, not a
-sibling workload to which it might hand the handle
+<p id="appendix-B.1.6-5">TravelService redeems the ID-JAG at BookingRAS for an access token (AT3),
+presenting a fresh DPoP proof with the same key. Because Booking is terminal,
+BookingRAS follows the ordinary ID-JAG profile: it ignores H2, issues AT3, and
+does not bind the hop (<a href="#ras-processing" class="auto internal xref">Section 8</a>). Only ExpenseRAS and TravelRAS,
+the Resource Authorization Servers from which continuation occurs, implement
+the binding extension. TravelService then calls BookingAPI with AT3.<a href="#appendix-B.1.6-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.6-6">TravelService itself is the current-domain actor that obtains the next
+ID-JAG; it does not pass the handle to a sibling workload
 (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>).<a href="#appendix-B.1.6-6" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3784,8 +3777,8 @@ Calendar target needed by the task.<a href="#appendix-B.2.1-1" class="pilcrow">�
 <p id="appendix-B.2.1-4">The response and RAS-binding pattern match <a href="#example-first-hop" class="auto internal xref">Appendix B.1.1</a> and
 <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>; the request differs by using a refresh token to obtain a
 grant-anchored chain. PlatformRAS binds H0 to the durable task authorization.<a href="#appendix-B.2.1-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.1-5">The durable task authorization that this creates, keyed by the task
-identifier that PlatformRAS assigns, holds no bearer credential.<a href="#appendix-B.2.1-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.2.1-5">PlatformRAS keys the resulting durable task authorization by its assigned
+task identifier. The record holds no bearer credential.<a href="#appendix-B.2.1-5" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.1-6">Server-side state (PlatformRAS task authorization):<a href="#appendix-B.2.1-6" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.2.1-7">
 <pre>
@@ -3917,11 +3910,11 @@ Content-Type: application/json
 Alice's standing consent as recorded when the chain was established (for
 example, a productivity read-access grant) and tenant policy, with no
 enumerated targets; the IdP evaluates each dynamic target against that
-recorded basis at continuation time (<a href="#validation" class="auto internal xref">Section 7.8</a>, rule 14), and a scope
-granted only later does not extend this chain. The same exchange then
-succeeds only if read access to the mail service is within Alice's standing
-consent and tenant policy permits <code>briefing-agent</code> to reach it. A request
-for <code>mail.send</code>, outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-B.2.4-4" class="pilcrow">¶</a></p>
+recorded basis at continuation time (<a href="#validation" class="auto internal xref">Section 7.8</a>, rule 14). A scope granted
+only later does not extend this chain. The same exchange succeeds only if
+read access to the mail service is within Alice's standing consent and tenant
+policy permits <code>briefing-agent</code> to reach it. A request for <code>mail.send</code>,
+outside that consent, fails with <code>invalid_scope</code>.<a href="#appendix-B.2.4-4" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.4-5">The establishment-time envelope remains the ceiling: later policy may narrow
 or revoke it but cannot broaden it. A target-specific failure leaves the
 chain continuable for other authorized targets.<a href="#appendix-B.2.4-5" class="pilcrow">¶</a></p>
@@ -4065,7 +4058,7 @@ offline-actor audit remain in the evidence layer
           <p id="appendix-C-3.2.1"><strong>Signed assertion versus a recipient-bound direct profile.</strong>
 Could the IdP bind a continuation credential to an intended actor, actor
 class, trust domain, or key and accept it with client authentication,
-sender-constrained actor token, and live key proof? Is the Chain
+sender-constrained <code>actor_token</code>, and live key proof? Is the Chain
 Authority's actor/key attestation and domain-local gate worth its added
 trust configuration (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.5</a>)?<a href="#appendix-C-3.2.1" class="pilcrow">¶</a></p>
 </li>
