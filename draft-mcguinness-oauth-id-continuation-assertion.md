@@ -235,7 +235,7 @@ Current actor (presenting actor):
 
 Root actor:
 : The actor at the root of a chain: the authenticated OAuth client that
-  obtains the first ID-JAG ({{client-identity}}). Unlike a continuing actor,
+  obtains the first ID-JAG ({{client-identity}}). Unlike a current actor,
   it need not present an `actor_token`.
 
 Tenant:
@@ -497,8 +497,9 @@ The following rules apply:
 5. The IdP performs end-to-end audit correlation; each RAS logs its local
    subject.
 
-6. A Resource Authorization Server binds `identity_continuation_handle` to the
-   authorization state it establishes ({{ras-processing}}); Resource
+6. A continuation-aware Resource Authorization Server binds
+   `identity_continuation_handle` to the authorization state it establishes
+   ({{ras-processing}}); Resource
    Authorization Servers, Resource Servers, and Chain Authorities MUST NOT
    modify the value.
 
@@ -642,8 +643,8 @@ requires onward continuation SHOULD consult it when available.
 Establishment is at-least-once: retrying a lost response MAY create a second
 chain. Revocation of the governing authorization applies to every chain rooted
 in it, and the actor-chain depth bound is enforced per branch; the IdP MUST
-enforce configured fan-out and rate limits as an aggregate keyed to the
-governing authorization, which a retried establishment MUST NOT evade.
+enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
+to the governing authorization, which a retried establishment MUST NOT evade.
 
 ## Chained ID-JAG Request
 
@@ -707,9 +708,11 @@ token bound to the new key.
 
 ## Client Identity and Authentication {#client-identity}
 
-The current actor MUST authenticate as an OAuth client. The IdP MUST map that
-client authoritatively to an actor identity and exactly match it to
-`actor_token` and `act`; self-asserted mappings MUST NOT be accepted.
+The current actor MUST authenticate as an OAuth client, and the IdP MUST map
+that client authoritatively to an actor identity; self-asserted mappings
+MUST NOT be accepted. On a continuation exchange the IdP MUST also match that
+identity to the assertion's `act` and the `actor_token`; at root establishment
+neither is present, so client authentication alone identifies the root actor.
 
 A sender-constrained JWT MAY serve as both client assertion and `actor_token`
 when it satisfies both profiles. For {{RFC7523}}, its `sub` is the
@@ -782,8 +785,9 @@ presented handle.
    `subject_token_type` is
    `urn:ietf:params:oauth:token-type:identity-continuation`;
 
-2. the request contains exactly one `audience` parameter and exactly one
-   `resource` parameter;
+2. the request contains exactly one `audience` and one `resource` parameter;
+   `scope` and `authorization_details` are OPTIONAL, each evaluated by rule 14
+   when present;
 
 3. the assertion is a JWT containing exactly one value for each required claim
    defined in {{assertion-claims}}; `iss`, `aud`,
@@ -803,9 +807,9 @@ presented handle.
    and authorized to pair with the `actor_token` issuer for that tenant;
 
 7. the handle identifies a RAS-accepted hop on an active chain, no ancestor
-   subtree is revoked, and the resulting actor lineage, after same-actor
-   collapse ({{onward-id-jag}}), is within its depth bound; the bound counts
-   distinct actors, not hops;
+   subtree is revoked, and the resulting actor lineage, after collapsing
+   consecutive same-actor entries ({{onward-id-jag}}), is within its depth
+   bound; the bound counts lineage entries, not hops;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`,
    `amr`, or `sid` claim, nor an `audience`, `resource`, `scope`,
@@ -831,10 +835,10 @@ presented handle.
     proof {{RFC9449}} matching `cnf.jkt`
     ({{sender-constrained-presentation}});
 
-12. `jti` is either not yet reserved for the assertion issuer, or is reserved
-    or ISSUED under a fingerprint matching this request, permitting idempotent
-    retry (see the reservation rules below); a reserved or consumed `jti`
-    under a different fingerprint is rejected;
+12. `jti` is not yet reserved for the assertion issuer, or is RESERVED or
+    ISSUED under a fingerprint matching this request (permitting idempotent
+    retry; see the reservation rules below); a RESERVED or ISSUED `jti` under
+    a different fingerprint, or a FAILED `jti`, is rejected;
 
 13. `iat` and `exp` are valid NumericDates, `iat` is within permitted future
     clock skew (which SHOULD NOT exceed 60 seconds), `exp` follows `iat`, the
@@ -876,10 +880,10 @@ assertion.
 Replay uniqueness MUST use (`iss`, `jti`), not an unbound tenant partition.
 
 The IdP needs strongly consistent replay state. Because the actor-chain depth
-bound counts distinct lineage entries rather than sibling fan-out or
-self-continuation, the IdP MUST enforce a configured limit on sibling fan-out
-and hop count, aggregated per governing authorization ({{root-establishment}}),
-and MUST prune expired or revoked hop state.
+bound counts collapsed lineage entries rather than sibling fan-out or
+self-continuation, the IdP MUST enforce a configured limit on sibling fan-out,
+rate, and hop count, aggregated per governing authorization
+({{root-establishment}}), and MUST prune expired or revoked hop state.
 
 After a lost response, a client MAY retry the same assertion to recover the
 ISSUED result or obtain a fresh assertion. A fresh assertion may create an
