@@ -88,15 +88,15 @@ Authorization Grant (ID-JAG) when a user's request crosses service boundaries
 after the user is no longer present. The profile targets deployments in which
 several Resource Authorization Servers trust one IdP and use audience-local
 subject identifiers that only the IdP can resolve. It complements offline
-attenuated delegation for intra-domain fan-out that does not change the
-subject.
+attenuation for intra-domain fan-out that does not change the subject.
 
 --- middle
 
 # Introduction
 
 An authenticated request can cross several services after the user is no
-longer present. Each service is protected by its own Resource Authorization
+longer present, or reach an audience the original credential does not address.
+Each service is protected by its own Resource Authorization
 Server (RAS); all RASes trust one IdP, but each may use a different
 audience-local subject for the user. This profile covers:
 
@@ -116,6 +116,13 @@ uses:
 ~~~
 ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
+
+Each trust domain the chain passes through has three roles: the Resource
+Authorization Server (RAS) that accepts an ID-JAG and binds the hop, a
+Transaction Token Service (TTS) that carries the hop reference to workloads
+inside the domain, and a Chain Authority that issues the Identity Continuation
+Assertion a workload presents to the IdP. The IdP remains the only party that
+names the user for a new audience.
 
 ## Why a New Input Is Needed {#motivation}
 
@@ -216,6 +223,11 @@ Chain Authority:
   tenant. It may be a RAS, TTS, gateway, or dedicated service, but never
   resolves the target audience's user subject.
 
+Transaction Token Service (TTS):
+: The service that, within a trust domain, derives a bound hop's continuation
+  handle from Resource Authorization Server state into the intra-domain chain
+  context its workloads carry ({{transaction-token-context}}).
+
 Current actor (presenting actor):
 : The workload presenting the assertion to the IdP, named by `act` and
   authenticated by `actor_token`.
@@ -311,7 +323,7 @@ claim set:
 
   "iat": 1710000500,
   "exp": 1710000800,
-  "jti": "continuation-assertion-01"
+  "jti": "example-continuation-assertion"
 }
 ~~~
 
@@ -514,8 +526,9 @@ Authorization Server sets, which this profile does not constrain.
 This is the deliberate difference from an offline attenuated token, whose
 minted child stays usable for its lifetime without contacting an authority.
 An implementation MAY cache an access token only for its own audience and
-scope, within its lifetime, keyed to the request fingerprint; it MUST NOT
-reuse a continuation across audiences or after a revocation check.
+scope, within its lifetime, keyed to the request's audience, scope, and
+confirmed key; it MUST NOT reuse a continuation across audiences or after a
+revocation check.
 
 Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
 authorization, and the IdP-held continuation chain.
@@ -597,9 +610,10 @@ Non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
 only for resolution and MUST NOT enter assertions or chain context.
 
 Server-side consent and policy make the governing authorization
-continuation-capable and populate the root-chain envelope: authorization
-basis, permitted actors or trust domains, depth, lifetime, and revocation.
-Token claims cannot supply these values. Every dimension is an
+continuation-capable and populate the root-chain envelope of {{terms}} (the
+authenticated user, authentication context, authorization basis, permitted
+actors or trust domains, depth, governing authorization, and expiry). Token
+claims cannot supply these values. Every dimension is an
 establishment-time ceiling: later policy MAY narrow or revoke it but MUST NOT
 broaden it.
 
@@ -779,8 +793,9 @@ presented handle.
    and authorized to pair with the `actor_token` issuer for that tenant;
 
 7. the handle identifies a RAS-accepted hop on an active chain, no ancestor
-   subtree is revoked, and the resulting collapsed actor lineage is within
-   its depth bound; the bound counts distinct actors, not hops;
+   subtree is revoked, and the resulting actor lineage, after same-actor
+   collapse ({{onward-id-jag}}), is within its depth bound; the bound counts
+   distinct actors, not hops;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`,
    `amr`, or `sid` claim, nor an `audience`, `resource`, `scope`,
@@ -830,7 +845,8 @@ bind it to a canonical fingerprint containing audience and resource as exact
 strings, scope as an order-independent set, authorization details compared
 per {{RFC9396}}, the actor, and the confirmed key.
 
-The record states are RESERVED, ISSUED, and FAILED. Reservation MUST occur
+The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
+states of {{hop-activation}}. Reservation MUST occur
 only after target and policy validation. Once reserved, the tuple MUST NOT be
 released for another fingerprint. An identical retry MUST return the
 same previously issued grant, not a new one; a different fingerprint MUST be
@@ -854,8 +870,9 @@ idempotency remains out of scope. The Chain Authority SHOULD account for
 retries separately from fan-out while preventing retry claims from bypassing
 limits; issuance SHOULD be inexpensive relative to the exchange.
 
-On success, the IdP records a PENDING child of the presented hop and issues an
-ID-JAG containing the resolved target `sub` and fresh handle.
+On success, the IdP records a PENDING child ({{hop-activation}}) of the
+presented hop and issues an ID-JAG containing the resolved target `sub` and
+fresh handle.
 
 On failure, the IdP MUST return an OAuth error {{RFC6749}}, {{RFC8693}}. It
 SHOULD use `invalid_request` for malformed, inconsistent, or unacceptable
@@ -1214,8 +1231,9 @@ Claim Description:
 : An opaque, IdP-generated reference to one hop of a
   delegation chain, used to correlate a continuation to its chain
   and parent hop and to resolve the per-audience subject. This claim
-  appears only in an ID-JAG or intra-domain chain context and MUST NOT
-  be placed in an access token or a Resource Server's external
+  appears in an Identity Continuation Assertion and in a continuation-capable
+  ID-JAG, and its value may also travel in intra-domain chain context; it
+  MUST NOT be placed in an access token or a Resource Server's external
   authorization claims ({{chain-id}}, rules 3 and 4).
 
 Change Controller:
