@@ -163,9 +163,10 @@ This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 
 A handle travels by one of three carriers, depending on context lifetime:
 
-* **Cross-domain**, for the life of one exchange: the handle travels only
-  inside a continuation-capable ID-JAG, addressed to the accepting Resource
-  Authorization Server ({{chain-id}}, {{ras-processing}}).
+* **Cross-domain**, for the life of one exchange: the handle travels inside a
+  continuation-capable ID-JAG to the accepting Resource Authorization Server,
+  or inside an Identity Continuation Assertion to the IdP ({{chain-id}},
+  {{ras-processing}}).
 * **Within an active request**, inside a trust domain: the handle travels in a
   Transaction Token that the domain's Transaction Token Service (TTS) derives
   from accepted authorization state ({{transaction-token-context}}).
@@ -297,9 +298,10 @@ Token type:  urn:ietf:params:oauth:token-type:identity-continuation
 JOSE typ:    oauth-identity-continuation+jwt
 ~~~
 
-The assertion is a JWT {{RFC7519}} with media type
-`application/oauth-identity-continuation+jwt` ({{iana}}). The IdP MUST verify
-the `typ` header per {{RFC8725}}.
+The assertion is a signed JWT in JWS Compact Serialization {{RFC7519}}, with
+media type `application/oauth-identity-continuation+jwt` ({{iana}}). It
+MUST NOT be encrypted (JWE) or use nested signing. The IdP MUST verify the
+`typ` header per {{RFC8725}}.
 
 ## Claims {#assertion-claims}
 
@@ -555,8 +557,9 @@ It MUST reject continuation from revoked state.
 Issued access tokens remain governed by their RAS.
 
 For a grant-anchored chain, the IdP MUST provide a user- or
-administrator-facing interface showing purpose, root context, hop graph,
-lineage, granted targets, and expiry; it MUST support whole-chain revocation
+administrator-facing interface showing the chain's root context, hop graph,
+lineage, granted targets, expiry, and any recorded purpose; it MUST support
+whole-chain revocation
 and subtree revocation when offered. It SHOULD notify the user or
 administrator at establishment and near expiry. The same interface is
 RECOMMENDED for session-anchored chains. See {{GRANT-MGMT}}.
@@ -632,8 +635,9 @@ hop continuable. Grant-profile advertisement is discovery only; a party that
 requires onward continuation SHOULD consult it when available.
 
 Establishment is at-least-once: retrying a lost response MAY create a second
-chain. Both remain subject to the governing authorization's shared depth,
-fan-out, rate, and revocation limits.
+chain. The IdP MUST enforce the depth, fan-out, rate, and revocation limits as
+a single budget keyed to the governing authorization, aggregated across all
+chains rooted in it, not per forked chain.
 
 ## Chained ID-JAG Request
 
@@ -684,10 +688,10 @@ equivalent confirmation from authoritative metadata such as introspection
 {{RFC7662}}. Any audience or applicability restriction MUST designate the
 IdP.
 
-The IdP MUST first NFC-normalize the actor `iss` and `sub` values, then compare
-them as case-sensitive, octet-for-octet strings across `actor_token`, `act`,
-and the authenticated client. Identities in different tenants never compare
-equal.
+The IdP MUST compare the actor `iss` and `sub` as case-sensitive strings with
+no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
+`act`, and the authenticated client. Identities in different tenants never
+compare equal.
 
 The onward ID-JAG MUST use the same DPoP key. The actor proves possession
 again at the target RAS.
@@ -821,7 +825,10 @@ presented handle.
     proof {{RFC9449}} matching `cnf.jkt`
     ({{sender-constrained-presentation}});
 
-12. `jti` has not been successfully consumed before for the assertion issuer;
+12. `jti` is either not yet consumed for the assertion issuer, or is consumed
+    as an ISSUED record whose fingerprint matches this request, permitting
+    idempotent retry; a consumed `jti` with a different fingerprint is
+    rejected;
 
 13. `iat` and `exp` are valid NumericDates, `iat` is within permitted future
     clock skew (which SHOULD NOT exceed 60 seconds), `exp` follows `iat`, the
@@ -829,9 +836,10 @@ presented handle.
 
 14. requested audience, resource, scopes, and authorization details are
     within the root-chain envelope as recorded at establishment and within
-    current IdP actor policy; containment is evaluated as a field-level subset
-    within each authorization-detail type per {{RFC9396}}, not by matching
-    only the type identifier;
+    current IdP actor policy; authorization-details containment uses the
+    comparison rules {{RFC9396}} assigns to each detail type, since
+    {{RFC9396}} defines no generic comparison, and a detail type whose rules
+    the IdP does not implement is rejected;
 
 15. the requested output token type is
     `urn:ietf:params:oauth:token-type:id-jag`; and
@@ -842,8 +850,9 @@ presented handle.
 
 After validation, grant issuance MUST atomically reserve (`iss`, `jti`) and
 bind it to a canonical fingerprint containing audience and resource as exact
-strings, scope as an order-independent set, authorization details compared
-per {{RFC9396}}, the actor, and the confirmed key.
+strings, scope as an order-independent set, authorization details as their
+exact decoded JSON (a differently-encoded value is a different request), the
+actor, and the confirmed key.
 
 The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
 states of {{hop-activation}}. Reservation MUST occur
@@ -860,8 +869,8 @@ Replay uniqueness MUST use (`iss`, `jti`), not an unbound tenant partition.
 
 The IdP needs strongly consistent replay state. Because the actor-chain depth
 bound counts distinct lineage entries rather than sibling fan-out or
-self-continuation, the IdP MUST bound sibling fan-out and hop count per chain,
-and MUST prune expired or revoked hop state.
+self-continuation, the IdP MUST enforce a configured limit on sibling fan-out
+and hop count per chain, and MUST prune expired or revoked hop state.
 
 After a lost response, a client MAY retry the same assertion to recover the
 ISSUED result or obtain a fresh assertion. A fresh assertion may create an
@@ -881,11 +890,13 @@ tokens; `invalid_dpop_proof` for DPoP failure; and `invalid_target`,
 envelope.
 
 An unknown, expired, revoked, or non-continuable handle returns
-`invalid_request`; retrying the same handle cannot succeed, so an unattended
-client must re-root the chain, which typically requires the user.
-Target-specific errors leave the chain otherwise continuable, so a client
-abandons only the current request. `invalid_request` does not distinguish a
-dead hop from malformed input ({{open-items}}).
+`invalid_continuation` ({{iana}}), distinguishing a dead hop from the
+`invalid_request` of a malformed request. Retrying the same handle cannot
+succeed: a session-anchored chain re-roots by re-authenticating the user,
+while a grant-anchored chain may re-root from its still-valid grant without
+the user. Target-specific errors (`invalid_target`, `invalid_scope`,
+`invalid_authorization_details`) leave the chain otherwise continuable, so a
+client abandons only the current request.
 
 ## Onward ID-JAG {#onward-id-jag}
 
@@ -1041,7 +1052,7 @@ server derivation and non-overridability.
 A faulty TTS can splice a valid wrong-user hop into a transaction, and every
 downstream check at the Chain Authority and IdP still sees a well-formed
 continuation. The TTS MUST key derivation to the presented credential, not a
-session or subject, and MUST be monitored independently.
+session or subject, and SHOULD be monitored independently.
 
 One operator MAY run the RAS, TTS, and Chain Authority. Where independent
 acceptance evidence matters, deployments SHOULD separate them or audit the
@@ -1123,6 +1134,26 @@ participants that continue or administer the chain. They MAY limit lineage
 exposed to each audience, subject to audit requirements.
 
 # IANA Considerations {#iana}
+
+## OAuth Extensions Error Registration
+
+IANA is requested to register the following error in the "OAuth Extensions
+Error Registry" established by {{RFC6749}}.
+
+Name:
+: invalid_continuation
+
+Usage Location:
+: Token Exchange error response
+
+Protocol Extension:
+: Identity Continuation Assertion for OAuth 2.0 Token Exchange
+
+Change Controller:
+: IESG
+
+Specification Document(s):
+: This document, {{validation}}
 
 ## OAuth URI Registration
 
@@ -2070,12 +2101,7 @@ This non-normative appendix lists unresolved design questions.
    confirmation methods, lifetime limits, endpoints, bindings, and error
    capabilities should IdP metadata advertise ({{metadata}})?
 
-8. **Continuation errors.** Should a dead hop continue to use
-   `invalid_request`, gain `invalid_continuation`, or return structured
-   `error_details` so unattended clients can distinguish reauthorization
-   from malformed input ({{validation}}, rule 7)?
-
-9. **Chain Authority issuance.** Should the document define an interoperable
+8. **Chain Authority issuance.** Should the document define an interoperable
    token-endpoint-style issuance request ({{assertion-issuance}})?
 
    ~~~
@@ -2090,7 +2116,7 @@ This non-normative appendix lists unresolved design questions.
    The profile could also define errors, discovery, retry, and optional
    target/resource constraints enforced by the IdP as ceilings.
 
-10. **Authorization-basis representation.** Should the envelope expose a
+9. **Authorization-basis representation.** Should the envelope expose a
     testable representation of the authorization ceiling, for example:
 
     ~~~ json
@@ -2104,7 +2130,7 @@ This non-normative appendix lists unresolved design questions.
     permission have a dedicated consent scope even though establishment can
     occur without a client-requested scope?
 
-11. **A non-user root.** Should a sibling profile root continuation in
+10. **A non-user root.** Should a sibling profile root continuation in
     tenant- or workload-scoped authorization while retaining this profile's
     envelope, revocation, and boundary-crossing model, or is that out of
     scope ({{decision-rule}})?
