@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                            30 July 2026
-Expires: 31 January 2027
+Intended status: Standards Track                            31 July 2026
+Expires: 1 February 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -21,8 +21,8 @@ Abstract
    present.  The profile targets deployments in which several Resource
    Authorization Servers trust one IdP and use audience-local subject
    identifiers that only the IdP can resolve.  It complements offline
-   attenuated delegation for intra-domain fan-out that does not change
-   the subject.
+   attenuation for intra-domain fan-out that does not change the
+   subject.
 
 About This Document
 
@@ -59,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 31 January 2027.
+   This Internet-Draft will expire on 1 February 2027.
 
 Copyright Notice
 
@@ -162,7 +162,8 @@ Table of Contents
 1.  Introduction
 
    An authenticated request can cross several services after the user is
-   no longer present.  Each service is protected by its own Resource
+   no longer present, or reach an audience the original credential does
+   not address.  Each service is protected by its own Resource
    Authorization Server (RAS); all RASes trust one IdP, but each may use
    a different audience-local subject for the user.  This profile
    covers:
@@ -183,6 +184,14 @@ Table of Contents
    The worked example uses:
 
    ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
+
+   Each trust domain the chain passes through has three roles: the
+   Resource Authorization Server (RAS) that accepts an ID-JAG and binds
+   the hop, a Transaction Token Service (TTS) that carries the hop
+   reference to workloads inside the domain, and a Chain Authority that
+   issues the Identity Continuation Assertion a workload presents to the
+   IdP.  The IdP remains the only party that names the user for a new
+   audience.
 
 1.1.  Why a New Input Is Needed
 
@@ -308,6 +317,11 @@ Table of Contents
       gateway, or dedicated service, but never resolves the target
       audience's user subject.
 
+   Transaction Token Service (TTS):  The service that, within a trust
+      domain, derives a bound hop's continuation handle from Resource
+      Authorization Server state into the intra-domain chain context its
+      workloads carry (Section 4.6).
+
    Current actor (presenting actor):  The workload presenting the
       assertion to the IdP, named by act and authenticated by
       actor_token.
@@ -404,7 +418,7 @@ Table of Contents
 
      "iat": 1710000500,
      "exp": 1710000800,
-     "jti": "continuation-assertion-01"
+     "jti": "example-continuation-assertion"
    }
 
    The claims have the following meanings and requirements:
@@ -607,9 +621,9 @@ Table of Contents
    This is the deliberate difference from an offline attenuated token,
    whose minted child stays usable for its lifetime without contacting
    an authority.  An implementation MAY cache an access token only for
-   its own audience and scope, within its lifetime, keyed to the request
-   fingerprint; it MUST NOT reuse a continuation across audiences or
-   after a revocation check.
+   its own audience and scope, within its lifetime, keyed to the
+   request's audience, scope, and confirmed key; it MUST NOT reuse a
+   continuation across audiences or after a revocation check.
 
    Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
    authorization, and the IdP-held continuation chain.
@@ -695,11 +709,12 @@ Table of Contents
    assertions or chain context.
 
    Server-side consent and policy make the governing authorization
-   continuation-capable and populate the root-chain envelope:
+   continuation-capable and populate the root-chain envelope of
+   Section 2 (the authenticated user, authentication context,
    authorization basis, permitted actors or trust domains, depth,
-   lifetime, and revocation.  Token claims cannot supply these values.
-   Every dimension is an establishment-time ceiling: later policy MAY
-   narrow or revoke it but MUST NOT broaden it.
+   governing authorization, and expiry).  Token claims cannot supply
+   these values.  Every dimension is an establishment-time ceiling:
+   later policy MAY narrow or revoke it but MUST NOT broaden it.
 
    The root actor is the authenticated OAuth client under the mapping in
    Section 7.5.  An optional actor_token MUST be valid, MUST be accepted
@@ -883,9 +898,9 @@ Table of Contents
         for that tenant;
 
    7.   the handle identifies a RAS-accepted hop on an active chain, no
-        ancestor subtree is revoked, and the resulting collapsed actor
-        lineage is within its depth bound; the bound counts distinct
-        actors, not hops;
+        ancestor subtree is revoked, and the resulting actor lineage,
+        after same-actor collapse (Section 7.9), is within its depth
+        bound; the bound counts distinct actors, not hops;
 
    8.   the assertion does not contain a top-level sub, auth_time, acr,
         amr, or sid claim, nor an audience, resource, scope,
@@ -943,15 +958,16 @@ Table of Contents
    authorization details compared per [RFC9396], the actor, and the
    confirmed key.
 
-   The record states are RESERVED, ISSUED, and FAILED.  Reservation MUST
-   occur only after target and policy validation.  Once reserved, the
-   tuple MUST NOT be released for another fingerprint.  An identical
-   retry MUST return the same previously issued grant, not a new one; a
-   different fingerprint MUST be rejected.  Only one concurrent request
-   can reach ISSUED.  The IdP MUST retain the tuple through exp plus the
-   maximum permitted clock skew, using the same clock used to evaluate
-   exp.  A reservation that does not reach ISSUED before exp becomes
-   FAILED; a FAILED tuple is terminal and requires a fresh assertion.
+   The record states are RESERVED, ISSUED, and FAILED, distinct from the
+   hop states of Section 8.1.  Reservation MUST occur only after target
+   and policy validation.  Once reserved, the tuple MUST NOT be released
+   for another fingerprint.  An identical retry MUST return the same
+   previously issued grant, not a new one; a different fingerprint MUST
+   be rejected.  Only one concurrent request can reach ISSUED.  The IdP
+   MUST retain the tuple through exp plus the maximum permitted clock
+   skew, using the same clock used to evaluate exp.  A reservation that
+   does not reach ISSUED before exp becomes FAILED; a FAILED tuple is
+   terminal and requires a fresh assertion.
 
    Replay uniqueness MUST use (iss, jti), not an unbound tenant
    partition.
@@ -969,8 +985,9 @@ Table of Contents
    out while preventing retry claims from bypassing limits; issuance
    SHOULD be inexpensive relative to the exchange.
 
-   On success, the IdP records a PENDING child of the presented hop and
-   issues an ID-JAG containing the resolved target sub and fresh handle.
+   On success, the IdP records a PENDING child (Section 8.1) of the
+   presented hop and issues an ID-JAG containing the resolved target sub
+   and fresh handle.
 
    On failure, the IdP MUST return an OAuth error [RFC6749], [RFC8693].
    It SHOULD use invalid_request for malformed, inconsistent, or
@@ -1346,9 +1363,11 @@ Table of Contents
    Claim Description:  An opaque, IdP-generated reference to one hop of
       a delegation chain, used to correlate a continuation to its chain
       and parent hop and to resolve the per-audience subject.  This
-      claim appears only in an ID-JAG or intra-domain chain context and
-      MUST NOT be placed in an access token or a Resource Server's
-      external authorization claims (Section 5, rules 3 and 4).
+      claim appears in an Identity Continuation Assertion and in a
+      continuation-capable ID-JAG, and its value may also travel in
+      intra-domain chain context; it MUST NOT be placed in an access
+      token or a Resource Server's external authorization claims
+      (Section 5, rules 3 and 4).
 
    Change Controller:  IESG
 
