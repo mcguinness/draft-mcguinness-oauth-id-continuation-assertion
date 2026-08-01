@@ -1164,16 +1164,13 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
             <p id="section-toc.1-1.1.1"><a href="#section-1" class="auto internal xref">1</a>.  <a href="#name-introduction" class="internal xref">Introduction</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.1">
-                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-why-a-new-input-is-needed" class="internal xref">Why a New Input Is Needed</a></p>
+                <p id="section-toc.1-1.1.2.1.1" class="keepWithNext"><a href="#section-1.1" class="auto internal xref">1.1</a>.  <a href="#name-core-principle" class="internal xref">Core Principle</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.2">
-                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-core-principle" class="internal xref">Core Principle</a></p>
+                <p id="section-toc.1-1.1.2.2.1" class="keepWithNext"><a href="#section-1.2" class="auto internal xref">1.2</a>.  <a href="#name-relationship-to-id-jag-and-" class="internal xref">Relationship to ID-JAG and Identity Chaining</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.3">
-                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-relationship-to-id-jag-and-" class="internal xref">Relationship to ID-JAG and Identity Chaining</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.1.2.4">
-                <p id="section-toc.1-1.1.2.4.1"><a href="#section-1.4" class="auto internal xref">1.4</a>.  <a href="#name-continuation-handle-carrier" class="internal xref">Continuation Handle Carriers</a></p>
+                <p id="section-toc.1-1.1.2.3.1" class="keepWithNext"><a href="#section-1.3" class="auto internal xref">1.3</a>.  <a href="#name-continuation-handle-carrier" class="internal xref">Continuation Handle Carriers</a></p>
 </li>
             </ul>
 </li>
@@ -1437,123 +1434,92 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
       </h2>
 <p id="section-1-1">An authenticated request can cross several services after the user is no
 longer present, or reach an audience the original credential does not address.
-Each service is protected by its own Resource Authorization
-Server (RAS); all RASes trust one IdP, but each may use a different
-audience-local subject for the user. This profile covers:<a href="#section-1-1" class="pilcrow">¶</a></p>
+The first hop uses an ID Token, refresh token, or SAML assertion to obtain an
+ID-JAG <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>; a later workload in
+the chain holds none of those. Only the IdP can name the user for a new
+audience, so continuation is a fresh mint, not a reused or attenuated token: a
+workload presents a sender-constrained Identity Continuation Assertion and the
+IdP issues the next audience-scoped ID-JAG without another user interaction.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This profile covers:<a href="#section-1-2" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-1-2.1">
-          <p id="section-1-2.1.1">a chain of applications, each fronted by its own RAS, for example an
-expense application that calls a travel service that calls a booking
-service;<a href="#section-1-2.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-1-3.1">
+          <p id="section-1-3.1.1">a chain of applications, each fronted by its own Resource Authorization
+Server (RAS), for example an expense application that calls a travel service
+that calls a booking service;<a href="#section-1-3.1.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-1-2.2">
-          <p id="section-1-2.2.1">an API gateway or agent runtime that roots one delegation and continues it
+        <li class="normal" id="section-1-3.2">
+          <p id="section-1-3.2.1">an API gateway or agent runtime that roots one delegation and continues it
 to upstream services whose audiences are chosen per request rather than
-fixed in advance; and<a href="#section-1-2.2.1" class="pilcrow">¶</a></p>
+fixed in advance; and<a href="#section-1-3.2.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-1-2.3">
-          <p id="section-1-2.3.1">an unattended agent continuing a user's delegation.<a href="#section-1-2.3.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-1-3.3">
+          <p id="section-1-3.3.1">an unattended agent continuing a user's delegation.<a href="#section-1-3.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-1-3">After the first hop, a workload has no end-user credential. It therefore
-uses an Identity Continuation Assertion to ask the IdP for a fresh,
-audience-scoped ID-JAG without another user interaction. The worked example
-uses:<a href="#section-1-3" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-1-4">
+<p id="section-1-4">The worked example (<a href="#example" class="auto internal xref">Appendix B.1</a>) follows:<a href="#section-1-4" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-1-5">
 <pre>
 ExpenseApp -&gt; ExpenseRAS -&gt; TravelRAS -&gt; BookingRAS
-</pre><a href="#section-1-4" class="pilcrow">¶</a>
+</pre><a href="#section-1-5" class="pilcrow">¶</a>
 </div>
-<p id="section-1-5">Each trust domain from which the chain continues has three roles: the Resource
-Authorization Server (RAS) that accepts an ID-JAG and binds the hop, a
-Transaction Token Service (TTS) that carries the hop reference to workloads
-inside the domain, and a Chain Authority that issues the Identity Continuation
-Assertion a workload presents to the IdP. One party may operate all three
-within a domain (<a href="#security-tts" class="auto internal xref">Section 9.5</a>). The IdP remains the only party that
-names the user for a new audience.<a href="#section-1-5" class="pilcrow">¶</a></p>
-<div id="motivation">
-<section id="section-1.1">
-        <h3 id="name-why-a-new-input-is-needed">
-<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-why-a-new-input-is-needed" class="section-name selfRef">Why a New Input Is Needed</a>
-        </h3>
-<p id="section-1.1-1">The first hop uses an ID Token, refresh token, or SAML assertion to obtain an
-ID-JAG <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>. A later workload
-holds none of those credentials. The Identity Continuation Assertion supplies
-the sender-constrained chain evidence needed for the IdP to issue the next
-ID-JAG.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
-</section>
-</div>
+<p id="section-1-6">Each trust domain from which the chain continues has three roles: the RAS that
+accepts an ID-JAG and binds the hop, a Transaction Token Service (TTS) that
+carries the hop reference to workloads inside the domain, and a Chain Authority
+that issues the Identity Continuation Assertion a workload presents to the IdP.
+One party may operate all three within a domain (<a href="#security-tts" class="auto internal xref">Section 9.5</a>).<a href="#section-1-6" class="pilcrow">¶</a></p>
 <div id="core-principle">
-<section id="section-1.2">
+<section id="section-1.1">
         <h3 id="name-core-principle">
-<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-core-principle" class="section-name selfRef">Core Principle</a>
+<a href="#section-1.1" class="section-number selfRef">1.1. </a><a href="#name-core-principle" class="section-name selfRef">Core Principle</a>
         </h3>
-<p id="section-1.2-1">Each RAS trusts only the IdP to name the user and scope authority. Only the
-IdP can map the root user to a new audience-local <code>sub</code>; changing audiences is
-therefore re-issuance, not offline attenuation. At every hop the IdP both
+<p id="section-1.1-1">Each RAS trusts only the IdP to name the user and scope authority. Because the
+IdP maps the root user to an audience-local <code>sub</code>, changing audiences is
+re-issuance, not offline attenuation. At every hop the IdP both
 resolves identity and checks the requested authority against the root
-delegation.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
-<p id="section-1.2-2">This document defines the evidence format, Token Exchange parameters,
+delegation.<a href="#section-1.1-1" class="pilcrow">¶</a></p>
+<p id="section-1.1-2">This document defines the evidence format, Token Exchange parameters,
 validation rules, and IANA registrations needed for that exchange. It does not
 define a new access token format, does not allow a Resource Server to consume
 the Identity Continuation Assertion directly, and does not allow a Chain
-Authority to name the user for the target audience.<a href="#section-1.2-2" class="pilcrow">¶</a></p>
+Authority to name the user for the target audience.<a href="#section-1.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="relationship-to-id-jag-and-identity-chaining">
-<section id="section-1.3">
+<section id="section-1.2">
         <h3 id="name-relationship-to-id-jag-and-">
-<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-relationship-to-id-jag-and-" class="section-name selfRef">Relationship to ID-JAG and Identity Chaining</a>
+<a href="#section-1.2" class="section-number selfRef">1.2. </a><a href="#name-relationship-to-id-jag-and-" class="section-name selfRef">Relationship to ID-JAG and Identity Chaining</a>
         </h3>
-<p id="section-1.3-1">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, ID-JAG
+<p id="section-1.2-1">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, ID-JAG
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>, and OAuth Identity Chaining
-<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>. It adds:<a href="#section-1.3-1" class="pilcrow">¶</a></p>
+<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>. It adds:<a href="#section-1.2-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-1.3-2.1">
-            <p id="section-1.3-2.1.1">the Identity Continuation Assertion subject-token type;<a href="#section-1.3-2.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-1.2-2.1">
+            <p id="section-1.2-2.1.1">the Identity Continuation Assertion subject-token type;<a href="#section-1.2-2.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-2.2">
-            <p id="section-1.3-2.2.1">an <code>identity_continuation_handle</code> claim in continuation-capable ID-JAGs;<a href="#section-1.3-2.2.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.2-2.2">
+            <p id="section-1.2-2.2.1">an <code>identity_continuation_handle</code> claim in continuation-capable ID-JAGs;<a href="#section-1.2-2.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-2.3">
-            <p id="section-1.3-2.3.1">RAS binding of that claim to accepted authorization state;<a href="#section-1.3-2.3.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.2-2.3">
+            <p id="section-1.2-2.3.1">RAS binding of that claim to accepted authorization state;<a href="#section-1.2-2.3.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-2.4">
-            <p id="section-1.3-2.4.1">continuation-exchange validation rules;<a href="#section-1.3-2.4.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.2-2.4">
+            <p id="section-1.2-2.4.1">continuation-exchange validation rules;<a href="#section-1.2-2.4.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-2.5">
-            <p id="section-1.3-2.5.1">intra-domain Transaction Token context; and<a href="#section-1.3-2.5.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.2-2.5">
+            <p id="section-1.2-2.5.1">intra-domain Transaction Token context; and<a href="#section-1.2-2.5.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-1.3-2.6">
-            <p id="section-1.3-2.6.1">discovery metadata.<a href="#section-1.3-2.6.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-1.2-2.6">
+            <p id="section-1.2-2.6.1">discovery metadata.<a href="#section-1.2-2.6.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 </section>
 </div>
 <div id="handle-carriers">
-<section id="section-1.4">
+<section id="section-1.3">
         <h3 id="name-continuation-handle-carrier">
-<a href="#section-1.4" class="section-number selfRef">1.4. </a><a href="#name-continuation-handle-carrier" class="section-name selfRef">Continuation Handle Carriers</a>
+<a href="#section-1.3" class="section-number selfRef">1.3. </a><a href="#name-continuation-handle-carrier" class="section-name selfRef">Continuation Handle Carriers</a>
         </h3>
-<p id="section-1.4-1">A handle travels by one of three carriers, depending on context lifetime:<a href="#section-1.4-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-1.4-2.1">
-            <p id="section-1.4-2.1.1"><strong>Cross-domain</strong>, for the life of one exchange: the handle travels inside a
-continuation-capable ID-JAG to the accepting Resource Authorization Server,
-or inside an Identity Continuation Assertion to the IdP (<a href="#chain-id" class="auto internal xref">Section 5</a>,
-<a href="#ras-processing" class="auto internal xref">Section 8</a>).<a href="#section-1.4-2.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-1.4-2.2">
-            <p id="section-1.4-2.2.1"><strong>Within an active request</strong>, inside a trust domain: the handle travels in a
-Transaction Token that the domain's Transaction Token Service (TTS) derives
-from accepted authorization state (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>).<a href="#section-1.4-2.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-1.4-2.3">
-            <p id="section-1.4-2.3.1"><strong>Across time</strong>, for scheduled or unattended work: the handle stays in
-durable authorization state bound by a Resource Authorization Server and is
-referenced externally only by an opaque task identifier (<a href="#task-provenance" class="auto internal xref">Section 8.3</a>).<a href="#section-1.4-2.3.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
+<p id="section-1.3-1">A handle travels by one of three carriers, depending on context lifetime:<a href="#section-1.3-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-1">
           <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
 <thead>
@@ -1565,25 +1531,24 @@ referenced externally only by an opaque task identifier (<a href="#task-provenan
           </thead>
           <tbody>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Cross-domain hop</td>
+              <td class="text-left" rowspan="1" colspan="1">Cross-domain hop (<a href="#chain-id" class="auto internal xref">Section 5</a>, <a href="#ras-processing" class="auto internal xref">Section 8</a>)</td>
               <td class="text-left" rowspan="1" colspan="1">IdP hop state</td>
               <td class="text-left" rowspan="1" colspan="1">Assertion to the IdP, then ID-JAG to the RAS</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Active request</td>
+              <td class="text-left" rowspan="1" colspan="1">Active request (<a href="#transaction-token-context" class="auto internal xref">Section 4.6</a>)</td>
               <td class="text-left" rowspan="1" colspan="1">RAS authorization state</td>
               <td class="text-left" rowspan="1" colspan="1">Access token; the TTS derives the context</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Scheduled execution</td>
+              <td class="text-left" rowspan="1" colspan="1">Scheduled execution (<a href="#task-provenance" class="auto internal xref">Section 8.3</a>)</td>
               <td class="text-left" rowspan="1" colspan="1">Durable task/RAS authorization</td>
               <td class="text-left" rowspan="1" colspan="1">Opaque task identifier</td>
             </tr>
           </tbody>
         </table>
-<p id="section-1.4-4">An application never selects or persists a bare handle for transport; it
-carries an artifact from which trusted server-side state derives the handle.<a href="#section-1.4-4" class="pilcrow">¶</a></p>
-<p id="section-1.4-5">A full worked example appears in <a href="#example" class="auto internal xref">Appendix B.1</a>.<a href="#section-1.4-5" class="pilcrow">¶</a></p>
+<p id="section-1.3-3">An application never selects or persists a bare handle for transport; it
+carries an artifact from which trusted server-side state derives the handle.<a href="#section-1.3-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
