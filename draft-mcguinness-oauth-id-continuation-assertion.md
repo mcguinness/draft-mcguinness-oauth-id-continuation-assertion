@@ -152,19 +152,6 @@ This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 * intra-domain Transaction Token context; and
 * discovery metadata.
 
-## Continuation Handle Carriers {#handle-carriers}
-
-A handle travels by one of three carriers, depending on context lifetime:
-
-| Situation | Authoritative store | Application carries |
-|---|---|---|
-| Cross-domain hop ({{chain-id}}, {{ras-processing}}) | IdP hop state | Assertion to the IdP, then ID-JAG to the RAS |
-| Active request ({{transaction-token-context}}) | RAS authorization state | Access token; the TTS derives the context |
-| Scheduled execution ({{task-provenance}}) | Durable task/RAS authorization | Opaque task identifier |
-
-An application never selects or persists a bare handle for transport; it
-carries an artifact from which trusted server-side state derives the handle.
-
 # Conventions and Definitions {#terms}
 
 {::boilerplate bcp14-tagged}
@@ -270,6 +257,19 @@ resolve. Use offline attenuation, such as
 {{I-D.li-oauth-delegated-authorization}}, for intra-domain fan-out that keeps
 the same subject or uses workload identity. Offline attenuation is
 client-side attenuated delegation that does not cross the IdP.
+
+# Continuation Handle Carriers {#handle-carriers}
+
+A handle travels by one of three carriers, depending on context lifetime:
+
+| Situation | Authoritative store | Application carries |
+|---|---|---|
+| Cross-domain hop ({{chain-id}}, {{ras-processing}}) | IdP hop state | Assertion to the IdP, then ID-JAG to the RAS |
+| Active request ({{transaction-token-context}}) | RAS authorization state | Access token; the TTS derives the context |
+| Scheduled execution ({{task-provenance}}) | Durable task/RAS authorization | Opaque task identifier |
+
+An application never selects or persists a bare handle for transport; it
+carries an artifact from which trusted server-side state derives the handle.
 
 # The Identity Continuation Assertion {#assertion}
 
