@@ -99,8 +99,8 @@ longer present, or reach an audience the original credential does not address.
 The first hop uses an ID Token, refresh token, or SAML assertion to obtain an
 ID-JAG {{I-D.ietf-oauth-identity-assertion-authz-grant}}; a later workload in
 the chain holds none of those. Only the IdP can name the user for a new
-audience, so continuation is a fresh mint, not a reused or attenuated token: a
-workload presents a sender-constrained Identity Continuation Assertion and the
+audience, so continuation is a fresh mint, not a reused or attenuated token. A
+workload presents a sender-constrained Identity Continuation Assertion, and the
 IdP issues the next audience-scoped ID-JAG without another user interaction.
 
 This profile covers:
@@ -108,10 +108,10 @@ This profile covers:
 * a chain of applications, each fronted by its own Resource Authorization
   Server (RAS), for example an expense application that calls a travel service
   that calls a booking service;
+* an unattended agent continuing a user's delegation; and
 * an API gateway or agent runtime that roots one delegation and continues it
   to upstream services whose audiences are chosen per request rather than
-  fixed in advance; and
-* an unattended agent continuing a user's delegation.
+  fixed in advance.
 
 The worked example ({{example}}) follows:
 
@@ -122,7 +122,8 @@ ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 Each trust domain from which the chain continues has three roles: the RAS that
 accepts an ID-JAG and binds the hop, a Transaction Token Service (TTS) that
 carries the hop reference to workloads inside the domain, and a Chain Authority
-that issues the Identity Continuation Assertion a workload presents to the IdP.
+(CA) that issues the Identity Continuation Assertion a workload presents to the
+IdP.
 One party may operate all three within a domain ({{security-tts}}).
 
 ## Core Principle {#core-principle}
@@ -183,7 +184,7 @@ Identity Continuation Assertion:
 Chain:
 : An IdP-held tree of hops under one governing authorization ({{lifecycle}}).
 
-Chain Authority:
+Chain Authority (CA):
 : The role trusted by the IdP to issue Identity Continuation Assertions for a
   tenant. It may be a RAS, TTS, gateway, or dedicated service, but never
   resolves the target audience's user subject.
@@ -237,13 +238,8 @@ Root-chain envelope:
   * the chain's governing authorization ({{lifecycle}}); and
   * the chain's expiry.
 
-  Every dimension is a ceiling fixed at establishment: later policy MAY narrow
-  or revoke it but MUST NOT broaden an existing chain; broadening requires a
-  new chain. Known targets MAY be explicit entries binding an audience and
-  resource to scopes and authorization details {{RFC9396}}; dynamic targets
-  are evaluated at request time against the authorization basis as recorded at
-  establishment, so broadening the underlying consent or policy does not
-  extend an existing chain.
+  These dimensions are establishment-time ceilings; {{root-establishment}}
+  defines how they are populated and bounded.
 
 Audience-local (pairwise) subject:
 : The subject identifier under which a particular RAS names the user. Distinct
@@ -437,8 +433,8 @@ be treated as carrying no chain context.
 
 The requester MUST NOT supply or override this member. Before deriving, the
 protected endpoint or TTS MUST validate live proof of possession of the
-confirmed key presented on the current call, then MUST derive the member from
-the authorization record bound to that verified credential, key, and RAS
+confirmed key presented on the current call. It MUST then derive the member
+from the authorization record bound to that verified credential, key, and RAS
 state, never from a session or subject. The token MUST
 NOT be accepted outside its trust domain and is normally forwarded
 unmodified. A replacement token MUST re-derive the member from the same
@@ -500,9 +496,9 @@ handles remain unlinkable.
 
 ## Handle Freshness and Unlinkability {#chain-id-privacy}
 
-Handles are unlinkable across hops, not among participants in one hop. Actor
-lineage and timing remain correlation channels. Revoked handles fail the next
-continuation exchange.
+Handles are unlinkable across hops but not among participants in one hop, and
+revoked handles fail the next continuation exchange. {{privacy}} covers the
+residual correlation channels.
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -510,8 +506,8 @@ A chain is continuable only while active at the IdP. Each cross-boundary hop
 is a fresh policy check. Revoking a hop stops its subtree at the next
 continuation, fail-closed, but does not invalidate already issued ID-JAGs or
 access tokens; the revocation window is therefore bounded by the ID-JAG's
-short lifetime and by the access-token lifetime that the accepting Resource
-Authorization Server sets, which this profile does not constrain.
+short lifetime and by the access-token lifetime the accepting Resource
+Authorization Server sets; this profile does not constrain that lifetime.
 
 This is the deliberate difference from an offline-attenuated token, whose
 minted child stays usable for its lifetime without contacting an authority.
@@ -524,14 +520,15 @@ Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
 authorization, and the IdP-held continuation chain.
 
 The governing authorization is the server-side consent and policy record
-resolved from the root subject token. A refresh token anchors to its OAuth
-grant; `sid` or `SessionIndex` anchors to its session. Rotation of a refresh
+resolved from the root subject token ({{root-establishment}}). A refresh token
+anchors to its OAuth grant; `sid` or `SessionIndex` anchors to its session. Rotation of a refresh
 token does not affect the grant anchor. Grant expiry or revocation ends the
 chains anchored to that grant; session termination ends the chains anchored
 to that session; and withdrawal of continuation consent or policy ends any
 chain it governs. A session-anchored chain MUST NOT outlive its session; only
-grant-anchored chains may outlive logout. This bounds new continuations; an
-ID-JAG already issued remains redeemable for its own lifetime, since
+grant-anchored chains may outlive logout. Ending a chain this way bounds only
+new continuations; an ID-JAG already issued remains redeemable for its own
+lifetime, since
 redemption is not a continuation.
 
 The IdP MUST bound chain lifetime by the governing authorization and reject
@@ -589,8 +586,8 @@ proof {{RFC9449}}, and the IdP MUST bind the resulting ID-JAG to that key in
 `cnf`; without valid proof it MUST NOT include an
 `identity_continuation_handle`. State MAY be materialized lazily if the
 handle remains resolvable. Without continuation authorization, the IdP MUST
-NOT establish a chain or include a handle. Metadata signals capability, not
-authority.
+NOT establish a chain or include a handle. Advertised support ({{metadata}})
+signals capability, not authority.
 
 The root subject token MUST resolve to one of these lifecycle anchors:
 
@@ -610,7 +607,11 @@ authenticated user, authentication context, authorization basis, permitted
 actors or trust domains, depth, governing authorization, and expiry). Token
 claims cannot supply these values. Every dimension is an
 establishment-time ceiling: later policy MAY narrow or revoke it but MUST NOT
-broaden it.
+broaden it; broadening requires a new chain. Known targets MAY be explicit
+entries binding an audience and resource to scopes and authorization details
+{{RFC9396}}; dynamic targets are evaluated at request time against the
+authorization basis as recorded at establishment, so broadening the underlying
+consent or policy does not extend an existing chain.
 
 The root actor is the authenticated OAuth client under the mapping in
 {{client-identity}}. An optional `actor_token` MUST be valid, MUST be accepted
@@ -630,7 +631,8 @@ Establishment is at-least-once: retrying a lost response MAY create a second
 chain. Revocation of the governing authorization applies to every chain rooted
 in it, and the actor-chain depth bound is enforced per branch; the IdP MUST
 enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
-to the governing authorization, which a retried establishment MUST NOT evade.
+to the governing authorization; a retried establishment MUST NOT evade these
+limits.
 
 ## Chained ID-JAG Request
 
@@ -670,8 +672,8 @@ to scope. Client authentication is required on every exchange
 The actor MUST present a DPoP proof {{RFC9449}} for the key in
 `cnf.jkt`. The IdP MUST verify the match and reject absent or invalid proof.
 DPoP is the single mandatory confirmation method for interoperability: a
-different method in the onward grant would make the target validate it
-differently from a directly issued ID-JAG. This version therefore defines no
+different confirmation method in the onward grant would make the target
+validate that confirmation differently than for a directly issued ID-JAG. This version therefore defines no
 mutual-TLS variant {{RFC8705}}; see {{open-items}}.
 
 The request MUST include a valid, accepted `actor_token` identifying the
@@ -793,8 +795,8 @@ presented handle.
    and authorized to pair with the `actor_token` issuer for that tenant;
 
 7. the handle identifies a RAS-accepted hop on an active chain, no ancestor
-   subtree is revoked, and the resulting actor lineage, after collapsing
-   consecutive same-actor entries ({{onward-id-jag}}), is within its depth
+   subtree is revoked, and the actor lineage that results from collapsing
+   consecutive same-actor entries ({{onward-id-jag}}) is within its depth
    bound; the bound counts lineage entries, not hops;
 
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`,
@@ -888,8 +890,8 @@ tokens; `invalid_dpop_proof` for DPoP failure; and `invalid_target`,
 `invalid_scope`, or `invalid_authorization_details` for requests outside the
 envelope.
 
-An unknown, expired, revoked, or non-continuable handle MUST return
-`invalid_continuation` ({{iana}}), distinguishing a dead hop from the
+The IdP MUST return `invalid_continuation` ({{iana}}) for an unknown, expired,
+revoked, or non-continuable handle, distinguishing a dead hop from the
 `invalid_request` of a malformed request. Retrying the same handle cannot
 succeed: a session-anchored chain re-roots by re-authenticating the user,
 while a grant-anchored chain may re-root from its still-valid grant without
@@ -981,8 +983,8 @@ stored.
 
 The Chain Authority assertion is trusted evidence of acceptance, not
 IdP-verifiable proof. A compromised mapped Chain Authority can thus attest a
-hop that its Resource Authorization Server refused, or denied continuation
-from, overriding that server's local decision; the envelope still bounds the
+hop that its Resource Authorization Server refused, or for which it denied
+continuation, overriding that server's local decision; the envelope still bounds the
 result, but the accept-and-continue gate is only as trustworthy as the
 mapped Chain Authority. Absent such compromise, an issued-but-rejected ID-JAG
 cannot be continued because no mapped Chain Authority may attest it. A mapped
@@ -1337,7 +1339,7 @@ shared issuer trust, and no need for mid-chain IdP revocation, such as a
 single SPIFFE-style trust domain ({{decision-rule}}). Delegated Authorization
 {{I-D.li-oauth-delegated-authorization}}, whose client-issued tokens carry no
 subject, composes with this profile as the intra-domain layer and stops where
-re-subjecting begins.
+re-issuance to a new subject begins.
 
 ## Alternative Topology: Resolution at the Target {#rationale-pull}
 
