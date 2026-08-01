@@ -96,48 +96,40 @@ attenuation for intra-domain fan-out that does not change the subject.
 
 An authenticated request can cross several services after the user is no
 longer present, or reach an audience the original credential does not address.
-Each service is protected by its own Resource Authorization
-Server (RAS); all RASes trust one IdP, but each may use a different
-audience-local subject for the user. This profile covers:
+The first hop uses an ID Token, refresh token, or SAML assertion to obtain an
+ID-JAG {{I-D.ietf-oauth-identity-assertion-authz-grant}}; a later workload in
+the chain holds none of those. Only the IdP can name the user for a new
+audience, so continuation is a fresh mint, not a reused or attenuated token: a
+workload presents a sender-constrained Identity Continuation Assertion and the
+IdP issues the next audience-scoped ID-JAG without another user interaction.
 
-* a chain of applications, each fronted by its own RAS, for example an
-  expense application that calls a travel service that calls a booking
-  service;
+This profile covers:
+
+* a chain of applications, each fronted by its own Resource Authorization
+  Server (RAS), for example an expense application that calls a travel service
+  that calls a booking service;
 * an API gateway or agent runtime that roots one delegation and continues it
   to upstream services whose audiences are chosen per request rather than
   fixed in advance; and
 * an unattended agent continuing a user's delegation.
 
-After the first hop, a workload has no end-user credential. It therefore
-uses an Identity Continuation Assertion to ask the IdP for a fresh,
-audience-scoped ID-JAG without another user interaction. The worked example
-uses:
+The worked example ({{example}}) follows:
 
 ~~~
 ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
 
-Each trust domain from which the chain continues has three roles: the Resource
-Authorization Server (RAS) that accepts an ID-JAG and binds the hop, a
-Transaction Token Service (TTS) that carries the hop reference to workloads
-inside the domain, and a Chain Authority that issues the Identity Continuation
-Assertion a workload presents to the IdP. One party may operate all three
-within a domain ({{security-tts}}). The IdP remains the only party that
-names the user for a new audience.
-
-## Why a New Input Is Needed {#motivation}
-
-The first hop uses an ID Token, refresh token, or SAML assertion to obtain an
-ID-JAG {{I-D.ietf-oauth-identity-assertion-authz-grant}}. A later workload
-holds none of those credentials. The Identity Continuation Assertion supplies
-the sender-constrained chain evidence needed for the IdP to issue the next
-ID-JAG.
+Each trust domain from which the chain continues has three roles: the RAS that
+accepts an ID-JAG and binds the hop, a Transaction Token Service (TTS) that
+carries the hop reference to workloads inside the domain, and a Chain Authority
+that issues the Identity Continuation Assertion a workload presents to the IdP.
+One party may operate all three within a domain ({{security-tts}}).
 
 ## Core Principle {#core-principle}
 
-Each RAS trusts only the IdP to name the user and scope authority. Only the
-IdP can map the root user to a new audience-local `sub`; changing audiences is
-therefore re-issuance, not offline attenuation. At every hop the IdP both
+Each RAS trusts only the IdP to name the user and scope authority. Because the
+IdP maps the root user to an audience-local `sub`, changing audiences is
+re-issuance, not offline attenuation. At every hop the IdP both
 resolves identity and checks the requested authority against the root
 delegation.
 
@@ -164,27 +156,14 @@ This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 
 A handle travels by one of three carriers, depending on context lifetime:
 
-* **Cross-domain**, for the life of one exchange: the handle travels inside a
-  continuation-capable ID-JAG to the accepting Resource Authorization Server,
-  or inside an Identity Continuation Assertion to the IdP ({{chain-id}},
-  {{ras-processing}}).
-* **Within an active request**, inside a trust domain: the handle travels in a
-  Transaction Token that the domain's Transaction Token Service (TTS) derives
-  from accepted authorization state ({{transaction-token-context}}).
-* **Across time**, for scheduled or unattended work: the handle stays in
-  durable authorization state bound by a Resource Authorization Server and is
-  referenced externally only by an opaque task identifier ({{task-provenance}}).
-
 | Situation | Authoritative store | Application carries |
 |---|---|---|
-| Cross-domain hop | IdP hop state | Assertion to the IdP, then ID-JAG to the RAS |
-| Active request | RAS authorization state | Access token; the TTS derives the context |
-| Scheduled execution | Durable task/RAS authorization | Opaque task identifier |
+| Cross-domain hop ({{chain-id}}, {{ras-processing}}) | IdP hop state | Assertion to the IdP, then ID-JAG to the RAS |
+| Active request ({{transaction-token-context}}) | RAS authorization state | Access token; the TTS derives the context |
+| Scheduled execution ({{task-provenance}}) | Durable task/RAS authorization | Opaque task identifier |
 
 An application never selects or persists a bare handle for transport; it
 carries an artifact from which trusted server-side state derives the handle.
-
-A full worked example appears in {{example}}.
 
 # Conventions and Definitions {#terms}
 
