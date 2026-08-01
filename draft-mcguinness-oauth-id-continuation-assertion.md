@@ -45,6 +45,7 @@ normative:
   RFC9396:
   RFC9449:
   I-D.ietf-oauth-identity-assertion-authz-grant:
+  I-D.ietf-oauth-transaction-tokens:
   OIDC.FrontChannelLogout:
     title: "OpenID Connect Front-Channel Logout 1.0"
     target: "https://openid.net/specs/openid-connect-frontchannel-1_0.html"
@@ -65,7 +66,6 @@ informative:
   RFC9700:
   I-D.fletcher-transaction-token-chaining-profile:
   I-D.ietf-oauth-identity-chaining:
-  I-D.ietf-oauth-transaction-tokens:
   I-D.ietf-wimse-arch:
   I-D.li-oauth-delegated-authorization:
   I-D.mcguinness-oauth-actor-receipts:
@@ -456,9 +456,11 @@ The `identity_continuation` object has the following members:
 A recipient MUST ignore unknown members. A malformed or repeated object MUST
 be treated as carrying no chain context.
 
-The requester MUST NOT supply or override this member. The TTS MUST derive it
-from the authorization record for the specific credential and confirmed key
-presented on the current call, never from a session or subject. The token MUST
+The requester MUST NOT supply or override this member. Before deriving, the
+protected endpoint or TTS MUST validate live proof of possession of the
+confirmed key presented on the current call, then MUST derive the member from
+the authorization record bound to that verified credential, key, and RAS
+state, never from a session or subject. The token MUST
 NOT be accepted outside its trust domain and is normally forwarded
 unmodified. A replacement token MUST re-derive the member from the same
 RAS-bound state.
@@ -536,8 +538,8 @@ This is the deliberate difference from an offline-attenuated token, whose
 minted child stays usable for its lifetime without contacting an authority.
 An implementation MAY cache an access token only for its own audience and
 scope, within its lifetime, keyed to the request fingerprint of
-{{validation}}; it MUST NOT reuse a continuation across audiences or after a
-revocation check.
+{{validation}}; it MUST NOT reuse that token for another audience or to bypass
+the fresh revocation check each continuation requires.
 
 Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
 authorization, and the IdP-held continuation chain.
@@ -603,7 +605,10 @@ On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}).
 
 The IdP, not the client, establishes a chain. It MUST do so when a direct
 ID-JAG exchange is governed by continuation-capable authorization, and MUST
-include the root handle in the ID-JAG. State MAY be materialized lazily if the
+include the root handle in the ID-JAG. The exchange MUST include a valid DPoP
+proof {{RFC9449}}, and the IdP MUST bind the resulting ID-JAG to that key in
+`cnf`; without valid proof it MUST NOT include an
+`identity_continuation_handle`. State MAY be materialized lazily if the
 handle remains resolvable. Without continuation authorization, the IdP MUST
 NOT establish a chain or include a handle. Metadata signals capability, not
 authority.
@@ -978,7 +983,7 @@ on accepting a continuation-capable ID-JAG:
 3. verify the sender constraint, that is, proof of possession of the
    confirmed key;
 4. apply its local authorization policy;
-5. issue the resulting access token; and
+5. issue an access token sender-constrained to the confirmed key; and
 6. bind `identity_continuation_handle` to the authorization state it
    establishes, recording whether continuation is permitted.
 
@@ -1428,7 +1433,7 @@ authorization:
      |<-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------>|                 |
      |<-------------------AT1--------| bind H0         |
-     |----------------------request + AT1------------>|
+     |------------------request + AT1 + DPoP--------->|
      |               |               |<-resolve AT1----|
      |               |               |--bound H0------>|
      |               |               |    derive H0 into tctx
@@ -1448,7 +1453,7 @@ grant before crossing the boundary:
        |------------------------------------------->|              |
        |                 ID-JAG                     |              |
        |<-------------------------------------------| AT2; bind H1 |
-       |-----------------------request + AT2---------------------->|
+       |--------------------request + AT2 + DPoP------------------>|
        |              |             |               |<-resolve AT2-|
        |              |             |               |--bound H1--->|
        |              |             |               |  derive into TT
@@ -1888,7 +1893,8 @@ Scheduler state:
 task_id: task-123
 ~~~
 
-The Scheduler never receives, stores, or transmits H0 or any credential;
+The Scheduler never receives, stores, or transmits H0 or any user, chain, or
+bearer credential;
 `task-123` identifies a row in PlatformRAS's own durable state and means
 nothing outside the platform.
 
@@ -2024,7 +2030,7 @@ The runtime roots the chain at the gateway:
      |<-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------>|                 |
      |<--------------gateway AT------| bind H0         |
-     |----------------tool request + AT-------------->|
+     |------------tool request + AT + DPoP----------->|
      |               |               |<-resolve AT-----|
      |               |               |--bound H0------>|
      |               |               |    derive H0 into tctx
