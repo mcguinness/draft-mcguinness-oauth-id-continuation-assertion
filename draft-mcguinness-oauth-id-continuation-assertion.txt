@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                            31 July 2026
-Expires: 1 February 2027
+Intended status: Standards Track                           1 August 2026
+Expires: 2 February 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -59,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 1 February 2027.
+   This Internet-Draft will expire on 2 February 2027.
 
 Copyright Notice
 
@@ -191,7 +191,8 @@ Table of Contents
    the hop, a Transaction Token Service (TTS) that carries the hop
    reference to workloads inside the domain, and a Chain Authority that
    issues the Identity Continuation Assertion a workload presents to the
-   IdP.  The IdP remains the only party that names the user for a new
+   IdP.  One party may operate all three within a domain (Section 9.5).
+   The IdP remains the only party that names the user for a new
    audience.
 
 1.1.  Why a New Input Is Needed
@@ -275,6 +276,8 @@ Table of Contents
    it carries an artifact from which trusted server-side state derives
    the handle.
 
+   A full worked example appears in Appendix B.1.
+
 2.  Conventions and Definitions
 
    The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
@@ -287,12 +290,7 @@ Table of Contents
 
    Identity Provider (IdP):  The authority that authenticates the user,
       maps the user to each audience-local subject, and issues onward
-      grants.  In this profile it is the Continuation Authorization
-      Server.
-
-   Continuation Authorization Server:  The Authorization Server to which
-      an Identity Continuation Assertion is presented to obtain an
-      onward grant; here, the IdP.
+      grants.
 
    Resource Authorization Server (RAS):  An Authorization Server that
       protects a particular API and trusts the IdP for subject
@@ -350,7 +348,10 @@ Table of Contents
       reference.  Its lineage is its path to the root.
 
    Root-chain envelope:  The state the IdP records when it establishes a
-      chain, and against which it evaluates every continuation.  Derived
+      chain, and against which it evaluates every continuation.  The
+      envelope is anchored to the chain's governing authorization
+      (Section 6) and records, among its dimensions, the authorization
+      basis and the continuation authorization defined below.  Derived
       from authentication, consent, and tenant policy, it contains:
 
       *  the authenticated user;
@@ -388,7 +389,9 @@ Table of Contents
    Use this profile when the next audience needs a subject only the IdP
    can resolve.  Use offline attenuation, such as
    [I-D.li-oauth-delegated-authorization], for intra-domain fan-out that
-   keeps the same subject or uses workload identity.
+   keeps the same subject or uses workload identity.  Offline
+   attenuation is client-side attenuated delegation that does not cross
+   the IdP.
 
 4.  The Identity Continuation Assertion
 
@@ -508,7 +511,7 @@ Table of Contents
 
    3.  the presenting actor controls the key placed in cnf; and
 
-   4.  act names that actor and, if offline delegation reached the
+   4.  act names that actor and, if offline attenuation reached the
        actor, its delegation artifact is valid.
 
    Possession of a handle or Transaction Token is insufficient.  The
@@ -626,13 +629,12 @@ Table of Contents
    access-token lifetime that the accepting Resource Authorization
    Server sets, which this profile does not constrain.
 
-   This is the deliberate difference from an offline attenuated token,
+   This is the deliberate difference from an offline-attenuated token,
    whose minted child stays usable for its lifetime without contacting
    an authority.  An implementation MAY cache an access token only for
-   its own audience and scope, within its lifetime, keyed to the full
-   request (audience, resource, scope, authorization details, actor, and
-   confirmed key); it MUST NOT reuse a continuation across audiences or
-   after a revocation check.
+   its own audience and scope, within its lifetime, keyed to the request
+   fingerprint of Section 7.8; it MUST NOT reuse a continuation across
+   audiences or after a revocation check.
 
    Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
    authorization, and the IdP-held continuation chain.
@@ -641,12 +643,13 @@ Table of Contents
    record resolved from the root subject token.  A refresh token anchors
    to its OAuth grant; sid or SessionIndex anchors to its session.
    Rotation of a refresh token does not affect the grant anchor.  Grant
-   expiry or revocation, session termination, or withdrawal of
-   continuation consent or policy ends its chains.  A session-anchored
-   chain MUST NOT outlive its session; only grant-anchored chains may
-   outlive logout.  This bounds new continuations; an ID-JAG already
-   issued remains redeemable for its own lifetime, since redemption is
-   not a continuation.
+   expiry or revocation ends the chains anchored to that grant; session
+   termination ends the chains anchored to that session; and withdrawal
+   of continuation consent or policy ends any chain it governs.  A
+   session-anchored chain MUST NOT outlive its session; only grant-
+   anchored chains may outlive logout.  This bounds new continuations;
+   an ID-JAG already issued remains redeemable for its own lifetime,
+   since redemption is not a continuation.
 
    The IdP MUST bound chain lifetime by the governing authorization and
    reject expired chains.
@@ -736,10 +739,10 @@ Table of Contents
    For every root or child hop, the IdP records the target RAS and the
    Chain Authorities mapped to it; the mapping MAY be static tenant
    configuration.  Only a mapped Chain Authority may attest that hop.  A
-   base-only RAS ignores the handle and is terminal; only a
-   continuation-aware RAS can bind it and make the hop continuable.
-   Grant-profile advertisement is discovery only; a party that requires
-   onward continuation SHOULD consult it when available.
+   terminal RAS ignores the handle; only a continuation-aware RAS can
+   bind it and make the hop continuable.  Grant-profile advertisement is
+   discovery only; a party that requires onward continuation SHOULD
+   consult it when available.
 
    Establishment is at-least-once: retrying a lost response MAY create a
    second chain.  Revocation of the governing authorization applies to
@@ -1072,7 +1075,8 @@ Table of Contents
    atop the presented hop's lineage; it never copies lineage from the
    assertion.  Siblings do not contribute.  Consecutive identical actors
    collapse to one entry, though the hop record remains; policy MAY
-   limit disclosed depth.
+   limit disclosed depth, narrowing what a target sees without changing
+   the depth bound the IdP enforces (Section 7.8, rule 7).
 
    The target RAS validates the ID-JAG, issues its access token, and, if
    continuation-aware, binds the handle.  The ID-JAG client_id is the
@@ -1185,9 +1189,9 @@ Table of Contents
 9.4.  Envelope Enforcement and Offline Attenuation
 
    The envelope bounds every target and authority.  The Chain Authority
-   validates any offline delegation segment; the IdP still enforces only
-   the envelope.  Because the assertion is target-agnostic, a permitted
-   actor may select any target within that ceiling.
+   validates any offline attenuation segment; the IdP still enforces
+   only the envelope.  Because the assertion is target-agnostic, a
+   permitted actor may select any target within that ceiling.
 
    Wrong-handle association can continue the wrong user's bounded chain.
    The TTS removes selection from the workload by deriving the handle
