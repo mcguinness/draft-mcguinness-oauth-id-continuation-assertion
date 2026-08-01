@@ -1972,9 +1972,11 @@ state and places it in Transaction Token context
         </ul>
 <p id="section-4.6-5">A recipient <span class="bcp14">MUST</span> ignore unknown members. A malformed or repeated object <span class="bcp14">MUST</span>
 be treated as carrying no chain context.<a href="#section-4.6-5" class="pilcrow">¶</a></p>
-<p id="section-4.6-6">The requester <span class="bcp14">MUST NOT</span> supply or override this member. The TTS <span class="bcp14">MUST</span> derive it
-from the authorization record for the specific credential and confirmed key
-presented on the current call, never from a session or subject. The token <span class="bcp14">MUST NOT</span> be accepted outside its trust domain and is normally forwarded
+<p id="section-4.6-6">The requester <span class="bcp14">MUST NOT</span> supply or override this member. Before deriving, the
+protected endpoint or TTS <span class="bcp14">MUST</span> validate live proof of possession of the
+confirmed key presented on the current call, then <span class="bcp14">MUST</span> derive the member from
+the authorization record bound to that verified credential, key, and RAS
+state, never from a session or subject. The token <span class="bcp14">MUST NOT</span> be accepted outside its trust domain and is normally forwarded
 unmodified. A replacement token <span class="bcp14">MUST</span> re-derive the member from the same
 RAS-bound state.<a href="#section-4.6-6" class="pilcrow">¶</a></p>
 <p id="section-4.6-7">Authorized intra-domain workloads <span class="bcp14">MAY</span> read the handle. They <span class="bcp14">MUST NOT</span> place it
@@ -2070,8 +2072,8 @@ Authorization Server sets, which this profile does not constrain.<a href="#secti
 minted child stays usable for its lifetime without contacting an authority.
 An implementation <span class="bcp14">MAY</span> cache an access token only for its own audience and
 scope, within its lifetime, keyed to the request fingerprint of
-<a href="#validation" class="auto internal xref">Section 7.8</a>; it <span class="bcp14">MUST NOT</span> reuse a continuation across audiences or after a
-revocation check.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<a href="#validation" class="auto internal xref">Section 7.8</a>; it <span class="bcp14">MUST NOT</span> reuse that token for another audience or to bypass
+the fresh revocation check each continuation requires.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <p id="section-6-3">Three lifetimes <span class="bcp14">MUST NOT</span> be conflated: ID-JAG redemption, local RAS
 authorization, and the IdP-held continuation chain.<a href="#section-6-3" class="pilcrow">¶</a></p>
 <p id="section-6-4">The governing authorization is the server-side consent and policy record
@@ -2139,7 +2141,10 @@ actor_token_type=&lt;actor-token-type&gt;                       (OPTIONAL)
         </h3>
 <p id="section-7.2-1">The IdP, not the client, establishes a chain. It <span class="bcp14">MUST</span> do so when a direct
 ID-JAG exchange is governed by continuation-capable authorization, and <span class="bcp14">MUST</span>
-include the root handle in the ID-JAG. State <span class="bcp14">MAY</span> be materialized lazily if the
+include the root handle in the ID-JAG. The exchange <span class="bcp14">MUST</span> include a valid DPoP
+proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>, and the IdP <span class="bcp14">MUST</span> bind the resulting ID-JAG to that key in
+<code>cnf</code>; without valid proof it <span class="bcp14">MUST NOT</span> include an
+<code>identity_continuation_handle</code>. State <span class="bcp14">MAY</span> be materialized lazily if the
 handle remains resolvable. Without continuation authorization, the IdP <span class="bcp14">MUST NOT</span> establish a chain or include a handle. Metadata signals capability, not
 authority.<a href="#section-7.2-1" class="pilcrow">¶</a></p>
 <p id="section-7.2-2">The root subject token <span class="bcp14">MUST</span> resolve to one of these lifecycle anchors:<a href="#section-7.2-2" class="pilcrow">¶</a></p>
@@ -2571,7 +2576,7 @@ confirmed key;<a href="#section-8-3.3.1" class="pilcrow">¶</a></p>
           <p id="section-8-3.4.1">apply its local authorization policy;<a href="#section-8-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-3.5">
-          <p id="section-8-3.5.1">issue the resulting access token; and<a href="#section-8-3.5.1" class="pilcrow">¶</a></p>
+          <p id="section-8-3.5.1">issue an access token sender-constrained to the confirmed key; and<a href="#section-8-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-8-3.6">
           <p id="section-8-3.6.1">bind <code>identity_continuation_handle</code> to the authorization state it
@@ -3137,6 +3142,10 @@ this document registers only the
         <dd>
 <span class="refAuthor">Parecki, A.</span>, <span class="refAuthor">McGuinness, K.</span>, and <span class="refAuthor">B. Campbell</span>, <span class="refTitle">"Identity Assertion JWT Authorization Grant"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-assertion-authz-grant-04</span>, <time datetime="2026-05-21" class="refDate">21 May 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="I-D.ietf-oauth-transaction-tokens">[I-D.ietf-oauth-transaction-tokens]</dt>
+        <dd>
+<span class="refAuthor">Tulshibagwale, A.</span>, <span class="refAuthor">Fletcher, G.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"Transaction Tokens"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-transaction-tokens-11</span>, <time datetime="2026-07-30" class="refDate">30 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="OIDC.FrontChannelLogout">[OIDC.FrontChannelLogout]</dt>
         <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
@@ -3221,10 +3230,6 @@ this document registers only the
 <dt id="I-D.ietf-oauth-identity-chaining">[I-D.ietf-oauth-identity-chaining]</dt>
         <dd>
 <span class="refAuthor">Schwenkschuster, A.</span>, <span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Burgin, K.</span>, <span class="refAuthor">Jenkins, M. J.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"OAuth Identity and Authorization Chaining Across Domains"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-chaining-17</span>, <time datetime="2026-07-19" class="refDate">19 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-17">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-17</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="I-D.ietf-oauth-transaction-tokens">[I-D.ietf-oauth-transaction-tokens]</dt>
-        <dd>
-<span class="refAuthor">Tulshibagwale, A.</span>, <span class="refAuthor">Fletcher, G.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"Transaction Tokens"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-transaction-tokens-11</span>, <time datetime="2026-07-30" class="refDate">30 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.ietf-wimse-arch">[I-D.ietf-wimse-arch]</dt>
         <dd>
@@ -3402,7 +3407,7 @@ authorization:<a href="#appendix-B.1-6" class="pilcrow">¶</a></p>
      |&lt;-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------&gt;|                 |
      |&lt;-------------------AT1--------| bind H0         |
-     |----------------------request + AT1------------&gt;|
+     |------------------request + AT1 + DPoP---------&gt;|
      |               |               |&lt;-resolve AT1----|
      |               |               |--bound H0------&gt;|
      |               |               |    derive H0 into tctx
@@ -3422,7 +3427,7 @@ grant before crossing the boundary:<a href="#appendix-B.1-8" class="pilcrow">¶<
        |-------------------------------------------&gt;|              |
        |                 ID-JAG                     |              |
        |&lt;-------------------------------------------| AT2; bind H1 |
-       |-----------------------request + AT2----------------------&gt;|
+       |--------------------request + AT2 + DPoP------------------&gt;|
        |              |             |               |&lt;-resolve AT2-|
        |              |             |               |--bound H1---&gt;|
        |              |             |               |  derive into TT
@@ -3884,7 +3889,8 @@ status:               active
 task_id: task-123
 </pre><a href="#appendix-B.2.1-9" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.1-10">The Scheduler never receives, stores, or transmits H0 or any credential;
+<p id="appendix-B.2.1-10">The Scheduler never receives, stores, or transmits H0 or any user, chain, or
+bearer credential;
 <code>task-123</code> identifies a row in PlatformRAS's own durable state and means
 nothing outside the platform.<a href="#appendix-B.2.1-10" class="pilcrow">¶</a></p>
 </section>
@@ -4045,7 +4051,7 @@ map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.<a href
      |&lt;-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------&gt;|                 |
      |&lt;--------------gateway AT------| bind H0         |
-     |----------------tool request + AT--------------&gt;|
+     |------------tool request + AT + DPoP-----------&gt;|
      |               |               |&lt;-resolve AT-----|
      |               |               |--bound H0------&gt;|
      |               |               |    derive H0 into tctx

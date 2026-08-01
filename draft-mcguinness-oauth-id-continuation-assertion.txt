@@ -549,12 +549,14 @@ Table of Contents
    A recipient MUST ignore unknown members.  A malformed or repeated
    object MUST be treated as carrying no chain context.
 
-   The requester MUST NOT supply or override this member.  The TTS MUST
-   derive it from the authorization record for the specific credential
-   and confirmed key presented on the current call, never from a session
-   or subject.  The token MUST NOT be accepted outside its trust domain
-   and is normally forwarded unmodified.  A replacement token MUST re-
-   derive the member from the same RAS-bound state.
+   The requester MUST NOT supply or override this member.  Before
+   deriving, the protected endpoint or TTS MUST validate live proof of
+   possession of the confirmed key presented on the current call, then
+   MUST derive the member from the authorization record bound to that
+   verified credential, key, and RAS state, never from a session or
+   subject.  The token MUST NOT be accepted outside its trust domain and
+   is normally forwarded unmodified.  A replacement token MUST re-derive
+   the member from the same RAS-bound state.
 
    Authorized intra-domain workloads MAY read the handle.  They MUST NOT
    place it in access tokens, external authorization claims, responses,
@@ -633,8 +635,9 @@ Table of Contents
    whose minted child stays usable for its lifetime without contacting
    an authority.  An implementation MAY cache an access token only for
    its own audience and scope, within its lifetime, keyed to the request
-   fingerprint of Section 7.8; it MUST NOT reuse a continuation across
-   audiences or after a revocation check.
+   fingerprint of Section 7.8; it MUST NOT reuse that token for another
+   audience or to bypass the fresh revocation check each continuation
+   requires.
 
    Three lifetimes MUST NOT be conflated: ID-JAG redemption, local RAS
    authorization, and the IdP-held continuation chain.
@@ -699,8 +702,11 @@ Table of Contents
 
    The IdP, not the client, establishes a chain.  It MUST do so when a
    direct ID-JAG exchange is governed by continuation-capable
-   authorization, and MUST include the root handle in the ID-JAG.  State
-   MAY be materialized lazily if the handle remains resolvable.  Without
+   authorization, and MUST include the root handle in the ID-JAG.  The
+   exchange MUST include a valid DPoP proof [RFC9449], and the IdP MUST
+   bind the resulting ID-JAG to that key in cnf; without valid proof it
+   MUST NOT include an identity_continuation_handle.  State MAY be
+   materialized lazily if the handle remains resolvable.  Without
    continuation authorization, the IdP MUST NOT establish a chain or
    include a handle.  Metadata signals capability, not authority.
 
@@ -1102,7 +1108,8 @@ Table of Contents
 
    4.  apply its local authorization policy;
 
-   5.  issue the resulting access token; and
+   5.  issue an access token sender-constrained to the confirmed key;
+       and
 
    6.  bind identity_continuation_handle to the authorization state it
        establishes, recording whether continuation is permitted.
@@ -1459,6 +1466,13 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
               identity-assertion-authz-grant-04>.
 
+   [I-D.ietf-oauth-transaction-tokens]
+              Tulshibagwale, A., Fletcher, G., and P. Kasselman,
+              "Transaction Tokens", Work in Progress, Internet-Draft,
+              draft-ietf-oauth-transaction-tokens-11, 30 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
+              transaction-tokens-11>.
+
    [OIDC.FrontChannelLogout]
               OpenID Foundation, "OpenID Connect Front-Channel Logout
               1.0", <https://openid.net/specs/openid-connect-
@@ -1555,13 +1569,6 @@ Table of Contents
               Internet-Draft, draft-ietf-oauth-identity-chaining-17, 19
               July 2026, <https://datatracker.ietf.org/doc/html/draft-
               ietf-oauth-identity-chaining-17>.
-
-   [I-D.ietf-oauth-transaction-tokens]
-              Tulshibagwale, A., Fletcher, G., and P. Kasselman,
-              "Transaction Tokens", Work in Progress, Internet-Draft,
-              draft-ietf-oauth-transaction-tokens-11, 30 July 2026,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
-              transaction-tokens-11>.
 
    [I-D.ietf-wimse-arch]
               Salowey, J. A., Rosomakho, Y., and H. Tschofenig,
@@ -1727,7 +1734,7 @@ B.1.  Worked Example (Same-IdP)
         |<-ID-JAG(H0)---|               |                 |
         |------------------ID-JAG------>|                 |
         |<-------------------AT1--------| bind H0         |
-        |----------------------request + AT1------------>|
+        |------------------request + AT1 + DPoP--------->|
         |               |               |<-resolve AT1----|
         |               |               |--bound H0------>|
         |               |               |    derive H0 into tctx
@@ -1745,7 +1752,7 @@ B.1.  Worked Example (Same-IdP)
           |------------------------------------------->|              |
           |                 ID-JAG                     |              |
           |<-------------------------------------------| AT2; bind H1 |
-          |-----------------------request + AT2---------------------->|
+          |--------------------request + AT2 + DPoP------------------>|
           |              |             |               |<-resolve AT2-|
           |              |             |               |--bound H1--->|
           |              |             |               |  derive into TT
@@ -2172,9 +2179,10 @@ B.2.1.  Setup (Alice Present)
 
    task_id: task-123
 
-   The Scheduler never receives, stores, or transmits H0 or any
-   credential; task-123 identifies a row in PlatformRAS's own durable
-   state and means nothing outside the platform.
+   The Scheduler never receives, stores, or transmits H0 or any user,
+   chain, or bearer credential; task-123 identifies a row in
+   PlatformRAS's own durable state and means nothing outside the
+   platform.
 
 B.2.2.  Each Run (Alice Absent)
 
@@ -2314,7 +2322,7 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
         |<-ID-JAG(H0)---|               |                 |
         |------------------ID-JAG------>|                 |
         |<--------------gateway AT------| bind H0         |
-        |----------------tool request + AT-------------->|
+        |------------tool request + AT + DPoP----------->|
         |               |               |<-resolve AT-----|
         |               |               |--bound H0------>|
         |               |               |    derive H0 into tctx
