@@ -2051,11 +2051,13 @@ After resolving the tool request to Wiki, the gateway continues the chain:
 
 ### Root Exchange: The Runtime Roots the Chain
 
-AgentApp performs a direct exchange for the one audience it knows:
-GatewayRAS. Standing consent and tenant policy form a dynamic envelope, and
-enterprise policy permits `tool-gateway` to continue it
+AgentApp performs a direct exchange for the one audience it knows: GatewayRAS.
+The eventual upstreams are not known at root time, so, unlike the worked
+example whose envelope enumerated each onward target, this envelope records an
+authorization-basis ceiling, Alice's standing consent and tenant policy, with
+no enumerated targets; enterprise policy permits `tool-gateway` to continue it
 ({{root-establishment}}, {{validation}}, rule 14). GatewayRAS accepts the
-ID-JAG and binds H0 as in {{example-context}}.
+ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
 
 AgentApp then invokes the gateway with its access token and no continuation
 input. AgentApp can read H0 in its ID-JAG, but it cannot supply or select the
@@ -2065,14 +2067,25 @@ that GatewayRAS bound to the presented access token
 
 ### Chained Exchange: The Gateway Continues
 
-ToolGateway reads H0 from its transaction context and obtains an assertion
-from Gateway CA. It may provide a target hint for issuance limits and
-logging, but only the IdP decides whether Wiki is within the envelope. The
-chained exchange has the shape of {{example-chained}}.
+Resolving the tool call, the gateway selects Wiki as the upstream, a target no
+one enumerated when AgentApp rooted the chain. ToolGateway reads H0 from its
+transaction context, obtains an assertion from Gateway CA, and presents it to
+the IdP as in {{example-chained}}, now requesting
+`audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`, and
+`scope=wiki.read`.
 
-WikiRAS is terminal and redeems the resulting ID-JAG without binding H1.
-Other permitted tool calls repeat the flow and create sibling hops under H0;
-disallowed targets fail as in {{example-dynamic}}.
+Because the envelope enumerates no targets, the IdP evaluates this dynamically
+chosen target against the recorded basis, Alice's standing consent and tenant
+policy at establishment ({{validation}}, rule 14). Wiki read access is within
+that basis and enterprise policy permits `tool-gateway` to reach it, so the
+exchange succeeds and the IdP constructs the onward lineage with `tool-gateway`
+atop `agent-app`. A target hint from the gateway informs issuance limits and
+logging only; the IdP, not the gateway, decides whether a target is in the
+envelope.
+
+WikiRAS is terminal and redeems the resulting ID-JAG without binding H1. Each
+permitted tool call repeats this exchange and creates a sibling hop under H0; a
+target outside the basis fails with `invalid_target` as in {{example-dynamic}}.
 
 ### Points Worth Noticing
 
