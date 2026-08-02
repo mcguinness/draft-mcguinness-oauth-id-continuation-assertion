@@ -118,14 +118,20 @@ sender-constrained JWT that a later workload presents as the `subject_token` of
 a Token Exchange request, in return for the next audience-scoped ID-JAG and
 without another user interaction. The assertion carries a continuation handle
 that binds the request to authorization state the IdP recorded when the chain
-was established, so every hop remains a fresh policy decision rather than a
-bearer of standing authority.
+was established. Each Resource Authorization Server (RAS) trusts only the IdP
+to name the user and scope authority, and at every hop the IdP both resolves
+identity and checks the requested authority against the root delegation, so
+continuation stays a fresh policy decision rather than a bearer of standing
+authority.
+
+This profile does not define a new access token format, does not allow a
+Resource Server to consume the Identity Continuation Assertion directly, and
+does not allow a Chain Authority to name the user for the target audience.
 
 This profile covers:
 
-* a chain of applications, each fronted by its own Resource Authorization
-  Server (RAS), for example an expense application that calls a travel service
-  that calls a booking service;
+* a chain of applications, each fronted by its own RAS, for example an expense
+  application that calls a travel service that calls a booking service;
 * an unattended agent continuing a user's delegation; and
 * an API gateway or agent runtime that roots one delegation and continues it
   to upstream services whose audiences are chosen per request rather than
@@ -144,20 +150,6 @@ carries the hop reference to workloads inside the domain, and a Chain Authority
 (CA) that issues the Identity Continuation Assertion a workload presents to the
 IdP.
 One party may operate all three within a domain ({{security-tts}}).
-
-## Core Principle {#core-principle}
-
-Each RAS trusts only the IdP to name the user and scope authority. Because the
-IdP maps the root user to an audience-local `sub`, changing audiences is
-re-issuance, not offline attenuation. At every hop the IdP both
-resolves identity and checks the requested authority against the root
-delegation.
-
-This document defines the evidence format, Token Exchange parameters,
-validation rules, and IANA registrations needed for that exchange. It does not
-define a new access token format, does not allow a Resource Server to consume
-the Identity Continuation Assertion directly, and does not allow a Chain
-Authority to name the user for the target audience.
 
 ## Relationship to ID-JAG and Identity Chaining
 
