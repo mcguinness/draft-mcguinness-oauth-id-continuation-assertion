@@ -162,16 +162,37 @@ Table of Contents
 
 1.  Introduction
 
-   An authenticated request can cross several services after the user is
-   no longer present, or reach an audience the original credential does
-   not address.  The first hop uses an ID Token, refresh token, or SAML
-   assertion to obtain an ID-JAG
-   [I-D.ietf-oauth-identity-assertion-authz-grant]; a later workload in
-   the chain holds none of those.  Only the IdP can name the user for a
-   new audience, so continuation is a fresh mint, not a reused or
-   attenuated token.  A workload presents a sender-constrained Identity
-   Continuation Assertion, and the IdP issues the next audience-scoped
-   ID-JAG without another user interaction.
+   OAuth 2.0 [RFC6749] issues access to a specific audience, and OAuth
+   2.0 Token Exchange [RFC8693] exchanges one token for another when a
+   request crosses a trust boundary.  The Identity Assertion JWT
+   Authorization Grant (ID-JAG)
+   [I-D.ietf-oauth-identity-assertion-authz-grant] applies Token
+   Exchange to identity: an Identity Provider (IdP) mints an
+   authorization grant that names the user for a single downstream
+   audience.  Each of these exchanges assumes the subject's credential,
+   an ID Token, refresh token, or SAML assertion, is present when the
+   grant is minted.
+
+   Many requests outlive that moment.  An authenticated request can
+   cross several services after the user is no longer present, or reach
+   an audience the original credential does not address.  The first hop
+   can still present the user's credential to obtain an ID-JAG, but a
+   later workload in the chain holds none of those credentials.  The
+   difficulty is sharpest when Resource Authorization Servers name the
+   user with audience-local (pairwise) subject identifiers that only the
+   IdP can resolve: the later workload cannot name the user for the next
+   audience at all.  Only the IdP can perform that mapping, so
+   continuation is a fresh mint from the IdP, not a reused or offline-
+   attenuated token.
+
+   This document defines the Identity Continuation Assertion: a short-
+   lived, sender-constrained JWT that a later workload presents as the
+   subject_token of a Token Exchange request, in return for the next
+   audience-scoped ID-JAG and without another user interaction.  The
+   assertion carries a continuation handle that binds the request to
+   authorization state the IdP recorded when the chain was established,
+   so every hop remains a fresh policy decision rather than a bearer of
+   standing authority.
 
    This profile covers:
 
