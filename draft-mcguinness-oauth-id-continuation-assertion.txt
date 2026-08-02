@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                           1 August 2026
-Expires: 2 February 2027
+Intended status: Standards Track                           2 August 2026
+Expires: 3 February 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -59,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 2 February 2027.
+   This Internet-Draft will expire on 3 February 2027.
 
 Copyright Notice
 
@@ -1715,7 +1715,7 @@ B.1.  Worked Example (Same-IdP)
    The root hop establishes the chain and the Expense domain's accepted
    authorization:
 
-    ExpenseApp        IdP          ExpenseRAS       Expense domain
+    ExpenseApp        IdP          ExpenseRAS       ExpenseAPI/TTS
         |               |               |                 |
         |--ID Token---->|               |                 |
         |<-ID-JAG(H0)---|               |                 |
@@ -1729,20 +1729,20 @@ B.1.  Worked Example (Same-IdP)
    Each continuation repeats one exchange.  ExpenseService obtains the
    Travel grant before crossing the boundary:
 
-    ExpenseService   Expense CA       IdP          TravelRAS  Travel TTS
-          |              |             |               |              |
-          |--request H0->|             |               |              |
-          |<-assertion---|             |               |              |
-          |--------------------------->|               |              |
-          |     assertion + DPoP       |               |              |
-          |<---------------------------| ID-JAG(H1)    |              |
-          |------------------------------------------->|              |
-          |                 ID-JAG                     |              |
-          |<-------------------------------------------| AT2; bind H1 |
-          |--------------------request + AT2 + DPoP------------------>|
-          |              |             |               |<-resolve AT2-|
-          |              |             |               |--bound H1--->|
-          |              |             |               |  derive into TT
+    ExpenseService  Expense CA        IdP        TravelRAS TravelAPI/TTS
+          |              |             |             |             |
+          |-request H0-->|             |             |             |
+          |<-assertion---|             |             |             |
+          |--------------------------->|             |             |
+          |     assertion + DPoP       |             |             |
+          |<---------------------------| ID-JAG(H1)  |             |
+          |----------------------------------------->|             |
+          |                 ID-JAG                   |             |
+          |<-----------------------------------------| AT2; bind H1|
+          |-----------------request + AT2 + DPoP------------------>|
+          |              |             |             |<-resolve AT2|
+          |              |             |             |--bound H1-->|
+          |              |             |             | derive into TT
 
    Appendix B.1.6 repeats the pattern from TravelSaaS to terminal
    BookingRAS.
@@ -2303,7 +2303,7 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
 
    The runtime roots the chain at the gateway:
 
-    AgentApp          IdP          GatewayRAS       Gateway domain
+    AgentApp          IdP          GatewayRAS       GatewayAPI/TTS
         |               |               |                 |
         |--ID Token---->|               |                 |
         |<-ID-JAG(H0)---|               |                 |
@@ -2317,7 +2317,7 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
    After resolving the tool request to Wiki, the gateway continues the
    chain:
 
-    ToolGateway       Gateway CA        IdP          Wiki domain
+    ToolGateway       Gateway CA        IdP          WikiRAS/API
          |                 |             |                 |
          |--request H0---->|             |                 |
          |<-assertion------|             |                 |
