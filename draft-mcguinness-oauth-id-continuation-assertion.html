@@ -4059,11 +4059,13 @@ map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.<a href
           <h4 id="name-root-exchange-the-runtime-r">
 <a href="#appendix-B.3.1" class="section-number selfRef">B.3.1. </a><a href="#name-root-exchange-the-runtime-r" class="section-name selfRef">Root Exchange: The Runtime Roots the Chain</a>
           </h4>
-<p id="appendix-B.3.1-1">AgentApp performs a direct exchange for the one audience it knows:
-GatewayRAS. Standing consent and tenant policy form a dynamic envelope, and
-enterprise policy permits <code>tool-gateway</code> to continue it
+<p id="appendix-B.3.1-1">AgentApp performs a direct exchange for the one audience it knows: GatewayRAS.
+The eventual upstreams are not known at root time, so, unlike the worked
+example whose envelope enumerated each onward target, this envelope records an
+authorization-basis ceiling, Alice's standing consent and tenant policy, with
+no enumerated targets; enterprise policy permits <code>tool-gateway</code> to continue it
 (<a href="#root-establishment" class="auto internal xref">Section 7.2</a>, <a href="#validation" class="auto internal xref">Section 7.7</a>, rule 14). GatewayRAS accepts the
-ID-JAG and binds H0 as in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.3.1-1" class="pilcrow">¶</a></p>
+ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.3.1-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.3.1-2">AgentApp then invokes the gateway with its access token and no continuation
 input. AgentApp can read H0 in its ID-JAG, but it cannot supply or select the
 handle used for this call. Gateway TTS derives H0 from the authorization
@@ -4076,13 +4078,23 @@ that GatewayRAS bound to the presented access token
           <h4 id="name-chained-exchange-the-gatewa">
 <a href="#appendix-B.3.2" class="section-number selfRef">B.3.2. </a><a href="#name-chained-exchange-the-gatewa" class="section-name selfRef">Chained Exchange: The Gateway Continues</a>
           </h4>
-<p id="appendix-B.3.2-1">ToolGateway reads H0 from its transaction context and obtains an assertion
-from Gateway CA. It may provide a target hint for issuance limits and
-logging, but only the IdP decides whether Wiki is within the envelope. The
-chained exchange has the shape of <a href="#example-chained" class="auto internal xref">Appendix B.1.4</a>.<a href="#appendix-B.3.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.3.2-2">WikiRAS is terminal and redeems the resulting ID-JAG without binding H1.
-Other permitted tool calls repeat the flow and create sibling hops under H0;
-disallowed targets fail as in <a href="#example-dynamic" class="auto internal xref">Appendix B.2.3</a>.<a href="#appendix-B.3.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.3.2-1">Resolving the tool call, the gateway selects Wiki as the upstream, a target no
+one enumerated when AgentApp rooted the chain. ToolGateway reads H0 from its
+transaction context, obtains an assertion from Gateway CA, and presents it to
+the IdP as in <a href="#example-chained" class="auto internal xref">Appendix B.1.4</a>, now requesting
+<code>audience=https://ras.wiki.example/</code>, <code>resource=https://api.wiki.example/</code>, and
+<code>scope=wiki.read</code>.<a href="#appendix-B.3.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.3.2-2">Because the envelope enumerates no targets, the IdP evaluates this dynamically
+chosen target against the recorded basis, Alice's standing consent and tenant
+policy at establishment (<a href="#validation" class="auto internal xref">Section 7.7</a>, rule 14). Wiki read access is within
+that basis and enterprise policy permits <code>tool-gateway</code> to reach it, so the
+exchange succeeds and the IdP constructs the onward lineage with <code>tool-gateway</code>
+atop <code>agent-app</code>. A target hint from the gateway informs issuance limits and
+logging only; the IdP, not the gateway, decides whether a target is in the
+envelope.<a href="#appendix-B.3.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.3.2-3">WikiRAS is terminal and redeems the resulting ID-JAG without binding H1. Each
+permitted tool call repeats this exchange and creates a sibling hop under H0; a
+target outside the basis fails with <code>invalid_target</code> as in <a href="#example-dynamic" class="auto internal xref">Appendix B.2.3</a>.<a href="#appendix-B.3.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="points-worth-noticing-1">
