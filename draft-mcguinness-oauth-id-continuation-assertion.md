@@ -109,8 +109,8 @@ credential does not address. The first hop can still present the user's
 credential to obtain an ID-JAG, but a later workload in the chain holds none of
 those credentials. The difficulty is sharpest when Resource Authorization
 Servers name the user with audience-local (pairwise) subject identifiers that
-only the IdP can resolve: the later workload cannot name the user for the next
-audience at all. Only the IdP can perform that mapping, so continuation is a
+only the IdP can resolve, a different and unrelated value at each RAS: the
+later workload cannot name the user for the next audience at all. Only the IdP can perform that mapping, so continuation is a
 fresh mint from the IdP, not a reused or offline-attenuated token.
 
 This document defines the Identity Continuation Assertion: a short-lived,
@@ -119,9 +119,9 @@ a Token Exchange request, in return for the next audience-scoped ID-JAG and
 without another user interaction. The assertion carries a continuation handle
 that binds the request to authorization state the IdP recorded when the chain
 was established. Each Resource Authorization Server (RAS) trusts only the IdP
-to name the user and scope authority, and at every hop the IdP both resolves
-identity and checks the requested authority against the root-chain envelope,
-so continuation stays a fresh policy decision rather than a bearer of standing
+to name the user and scope authority. At every hop the IdP both resolves
+identity and checks the requested authority against the root-chain envelope, so
+continuation stays a fresh policy decision rather than a bearer of standing
 authority.
 
 This profile does not define a new access token format, does not allow a
@@ -335,12 +335,10 @@ The claims have the following meanings and requirements:
 `act`:
 : REQUIRED. The current actor presenting the Token Exchange request, encoded
   as a single-level `act` claim per {{RFC8693}}. The `act` object contains a
-  REQUIRED `iss` and a REQUIRED `sub`, both non-empty strings. Additional
-  members MAY carry further identity attributes of the actor; a recipient
-  MUST ignore members it does not understand, and the members `exp`, `nbf`,
-  `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present. Additional
-  members are non-authoritative and MUST NOT affect identity, authorization,
-  lineage, or issuance. The IdP MUST reject a nonconforming `act`. The IdP,
+  REQUIRED `iss` and a REQUIRED `sub`, both non-empty strings. Additional members MAY carry further identity attributes but are
+  non-authoritative and MUST NOT affect identity, authorization, lineage, or
+  issuance; a recipient MUST ignore members it does not understand, and `exp`,
+  `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present. The IdP MUST reject a nonconforming `act`. The IdP,
   not the assertion, constructs lineage ({{onward-id-jag}}).
 
 `cnf`:
@@ -417,7 +415,8 @@ Propagated context MUST NOT override the root-chain envelope.
 
 An `identity_continuation_handle` is an opaque, non-bearer reference to one
 IdP-held hop. Each continuation creates a child whose immutable parent is the
-presented hop; concurrent children are independent siblings.
+presented hop; in the {{example}} chain, the TravelRAS hop is a child of the
+ExpenseRAS hop. Concurrent children are independent siblings.
 
 The following rules apply:
 
@@ -600,8 +599,8 @@ consent or policy does not extend an existing chain.
 
 The root actor is the authenticated OAuth client under the mapping in
 {{client-identity}}. An optional `actor_token` MUST be valid, MUST be accepted
-for continuation, MUST designate the IdP where applicable, MUST be
-sender-constrained to the demonstrated key, and MUST identify that client.
+for continuation, and MUST designate the IdP where applicable. It MUST also be
+sender-constrained to the demonstrated key and MUST identify that client.
 Only after validation does the IdP record the root actor and key. For public
 clients, this profile inherits the base ID-JAG profile's authentication
 assurance and does not strengthen it.
@@ -1177,7 +1176,10 @@ them to correlate a user across SaaS boundaries.
 
 The chain is not unlinkable: the IdP correlates it, participants sharing a
 handle can correlate that hop, and actor lineage and timing may correlate
-transactions across audiences. Deployments SHOULD disclose handles only to
+transactions across audiences. For example, an observer comparing ID-JAGs
+issued to two audiences within one short window and carrying the same
+actor-chain shape may infer they belong to one user's transaction, even without
+a shared handle. Deployments SHOULD disclose handles only to
 participants that continue or administer the chain. They MAY limit lineage
 exposed to each audience, subject to audit requirements.
 
