@@ -1413,7 +1413,7 @@ The root hop establishes the chain and the Expense domain's accepted
 authorization:
 
 ~~~
- ExpenseApp        IdP          ExpenseRAS       Expense domain
+ ExpenseApp        IdP          ExpenseRAS       ExpenseAPI/TTS
      |               |               |                 |
      |--ID Token---->|               |                 |
      |<-ID-JAG(H0)---|               |                 |
@@ -1429,20 +1429,20 @@ Each continuation repeats one exchange. ExpenseService obtains the Travel
 grant before crossing the boundary:
 
 ~~~
- ExpenseService   Expense CA       IdP          TravelRAS  Travel TTS
-       |              |             |               |              |
-       |--request H0->|             |               |              |
-       |<-assertion---|             |               |              |
-       |--------------------------->|               |              |
-       |     assertion + DPoP       |               |              |
-       |<---------------------------| ID-JAG(H1)    |              |
-       |------------------------------------------->|              |
-       |                 ID-JAG                     |              |
-       |<-------------------------------------------| AT2; bind H1 |
-       |--------------------request + AT2 + DPoP------------------>|
-       |              |             |               |<-resolve AT2-|
-       |              |             |               |--bound H1--->|
-       |              |             |               |  derive into TT
+ ExpenseService  Expense CA        IdP        TravelRAS TravelAPI/TTS
+       |              |             |             |             |
+       |-request H0-->|             |             |             |
+       |<-assertion---|             |             |             |
+       |--------------------------->|             |             |
+       |     assertion + DPoP       |             |             |
+       |<---------------------------| ID-JAG(H1)  |             |
+       |----------------------------------------->|             |
+       |                 ID-JAG                   |             |
+       |<-----------------------------------------| AT2; bind H1|
+       |-----------------request + AT2 + DPoP------------------>|
+       |              |             |             |<-resolve AT2|
+       |              |             |             |--bound H1-->|
+       |              |             |             | derive into TT
 ~~~
 
 {{example-third-hop}} repeats the pattern from TravelSaaS to terminal
@@ -2010,7 +2010,7 @@ map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.
 The runtime roots the chain at the gateway:
 
 ~~~
- AgentApp          IdP          GatewayRAS       Gateway domain
+ AgentApp          IdP          GatewayRAS       GatewayAPI/TTS
      |               |               |                 |
      |--ID Token---->|               |                 |
      |<-ID-JAG(H0)---|               |                 |
@@ -2025,7 +2025,7 @@ The runtime roots the chain at the gateway:
 After resolving the tool request to Wiki, the gateway continues the chain:
 
 ~~~
- ToolGateway       Gateway CA        IdP          Wiki domain
+ ToolGateway       Gateway CA        IdP          WikiRAS/API
       |                 |             |                 |
       |--request H0---->|             |                 |
       |<-assertion------|             |                 |
