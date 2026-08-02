@@ -78,8 +78,7 @@ Copyright Notice
 Table of Contents
 
    1.  Introduction
-     1.1.  Core Principle
-     1.2.  Relationship to ID-JAG and Identity Chaining
+     1.1.  Relationship to ID-JAG and Identity Chaining
    2.  Conventions and Definitions
    3.  When to Use This Profile Versus Offline Attenuation
    4.  The Identity Continuation Assertion
@@ -190,15 +189,23 @@ Table of Contents
    subject_token of a Token Exchange request, in return for the next
    audience-scoped ID-JAG and without another user interaction.  The
    assertion carries a continuation handle that binds the request to
-   authorization state the IdP recorded when the chain was established,
-   so every hop remains a fresh policy decision rather than a bearer of
-   standing authority.
+   authorization state the IdP recorded when the chain was established.
+   Each Resource Authorization Server (RAS) trusts only the IdP to name
+   the user and scope authority, and at every hop the IdP both resolves
+   identity and checks the requested authority against the root
+   delegation, so continuation stays a fresh policy decision rather than
+   a bearer of standing authority.
+
+   This profile does not define a new access token format, does not
+   allow a Resource Server to consume the Identity Continuation
+   Assertion directly, and does not allow a Chain Authority to name the
+   user for the target audience.
 
    This profile covers:
 
-   *  a chain of applications, each fronted by its own Resource
-      Authorization Server (RAS), for example an expense application
-      that calls a travel service that calls a booking service;
+   *  a chain of applications, each fronted by its own RAS, for example
+      an expense application that calls a travel service that calls a
+      booking service;
 
    *  an unattended agent continuing a user's delegation; and
 
@@ -218,22 +225,7 @@ Table of Contents
    Continuation Assertion a workload presents to the IdP.  One party may
    operate all three within a domain (Section 10.5).
 
-1.1.  Core Principle
-
-   Each RAS trusts only the IdP to name the user and scope authority.
-   Because the IdP maps the root user to an audience-local sub, changing
-   audiences is re-issuance, not offline attenuation.  At every hop the
-   IdP both resolves identity and checks the requested authority against
-   the root delegation.
-
-   This document defines the evidence format, Token Exchange parameters,
-   validation rules, and IANA registrations needed for that exchange.
-   It does not define a new access token format, does not allow a
-   Resource Server to consume the Identity Continuation Assertion
-   directly, and does not allow a Chain Authority to name the user for
-   the target audience.
-
-1.2.  Relationship to ID-JAG and Identity Chaining
+1.1.  Relationship to ID-JAG and Identity Chaining
 
    This document profiles Token Exchange [RFC8693], JWT [RFC7519], ID-
    JAG [I-D.ietf-oauth-identity-assertion-authz-grant], and OAuth
