@@ -62,6 +62,7 @@ normative:
 informative:
   RFC6755:
   RFC6838:
+  RFC8417:
   RFC8705:
   RFC9700:
   I-D.fletcher-transaction-token-chaining-profile:
@@ -146,8 +147,9 @@ ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
 
 Each trust domain from which the chain continues has three roles: the RAS that
-accepts an ID-JAG and binds the hop, a Transaction Token Service (TTS) that
-carries the hop reference to workloads inside the domain, and a Chain Authority
+accepts an ID-JAG and binds the hop, a trusted carrier, typically a Transaction
+Token Service (TTS), that carries the hop reference to workloads inside the
+domain, and a Chain Authority
 (CA) that issues the Identity Continuation Assertion a workload presents to the
 IdP.
 One party may operate all three within a domain ({{security-tts}}).
@@ -308,8 +310,8 @@ The responsibilities never mix:
 * the IdP alone authorizes the next target against the envelope and mints the
   next ID-JAG ({{validation}}, {{onward-id-jag}}).
 
-No step trusts an earlier one to have done its part; each re-checks before it
-acts.
+Each role validates the inputs within its authority; no artifact or role alone
+authorizes continuation.
 
 # When to Use This Profile Versus Offline Attenuation {#decision-rule}
 
@@ -339,10 +341,11 @@ JOSE typ:    oauth-identity-continuation+jwt
 
 The assertion is a signed JWT in JWS Compact Serialization {{RFC7519}}, with
 media type `application/oauth-identity-continuation+jwt` ({{iana}}). It
-MUST NOT be encrypted (JWE) or use nested signing; it carries no confidential
-data, so encryption would add only parsing surface. The IdP MUST verify the
-`typ` header per {{RFC8725}}, which keeps the assertion from being consumed as
-another token type.
+MUST NOT be encrypted (JWE) or use nested signing. This profile relies on TLS
+for confidentiality and defines only signed JWS Compact Serialization, keeping
+a single interoperable representation. The IdP MUST verify the `typ` header per
+{{RFC8725}}, which keeps the assertion from being consumed as another token
+type.
 
 ## Claims {#assertion-claims}
 
@@ -534,8 +537,11 @@ A handle travels by one of three carriers, depending on context lifetime:
 | Active request ({{transaction-token-context}}) | RAS authorization state | Access token; the TTS derives the context |
 | Scheduled execution ({{task-provenance}}) | Durable task/RAS authorization | Opaque task identifier |
 
-An application never selects or persists a bare handle for transport; it
-carries an artifact from which trusted server-side state derives the handle.
+An external or requesting application never selects or persists a bare handle
+for transport; it carries an artifact from which trusted server-side state
+derives the handle. An authorized intra-domain control-plane workload is
+different: it reads the handle from that state and presents it to its Chain
+Authority ({{assertion-issuance}}).
 
 ## Handle Freshness and Unlinkability {#chain-id-privacy}
 
@@ -622,7 +628,7 @@ requested_token_type=urn:ietf:params:oauth:token-type:id-jag
 audience=https://ras.travel.example/
 resource=https://api.travel.example/
 scope=trips.read
-subject_token=<id_token | refresh_token>
+subject_token=<id_token | refresh_token | SAML assertion>
 subject_token_type=<normal-subject-token-type>
 actor_token=<sender-constrained-current-actor-credential> (OPTIONAL)
 actor_token_type=<actor-token-type>                       (OPTIONAL)
@@ -674,9 +680,10 @@ The root actor is the authenticated OAuth client under the mapping in
 {{client-identity}}. An optional `actor_token` MUST be valid, MUST be accepted
 for continuation, and MUST designate the IdP where applicable. It MUST also be
 sender-constrained to the confirmed key and MUST identify that client.
-Only after validation does the IdP record the root actor and key. For public
-clients, this profile inherits the base ID-JAG profile's authentication
-assurance and does not strengthen it.
+Only after validation does the IdP record the root actor and key. The root
+actor's identity rests entirely on this client authentication
+({{client-identity}}); base ID-JAG's recommendation to use a confidential
+client therefore applies to a continuation-capable root.
 
 For every root or child hop, the IdP records the target RAS and the Chain
 Authorities mapped to it; the mapping MAY be static tenant configuration.
@@ -817,9 +824,9 @@ presented handle.
    `subject_token_type` is
    `urn:ietf:params:oauth:token-type:identity-continuation`;
 
-2. the request contains exactly one `audience` and one `resource` parameter;
-   `scope` and `authorization_details` are OPTIONAL, each evaluated by rule 14
-   when present;
+2. the request contains exactly one `audience` and one `resource` parameter,
+   and at most one `scope` and one `authorization_details`; `scope` and
+   `authorization_details` are OPTIONAL, each evaluated by rule 14 when present;
 
 3. the assertion is a JWT containing exactly one value for each required claim
    defined in {{assertion-claims}}; `iss`, `aud`,
@@ -855,8 +862,9 @@ presented handle.
 10. the request and actor are bound:
     * the request is authenticated as an OAuth client that is the same
       entity as the current actor ({{client-identity}});
-    * the `actor_token` has a trusted issuer for the actor's domain and
-      tenant, is accepted and valid, designates the IdP where applicable,
+    * the `actor_token_type` names a token type the IdP supports, and the
+      `actor_token` has a trusted issuer for the actor's domain and tenant, is
+      valid for that type, is accepted, designates the IdP where applicable,
       and authenticates the actor;
     * the `actor_token` is sender-constrained to the key confirmed by the
       assertion's `cnf` ({{sender-constrained-presentation}});
@@ -960,14 +968,18 @@ client abandons only the current request.
 
 ## Onward ID-JAG {#onward-id-jag}
 
-The following is a non-normative example of the onward ID-JAG issued by the
-IdP:
+The onward ID-JAG conforms to the base ID-JAG profile
+({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
+extends it: its `sub` is the IdP-issued pairwise subject for the target
+audience, and `aud_sub` remains available under the base profile where the
+target's native subject namespace differs. The following is a non-normative
+example of the onward ID-JAG issued by the IdP:
 
 ~~~ json
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.travel.example/",
-  "sub": "travel-local-subject",
+  "sub": "travel-pairwise-subject",
 
   "client_id": "expense-service",
   "resource": "https://api.travel.example/",
@@ -1378,9 +1390,10 @@ Optional parameters:
 : N/A
 
 Encoding considerations:
-: 8bit; an Identity Continuation Assertion is a JWT {{RFC7519}}, which is a
-  series of base64url-encoded values (some of which may be empty) separated by
-  period ('.') characters.
+: binary; the `+jwt` structured syntax suffix {{RFC8417}} registers this
+  encoding. An Identity Continuation Assertion is a JWT {{RFC7519}}, a series of
+  base64url-encoded values (some of which may be empty) separated by period
+  ('.') characters.
 
 Security considerations:
 : See {{security}} of this document.
@@ -1673,7 +1686,7 @@ On the wire (decoded ID-JAG):
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.expenses.example/",
-  "sub": "expense-local-subject",
+  "sub": "expense-pairwise-subject",
 
   "client_id": "expense-app",
   "resource": "https://api.expenses.example/",
@@ -1737,7 +1750,7 @@ Intra-domain context (decoded Transaction Token):
 {
   "iss": "https://tts.expenses.example/",
   "aud": "https://expenses.example/",
-  "sub": "expense-local-subject",
+  "sub": "expense-pairwise-subject",
   "txn": "txn-expense-88f2",
   "scope": "expense-report:complete",
   "req_wl": "expense-api",
@@ -1827,7 +1840,7 @@ Instead, the assertion from ExpenseSaaS's mapped Chain Authority,
 `https://ca.expenses.example/`, is the evidence that H0 reached ACCEPTED state
 and is CONTINUABLE ({{ras-processing}}).
 
-The IdP resolves the user's TravelRAS-local subject and creates H1 as a
+The IdP resolves the user's TravelRAS pairwise subject and creates H1 as a
 child of H0. The decoded ID-JAG carries H1 and the newly constructed
 `act` chain ({{onward-id-jag}}): `expense-service`, authenticated at this
 exchange, placed atop the root actor `expense-app`. `travel-service` has
@@ -1839,7 +1852,7 @@ On the wire (decoded ID-JAG):
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.travel.example/",
-  "sub": "travel-local-subject",
+  "sub": "travel-pairwise-subject",
 
   "client_id": "expense-service",
   "resource": "https://api.travel.example/",
@@ -1921,7 +1934,7 @@ On the wire (selected claims from the decoded ID-JAG):
 ~~~ json
 {
   "aud": "https://ras.booking.example/",
-  "sub": "booking-local-subject",
+  "sub": "booking-pairwise-subject",
   "client_id": "travel-service",
   "resource": "https://api.booking.example/",
   "scope": "stays.book",
