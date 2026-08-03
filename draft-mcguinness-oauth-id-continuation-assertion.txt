@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                           2 August 2026
-Expires: 3 February 2027
+Intended status: Standards Track                           3 August 2026
+Expires: 4 February 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -59,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 3 February 2027.
+   This Internet-Draft will expire on 4 February 2027.
 
 Copyright Notice
 
@@ -358,7 +358,8 @@ Table of Contents
 
    A continuation reuses the Token Exchange loop once per boundary: the
    root exchange mints the first ID-JAG, and each later boundary mints
-   the next from an Identity Continuation Assertion.
+   the next from an Identity Continuation Assertion.  Handles H0 and H1
+   below name the successive hops (Section 6).
 
      root credential
           |
@@ -366,7 +367,7 @@ Table of Contents
      [ IdP ]  mints ID-JAG(H0); owns the envelope and hop tree
           |
           v
-     [ source RAS ]  redeems it, issues an access token, binds H0
+     [ accepting RAS ]  redeems it, issues an access token, binds H0
           |
           v
      [ TTS or carrier ]  derives H0 into intra-domain request context
@@ -382,7 +383,7 @@ Table of Contents
    *  the IdP owns the root-chain envelope and the hop tree, and alone
       resolves each audience-local subject;
 
-   *  the source RAS decides whether the issued authorization was
+   *  the accepting RAS decides whether the issued authorization was
       accepted and binds the hop to it (Section 9);
 
    *  a Transaction Token Service, or an equivalent trusted carrier,
@@ -393,10 +394,10 @@ Table of Contents
       and its key (Section 5.4); and
 
    *  the IdP alone authorizes the next target against the envelope and
-      mints the next ID-JAG (Section 8.7).
+      mints the next ID-JAG (Section 8.7, Section 8.10).
 
-   No hop carries authority on its own, so every boundary is a fresh
-   policy decision, not a bearer token passed along.
+   No step trusts an earlier one to have done its part; each re-checks
+   before it acts.
 
 4.  When to Use This Profile Versus Offline Attenuation
 
@@ -675,18 +676,17 @@ Table of Contents
    access token    |===========|              RAS-set, independent
    IdP-held chain  |=========================| IdP-held, spans hops
 
-   The governing authorization is the server-side consent and policy
-   record resolved from the root subject token (Section 8.2).  A refresh
-   token anchors to its OAuth grant; sid or SessionIndex anchors to its
-   session.  Rotation of a refresh token does not affect the grant
-   anchor.  Grant expiry or revocation ends the chains anchored to that
-   grant; session termination ends the chains anchored to that session;
-   and withdrawal of continuation consent or policy ends any chain it
-   governs.  A session-anchored chain MUST NOT outlive its session; only
-   grant-anchored chains may outlive logout.  Ending a chain this way
-   bounds only new continuations; an ID-JAG already issued remains
-   redeemable for its own lifetime, since redemption is not a
-   continuation.
+   The governing authorization (Section 2) anchors to a lifecycle token:
+   a refresh token anchors to its OAuth grant, and sid or SessionIndex
+   anchors to its session.  Rotation of a refresh token does not affect
+   the grant anchor.  Grant expiry or revocation ends the chains
+   anchored to that grant; session termination ends the chains anchored
+   to that session; and withdrawal of continuation consent or policy
+   ends any chain it governs.  A session-anchored chain MUST NOT outlive
+   its session; only grant-anchored chains may outlive logout.  Ending a
+   chain this way bounds only new continuations; an ID-JAG already
+   issued remains redeemable for its own lifetime, since redemption is
+   not a continuation.
 
    The IdP MUST bound chain lifetime by the governing authorization and
    reject expired chains.
@@ -737,14 +737,16 @@ Table of Contents
 8.2.  Establishing a Chain
 
    The IdP, not the client, establishes a chain.  It MUST do so when a
-   direct ID-JAG exchange is governed by continuation-capable
-   authorization, and MUST include the root handle in the ID-JAG.  The
-   exchange MUST include a valid DPoP proof [RFC9449], and the IdP MUST
-   bind the resulting ID-JAG to that key in cnf; without valid proof it
-   MUST NOT include an identity_continuation_handle.  State MAY be
-   materialized lazily if the handle remains resolvable.  Without
-   continuation authorization, the IdP MUST NOT establish a chain or
-   include a handle.  Advertised support (Section 8.11) signals
+   direct ID-JAG exchange is governed by a continuation-capable
+   governing authorization, and MUST include the root handle in the ID-
+   JAG.  The exchange MUST include a valid DPoP proof [RFC9449], and the
+   IdP MUST bind the resulting ID-JAG to that key in cnf; without valid
+   proof it MUST NOT include an identity_continuation_handle.  The IdP
+   MAY defer materializing chain state until the first continuation,
+   provided the handle still resolves to the same root and envelope;
+   this does not relax the reservation durability of Section 8.8.
+   Without continuation authorization, the IdP MUST NOT establish a
+   chain or include a handle.  Advertised support (Section 8.11) signals
    capability, not authority.
 
    The root subject token MUST resolve to one of these lifecycle
@@ -782,7 +784,7 @@ Table of Contents
    The root actor is the authenticated OAuth client under the mapping in
    Section 8.5.  An optional actor_token MUST be valid, MUST be accepted
    for continuation, and MUST designate the IdP where applicable.  It
-   MUST also be sender-constrained to the demonstrated key and MUST
+   MUST also be sender-constrained to the confirmed key and MUST
    identify that client.  Only after validation does the IdP record the
    root actor and key.  For public clients, this profile inherits the
    base ID-JAG profile's authentication assurance and does not
@@ -836,6 +838,9 @@ Table of Contents
    for brevity.
 
 8.4.  Sender-Constrained Presentation
+
+   This section applies to a chained request; a direct request's DPoP
+   requirement is specified in Section 8.2.
 
    The actor MUST present a DPoP proof [RFC9449] for the key in cnf.jkt.
    The IdP MUST verify the match and reject absent or invalid proof.
@@ -959,11 +964,11 @@ Table of Contents
         accepting RAS, and authorized to pair with the actor_token
         issuer for that tenant;
 
-   7.   the handle identifies a RAS-accepted hop on an active chain, no
-        ancestor subtree is revoked, and the actor lineage that results
-        from collapsing consecutive same-actor entries, as the onward
-        act will (Section 8.10), is within its depth bound; the bound
-        counts lineage entries, not hops;
+   7.   the handle identifies a RAS-accepted hop (Section 9.1) on an
+        active chain, no ancestor subtree is revoked, and the actor
+        lineage that results from collapsing consecutive same-actor
+        entries, as the onward act will (Section 8.10), is within its
+        depth bound; the bound counts lineage entries, not hops;
 
    8.   the assertion does not contain a top-level sub, auth_time, acr,
         amr, or sid claim, nor an audience, resource, scope,
@@ -1054,8 +1059,8 @@ Table of Contents
    depth bound counts collapsed lineage entries, so an actor that
    repeatedly continues as itself collapses to one entry each time and
    never trips that bound.  To bound such growth, the IdP MUST enforce a
-   configured limit on sibling fan-out, rate, and hop count, aggregated
-   per governing authorization (Section 8.2), and MUST prune expired or
+   configured limit on fan-out, rate, and hop count, aggregated per
+   governing authorization (Section 8.2), and MUST prune expired or
    revoked hop state.
 
    After a lost response, a client MAY retry the same assertion to
@@ -1070,7 +1075,9 @@ Table of Contents
 
    On success, the IdP records a PENDING child (Section 9.1) of the
    presented hop and issues an ID-JAG containing the resolved target sub
-   and fresh handle.
+   and fresh handle.  An idempotent retry (rule 12; Section 8.8) instead
+   returns the previously issued grant unchanged, creating no new hop or
+   handle.
 
    On failure, the IdP MUST return an OAuth error [RFC6749], [RFC8693].
    It SHOULD use invalid_request for malformed, inconsistent, or
@@ -1210,8 +1217,9 @@ Table of Contents
    A hop moves through three states.  The IdP creates it PENDING.
    Successful RAS binding makes it ACCEPTED.  A fresh assertion from the
    mapped Chain Authority lets the IdP evaluate the hop as CONTINUABLE
-   for one request, re-derived each time rather than stored.  There is
-   no RAS callback.
+   for one request; CONTINUABLE is not stored but holds only while rules
+   6 and 9 to 11 of Section 8.7 hold for that request.  There is no RAS
+   callback.
 
     +=============+===================+===============================+
     | State       | Where it lives    | Meaning                       |
@@ -1276,7 +1284,7 @@ Table of Contents
    the requester, confined to the trust domain, and re-derived when
    replaced, as the rules below require.  A Transaction Token is the
    standardized realization of these properties; an equivalent carrier
-   is permitted only where they hold (Section 11.5).
+   is permitted only where all of them hold (Section 11.4).
 
    Within a trust domain, a TTS derives the handle from RAS-bound
    authorization state and places it in Transaction Token context
@@ -1346,16 +1354,17 @@ Table of Contents
 
 11.2.  Short Lifetime and Replay
 
-   The 300-second ceiling and atomic consumption of (iss, jti) limit
-   replay to the IdP continuation exchange.
+   The 300-second ceiling and atomic reservation of (iss, jti)
+   (Section 8.8) limit replay to the IdP continuation exchange.
 
 11.3.  Root Authentication Context
 
    Authentication context comes only from the root envelope.
    Continuation MUST NOT extend or strengthen it, for example by
    presenting a higher acr or added amr than the user performed at root;
-   the IdP MUST copy it unchanged into onward ID-JAGs when the output
-   profile requires those claims.
+   the IdP MUST copy it unchanged into onward ID-JAGs (Section 8.10)
+   when [I-D.ietf-oauth-identity-assertion-authz-grant] requires those
+   claims.
 
 11.4.  Envelope Enforcement and Offline Attenuation
 
@@ -1367,8 +1376,9 @@ Table of Contents
    Wrong-handle association can continue the wrong user's bounded chain.
    The TTS removes selection from the workload by deriving the handle
    from the current credential's RAS-bound state.  Another carrier MAY
-   be used only with equivalent server derivation and non-
-   overridability.
+   be used only if it provides the same properties (Section 10): server-
+   derived; bound to the credential, key, and RAS authorization; non-
+   overridable; domain-confined; and re-derived when replaced.
 
 11.5.  Trust in the Transaction Token Service
 
@@ -1479,10 +1489,12 @@ Table of Contents
    may correlate transactions across audiences.  For example, an
    observer comparing ID-JAGs issued to two audiences within one short
    window and carrying the same actor-chain shape may infer they belong
-   to one user's transaction, even without a shared handle.  Deployments
-   SHOULD disclose handles only to participants that continue or
-   administer the chain.  They MAY limit lineage exposed to each
-   audience, subject to audit requirements.
+   to one user's transaction, even without a shared handle.  The onward
+   ID-JAG's act chain also names the prior actors to the accepting RAS
+   outright, with no correlation needed; Section 8.10 lets policy limit
+   the disclosed depth.  Deployments SHOULD disclose handles only to
+   participants that continue or administer the chain.  They MAY limit
+   lineage exposed to each audience, subject to audit requirements.
 
 13.  IANA Considerations
 
@@ -1491,14 +1503,14 @@ Table of Contents
    IANA is requested to register the following error in the "OAuth
    Extensions Error Registry" established by [RFC6749].
 
-   Name:  invalid_continuation
+   Error Name:  invalid_continuation
 
-   Usage Location:  token endpoint
+   Error Usage Location:  token endpoint
 
-   Protocol Extension:  Identity Continuation Assertion for OAuth 2.0
-      Token Exchange
+   Related Protocol Extension:  Identity Continuation Assertion for
+      OAuth 2.0 Token Exchange
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document(s):  This document, Section 8.9
 
@@ -1512,7 +1524,7 @@ Table of Contents
 
    Common Name:  Token type URI for the Identity Continuation Assertion
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document:  This document, Section 5.1
 
@@ -1525,7 +1537,7 @@ Table of Contents
       JAG, whose accepting Resource Authorization Server binds the
       identity_continuation_handle claim to authorization state
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document:  This document, Section 8.11, Section 9
 
@@ -1543,8 +1555,8 @@ Table of Contents
 
    Optional parameters:  N/A
 
-   Encoding considerations:  binary; an Identity Continuation Assertion
-      is a JWT [RFC7519], which is a series of base64url-encoded values
+   Encoding considerations:  8bit; an Identity Continuation Assertion is
+      a JWT [RFC7519], which is a series of base64url-encoded values
       (some of which may be empty) separated by period ('.') characters.
 
    Security considerations:  See Section 11 of this document.
@@ -1574,7 +1586,7 @@ Table of Contents
 
    Author:  Karl McGuinness
 
-   Change controller:  IETF
+   Change controller:  IESG
 
 13.4.  JSON Web Token Claims Registration
 
@@ -1592,7 +1604,7 @@ Table of Contents
       token or a Resource Server's external authorization claims
       (Section 6, rules 3 and 4).
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document(s):  This document, Section 6
 
@@ -1606,7 +1618,7 @@ Table of Contents
    Metadata Description:  Boolean value indicating support for the
       Identity Continuation Assertion profile
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document(s):  This document, Section 8.11
 
@@ -1809,15 +1821,14 @@ A.2.  Why Not a Transaction Token
 
 A.3.  Why Not a Cross-Domain Propagation Token
 
-   Offline attenuation fits while the subject and trust domain remain
-   stable.  It cannot cross a pairwise-subject boundary: only the IdP
-   can resolve the next subject, and the target trusts the IdP rather
-   than the source issuer to name that user.  IdP exchange also permits
-   current-state and envelope checks at every hop.  Direct propagation
-   instead fits deployments with a global subject, shared issuer trust,
-   and no need for mid-chain IdP revocation, such as a single SPIFFE-
-   style trust domain (one workload-identity namespace with no pairwise-
-   subject boundary to cross) (Section 4).  Delegated Authorization
+   The choice follows Section 4: a pairwise-subject boundary can be
+   crossed only by the IdP, which the target trusts to name the user,
+   and IdP exchange permits current-state and envelope checks at every
+   hop.  Direct propagation instead fits deployments with a global
+   subject, shared issuer trust, and no need for mid-chain IdP
+   revocation, such as a single SPIFFE-style trust domain (one workload-
+   identity namespace with no pairwise-subject boundary to cross)
+   (Section 4).  Delegated Authorization
    [I-D.li-oauth-delegated-authorization], whose client-issued tokens
    carry no subject, composes with this profile as the intra-domain
    layer and stops where re-issuance to a new subject begins.
@@ -1847,11 +1858,11 @@ Appendix B.  Examples
    selected upstream audiences (Appendix B.3).
 
    Message sequences are vertical lifelines with time flowing downward.
-   Fenced blocks are tagged "On the wire" when they cross a trust
-   boundary, "Intra-domain context" when they travel only within one
-   trust domain, and "Server-side state" when they are never
-   transmitted.  Continuation handles are written H0, H1, and H2, one
-   per hop.
+   The payload and state blocks below them are tagged "On the wire" when
+   they cross a trust boundary, "Intra-domain context" when they travel
+   only within one trust domain, and "Server-side state" when they are
+   never transmitted.  Continuation handles are written H0, H1, and H2,
+   one per hop.
 
 B.1.  Worked Example (Same-IdP)
 
@@ -2344,7 +2355,7 @@ B.2.1.  Setup (Alice Present)
    expiry:               1719450000  # local, not IdP lifetime
    status:               active
 
-   Scheduler state:
+   Server-side state (Scheduler):
 
    task_id: task-123
 
@@ -2555,8 +2566,8 @@ B.3.2.  Chained Exchange: The Gateway Continues
 
 B.3.3.  Points Worth Noticing
 
-   *  AgentApp alone presents Alice's identity assertion; the gateway
-      never presents it.
+   *  AgentApp alone presents Alice's root credential (the ID Token);
+      the gateway never holds or presents it.
 
    *  Gateway TTS, not AgentApp, selects H0 from GatewayRAS-bound state.
 
