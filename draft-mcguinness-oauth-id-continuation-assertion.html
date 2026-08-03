@@ -2085,11 +2085,7 @@ access tokens; the revocation window is therefore bounded by the ID-JAG's
 short lifetime and by the access-token lifetime the accepting Resource
 Authorization Server sets; this profile does not constrain that lifetime.<a href="#section-7-1" class="pilcrow">¶</a></p>
 <p id="section-7-2">This is the deliberate difference from an offline-attenuated token, whose
-minted child stays usable for its lifetime without contacting an authority.
-An implementation <span class="bcp14">MAY</span> cache an access token only for its own audience and
-scope, within its lifetime, keyed to the request fingerprint of
-<a href="#validation-replay" class="auto internal xref">Section 8.8</a>; it <span class="bcp14">MUST NOT</span> reuse that token for another audience or to bypass
-the fresh revocation check each continuation requires.<a href="#section-7-2" class="pilcrow">¶</a></p>
+minted child stays usable for its lifetime without contacting an authority.<a href="#section-7-2" class="pilcrow">¶</a></p>
 <p id="section-7-3">Three lifetimes <span class="bcp14">MUST NOT</span> be conflated: the ID-JAG's short redemption window;
 the access-token lifetime the accepting RAS sets independently
 (<a href="#ras-processing" class="auto internal xref">Section 9</a>); and the IdP-held continuation chain. Revoking the chain
@@ -2505,8 +2501,9 @@ It fixes each assertion's outcome to a single request fingerprint.<a href="#sect
 bind it to a fingerprint containing audience and resource as exact strings,
 scope as an order-independent set, the exact <code>authorization_details</code> JSON as
 received after form decoding (different serializations are different
-requests), the actor (its <code>iss</code> and <code>sub</code>), and the confirmed key (its
-<code>cnf.jkt</code> thumbprint).<a href="#section-8.8-2" class="pilcrow">¶</a></p>
+requests), the actor (its <code>iss</code> and <code>sub</code>), the confirmed key (its <code>cnf.jkt</code>
+thumbprint), and a hash of the exact encoded <code>subject_token</code>, which binds the
+fingerprint to the specific assertion and its handle.<a href="#section-8.8-2" class="pilcrow">¶</a></p>
 <p id="section-8.8-3">The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
 states of <a href="#hop-activation" class="auto internal xref">Section 9.1</a>. Reservation <span class="bcp14">MUST</span> occur
 only after target and policy validation. Once reserved, the tuple <span class="bcp14">MUST NOT</span> be
@@ -2550,12 +2547,15 @@ returns the previously issued grant unchanged, creating no new hop or handle.<a 
 tokens; <code>invalid_dpop_proof</code> for DPoP failure; and <code>invalid_target</code>,
 <code>invalid_scope</code>, or <code>invalid_authorization_details</code> for requests outside the
 envelope.<a href="#section-8.9-2" class="pilcrow">¶</a></p>
-<p id="section-8.9-3">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 13</a>) for an unknown, expired,
-revoked, or non-continuable handle, distinguishing a dead hop from the
-<code>invalid_request</code> of a malformed request. Each of these states is terminal for
-the handle, so retrying it cannot succeed; recovery instead re-roots the chain,
-a session-anchored chain by re-authenticating the user and a grant-anchored
-chain from its still-valid grant without the user. Target-specific errors (<code>invalid_target</code>, <code>invalid_scope</code>,
+<p id="section-8.9-3">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 13</a>) when the presented handle
+cannot support this continuation, distinguishing a dead hop from the
+<code>invalid_request</code> of a malformed request. An unknown, expired, revoked, or
+permanently disabled handle is terminal: retrying it cannot succeed, and
+recovery re-roots the chain, a session-anchored chain by re-authenticating the
+user and a grant-anchored chain from its still-valid grant without the user. A
+handle whose hop is not yet accepted is not terminal; a continuation may
+succeed once the hop is accepted (<a href="#hop-activation" class="auto internal xref">Section 9.1</a>) and a fresh assertion
+attests it. Target-specific errors (<code>invalid_target</code>, <code>invalid_scope</code>,
 <code>invalid_authorization_details</code>) leave the chain otherwise continuable, so a
 client abandons only the current request.<a href="#section-8.9-3" class="pilcrow">¶</a></p>
 </section>
@@ -3092,7 +3092,7 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
           <dd class="break"></dd>
 <dt id="section-13.1-2.7">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.1-2.8">
-            <p id="section-13.1-2.8.1">IESG<a href="#section-13.1-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-13.1-2.8.1">IETF<a href="#section-13.1-2.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.1-2.9">Specification Document(s):</dt>
@@ -3123,7 +3123,7 @@ established by <span>[<a href="#RFC6755" class="cite xref">RFC6755</a>]</span> a
           <dd class="break"></dd>
 <dt id="section-13.2-2.5">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.2-2.6">
-            <p id="section-13.2-2.6.1">IESG<a href="#section-13.2-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-13.2-2.6.1">IETF<a href="#section-13.2-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.2-2.7">Specification Document:</dt>
@@ -3149,7 +3149,7 @@ to authorization state<a href="#section-13.2-4.4.1" class="pilcrow">¶</a></p>
           <dd class="break"></dd>
 <dt id="section-13.2-4.5">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.2-4.6">
-            <p id="section-13.2-4.6.1">IESG<a href="#section-13.2-4.6.1" class="pilcrow">¶</a></p>
+            <p id="section-13.2-4.6.1">IETF<a href="#section-13.2-4.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.2-4.7">Specification Document:</dt>
@@ -3254,7 +3254,7 @@ Macintosh file type code(s): N/A<a href="#section-13.3-2.22.1" class="pilcrow">�
           <dd class="break"></dd>
 <dt id="section-13.3-2.31">Change controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.3-2.32">
-            <p id="section-13.3-2.32.1">IESG<a href="#section-13.3-2.32.1" class="pilcrow">¶</a></p>
+            <p id="section-13.3-2.32.1">IETF<a href="#section-13.3-2.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -3286,7 +3286,7 @@ authorization claims (<a href="#chain-id" class="auto internal xref">Section 6</
           <dd class="break"></dd>
 <dt id="section-13.4-2.5">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.4-2.6">
-            <p id="section-13.4-2.6.1">IESG<a href="#section-13.4-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-13.4-2.6.1">IETF<a href="#section-13.4-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.4-2.7">Specification Document(s):</dt>
@@ -3318,7 +3318,7 @@ profile<a href="#section-13.5-2.4.1" class="pilcrow">¶</a></p>
           <dd class="break"></dd>
 <dt id="section-13.5-2.5">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-13.5-2.6">
-            <p id="section-13.5-2.6.1">IESG<a href="#section-13.5-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-13.5-2.6.1">IETF<a href="#section-13.5-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.5-2.7">Specification Document(s):</dt>

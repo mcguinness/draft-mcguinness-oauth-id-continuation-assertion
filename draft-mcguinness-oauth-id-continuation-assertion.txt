@@ -663,11 +663,7 @@ Table of Contents
 
    This is the deliberate difference from an offline-attenuated token,
    whose minted child stays usable for its lifetime without contacting
-   an authority.  An implementation MAY cache an access token only for
-   its own audience and scope, within its lifetime, keyed to the request
-   fingerprint of Section 8.8; it MUST NOT reuse that token for another
-   audience or to bypass the fresh revocation check each continuation
-   requires.
+   an authority.
 
    Three lifetimes MUST NOT be conflated: the ID-JAG's short redemption
    window; the access-token lifetime the accepting RAS sets
@@ -1046,7 +1042,9 @@ Table of Contents
    exact strings, scope as an order-independent set, the exact
    authorization_details JSON as received after form decoding (different
    serializations are different requests), the actor (its iss and sub),
-   and the confirmed key (its cnf.jkt thumbprint).
+   the confirmed key (its cnf.jkt thumbprint), and a hash of the exact
+   encoded subject_token, which binds the fingerprint to the specific
+   assertion and its handle.
 
    The record states are RESERVED, ISSUED, and FAILED, distinct from the
    hop states of Section 9.1.  Reservation MUST occur only after target
@@ -1094,16 +1092,18 @@ Table of Contents
    invalid_target, invalid_scope, or invalid_authorization_details for
    requests outside the envelope.
 
-   The IdP MUST return invalid_continuation (Section 13) for an unknown,
-   expired, revoked, or non-continuable handle, distinguishing a dead
-   hop from the invalid_request of a malformed request.  Each of these
-   states is terminal for the handle, so retrying it cannot succeed;
-   recovery instead re-roots the chain, a session-anchored chain by re-
-   authenticating the user and a grant-anchored chain from its still-
-   valid grant without the user.  Target-specific errors
-   (invalid_target, invalid_scope, invalid_authorization_details) leave
-   the chain otherwise continuable, so a client abandons only the
-   current request.
+   The IdP MUST return invalid_continuation (Section 13) when the
+   presented handle cannot support this continuation, distinguishing a
+   dead hop from the invalid_request of a malformed request.  An
+   unknown, expired, revoked, or permanently disabled handle is
+   terminal: retrying it cannot succeed, and recovery re-roots the
+   chain, a session-anchored chain by re-authenticating the user and a
+   grant-anchored chain from its still-valid grant without the user.  A
+   handle whose hop is not yet accepted is not terminal; a continuation
+   may succeed once the hop is accepted (Section 9.1) and a fresh
+   assertion attests it.  Target-specific errors (invalid_target,
+   invalid_scope, invalid_authorization_details) leave the chain
+   otherwise continuable, so a client abandons only the current request.
 
 8.10.  Onward ID-JAG
 
@@ -1529,7 +1529,7 @@ Table of Contents
    Related Protocol Extension:  Identity Continuation Assertion for
       OAuth 2.0 Token Exchange
 
-   Change Controller:  IESG
+   Change Controller:  IETF
 
    Specification Document(s):  This document, Section 8.9
 
@@ -1543,7 +1543,7 @@ Table of Contents
 
    Common Name:  Token type URI for the Identity Continuation Assertion
 
-   Change Controller:  IESG
+   Change Controller:  IETF
 
    Specification Document:  This document, Section 5.1
 
@@ -1556,7 +1556,7 @@ Table of Contents
       JAG, whose accepting Resource Authorization Server binds the
       identity_continuation_handle claim to authorization state
 
-   Change Controller:  IESG
+   Change Controller:  IETF
 
    Specification Document:  This document, Section 8.11, Section 9
 
@@ -1606,7 +1606,7 @@ Table of Contents
 
    Author:  Karl McGuinness
 
-   Change controller:  IESG
+   Change controller:  IETF
 
 13.4.  JSON Web Token Claims Registration
 
@@ -1624,7 +1624,7 @@ Table of Contents
       token or a Resource Server's external authorization claims
       (Section 6, rules 3 and 4).
 
-   Change Controller:  IESG
+   Change Controller:  IETF
 
    Specification Document(s):  This document, Section 6
 
@@ -1638,7 +1638,7 @@ Table of Contents
    Metadata Description:  Boolean value indicating support for the
       Identity Continuation Assertion profile
 
-   Change Controller:  IESG
+   Change Controller:  IETF
 
    Specification Document(s):  This document, Section 8.11
 
