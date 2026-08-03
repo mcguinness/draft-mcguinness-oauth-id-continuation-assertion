@@ -619,7 +619,7 @@ chain; no request parameter asks it to do so ({{root-establishment}}).
 ## Direct ID-JAG Request
 
 A direct request, in which the subject token is a normal subject token such as
-an ID Token or refresh token:
+an ID Token, refresh token, or SAML assertion:
 
 ~~~
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
@@ -633,7 +633,10 @@ actor_token=<sender-constrained-current-actor-credential> (OPTIONAL)
 actor_token_type=<actor-token-type>                       (OPTIONAL)
 ~~~
 
-On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}).
+On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}). The
+direct request and its ID-JAG conform to the base ID-JAG profile
+({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
+extends it for continuation-capable issuance.
 
 ## Establishing a Chain {#root-establishment}
 
@@ -958,10 +961,10 @@ envelope.
 
 The IdP MUST return `invalid_continuation` ({{iana}}) for an unknown, expired,
 revoked, or non-continuable handle, distinguishing a dead hop from the
-`invalid_request` of a malformed request. Retrying the same handle cannot
-succeed: a session-anchored chain re-roots by re-authenticating the user,
-while a grant-anchored chain may re-root from its still-valid grant without
-the user. Target-specific errors (`invalid_target`, `invalid_scope`,
+`invalid_request` of a malformed request. Each of these states is terminal for
+the handle, so retrying it cannot succeed; recovery instead re-roots the chain,
+a session-anchored chain by re-authenticating the user and a grant-anchored
+chain from its still-valid grant without the user. Target-specific errors (`invalid_target`, `invalid_scope`,
 `invalid_authorization_details`) leave the chain otherwise continuable, so a
 client abandons only the current request.
 
@@ -1054,8 +1057,8 @@ exchange.
 # Continuation-Aware Resource Authorization Server {#ras-processing}
 
 Only a RAS from which continuation occurs implements this extension. A
-terminal RAS processes an ordinary ID-JAG and ignores the handle; nothing
-continues from its authorization, so there is no hop to bind.
+terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
+later continuation uses the terminal hop, the RAS need not bind its handle.
 
 A continuation-aware Resource Authorization Server, one that implements this
 extension and advertises the continuation grant profile ({{metadata}}), MUST,
@@ -1155,7 +1158,8 @@ The `identity_continuation` object has the following members:
 
 * `iss` (REQUIRED): the exact IdP issuer identifier.
 * `handle` (REQUIRED): the hop's continuation handle.
-* `tenant` (REQUIRED except for a single-tenant issuer): the tenant.
+* `tenant` (REQUIRED except for a single-tenant IdP issuer, identified by
+  `iss`): the tenant.
 
 A recipient MUST ignore unknown members. A malformed or repeated object MUST
 be treated as carrying no chain context.
@@ -1218,8 +1222,9 @@ Because the assertion is target-agnostic, a permitted actor may select any
 target within that ceiling.
 
 Wrong-handle association can continue the wrong user's bounded chain. The TTS
-removes selection from the workload by deriving the handle from the current
-credential's RAS-bound state. Another carrier MAY be used only if it provides
+establishes the authoritative association between the request and the handle by
+deriving it from the current credential's RAS-bound state; a handle a workload
+supplies is not authoritative, and the Chain Authority rejects substitution. Another carrier MAY be used only if it provides
 the same properties ({{transaction-token-context}}): server-derived; bound to
 the credential, key, and RAS authorization; non-overridable; domain-confined;
 and re-derived when replaced.
@@ -2065,12 +2070,12 @@ Each run first authenticates the trigger and derives H0 from active task
 state:
 
 ~~~
- Scheduler        Platform TTS       BriefingAgent
-     |                  |                  |
-     |--task-123------->|                  | authenticated trigger
-     |                  | resolve active PlatformRAS state
-     |                  | derive H0        |
-     |                  |--fresh TT(H0)--->|
+ Scheduler   BriefingAgent      Platform TTS
+     |              |                 |
+     |---trigger--->|                 | task-123
+     |              |-task-123 + key->|
+     |              |                 | verify key + task; derive H0
+     |              |<-fresh TT(H0)---|
 ~~~
 
 BriefingAgent then performs a fresh continuation to terminal CalendarRAS:
@@ -2090,9 +2095,11 @@ BriefingAgent then performs a fresh continuation to terminal CalendarRAS:
 ~~~
 
 The task identifier is not a secret and does not authorize a run. The
-Platform accepts only an authenticated trigger; its TTS verifies that
-`task-123` remains active and creates fresh intra-domain context. Neither the
-Scheduler nor BriefingAgent selects H0.
+scheduler's trigger authenticates and carries only `task-123`; the Briefing
+Agent then authenticates to the Platform TTS and proves possession of its key,
+and the TTS, after confirming `task-123` is active and the Briefing Agent is
+its designated actor, derives H0 into fresh intra-domain context
+({{transaction-token-context}}). Neither the scheduler nor the agent selects H0.
 
 Before issuing, Platform CA authenticates `briefing-agent`, verifies its key
 and transaction, and rechecks that PlatformRAS's H0 authorization remains
