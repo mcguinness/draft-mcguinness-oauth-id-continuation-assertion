@@ -110,7 +110,7 @@ credential does not address. The first hop can still present the user's
 credential to obtain an ID-JAG, but a later workload in the chain holds none of
 those credentials. The difficulty is sharpest when Resource Authorization
 Servers name the user with audience-local (pairwise) subject identifiers that
-only the IdP can resolve, a different and unrelated value at each RAS: the
+only the IdP can resolve, a different value at each server: the
 later workload cannot name the user for the next audience at all. Only the IdP
 can perform that mapping, so continuation is a fresh mint from the IdP, not a
 reused or offline-attenuated token.
@@ -126,7 +126,7 @@ identity and checks the requested authority against the root-chain envelope, so
 continuation stays a fresh policy decision rather than a bearer of standing
 authority.
 
-This profile does not define a new access token format, does not allow a
+This profile does not define a new access-token format, does not allow a
 Resource Server to consume the Identity Continuation Assertion directly, and
 does not allow a Chain Authority to name the user for the target audience.
 
@@ -147,11 +147,10 @@ ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
 
 Each trust domain from which the chain continues has three roles: the RAS that
-accepts an ID-JAG and binds the hop, a trusted carrier, typically a Transaction
+accepts an ID-JAG and binds the hop; a trusted carrier, typically a Transaction
 Token Service (TTS), that carries the hop reference to workloads inside the
-domain, and a Chain Authority
-(CA) that issues the Identity Continuation Assertion a workload presents to the
-IdP.
+domain; and a Chain Authority (CA) that issues the Identity Continuation
+Assertion a workload presents to the IdP.
 One party may operate all three within a domain ({{security-tts}}).
 
 ## Relationship to ID-JAG and Identity Chaining
@@ -315,11 +314,11 @@ authorizes continuation.
 
 # When to Use This Profile Versus Offline Attenuation {#decision-rule}
 
-Use this profile when a boundary re-mints the user's identity, that is when:
+Use this profile when a boundary re-mints the user's identity, that is:
 
 * the next audience uses a pairwise subject only the IdP can resolve;
 * the target trusts the IdP, not the previous issuer, to name the user; and
-* current revocation and policy must be re-checked at every boundary.
+* current revocation and policy must be rechecked at every boundary.
 
 Use offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, when
 the subject and issuer trust stay stable across the boundary and offline
@@ -394,7 +393,7 @@ The claims have the following meanings and requirements:
   MUST NOT affect identity, authorization, lineage, or issuance; a recipient
   MUST ignore members it does not understand, and `exp`, `nbf`, `aud`, `scope`,
   `cnf`, and nested `act` MUST NOT be present. The IdP MUST reject a
-  nonconforming `act`. The IdP, not the assertion, constructs lineage
+  non-conforming `act`. The IdP, not the assertion, constructs lineage
   ({{onward-id-jag}}).
 
 `cnf`:
@@ -444,8 +443,9 @@ and its keys. Keeping issuance in-domain prevents a handle-holding party from
 bypassing the RAS-acceptance path. Actor authentication and the issuance
 protocol are deployment-specific.
 
-A presenting workload is a control-plane participant, not a bare-handle-
-transporting application ({{handle-carriers}}): it reads the handle from its
+A presenting workload is a control-plane participant, not a
+bare-handle-transporting application ({{handle-carriers}}): it reads the handle
+from its
 own intra-domain context and presents it to its Chain Authority, along with its
 key and any narrowing hints. That handle is advisory input, not an authority
 the workload asserts; the checks below re-verify it against RAS-bound state
@@ -1106,8 +1106,9 @@ acceptance directly ({{rationale-pull}}), so it relies on the mapped Chain
 Authority having rechecked authoritative RAS state before attesting
 ({{assertion-issuance}}). A compromised mapped Chain Authority can thus attest a
 hop that its Resource Authorization Server refused, or for which it denied
-continuation, overriding that server's local decision; the envelope still bounds the
-result, but the accept-and-continue gate is only as trustworthy as the
+continuation, overriding that server's local decision; the envelope still
+bounds the result, but the accept-and-continue gate is only as trustworthy as
+the
 mapped Chain Authority. Absent such compromise, an issued-but-rejected ID-JAG
 cannot be continued because no mapped Chain Authority may attest it. A mapped
 Chain Authority is mandatory; its absence fails closed. Acceptance gates
@@ -1224,8 +1225,9 @@ target within that ceiling.
 Wrong-handle association can continue the wrong user's bounded chain. The TTS
 establishes the authoritative association between the request and the handle by
 deriving it from the current credential's RAS-bound state; a handle a workload
-supplies is not authoritative, and the Chain Authority rejects substitution. Another carrier MAY be used only if it provides
-the same properties ({{transaction-token-context}}): server-derived; bound to
+supplies is not authoritative, and the Chain Authority rejects substitution.
+Another carrier MAY be used only if it provides the same properties
+({{transaction-token-context}}): server-derived; bound to
 the credential, key, and RAS authorization; non-overridable; domain-confined;
 and re-derived when replaced.
 
@@ -1836,8 +1838,9 @@ actor_token=<sender-constrained expense-service credential>
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
-The IdP runs the checks of {{validation}}: the DPoP key matches both the assertion's
-`cnf.jkt` and the actor token's key confirmation; `expense-service` is the
+The IdP runs the checks of {{validation}}: the DPoP key matches both the
+assertion's `cnf.jkt` and the actor token's key confirmation; `expense-service`
+is the
 actor named in `act`; H0 is CONTINUABLE; and the requested TravelRAS,
 TravelAPI, and `trips.read` values match the Travel target entry in the
 root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.
