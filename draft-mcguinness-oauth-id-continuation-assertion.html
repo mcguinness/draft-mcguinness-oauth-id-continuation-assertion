@@ -1489,8 +1489,9 @@ ExpenseApp -&gt; ExpenseRAS -&gt; TravelRAS -&gt; BookingRAS
 </pre><a href="#section-1-8" class="pilcrow">¶</a>
 </div>
 <p id="section-1-9">Each trust domain from which the chain continues has three roles: the RAS that
-accepts an ID-JAG and binds the hop, a Transaction Token Service (TTS) that
-carries the hop reference to workloads inside the domain, and a Chain Authority
+accepts an ID-JAG and binds the hop, a trusted carrier, typically a Transaction
+Token Service (TTS), that carries the hop reference to workloads inside the
+domain, and a Chain Authority
 (CA) that issues the Identity Continuation Assertion a workload presents to the
 IdP.
 One party may operate all three within a domain (<a href="#security-tts" class="auto internal xref">Section 11.5</a>).<a href="#section-1-9" class="pilcrow">¶</a></p>
@@ -1740,8 +1741,8 @@ accepted authorization with the current request inside the domain
 next ID-JAG (<a href="#validation" class="auto internal xref">Section 8.7</a>, <a href="#onward-id-jag" class="auto internal xref">Section 8.10</a>).<a href="#section-3-4.5.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-3-5">No step trusts an earlier one to have done its part; each re-checks before it
-acts.<a href="#section-3-5" class="pilcrow">¶</a></p>
+<p id="section-3-5">Each role validates the inputs within its authority; no artifact or role alone
+authorizes continuation.<a href="#section-3-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="decision-rule">
@@ -1788,10 +1789,11 @@ JOSE typ:    oauth-identity-continuation+jwt
 </div>
 <p id="section-5.1-3">The assertion is a signed JWT in JWS Compact Serialization <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, with
 media type <code>application/oauth-identity-continuation+jwt</code> (<a href="#iana" class="auto internal xref">Section 13</a>). It
-<span class="bcp14">MUST NOT</span> be encrypted (JWE) or use nested signing; it carries no confidential
-data, so encryption would add only parsing surface. The IdP <span class="bcp14">MUST</span> verify the
-<code>typ</code> header per <span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>, which keeps the assertion from being consumed as
-another token type.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<span class="bcp14">MUST NOT</span> be encrypted (JWE) or use nested signing. This profile relies on TLS
+for confidentiality and defines only signed JWS Compact Serialization, keeping
+a single interoperable representation. The IdP <span class="bcp14">MUST</span> verify the <code>typ</code> header per
+<span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>, which keeps the assertion from being consumed as another token
+type.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="assertion-claims">
@@ -2053,8 +2055,11 @@ handles remain unlinkable.<a href="#section-6-4" class="pilcrow">¶</a></p>
             </tr>
           </tbody>
         </table>
-<p id="section-6.1-3">An application never selects or persists a bare handle for transport; it
-carries an artifact from which trusted server-side state derives the handle.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-3">An external or requesting application never selects or persists a bare handle
+for transport; it carries an artifact from which trusted server-side state
+derives the handle. An authorized intra-domain control-plane workload is
+different: it reads the handle from that state and presents it to its Chain
+Authority (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-6.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="chain-id-privacy">
@@ -2149,7 +2154,7 @@ requested_token_type=urn:ietf:params:oauth:token-type:id-jag
 audience=https://ras.travel.example/
 resource=https://api.travel.example/
 scope=trips.read
-subject_token=&lt;id_token | refresh_token&gt;
+subject_token=&lt;id_token | refresh_token | SAML assertion&gt;
 subject_token_type=&lt;normal-subject-token-type&gt;
 actor_token=&lt;sender-constrained-current-actor-credential&gt; (OPTIONAL)
 actor_token_type=&lt;actor-token-type&gt;                       (OPTIONAL)
@@ -2207,9 +2212,10 @@ at establishment, and consent granted afterward cannot broaden it.<a href="#sect
 <a href="#client-identity" class="auto internal xref">Section 8.5</a>. An optional <code>actor_token</code> <span class="bcp14">MUST</span> be valid, <span class="bcp14">MUST</span> be accepted
 for continuation, and <span class="bcp14">MUST</span> designate the IdP where applicable. It <span class="bcp14">MUST</span> also be
 sender-constrained to the confirmed key and <span class="bcp14">MUST</span> identify that client.
-Only after validation does the IdP record the root actor and key. For public
-clients, this profile inherits the base ID-JAG profile's authentication
-assurance and does not strengthen it.<a href="#section-8.2-6" class="pilcrow">¶</a></p>
+Only after validation does the IdP record the root actor and key. The root
+actor's identity rests entirely on this client authentication
+(<a href="#client-identity" class="auto internal xref">Section 8.5</a>); base ID-JAG's recommendation to use a confidential
+client therefore applies to a continuation-capable root.<a href="#section-8.2-6" class="pilcrow">¶</a></p>
 <p id="section-8.2-7">For every root or child hop, the IdP records the target RAS and the Chain
 Authorities mapped to it; the mapping <span class="bcp14">MAY</span> be static tenant configuration.
 Only a mapped Chain Authority may attest that hop. A terminal RAS ignores the
@@ -2380,9 +2386,9 @@ presented handle.<a href="#section-8.7-1" class="pilcrow">¶</a></p>
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code>;<a href="#section-8.7-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-8.7-2.2">
-            <p id="section-8.7-2.2.1">the request contains exactly one <code>audience</code> and one <code>resource</code> parameter;
-<code>scope</code> and <code>authorization_details</code> are <span class="bcp14">OPTIONAL</span>, each evaluated by rule 14
-when present;<a href="#section-8.7-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-8.7-2.2.1">the request contains exactly one <code>audience</code> and one <code>resource</code> parameter,
+and at most one <code>scope</code> and one <code>authorization_details</code>; <code>scope</code> and
+<code>authorization_details</code> are <span class="bcp14">OPTIONAL</span>, each evaluated by rule 14 when present;<a href="#section-8.7-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-8.7-2.3">
             <p id="section-8.7-2.3.1">the assertion is a JWT containing exactly one value for each required claim
@@ -2430,8 +2436,9 @@ is within its depth bound; the bound counts lineage entries, not hops;<a href="#
 entity as the current actor (<a href="#client-identity" class="auto internal xref">Section 8.5</a>);<a href="#section-8.7-2.10.2.1.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-8.7-2.10.2.2">
-                <p id="section-8.7-2.10.2.2.1">the <code>actor_token</code> has a trusted issuer for the actor's domain and
-tenant, is accepted and valid, designates the IdP where applicable,
+                <p id="section-8.7-2.10.2.2.1">the <code>actor_token_type</code> names a token type the IdP supports, and the
+<code>actor_token</code> has a trusted issuer for the actor's domain and tenant, is
+valid for that type, is accepted, designates the IdP where applicable,
 and authenticates the actor;<a href="#section-8.7-2.10.2.2.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-8.7-2.10.2.3">
@@ -2556,14 +2563,18 @@ client abandons only the current request.<a href="#section-8.9-3" class="pilcrow
         <h3 id="name-onward-id-jag">
 <a href="#section-8.10" class="section-number selfRef">8.10. </a><a href="#name-onward-id-jag" class="section-name selfRef">Onward ID-JAG</a>
         </h3>
-<p id="section-8.10-1">The following is a non-normative example of the onward ID-JAG issued by the
-IdP:<a href="#section-8.10-1" class="pilcrow">¶</a></p>
+<p id="section-8.10-1">The onward ID-JAG conforms to the base ID-JAG profile
+(<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>) except where this document
+extends it: its <code>sub</code> is the IdP-issued pairwise subject for the target
+audience, and <code>aud_sub</code> remains available under the base profile where the
+target's native subject namespace differs. The following is a non-normative
+example of the onward ID-JAG issued by the IdP:<a href="#section-8.10-1" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-8.10-2">
 <pre>
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.travel.example/",
-  "sub": "travel-local-subject",
+  "sub": "travel-pairwise-subject",
 
   "client_id": "expense-service",
   "resource": "https://api.travel.example/",
@@ -3175,9 +3186,10 @@ registry, in the manner described in <span>[<a href="#RFC6838" class="cite xref"
           <dd class="break"></dd>
 <dt id="section-13.3-2.9">Encoding considerations:</dt>
           <dd style="margin-left: 1.5em" id="section-13.3-2.10">
-            <p id="section-13.3-2.10.1">8bit; an Identity Continuation Assertion is a JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, which is a
-series of base64url-encoded values (some of which may be empty) separated by
-period ('.') characters.<a href="#section-13.3-2.10.1" class="pilcrow">¶</a></p>
+            <p id="section-13.3-2.10.1">binary; the <code>+jwt</code> structured syntax suffix <span>[<a href="#RFC8417" class="cite xref">RFC8417</a>]</span> registers this
+encoding. An Identity Continuation Assertion is a JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, a series of
+base64url-encoded values (some of which may be empty) separated by period
+('.') characters.<a href="#section-13.3-2.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.3-2.11">Security considerations:</dt>
@@ -3451,6 +3463,10 @@ this document registers only the
         <dd>
 <span class="refAuthor">Freed, N.</span>, <span class="refAuthor">Klensin, J.</span>, and <span class="refAuthor">T. Hansen</span>, <span class="refTitle">"Media Type Specifications and Registration Procedures"</span>, <span class="seriesInfo">BCP 13</span>, <span class="seriesInfo">RFC 6838</span>, <span class="seriesInfo">DOI 10.17487/RFC6838</span>, <time datetime="2013-01" class="refDate">January 2013</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc6838">https://www.rfc-editor.org/rfc/rfc6838</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="RFC8417">[RFC8417]</dt>
+        <dd>
+<span class="refAuthor">Hunt, P., Ed.</span>, <span class="refAuthor">Jones, M.</span>, <span class="refAuthor">Denniss, W.</span>, and <span class="refAuthor">M. Ansari</span>, <span class="refTitle">"Security Event Token (SET)"</span>, <span class="seriesInfo">RFC 8417</span>, <span class="seriesInfo">DOI 10.17487/RFC8417</span>, <time datetime="2018-07" class="refDate">July 2018</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8417">https://www.rfc-editor.org/rfc/rfc8417</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="RFC8705">[RFC8705]</dt>
         <dd>
 <span class="refAuthor">Campbell, B.</span>, <span class="refAuthor">Bradley, J.</span>, <span class="refAuthor">Sakimura, N.</span>, and <span class="refAuthor">T. Lodderstedt</span>, <span class="refTitle">"OAuth 2.0 Mutual-TLS Client Authentication and Certificate-Bound Access Tokens"</span>, <span class="seriesInfo">RFC 8705</span>, <span class="seriesInfo">DOI 10.17487/RFC8705</span>, <time datetime="2020-02" class="refDate">February 2020</time>, <span>&lt;<a href="https://www.rfc-editor.org/rfc/rfc8705">https://www.rfc-editor.org/rfc/rfc8705</a>&gt;</span>. </dd>
@@ -3693,7 +3709,7 @@ subject and the root hop's handle.<a href="#appendix-B.1.1-9" class="pilcrow">¶
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.expenses.example/",
-  "sub": "expense-local-subject",
+  "sub": "expense-pairwise-subject",
 
   "client_id": "expense-app",
   "resource": "https://api.expenses.example/",
@@ -3759,7 +3775,7 @@ ExpenseService, the workload that will complete the request.<a href="#appendix-B
 {
   "iss": "https://tts.expenses.example/",
   "aud": "https://expenses.example/",
-  "sub": "expense-local-subject",
+  "sub": "expense-pairwise-subject",
   "txn": "txn-expense-88f2",
   "scope": "expense-report:complete",
   "req_wl": "expense-api",
@@ -3855,7 +3871,7 @@ root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.
 Instead, the assertion from ExpenseSaaS's mapped Chain Authority,
 <code>https://ca.expenses.example/</code>, is the evidence that H0 reached ACCEPTED state
 and is CONTINUABLE (<a href="#ras-processing" class="auto internal xref">Section 9</a>).<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.4-5">The IdP resolves the user's TravelRAS-local subject and creates H1 as a
+<p id="appendix-B.1.4-5">The IdP resolves the user's TravelRAS pairwise subject and creates H1 as a
 child of H0. The decoded ID-JAG carries H1 and the newly constructed
 <code>act</code> chain (<a href="#onward-id-jag" class="auto internal xref">Section 8.10</a>): <code>expense-service</code>, authenticated at this
 exchange, placed atop the root actor <code>expense-app</code>. <code>travel-service</code> has
@@ -3866,7 +3882,7 @@ not yet performed an exchange, so it is not part of the lineage.<a href="#append
 {
   "iss": "https://idp.example/",
   "aud": "https://ras.travel.example/",
-  "sub": "travel-local-subject",
+  "sub": "travel-pairwise-subject",
 
   "client_id": "expense-service",
   "resource": "https://api.travel.example/",
@@ -3953,7 +3969,7 @@ placed atop the presented hop's lineage (<code>expense-service</code>, then
 <pre>
 {
   "aud": "https://ras.booking.example/",
-  "sub": "booking-local-subject",
+  "sub": "booking-pairwise-subject",
   "client_id": "travel-service",
   "resource": "https://api.booking.example/",
   "scope": "stays.book",
