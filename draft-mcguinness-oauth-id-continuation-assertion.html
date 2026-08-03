@@ -1975,10 +1975,9 @@ of H1, not a descendant; concurrent children are independent siblings.<a href="#
 <p id="section-6-2">The following rules apply:<a href="#section-6-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-6-3">
 <li id="section-6-3.1">
-          <p id="section-6-3.1.1">The IdP <span class="bcp14">MUST</span> establish a chain for every direct ID-JAG issuance under a
-continuation-capable governing authorization (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>), and
-<span class="bcp14">MUST</span> embed a fresh hop reference as the <code>identity_continuation_handle</code>
-claim of the issued ID-JAG, for the root hop and for each continuation hop.
+          <p id="section-6-3.1.1">When it establishes a chain (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>), the IdP <span class="bcp14">MUST</span> embed a
+fresh hop reference as the <code>identity_continuation_handle</code> claim of the issued
+ID-JAG, for the root hop and for each continuation hop.
 Handle values <span class="bcp14">MUST NOT</span> be reused across hops. An ID-JAG that carries the
 <code>identity_continuation_handle</code> claim is continuation-capable.<a href="#section-6-3.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -2704,7 +2703,8 @@ domain.<a href="#section-9-4" class="pilcrow">¶</a></p>
 <p id="section-9.1-1">A hop moves through three states. The IdP creates it PENDING. Successful RAS
 binding makes it ACCEPTED. A fresh assertion from the mapped Chain Authority
 lets the IdP evaluate the hop as CONTINUABLE for one request; CONTINUABLE is
-not stored but holds only while rules 6 and 9 to 11 of <a href="#validation" class="auto internal xref">Section 8.7</a> hold for
+not stored but holds only while rules 6, 7, and 9 to 11 of <a href="#validation" class="auto internal xref">Section 8.7</a> hold
+for
 that request. There is no RAS callback.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-3">
           <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
@@ -3077,7 +3077,7 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
           <dd class="break"></dd>
 <dt id="section-13.1-2.3">Error Usage Location:</dt>
           <dd style="margin-left: 1.5em" id="section-13.1-2.4">
-            <p id="section-13.1-2.4.1">token endpoint<a href="#section-13.1-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-13.1-2.4.1">token endpoint response<a href="#section-13.1-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-13.1-2.5">Related Protocol Extension:</dt>
