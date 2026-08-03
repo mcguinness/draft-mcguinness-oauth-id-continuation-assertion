@@ -32,7 +32,7 @@ attenuation for intra-domain fan-out that does not change the subject.
     Jinja2 3.1.6
     lxml 6.1.1
     natsort 8.4.0
-    platformdirs 4.10.1
+    platformdirs 4.11.0
     pycountry 24.6.1
     PyYAML 6.0.3
     requests 2.33.1
@@ -2145,7 +2145,7 @@ chain; no request parameter asks it to do so (<a href="#root-establishment" clas
 <a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-direct-id-jag-request" class="section-name selfRef">Direct ID-JAG Request</a>
         </h3>
 <p id="section-8.1-1">A direct request, in which the subject token is a normal subject token such as
-an ID Token or refresh token:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
+an ID Token, refresh token, or SAML assertion:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-8.1-2">
 <pre>
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
@@ -2159,7 +2159,10 @@ actor_token=&lt;sender-constrained-current-actor-credential&gt; (OPTIONAL)
 actor_token_type=&lt;actor-token-type&gt;                       (OPTIONAL)
 </pre><a href="#section-8.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-8.1-3">On a direct request, <code>actor_token</code> is <span class="bcp14">OPTIONAL</span> (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>).<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.1-3">On a direct request, <code>actor_token</code> is <span class="bcp14">OPTIONAL</span> (<a href="#root-establishment" class="auto internal xref">Section 8.2</a>). The
+direct request and its ID-JAG conform to the base ID-JAG profile
+(<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>) except where this document
+extends it for continuation-capable issuance.<a href="#section-8.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="root-establishment">
@@ -2549,10 +2552,10 @@ tokens; <code>invalid_dpop_proof</code> for DPoP failure; and <code>invalid_targ
 envelope.<a href="#section-8.9-2" class="pilcrow">¶</a></p>
 <p id="section-8.9-3">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 13</a>) for an unknown, expired,
 revoked, or non-continuable handle, distinguishing a dead hop from the
-<code>invalid_request</code> of a malformed request. Retrying the same handle cannot
-succeed: a session-anchored chain re-roots by re-authenticating the user,
-while a grant-anchored chain may re-root from its still-valid grant without
-the user. Target-specific errors (<code>invalid_target</code>, <code>invalid_scope</code>,
+<code>invalid_request</code> of a malformed request. Each of these states is terminal for
+the handle, so retrying it cannot succeed; recovery instead re-roots the chain,
+a session-anchored chain by re-authenticating the user and a grant-anchored
+chain from its still-valid grant without the user. Target-specific errors (<code>invalid_target</code>, <code>invalid_scope</code>,
 <code>invalid_authorization_details</code>) leave the chain otherwise continuable, so a
 client abandons only the current request.<a href="#section-8.9-3" class="pilcrow">¶</a></p>
 </section>
@@ -2661,8 +2664,8 @@ exchange.<a href="#section-8.11-4" class="pilcrow">¶</a></p>
 <a href="#section-9" class="section-number selfRef">9. </a><a href="#name-continuation-aware-resource" class="section-name selfRef">Continuation-Aware Resource Authorization Server</a>
       </h2>
 <p id="section-9-1">Only a RAS from which continuation occurs implements this extension. A
-terminal RAS processes an ordinary ID-JAG and ignores the handle; nothing
-continues from its authorization, so there is no hop to bind.<a href="#section-9-1" class="pilcrow">¶</a></p>
+terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
+later continuation uses the terminal hop, the RAS need not bind its handle.<a href="#section-9-1" class="pilcrow">¶</a></p>
 <p id="section-9-2">A continuation-aware Resource Authorization Server, one that implements this
 extension and advertises the continuation grant profile (<a href="#metadata" class="auto internal xref">Section 8.11</a>), <span class="bcp14">MUST</span>,
 on accepting a continuation-capable ID-JAG:<a href="#section-9-2" class="pilcrow">¶</a></p>
@@ -2812,7 +2815,8 @@ state and places it in Transaction Token context
           <p id="section-10-5.2.1"><code>handle</code> (<span class="bcp14">REQUIRED</span>): the hop's continuation handle.<a href="#section-10-5.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-10-5.3">
-          <p id="section-10-5.3.1"><code>tenant</code> (<span class="bcp14">REQUIRED</span> except for a single-tenant issuer): the tenant.<a href="#section-10-5.3.1" class="pilcrow">¶</a></p>
+          <p id="section-10-5.3.1"><code>tenant</code> (<span class="bcp14">REQUIRED</span> except for a single-tenant IdP issuer, identified by
+<code>iss</code>): the tenant.<a href="#section-10-5.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-10-6">A recipient <span class="bcp14">MUST</span> ignore unknown members. A malformed or repeated object <span class="bcp14">MUST</span>
@@ -2902,8 +2906,9 @@ any offline attenuation segment; the IdP still enforces only the envelope.
 Because the assertion is target-agnostic, a permitted actor may select any
 target within that ceiling.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
 <p id="section-11.4-2">Wrong-handle association can continue the wrong user's bounded chain. The TTS
-removes selection from the workload by deriving the handle from the current
-credential's RAS-bound state. Another carrier <span class="bcp14">MAY</span> be used only if it provides
+establishes the authoritative association between the request and the handle by
+deriving it from the current credential's RAS-bound state; a handle a workload
+supplies is not authoritative, and the Chain Authority rejects substitution. Another carrier <span class="bcp14">MAY</span> be used only if it provides
 the same properties (<a href="#transaction-token-context" class="auto internal xref">Section 10</a>): server-derived; bound to
 the credential, key, and RAS authorization; non-overridable; domain-confined;
 and re-derived when replaced.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
@@ -4117,12 +4122,12 @@ nothing outside the platform.<a href="#appendix-B.2.1-10" class="pilcrow">¶</a>
 state:<a href="#appendix-B.2.2-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.2.2-2">
 <pre>
- Scheduler        Platform TTS       BriefingAgent
-     |                  |                  |
-     |--task-123-------&gt;|                  | authenticated trigger
-     |                  | resolve active PlatformRAS state
-     |                  | derive H0        |
-     |                  |--fresh TT(H0)---&gt;|
+ Scheduler   BriefingAgent      Platform TTS
+     |              |                 |
+     |---trigger---&gt;|                 | task-123
+     |              |-task-123 + key-&gt;|
+     |              |                 | verify key + task; derive H0
+     |              |&lt;-fresh TT(H0)---|
 </pre><a href="#appendix-B.2.2-2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.2.2-3">BriefingAgent then performs a fresh continuation to terminal CalendarRAS:<a href="#appendix-B.2.2-3" class="pilcrow">¶</a></p>
@@ -4142,9 +4147,11 @@ state:<a href="#appendix-B.2.2-1" class="pilcrow">¶</a></p>
 </pre><a href="#appendix-B.2.2-4" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.2.2-5">The task identifier is not a secret and does not authorize a run. The
-Platform accepts only an authenticated trigger; its TTS verifies that
-<code>task-123</code> remains active and creates fresh intra-domain context. Neither the
-Scheduler nor BriefingAgent selects H0.<a href="#appendix-B.2.2-5" class="pilcrow">¶</a></p>
+scheduler's trigger authenticates and carries only <code>task-123</code>; the Briefing
+Agent then authenticates to the Platform TTS and proves possession of its key,
+and the TTS, after confirming <code>task-123</code> is active and the Briefing Agent is
+its designated actor, derives H0 into fresh intra-domain context
+(<a href="#transaction-token-context" class="auto internal xref">Section 10</a>). Neither the scheduler nor the agent selects H0.<a href="#appendix-B.2.2-5" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.2-6">Before issuing, Platform CA authenticates <code>briefing-agent</code>, verifies its key
 and transaction, and rechecks that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in
