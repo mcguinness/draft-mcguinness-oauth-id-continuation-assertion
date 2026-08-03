@@ -909,8 +909,8 @@ bind it to a fingerprint containing audience and resource as exact strings,
 scope as an order-independent set, the exact `authorization_details` JSON as
 received after form decoding (different serializations are different
 requests), the actor (its `iss` and `sub`), the confirmed key (its `cnf.jkt`
-thumbprint), and a hash of the exact encoded `subject_token`, which binds the
-fingerprint to the specific assertion and its handle.
+thumbprint), and a SHA-256 hash of the exact `subject_token` value after form
+decoding, which binds the fingerprint to the specific assertion and its handle.
 
 The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
 states of {{hop-activation}}. Reservation MUST occur
@@ -958,13 +958,12 @@ envelope.
 
 The IdP MUST return `invalid_continuation` ({{iana}}) when the presented handle
 cannot support this continuation, distinguishing a dead hop from the
-`invalid_request` of a malformed request. An unknown, expired, revoked, or
-permanently disabled handle is terminal: retrying it cannot succeed, and
-recovery re-roots the chain, a session-anchored chain by re-authenticating the
-user and a grant-anchored chain from its still-valid grant without the user. A
-handle whose hop is not yet accepted is not terminal; a continuation may
-succeed once the hop is accepted ({{hop-activation}}) and a fresh assertion
-attests it. Target-specific errors (`invalid_target`, `invalid_scope`,
+`invalid_request` of a malformed request. Such a handle is terminal: retrying
+it cannot succeed. Recovery requires establishing a new chain and succeeds only
+where the governing authorization is still continuation-capable: a
+session-anchored chain re-roots by re-authenticating the user, a grant-anchored
+chain from its still-valid grant without the user; a handle disabled by
+withdrawn continuation authorization cannot re-root at all. Target-specific errors (`invalid_target`, `invalid_scope`,
 `invalid_authorization_details`) leave the chain otherwise continuable, so a
 client abandons only the current request.
 
@@ -1084,7 +1083,9 @@ domain.
 ## Hop Activation {#hop-activation}
 
 A hop moves through three states. The IdP creates it PENDING. Successful RAS
-binding makes it ACCEPTED. A fresh assertion from the mapped Chain Authority
+binding makes it ACCEPTED. A mapped Chain Authority attests a hop only once it
+is ACCEPTED, so a PENDING hop yields no assertion and reaches no continuation
+exchange. A fresh assertion from the mapped Chain Authority
 lets the IdP evaluate the hop as CONTINUABLE for one request; CONTINUABLE is
 not stored but holds only while rules 6, 7, and 9 to 11 of {{validation}} hold
 for
