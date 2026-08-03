@@ -963,9 +963,9 @@ it cannot succeed. Recovery requires establishing a new chain and succeeds only
 where the governing authorization is still continuation-capable: a
 session-anchored chain re-roots by re-authenticating the user, a grant-anchored
 chain from its still-valid grant without the user; a handle disabled by
-withdrawn continuation authorization cannot re-root at all. Target-specific errors (`invalid_target`,
-`invalid_scope`,
-`invalid_authorization_details`) leave the chain otherwise continuable, so a
+withdrawn continuation authorization cannot re-root at all. Target-specific
+errors (`invalid_target`, `invalid_scope`, `invalid_authorization_details`)
+leave the chain otherwise continuable, so a
 client abandons only the current request.
 
 ## Onward ID-JAG {#onward-id-jag}
