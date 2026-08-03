@@ -559,10 +559,6 @@ Authorization Server sets; this profile does not constrain that lifetime.
 
 This is the deliberate difference from an offline-attenuated token, whose
 minted child stays usable for its lifetime without contacting an authority.
-An implementation MAY cache an access token only for its own audience and
-scope, within its lifetime, keyed to the request fingerprint of
-{{validation-replay}}; it MUST NOT reuse that token for another audience or to bypass
-the fresh revocation check each continuation requires.
 
 Three lifetimes MUST NOT be conflated: the ID-JAG's short redemption window;
 the access-token lifetime the accepting RAS sets independently
@@ -912,8 +908,9 @@ After validation, grant issuance MUST atomically reserve (`iss`, `jti`) and
 bind it to a fingerprint containing audience and resource as exact strings,
 scope as an order-independent set, the exact `authorization_details` JSON as
 received after form decoding (different serializations are different
-requests), the actor (its `iss` and `sub`), and the confirmed key (its
-`cnf.jkt` thumbprint).
+requests), the actor (its `iss` and `sub`), the confirmed key (its `cnf.jkt`
+thumbprint), and a hash of the exact encoded `subject_token`, which binds the
+fingerprint to the specific assertion and its handle.
 
 The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
 states of {{hop-activation}}. Reservation MUST occur
@@ -959,12 +956,15 @@ tokens; `invalid_dpop_proof` for DPoP failure; and `invalid_target`,
 `invalid_scope`, or `invalid_authorization_details` for requests outside the
 envelope.
 
-The IdP MUST return `invalid_continuation` ({{iana}}) for an unknown, expired,
-revoked, or non-continuable handle, distinguishing a dead hop from the
-`invalid_request` of a malformed request. Each of these states is terminal for
-the handle, so retrying it cannot succeed; recovery instead re-roots the chain,
-a session-anchored chain by re-authenticating the user and a grant-anchored
-chain from its still-valid grant without the user. Target-specific errors (`invalid_target`, `invalid_scope`,
+The IdP MUST return `invalid_continuation` ({{iana}}) when the presented handle
+cannot support this continuation, distinguishing a dead hop from the
+`invalid_request` of a malformed request. An unknown, expired, revoked, or
+permanently disabled handle is terminal: retrying it cannot succeed, and
+recovery re-roots the chain, a session-anchored chain by re-authenticating the
+user and a grant-anchored chain from its still-valid grant without the user. A
+handle whose hop is not yet accepted is not terminal; a continuation may
+succeed once the hop is accepted ({{hop-activation}}) and a fresh assertion
+attests it. Target-specific errors (`invalid_target`, `invalid_scope`,
 `invalid_authorization_details`) leave the chain otherwise continuable, so a
 client abandons only the current request.
 
@@ -1337,7 +1337,7 @@ Related Protocol Extension:
 : Identity Continuation Assertion for OAuth 2.0 Token Exchange
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document(s):
 : This document, {{validation-response}}
@@ -1354,7 +1354,7 @@ Common Name:
 : Token type URI for the Identity Continuation Assertion
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document:
 : This document, {{names}}
@@ -1371,7 +1371,7 @@ Common Name:
   to authorization state
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document:
 : This document, {{metadata}}, {{ras-processing}}
@@ -1436,7 +1436,7 @@ Author:
 : Karl McGuinness
 
 Change controller:
-: IESG
+: IETF
 
 ## JSON Web Token Claims Registration
 
@@ -1456,7 +1456,7 @@ Claim Description:
   authorization claims ({{chain-id}}, rules 3 and 4).
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document(s):
 : This document, {{chain-id}}
@@ -1474,7 +1474,7 @@ Metadata Description:
   profile
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document(s):
 : This document, {{metadata}}
