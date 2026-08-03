@@ -1449,7 +1449,7 @@ credential does not address. The first hop can still present the user's
 credential to obtain an ID-JAG, but a later workload in the chain holds none of
 those credentials. The difficulty is sharpest when Resource Authorization
 Servers name the user with audience-local (pairwise) subject identifiers that
-only the IdP can resolve, a different and unrelated value at each RAS: the
+only the IdP can resolve, a different value at each server: the
 later workload cannot name the user for the next audience at all. Only the IdP
 can perform that mapping, so continuation is a fresh mint from the IdP, not a
 reused or offline-attenuated token.<a href="#section-1-2" class="pilcrow">¶</a></p>
@@ -1463,7 +1463,7 @@ to name the user and scope authority. At every hop the IdP both resolves
 identity and checks the requested authority against the root-chain envelope, so
 continuation stays a fresh policy decision rather than a bearer of standing
 authority.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">This profile does not define a new access token format, does not allow a
+<p id="section-1-4">This profile does not define a new access-token format, does not allow a
 Resource Server to consume the Identity Continuation Assertion directly, and
 does not allow a Chain Authority to name the user for the target audience.<a href="#section-1-4" class="pilcrow">¶</a></p>
 <p id="section-1-5">This profile covers:<a href="#section-1-5" class="pilcrow">¶</a></p>
@@ -1489,11 +1489,10 @@ ExpenseApp -&gt; ExpenseRAS -&gt; TravelRAS -&gt; BookingRAS
 </pre><a href="#section-1-8" class="pilcrow">¶</a>
 </div>
 <p id="section-1-9">Each trust domain from which the chain continues has three roles: the RAS that
-accepts an ID-JAG and binds the hop, a trusted carrier, typically a Transaction
+accepts an ID-JAG and binds the hop; a trusted carrier, typically a Transaction
 Token Service (TTS), that carries the hop reference to workloads inside the
-domain, and a Chain Authority
-(CA) that issues the Identity Continuation Assertion a workload presents to the
-IdP.
+domain; and a Chain Authority (CA) that issues the Identity Continuation
+Assertion a workload presents to the IdP.
 One party may operate all three within a domain (<a href="#security-tts" class="auto internal xref">Section 11.5</a>).<a href="#section-1-9" class="pilcrow">¶</a></p>
 <div id="relationship-to-id-jag-and-identity-chaining">
 <section id="section-1.1">
@@ -1750,7 +1749,7 @@ authorizes continuation.<a href="#section-3-5" class="pilcrow">¶</a></p>
       <h2 id="name-when-to-use-this-profile-ve">
 <a href="#section-4" class="section-number selfRef">4. </a><a href="#name-when-to-use-this-profile-ve" class="section-name selfRef">When to Use This Profile Versus Offline Attenuation</a>
       </h2>
-<p id="section-4-1">Use this profile when a boundary re-mints the user's identity, that is when:<a href="#section-4-1" class="pilcrow">¶</a></p>
+<p id="section-4-1">Use this profile when a boundary re-mints the user's identity, that is:<a href="#section-4-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-4-2.1">
           <p id="section-4-2.1.1">the next audience uses a pairwise subject only the IdP can resolve;<a href="#section-4-2.1.1" class="pilcrow">¶</a></p>
@@ -1759,7 +1758,7 @@ authorizes continuation.<a href="#section-3-5" class="pilcrow">¶</a></p>
           <p id="section-4-2.2.1">the target trusts the IdP, not the previous issuer, to name the user; and<a href="#section-4-2.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-4-2.3">
-          <p id="section-4-2.3.1">current revocation and policy must be re-checked at every boundary.<a href="#section-4-2.3.1" class="pilcrow">¶</a></p>
+          <p id="section-4-2.3.1">current revocation and policy must be rechecked at every boundary.<a href="#section-4-2.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-4-3">Use offline attenuation, such as <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>, when
@@ -1857,7 +1856,7 @@ members <span class="bcp14">MAY</span> carry further identity attributes but are
 <span class="bcp14">MUST NOT</span> affect identity, authorization, lineage, or issuance; a recipient
 <span class="bcp14">MUST</span> ignore members it does not understand, and <code>exp</code>, <code>nbf</code>, <code>aud</code>, <code>scope</code>,
 <code>cnf</code>, and nested <code>act</code> <span class="bcp14">MUST NOT</span> be present. The IdP <span class="bcp14">MUST</span> reject a
-nonconforming <code>act</code>. The IdP, not the assertion, constructs lineage
+non-conforming <code>act</code>. The IdP, not the assertion, constructs lineage
 (<a href="#onward-id-jag" class="auto internal xref">Section 8.10</a>).<a href="#section-5.2-4.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
@@ -1923,8 +1922,9 @@ domain unless tenant configuration explicitly authorizes that external actor
 and its keys. Keeping issuance in-domain prevents a handle-holding party from
 bypassing the RAS-acceptance path. Actor authentication and the issuance
 protocol are deployment-specific.<a href="#section-5.4-1" class="pilcrow">¶</a></p>
-<p id="section-5.4-2">A presenting workload is a control-plane participant, not a bare-handle-
-transporting application (<a href="#handle-carriers" class="auto internal xref">Section 6.1</a>): it reads the handle from its
+<p id="section-5.4-2">A presenting workload is a control-plane participant, not a
+bare-handle-transporting application (<a href="#handle-carriers" class="auto internal xref">Section 6.1</a>): it reads the handle
+from its
 own intra-domain context and presents it to its Chain Authority, along with its
 key and any narrowing hints. That handle is advisory input, not an authority
 the workload asserts; the checks below re-verify it against RAS-bound state
@@ -2745,8 +2745,9 @@ acceptance directly (<a href="#rationale-pull" class="auto internal xref">Append
 Authority having rechecked authoritative RAS state before attesting
 (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>). A compromised mapped Chain Authority can thus attest a
 hop that its Resource Authorization Server refused, or for which it denied
-continuation, overriding that server's local decision; the envelope still bounds the
-result, but the accept-and-continue gate is only as trustworthy as the
+continuation, overriding that server's local decision; the envelope still
+bounds the result, but the accept-and-continue gate is only as trustworthy as
+the
 mapped Chain Authority. Absent such compromise, an issued-but-rejected ID-JAG
 cannot be continued because no mapped Chain Authority may attest it. A mapped
 Chain Authority is mandatory; its absence fails closed. Acceptance gates
@@ -2908,8 +2909,9 @@ target within that ceiling.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
 <p id="section-11.4-2">Wrong-handle association can continue the wrong user's bounded chain. The TTS
 establishes the authoritative association between the request and the handle by
 deriving it from the current credential's RAS-bound state; a handle a workload
-supplies is not authoritative, and the Chain Authority rejects substitution. Another carrier <span class="bcp14">MAY</span> be used only if it provides
-the same properties (<a href="#transaction-token-context" class="auto internal xref">Section 10</a>): server-derived; bound to
+supplies is not authoritative, and the Chain Authority rejects substitution.
+Another carrier <span class="bcp14">MAY</span> be used only if it provides the same properties
+(<a href="#transaction-token-context" class="auto internal xref">Section 10</a>): server-derived; bound to
 the credential, key, and RAS authorization; non-overridable; domain-confined;
 and re-derived when replaced.<a href="#section-11.4-2" class="pilcrow">¶</a></p>
 </section>
@@ -3868,8 +3870,9 @@ actor_token=&lt;sender-constrained expense-service credential&gt;
 actor_token_type=urn:ietf:params:oauth:token-type:jwt
 </pre><a href="#appendix-B.1.4-3" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-4">The IdP runs the checks of <a href="#validation" class="auto internal xref">Section 8.7</a>: the DPoP key matches both the assertion's
-<code>cnf.jkt</code> and the actor token's key confirmation; <code>expense-service</code> is the
+<p id="appendix-B.1.4-4">The IdP runs the checks of <a href="#validation" class="auto internal xref">Section 8.7</a>: the DPoP key matches both the
+assertion's <code>cnf.jkt</code> and the actor token's key confirmation; <code>expense-service</code>
+is the
 actor named in <code>act</code>; H0 is CONTINUABLE; and the requested TravelRAS,
 TravelAPI, and <code>trips.read</code> values match the Travel target entry in the
 root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.

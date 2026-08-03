@@ -180,10 +180,10 @@ Table of Contents
    later workload in the chain holds none of those credentials.  The
    difficulty is sharpest when Resource Authorization Servers name the
    user with audience-local (pairwise) subject identifiers that only the
-   IdP can resolve, a different and unrelated value at each RAS: the
-   later workload cannot name the user for the next audience at all.
-   Only the IdP can perform that mapping, so continuation is a fresh
-   mint from the IdP, not a reused or offline-attenuated token.
+   IdP can resolve, a different value at each server: the later workload
+   cannot name the user for the next audience at all.  Only the IdP can
+   perform that mapping, so continuation is a fresh mint from the IdP,
+   not a reused or offline-attenuated token.
 
    This document defines the Identity Continuation Assertion: a short-
    lived, sender-constrained JWT that a later workload presents as the
@@ -197,7 +197,7 @@ Table of Contents
    envelope, so continuation stays a fresh policy decision rather than a
    bearer of standing authority.
 
-   This profile does not define a new access token format, does not
+   This profile does not define a new access-token format, does not
    allow a Resource Server to consume the Identity Continuation
    Assertion directly, and does not allow a Chain Authority to name the
    user for the target audience.
@@ -220,9 +220,9 @@ Table of Contents
    ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 
    Each trust domain from which the chain continues has three roles: the
-   RAS that accepts an ID-JAG and binds the hop, a trusted carrier,
+   RAS that accepts an ID-JAG and binds the hop; a trusted carrier,
    typically a Transaction Token Service (TTS), that carries the hop
-   reference to workloads inside the domain, and a Chain Authority (CA)
+   reference to workloads inside the domain; and a Chain Authority (CA)
    that issues the Identity Continuation Assertion a workload presents
    to the IdP.  One party may operate all three within a domain
    (Section 11.5).
@@ -403,7 +403,7 @@ Table of Contents
 4.  When to Use This Profile Versus Offline Attenuation
 
    Use this profile when a boundary re-mints the user's identity, that
-   is when:
+   is:
 
    *  the next audience uses a pairwise subject only the IdP can
       resolve;
@@ -411,8 +411,7 @@ Table of Contents
    *  the target trusts the IdP, not the previous issuer, to name the
       user; and
 
-   *  current revocation and policy must be re-checked at every
-      boundary.
+   *  current revocation and policy must be rechecked at every boundary.
 
    Use offline attenuation, such as
    [I-D.li-oauth-delegated-authorization], when the subject and issuer
@@ -481,8 +480,8 @@ Table of Contents
       attributes but are non-authoritative and MUST NOT affect identity,
       authorization, lineage, or issuance; a recipient MUST ignore
       members it does not understand, and exp, nbf, aud, scope, cnf, and
-      nested act MUST NOT be present.  The IdP MUST reject a
-      nonconforming act.  The IdP, not the assertion, constructs lineage
+      nested act MUST NOT be present.  The IdP MUST reject a non-
+      conforming act.  The IdP, not the assertion, constructs lineage
       (Section 8.10).
 
    cnf:  REQUIRED.  A confirmation claim [RFC7800] that binds the
@@ -531,7 +530,7 @@ Table of Contents
    specific.
 
    A presenting workload is a control-plane participant, not a bare-
-   handle- transporting application (Section 6.1): it reads the handle
+   handle-transporting application (Section 6.1): it reads the handle
    from its own intra-domain context and presents it to its Chain
    Authority, along with its key and any narrowing hints.  That handle
    is advisory input, not an authority the workload asserts; the checks
