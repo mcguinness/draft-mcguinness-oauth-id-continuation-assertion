@@ -486,10 +486,9 @@ of H1, not a descendant; concurrent children are independent siblings.
 
 The following rules apply:
 
-1. The IdP MUST establish a chain for every direct ID-JAG issuance under a
-   continuation-capable governing authorization ({{root-establishment}}), and
-   MUST embed a fresh hop reference as the `identity_continuation_handle`
-   claim of the issued ID-JAG, for the root hop and for each continuation hop.
+1. When it establishes a chain ({{root-establishment}}), the IdP MUST embed a
+   fresh hop reference as the `identity_continuation_handle` claim of the issued
+   ID-JAG, for the root hop and for each continuation hop.
    Handle values MUST NOT be reused across hops. An ID-JAG that carries the
    `identity_continuation_handle` claim is continuation-capable.
 
@@ -1084,7 +1083,8 @@ domain.
 A hop moves through three states. The IdP creates it PENDING. Successful RAS
 binding makes it ACCEPTED. A fresh assertion from the mapped Chain Authority
 lets the IdP evaluate the hop as CONTINUABLE for one request; CONTINUABLE is
-not stored but holds only while rules 6 and 9 to 11 of {{validation}} hold for
+not stored but holds only while rules 6, 7, and 9 to 11 of {{validation}} hold
+for
 that request. There is no RAS callback.
 
 | State | Where it lives | Meaning |
@@ -1326,7 +1326,7 @@ Error Name:
 : invalid_continuation
 
 Error Usage Location:
-: token endpoint
+: token endpoint response
 
 Related Protocol Extension:
 : Identity Continuation Assertion for OAuth 2.0 Token Exchange
