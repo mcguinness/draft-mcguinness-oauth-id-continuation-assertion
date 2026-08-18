@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-08-16T01:12:46.492489+00:00",
+  "timestamp": "2026-08-18T01:08:10.548747+00:00",
   "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
   "labels": [
     {
@@ -49,7 +49,24 @@
       "color": "ffffff"
     }
   ],
-  "issues": [],
+  "issues": [
+    {
+      "number": 41,
+      "id": "I_kwDOSyPVJM8AAAABM7b_HQ",
+      "title": "Accountability for hop acceptance: make a fabricating Chain Authority detectable, rather than verify acceptance at mint",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/41",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "### Problem\n\nThe root IdP is already consulted at every hop. It bounds the requested target against the root-chain envelope and mints the next ID-JAG. For acceptance, though, it verifies nothing. It trusts the mapped Chain Authority's attestation that the prior hop reached ACCEPTED, because there is no RAS callback (Hop Activation: \"trusted evidence of acceptance, not IdP-verifiable proof\"; \"There is no RAS callback\").\n\nSo a compromised or faulty mapped Chain Authority can attest a hop that its Resource Authorization Server refused, the IdP mints on it, and the downstream accepting domain then trusts an ID-JAG for a hop that was never accepted. The blast-radius table lists this under \"RAS + TTS + Chain Authority | Can fabricate acceptance,\" but a compromised CA alone already suffices.\n\n### Why not verify acceptance at mint\n\nPreventive verification does not scale. Making acceptance IdP-verifiable means trusting past the Chain Authority: either per-RAS signing keys the IdP must onboard, rotate, and revoke across org boundaries, or a per-mint callback to each RAS. Both de-aggregate the one-anchor-per-domain trust model the CA mapping exists to provide, turning \"one CA per domain\" into \"every RAS is a signing authority the IdP tracks.\" Per-RAS signing also asks every continuation-source RAS, many of them third-party SaaS, to sign on the bind path, which is an ecosystem non-starter.\n\nIt is also inverted. A RAS-signed receipt is trivial only in the single-operator case, where key distribution is internal and, per the draft, trust already collapses to internal correctness, so verification buys little. It is hardest in the multi-domain case, the only place verifying against an untrusted CA would matter. Feasible where it is useless, useless where it is needed.\n\n### A scalable direction: accountability\n\nThe Chain Authority already signs every assertion (`iss` is the CA), so each acceptance attestation is already attributable. What is missing is detection.\n\nRecord CA acceptance attestations in a tamper-evident, monitorable log, in the spirit of Certificate Transparency. The Resource Authorization Server, the one party that knows the truth about its own acceptances, monitors the log for attestations naming its hops and flags any attestation for a hop it never accepted. This keeps the IdP trust model unchanged (one CA anchor per domain, no per-RAS keys), stays off the hot path (asynchronous monitoring, no per-mint blocking), and scales because each RAS watches only its own hops. It matches the draft's existing \"honest-domain audit property\" and \"audit the binding-to-attestation path.\"\n\nIt is detective, not preventive: a fabricated acceptance can still succeed once, but it becomes detectable, attributable, and therefore deterrable and revocable, and the envelope still bounds the result. It does not help against a compromised Resource Authorization Server or RAS and CA collusion.\n\n### Scope, separate axes not addressed here\n\n- Liveness and revocation freshness (\"is it still continuable\"), which is the pull axis (Open Item 3).\n- Actor-chain provenance (who acted, and the target each actor consented to), which is the actor-proofs axis.\n- Resource Authorization Server compromise, or RAS and CA collusion, which nothing can attest against.\n\n### Question\n\nIs envelope-bounding plus Chain Authority accountability the right posture, rather than preventive verification that does not scale? If accountability is worth specifying, should the draft define a monitorable acceptance-attestation log and RAS-side monitoring, or leave acceptance audit deployment-specific? Related Open Items: 2 (signed assertion versus recipient-bound), 3 (pull), 8 (CA issuance).\n",
+      "createdAt": "2026-08-16T03:49:02Z",
+      "updatedAt": "2026-08-16T03:49:02Z",
+      "closedAt": null,
+      "comments": []
+    }
+  ],
   "pulls": [
     {
       "number": 1,
