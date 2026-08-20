@@ -125,10 +125,6 @@ identity and checks the requested authority against the root-chain envelope, so
 continuation stays a fresh policy decision rather than a bearer of standing
 authority.
 
-This profile does not define a new access-token format, does not allow a
-Resource Server to consume the Identity Continuation Assertion directly, and
-does not allow a CAI to name the user for the target audience.
-
 Each trust domain from which the chain continues has two roles: the RAS that
 accepts an ID-JAG and binds the hop, and a Continuation Assertion Issuer (CAI)
 that issues the Identity Continuation Assertion a workload presents to the IdP.
@@ -136,6 +132,24 @@ Between them, a trusted intra-domain carrier surfaces the hop reference to
 workloads inside the domain ({{transaction-token-context}}); the carrier is a
 deployment choice, not a distinct role. One party may operate all of these
 within a domain ({{security-trust-model}}).
+
+This profile does not define a new access-token format, does not allow a
+Resource Server to consume the Identity Continuation Assertion directly, and
+does not allow a CAI to name the user for the target audience.
+
+## When to Use This Profile Versus Offline Attenuation {#decision-rule}
+
+Use this profile when a boundary re-mints the user's identity, that is:
+
+* the next audience uses a pairwise subject only the IdP can resolve;
+* the target trusts the IdP, not the previous issuer, to name the user; and
+* current revocation and policy must be rechecked at every boundary.
+
+Use offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, when
+the subject and issuer trust stay stable across the boundary and offline
+delegation semantics are acceptable, for example intra-domain fan-out under one
+workload identity. The two compose: offline attenuation inside a trust domain,
+continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG and Identity Chaining
 
@@ -247,59 +261,6 @@ Offline attenuation:
 : Client-side attenuated delegation, in which a party narrows and forwards a
   credential without contacting the IdP; contrast the IdP-minted continuation
   this profile defines ({{decision-rule}}).
-
-# Protocol Overview {#overview}
-
-A continuation reuses the Token Exchange loop once per boundary: the root
-exchange mints the first ID-JAG, and each later boundary mints the next from an
-Identity Continuation Assertion. Handles H0 and H1 below name the successive
-hops ({{chain-id}}).
-
-~~~
-RAS   Client     IdP      Workload      CAI
- |       |        |           |          |
- |       base ID-JAG exchange |          |
- |       |-------->           |          |
- |       issue ID-JAG (H0)    |          |
- |       <--------|           |          |
- present ID-JAG   |           |          |
- <-------|        |           |          |
- issue access token, bind H0  |          |
- |------->        |           |          |
- |       |        |           |          |
-  carrier surfaces H0 to a later workload
- |       |        |           |          |
- |       |        |           request assertion
- |       |        |           |---------->
- |       |        |           attest hop, actor, key
- |       |        |           <----------|
- |       |        present assertion      |
- |       |        <-----------|          |
- |       |        issue ID-JAG (H1)      |
- |       |        |----------->          |
-~~~
-
-The workload that continues is a later party, not the original client that
-established the chain.
-
-Each role validates only within its authority, and no artifact or role alone
-authorizes continuation ({{security-trust-model}}); the per-role rules are in
-{{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
-{{validation}}, and {{onward-id-jag}}.
-
-# When to Use This Profile Versus Offline Attenuation {#decision-rule}
-
-Use this profile when a boundary re-mints the user's identity, that is:
-
-* the next audience uses a pairwise subject only the IdP can resolve;
-* the target trusts the IdP, not the previous issuer, to name the user; and
-* current revocation and policy must be rechecked at every boundary.
-
-Use offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, when
-the subject and issuer trust stay stable across the boundary and offline
-delegation semantics are acceptable, for example intra-domain fan-out under one
-workload identity. The two compose: offline attenuation inside a trust domain,
-continuation where a boundary re-mints the subject.
 
 # The Identity Continuation Assertion {#assertion}
 
@@ -552,7 +513,48 @@ and subtree revocation when offered. It SHOULD notify the user or
 administrator at establishment and near expiry. The same interface is
 RECOMMENDED for session-anchored chains. See {{GRANT-MGMT}}.
 
-# Token Exchange Profile {#token-exchange}
+# Multi-Hop Cross-Domain Access {#access}
+
+## Overview {#overview}
+
+A continuation reuses the Token Exchange loop once per boundary: the root
+exchange mints the first ID-JAG, and each later boundary mints the next from an
+Identity Continuation Assertion. Handles H0 and H1 below name the successive
+hops ({{chain-id}}).
+
+~~~
+RAS   Client     IdP      Workload      CAI
+ |       |        |           |          |
+ |       base ID-JAG exchange |          |
+ |       |-------->           |          |
+ |       issue ID-JAG (H0)    |          |
+ |       <--------|           |          |
+ present ID-JAG   |           |          |
+ <-------|        |           |          |
+ issue access token, bind H0  |          |
+ |------->        |           |          |
+ |       |        |           |          |
+  carrier surfaces H0 to a later workload
+ |       |        |           |          |
+ |       |        |           request assertion
+ |       |        |           |---------->
+ |       |        |           attest hop, actor, key
+ |       |        |           <----------|
+ |       |        present assertion      |
+ |       |        <-----------|          |
+ |       |        issue ID-JAG (H1)      |
+ |       |        |----------->          |
+~~~
+
+The workload that continues is a later party, not the original client that
+established the chain.
+
+Each role validates only within its authority, and no artifact or role alone
+authorizes continuation ({{security-trust-model}}); the per-role rules are in
+{{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
+{{validation}}, and {{onward-id-jag}}.
+
+## Token Exchange {#token-exchange}
 
 An Identity Continuation Assertion is used as the `subject_token` of an OAuth
 2.0 Token Exchange request {{RFC8693}}. A direct and a chained request use the
@@ -561,7 +563,7 @@ Continuation Assertion for the root credential and additionally supplies the
 actor authentication and DPoP proof described below. The IdP establishes the
 chain; no request parameter asks it to do so ({{root-establishment}}).
 
-## Direct ID-JAG Request
+### Direct ID-JAG Request
 
 A direct request, in which the subject token is a normal subject token such as
 an ID Token, refresh token, or SAML assertion:
@@ -583,7 +585,7 @@ direct request and its ID-JAG conform to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it for continuation-capable issuance.
 
-## Establishing a Chain {#root-establishment}
+### Establishing a Chain {#root-establishment}
 
 The IdP, not the client, establishes a chain. It MUST do so when a direct
 ID-JAG exchange is governed by a continuation-capable governing authorization,
@@ -646,7 +648,7 @@ enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
 to the governing authorization; a retried establishment MUST NOT evade these
 limits.
 
-## Chained ID-JAG Request
+### Chained ID-JAG Request
 
 A chained request, in which the subject token is an Identity Continuation
 Assertion:
@@ -675,7 +677,7 @@ authorization-basis check ({{validation}}, rule 14) applies equally to it and
 to scope. Client authentication is required on every exchange
 ({{client-identity}}).
 
-## Sender-Constrained Presentation {#sender-constrained-presentation}
+### Sender-Constrained Presentation {#sender-constrained-presentation}
 
 This section applies to a chained request; a direct request's DPoP requirement
 is specified in {{root-establishment}}.
@@ -702,7 +704,7 @@ The onward ID-JAG MUST use the same DPoP key.
 Key rotation takes effect when the actor obtains a new assertion and actor
 token bound to the new key.
 
-## Client Identity and Authentication {#client-identity}
+### Client Identity and Authentication {#client-identity}
 
 The current actor MUST authenticate as an OAuth client, and the IdP MUST map
 that client authoritatively to an actor identity; self-asserted mappings
@@ -729,7 +731,7 @@ the confirmed key, must agree:
 | Assertion `act` | the actor the CAI bound to the accepted hop |
 | DPoP | live possession of the key binding all three to this request |
 
-## Continuation Handle Delivery {#handle-delivery}
+### Continuation Handle Delivery {#handle-delivery}
 
 The IdP delivers the hop reference in the issued ID-JAG's
 `identity_continuation_handle` claim ({{chain-id}}, rule 1; {{onward-id-jag}}),
@@ -742,7 +744,7 @@ the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
 through task or authorization state, an optional ID-JAG claim, or a management
 API.
 
-## Request Validation {#validation}
+### Request Validation {#validation}
 
 The IdP MUST reject the request unless every rule below holds. Their order is
 not significant, though one rule's input may come from another's resolution:
@@ -829,7 +831,7 @@ presented handle.
     audience-local subject and the current actor's client identifier
     ({{client-identity}}).
 
-## Replay Reservation and Retry {#validation-replay}
+### Replay Reservation and Retry {#validation-replay}
 
 The reservation model gives a client idempotent recovery after a lost response
 while preventing one assertion from authorizing more than one distinct request.
@@ -874,7 +876,7 @@ idempotency remains out of scope. The CAI SHOULD account for
 retries separately from fan-out while preventing retry claims from bypassing
 limits.
 
-## Success and Error Responses {#validation-response}
+### Success and Error Responses {#validation-response}
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG containing the resolved target `sub` and
@@ -899,7 +901,7 @@ errors (`invalid_target`, `invalid_scope`, `invalid_authorization_details`)
 leave the chain otherwise continuable, so a
 client abandons only the current request.
 
-## Onward ID-JAG {#onward-id-jag}
+### Onward ID-JAG {#onward-id-jag}
 
 The onward ID-JAG conforms to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
@@ -954,46 +956,7 @@ The target RAS validates the ID-JAG, issues its access token, and, if
 continuation-aware, binds the handle. The ID-JAG `client_id` is the current
 actor's identifier at that RAS.
 
-## Authorization Server Metadata {#metadata}
-
-An IdP that supports this profile SHOULD signal it in its authorization server
-metadata {{RFC8414}} with the following parameter:
-
-`identity_continuation_supported`:
-: OPTIONAL. Boolean value indicating that the IdP accepts Identity Continuation
-  Assertions of the
-  `urn:ietf:params:oauth:token-type:identity-continuation` subject token type
-  and issues continuation-capable ID-JAGs carrying the
-  `identity_continuation_handle` claim. Default `false`.
-
-A Resource Authorization Server advertises separately, by listing the grant
-profile `urn:ietf:params:oauth:grant-profile:id-jag-continuation` in its
-`authorization_grant_profiles_supported`
-{{I-D.ietf-oauth-identity-assertion-authz-grant}}, that it recognizes a
-continuation-capable ID-JAG and binds the `identity_continuation_handle`
-claim to authorization state ({{ras-processing}}). This value is distinct
-from the base ID-JAG grant profile, which signals only ordinary ID-JAG
-processing and no handle binding. Because a continuation-capable ID-JAG is an
-ID-JAG, a Resource Authorization Server that advertises
-`urn:ietf:params:oauth:grant-profile:id-jag-continuation` MUST also advertise
-the base `urn:ietf:params:oauth:grant-profile:id-jag` profile and the
-`urn:ietf:params:oauth:grant-type:jwt-bearer` grant type on which ID-JAG
-depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
-
-A Resource Authorization Server MAY additionally advertise the Continuation
-Assertion Issuer(s) authoritative for the hops it accepts, so the IdP can
-discover them rather than be configured out of band ({{security-trust-model}}):
-
-`identity_continuation_issuers`:
-: OPTIONAL. An array of issuer identifiers whose Identity Continuation
-  Assertions the IdP accepts for hops this Resource Authorization Server
-  accepts. Each issuer publishes its signing keys per {{RFC8414}} or as a JWK
-  Set.
-
-Absent these signals, a party learns of support out of band or by attempting an
-exchange.
-
-# Continuation-Aware Resource Authorization Server {#ras-processing}
+## Access Token Request {#ras-processing}
 
 Only a RAS from which continuation occurs implements this extension. A
 terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
@@ -1018,7 +981,7 @@ handle in an access token, external authorization claim, or protected-API
 authorization input. It exposes the binding only privately within its trust
 domain.
 
-## Hop Activation {#hop-activation}
+### Hop Activation {#hop-activation}
 
 A hop moves through three states. The IdP creates it PENDING. Successful RAS
 binding makes it ACCEPTED. A mapped CAI attests a hop only once it
@@ -1049,13 +1012,13 @@ cannot be continued because no mapped CAI may attest it. A mapped
 CAI is mandatory; its absence fails closed. Acceptance gates
 continuation but does not bound downstream authority ({{ras-gate}}).
 
-## A Gate, Not a Ceiling {#ras-gate}
+### A Gate, Not a Ceiling {#ras-gate}
 
 RAS acceptance is a gate, not a downstream ceiling. The IdP evaluates later
 targets against the root envelope; local RAS authorization neither narrows nor
 widens it.
 
-## Durable Task Authorization {#task-provenance}
+### Durable Task Authorization {#task-provenance}
 
 Scheduled continuation MUST root in durable RAS authorization, not a
 scheduler-held handle, which would become a durable bearer-like credential
@@ -1064,7 +1027,7 @@ scheduler holds only a task identifier; each authenticated run re-derives the
 handle from active task state and still requires an assertion from a mapped
 CAI.
 
-# Intra-Domain Handle Propagation {#transaction-token-context}
+## Intra-Domain Handle Propagation {#transaction-token-context}
 
 Within a trust domain, an authorized workload learns the accepted hop's handle
 from a trusted intra-domain carrier, never from a requester-supplied value. The
@@ -1087,6 +1050,49 @@ Authorized intra-domain workloads MAY read the handle. They MUST NOT place it
 in access tokens, external authorization claims, responses, webhooks, errors,
 or calls to non-participants, and SHOULD omit it from logs and traces. The
 handle conveys no authority.
+
+# Authorization Server Metadata {#metadata}
+
+## IdP Authorization Server Metadata
+
+An IdP that supports this profile SHOULD signal it in its authorization server
+metadata {{RFC8414}} with the following parameter:
+
+`identity_continuation_supported`:
+: OPTIONAL. Boolean value indicating that the IdP accepts Identity Continuation
+  Assertions of the
+  `urn:ietf:params:oauth:token-type:identity-continuation` subject token type
+  and issues continuation-capable ID-JAGs carrying the
+  `identity_continuation_handle` claim. Default `false`.
+
+## Resource Authorization Server Metadata
+
+A Resource Authorization Server advertises separately, by listing the grant
+profile `urn:ietf:params:oauth:grant-profile:id-jag-continuation` in its
+`authorization_grant_profiles_supported`
+{{I-D.ietf-oauth-identity-assertion-authz-grant}}, that it recognizes a
+continuation-capable ID-JAG and binds the `identity_continuation_handle`
+claim to authorization state ({{ras-processing}}). This value is distinct
+from the base ID-JAG grant profile, which signals only ordinary ID-JAG
+processing and no handle binding. Because a continuation-capable ID-JAG is an
+ID-JAG, a Resource Authorization Server that advertises
+`urn:ietf:params:oauth:grant-profile:id-jag-continuation` MUST also advertise
+the base `urn:ietf:params:oauth:grant-profile:id-jag` profile and the
+`urn:ietf:params:oauth:grant-type:jwt-bearer` grant type on which ID-JAG
+depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
+
+A Resource Authorization Server MAY additionally advertise the Continuation
+Assertion Issuer(s) authoritative for the hops it accepts, so the IdP can
+discover them rather than be configured out of band ({{security-trust-model}}):
+
+`identity_continuation_issuers`:
+: OPTIONAL. An array of issuer identifiers whose Identity Continuation
+  Assertions the IdP accepts for hops this Resource Authorization Server
+  accepts. Each issuer publishes its signing keys per {{RFC8414}} or as a JWK
+  Set.
+
+Absent these signals, a party learns of support out of band or by attempting an
+exchange.
 
 # Security Considerations {#security}
 
