@@ -180,9 +180,7 @@ Resource Authorization Server (RAS):
 
 Resource Server (RS):
 : The protected API. It never consumes an Identity Continuation Assertion or
-  uses a continuation handle for authorization. A co-located workload MAY
-  receive the handle only as intra-domain context and MUST NOT place it in an
-  access token or external authorization claim.
+  uses a continuation handle for authorization.
 
 ID-JAG:
 : An Identity Assertion JWT Authorization Grant
@@ -233,24 +231,9 @@ Governing authorization:
   ({{lifecycle}}).
 
 Root-chain envelope:
-: The state the IdP records when it establishes a chain, and against which
-  it evaluates every continuation. The envelope is anchored to the chain's
-  governing authorization ({{lifecycle}}) and records, among its dimensions,
-  the authorization basis and the continuation authorization defined below.
-  Derived from authentication, consent, and tenant policy, it contains:
-
-  * the authenticated user;
-  * the authentication context (`auth_time`, `acr`, `amr`);
-  * the authorization basis for onward targets;
-  * the continuation authorization: the actors or trust domains permitted to
-    continue the chain, and the basis on which that permission was
-    established ({{root-establishment}});
-  * any maximum actor-chain depth set by policy;
-  * the chain's governing authorization ({{lifecycle}}); and
-  * the chain's expiry.
-
-  These dimensions are establishment-time ceilings; {{root-establishment}}
-  defines how they are populated and bounded.
+: The state the IdP records at establishment and evaluates every continuation
+  against, anchored to the chain's governing authorization ({{lifecycle}}); its
+  dimensions and bounds are defined in {{root-establishment}}.
 
 Audience-local (pairwise) subject:
 : The subject identifier under which a particular RAS names the user. Distinct
@@ -342,8 +325,12 @@ The claims have the following meanings and requirements:
   during the assertion validity window and MUST contain at least 128 bits
   of entropy.
 
-The assertion MUST NOT contain top-level `sub`, `auth_time`, `acr`, `amr`, or
-`sid`; those values come from the root-chain envelope.
+The assertion MUST NOT contain a top-level `sub`, `auth_time`, `acr`, `amr`,
+or `sid` claim (these come from the root-chain envelope), nor the Token
+Exchange request parameters `audience`, `resource`, `scope`,
+`authorization_details`, or `requested_token_type` (these are supplied by
+the request). The assertion's `aud` identifies the IdP, not the requested
+target.
 
 Other top-level claims MAY appear but MUST be ignored for validation,
 authorization, and issuance.
@@ -351,56 +338,6 @@ authorization, and issuance.
 Offline-segment evidence MAY be retained separately and SHOULD remain in the
 control plane ({{I-D.mcguinness-oauth-actor-receipts}},
 {{I-D.mcguinness-oauth-actor-proofs}}).
-
-## Claims That Are Deliberately Excluded {#excluded-claims}
-
-The assertion MUST NOT convey these Token Exchange request values:
-
-~~~
-audience (target)
-resource
-scope
-authorization_details
-requested_token_type
-~~~
-
-They remain request parameters. Assertion `aud` identifies the IdP, not the
-requested target.
-
-## CAI Issuance {#assertion-issuance}
-
-The CAI MUST issue only for an actor in the attested RAS's trust
-domain unless tenant configuration explicitly authorizes that external actor
-and its keys. Actor authentication and the issuance
-protocol are deployment-specific.
-
-A presenting workload is a control-plane participant, not a bare-handle
-transporter: it presents the handle read from its own intra-domain context,
-with its key and any narrowing hints, to its CAI. The
-handle is advisory input, re-verified against RAS-bound state by the checks
-below before any assertion issues.
-
-It MUST authenticate the actor and issue only after establishing that:
-
-1. the handle came through an authenticated, confidential,
-   integrity-protected chain path or equivalent authenticated state;
-
-2. the presenting actor is authorized under CAI policy to continue
-   the chain;
-
-3. the presenting actor controls the key placed in `cnf`; and
-
-4. `act` names that actor and, if offline attenuation reached the actor, its
-   delegation artifact is valid.
-
-Possession of a handle or carrier token is insufficient. The CAI MUST bind the
-actor to the current transaction, verify that the
-handle matches that transaction's RAS-bound state, and recheck authoritative,
-uncached RAS state to confirm that the authorization remains active and
-continuation remains permitted. It MUST enforce per-transaction and per-actor
-rate and fan-out limits with audit records. Target or purpose hints MAY narrow
-CAI issuance but MUST NOT control the IdP's target decision.
-Propagated context MUST NOT override the root-chain envelope.
 
 # Continuation Handles (`identity_continuation_handle`) {#chain-id}
 
@@ -554,6 +491,41 @@ authorizes continuation ({{security-trust-model}}); the per-role rules are in
 {{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
 {{validation}}, and {{onward-id-jag}}.
 
+## Issuing the Assertion {#assertion-issuance}
+
+The CAI MUST issue only for an actor in the attested RAS's trust
+domain unless tenant configuration explicitly authorizes that external actor
+and its keys. Actor authentication and the issuance
+protocol are deployment-specific.
+
+A presenting workload is a control-plane participant, not a bare-handle
+transporter: it presents the handle read from its own intra-domain context,
+with its key and any narrowing hints, to its CAI. The
+handle is advisory input, re-verified against RAS-bound state by the checks
+below before any assertion issues.
+
+It MUST authenticate the actor and issue only after establishing that:
+
+1. the handle came through an authenticated, confidential,
+   integrity-protected chain path or equivalent authenticated state;
+
+2. the presenting actor is authorized under CAI policy to continue
+   the chain;
+
+3. the presenting actor controls the key placed in `cnf`; and
+
+4. `act` names that actor and, if offline attenuation reached the actor, its
+   delegation artifact is valid.
+
+Possession of a handle or carrier token is insufficient. The CAI MUST bind the
+actor to the current transaction, verify that the
+handle matches that transaction's RAS-bound state, and recheck authoritative,
+uncached RAS state to confirm that the authorization remains active and
+continuation remains permitted. It MUST enforce per-transaction and per-actor
+rate and fan-out limits with audit records. Target or purpose hints MAY narrow
+CAI issuance but MUST NOT control the IdP's target decision.
+Propagated context MUST NOT override the root-chain envelope.
+
 ## Token Exchange {#token-exchange}
 
 An Identity Continuation Assertion is used as the `subject_token` of an OAuth
@@ -605,7 +577,7 @@ The `subject_token_type` value above is
 
 The requested `audience`, `resource`, `scope`, `requested_token_type`, and
 any `authorization_details` are supplied by the Token Exchange request and
-never by the assertion ({{excluded-claims}}).
+never by the assertion ({{assertion-claims}}).
 
 The request MAY also include `authorization_details` {{RFC9396}}; the
 authorization-basis check ({{validation}}, rule 14) applies equally to it and
@@ -639,10 +611,19 @@ Non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
 only for resolution and MUST NOT enter assertions or chain context.
 
 Server-side consent and policy make the governing authorization
-continuation-capable and populate the root-chain envelope of {{terms}} (the
-authenticated user, authentication context, authorization basis, permitted
-actors or trust domains, depth, governing authorization, and expiry). Token
-claims cannot supply these values. Every dimension is an
+continuation-capable and populate the root-chain envelope, derived from
+authentication, consent, and tenant policy:
+
+* the authenticated user;
+* the authentication context (`auth_time`, `acr`, `amr`);
+* the authorization basis for onward targets;
+* the continuation authorization: the actors or trust domains permitted to
+  continue the chain, and the basis on which that permission was established;
+* any maximum actor-chain depth set by policy;
+* the chain's governing authorization ({{lifecycle}}); and
+* the chain's expiry.
+
+Token claims cannot supply these values. Every dimension is an
 establishment-time ceiling: later policy MAY narrow or revoke it but MUST NOT
 broaden it; broadening requires a new chain. An envelope MAY enumerate exact
 audience and resource pairs with their permitted scopes and authorization
@@ -769,7 +750,7 @@ presented handle.
 8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`,
    `amr`, or `sid` claim, nor an `audience`, `resource`, `scope`,
    `authorization_details`, or `requested_token_type` claim
-   ({{assertion-claims}}, {{excluded-claims}});
+   ({{assertion-claims}});
 
 9. the assertion's `act` claim is present, conforms to the schema of
    {{assertion-claims}}, and identifies the current actor;
