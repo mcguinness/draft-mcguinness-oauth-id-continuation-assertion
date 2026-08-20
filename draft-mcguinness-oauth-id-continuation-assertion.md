@@ -633,42 +633,31 @@ these limits.
 This section applies to a continuation exchange; the root exchange's DPoP
 requirement is specified in {{root-establishment}}.
 
-The actor MUST present a DPoP proof {{RFC9449}} for the key in
-`cnf.jkt`.
-
-DPoP is the single mandatory confirmation method, so the target validates
-confirmation identically to a directly issued ID-JAG; this version defines no
-mutual-TLS variant {{RFC8705}} ({{open-items}}).
+The current actor MUST authenticate as an OAuth client; the IdP MUST map that
+client authoritatively to an actor identity and MUST match that identity to
+the assertion's `act` and the `actor_token`. Self-asserted mappings MUST NOT
+be accepted. A sender-constrained JWT MAY serve as both client assertion
+and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
+is the `client_id` and the IdP MUST authorize its issuer for that client, and
+otherwise the client authenticates separately. The onward ID-JAG `client_id`
+is the current actor's identifier at the target RAS, so the actor needs a
+registration or resolvable client identity at each target.
 
 The `actor_token` MUST NOT be bearer: for a JWT the IdP verifies `cnf.jkt`,
 and for an opaque token it obtains equivalent confirmation from authoritative
-metadata such as introspection {{RFC7662}}. Its issuer, acceptance, sender
-constraint, and applicability are checked by {{validation}} rule 5.
-
-The IdP MUST compare the actor `iss` and `sub` as case-sensitive strings with
-no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
-`act`, and the authenticated client. Identities in different tenants never
+metadata such as introspection {{RFC7662}}; its issuer, acceptance, sender
+constraint, and applicability are checked by {{validation}} rule 5. The IdP
+MUST compare the actor `iss` and `sub` as case-sensitive strings with no
+transformation or canonicalization ({{RFC7519}}), across `actor_token`, `act`,
+and the authenticated client, and identities in different tenants never
 compare equal.
 
-The onward ID-JAG MUST use the same DPoP key.
-
-Key rotation takes effect when the actor obtains a new assertion and actor
-token bound to the new key.
-
-The current actor MUST authenticate as an OAuth client, and the IdP MUST map
-that client authoritatively to an actor identity; self-asserted mappings
-MUST NOT be accepted. On a continuation exchange the IdP MUST also match that
-identity to the assertion's `act` and the `actor_token`; at root establishment
-neither is present, so client authentication alone identifies the root actor.
-
-A sender-constrained JWT MAY serve as both client assertion and `actor_token`
-when it satisfies both profiles. For {{RFC7523}}, its `sub` is the
-`client_id`, and the IdP MUST authorize its issuer for that client. Otherwise
-the client authenticates separately.
-
-The onward ID-JAG `client_id` is the current actor's identifier at the target
-RAS. The actor therefore needs a registration or resolvable client identity
-at each target.
+The actor MUST present a DPoP proof {{RFC9449}} for the key in `cnf.jkt`.
+DPoP is the single mandatory confirmation method, so the target validates
+confirmation identically to a directly issued ID-JAG, and this version defines
+no mutual-TLS variant {{RFC8705}} ({{open-items}}). The onward ID-JAG MUST use
+the same DPoP key; key rotation takes effect when the actor obtains a new
+assertion and actor token bound to the new key.
 
 Four signals identify the actor on a continuation exchange, and all four, with
 the confirmed key, must agree:
