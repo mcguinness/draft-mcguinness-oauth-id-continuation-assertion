@@ -749,36 +749,40 @@ while preventing one assertion from authorizing more than one distinct request.
 It fixes each assertion's outcome to a single request fingerprint.
 
 After validation, grant issuance MUST atomically reserve (`iss`, `jti`) and
-bind it to a fingerprint containing audience and resource as exact strings,
-scope as an order-independent set, the exact `authorization_details` JSON as
-received after form decoding (different serializations are different
-requests), the actor (its `iss` and `sub`), the confirmed key (its `cnf.jkt`
-thumbprint), and a SHA-256 hash of the exact `subject_token` value after form
-decoding, which binds the fingerprint to the specific assertion and its handle.
+bind it to a fingerprint of:
+
+* `audience` and `resource` as exact strings;
+* `scope` as an order-independent set;
+* the exact `authorization_details` JSON as received after form decoding
+  (different serializations are different requests);
+* the actor's `iss` and `sub`;
+* the confirmed key's `cnf.jkt` thumbprint; and
+* a SHA-256 hash of the exact `subject_token` value after form decoding, which
+  binds the fingerprint to the specific assertion and its handle.
 
 The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
-states of {{hop-activation}}. Reservation MUST occur
-only after target and policy validation. Once reserved, the tuple MUST NOT be
-released for another fingerprint. An identical retry MUST return the
-same previously issued grant, not a new one; a different fingerprint MUST be
-rejected. Only one concurrent request can reach ISSUED; a concurrent request
-under a matching fingerprint waits for or retries that result. The IdP MUST
-retain
-the tuple through `exp` plus the maximum permitted clock skew, using the same
-clock used to evaluate `exp`. A reservation that does not reach ISSUED before
-`exp` becomes FAILED; a FAILED tuple is terminal and requires a fresh
-assertion.
+states of {{hop-activation}}:
+
+* reservation MUST occur only after target and policy validation;
+* once reserved, the tuple MUST NOT be released for another fingerprint;
+* an identical retry MUST return the same previously issued grant, not a new
+  one, and a different fingerprint MUST be rejected;
+* only one concurrent request can reach ISSUED; a concurrent request under a
+  matching fingerprint waits for or retries that result; and
+* the IdP MUST retain the tuple through `exp` plus the maximum permitted clock
+  skew, using the same clock used to evaluate `exp`; a reservation that does
+  not reach ISSUED before `exp` becomes FAILED, which is terminal and requires
+  a fresh assertion.
 
 Replay uniqueness MUST use (`iss`, `jti`), not an unbound tenant partition;
 partitioning by tenant alone would let two assertion issuers in one tenant
 collide on a reused `jti`.
 
-The IdP needs strongly consistent replay state. The actor-chain depth bound
-counts collapsed lineage entries, so an actor that repeatedly continues as
-itself collapses to one entry each time and never trips that bound. To bound
-such growth, the fan-out, rate, and hop-count limits of {{root-establishment}}
-apply, aggregated per governing authorization, and the IdP MUST prune expired
-or revoked hop state.
+The IdP needs strongly consistent replay state. Because the actor-chain depth
+bound counts collapsed lineage entries, an actor that repeatedly continues as
+itself never trips it; the fan-out, rate, and hop-count limits of
+{{root-establishment}} bound such growth instead, and the IdP MUST prune
+expired or revoked hop state.
 
 After a lost response, a client MAY retry the same assertion to recover the
 ISSUED result or obtain a fresh assertion. A fresh assertion may create an
