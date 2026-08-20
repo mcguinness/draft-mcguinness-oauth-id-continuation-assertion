@@ -335,10 +335,6 @@ target.
 Other top-level claims MAY appear but MUST be ignored for validation,
 authorization, and issuance.
 
-Offline-segment evidence MAY be retained separately and SHOULD remain in the
-control plane ({{I-D.mcguinness-oauth-actor-receipts}},
-{{I-D.mcguinness-oauth-actor-proofs}}).
-
 # Continuation Handles (`identity_continuation_handle`) {#chain-id}
 
 An `identity_continuation_handle` is an opaque, non-bearer reference to one
@@ -390,12 +386,6 @@ The following rules apply:
 The IdP MAY derive handles from an internal delegation identifier using a
 keyed one-way function if rules 1, 2, and 8 remain satisfied and the resulting
 handles remain unlinkable.
-
-## Handle Freshness and Unlinkability {#chain-id-privacy}
-
-Handles are unlinkable across hops but not among participants in one hop, and
-revoked handles fail the next continuation exchange. {{privacy}} covers the
-residual correlation channels.
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -1184,9 +1174,9 @@ NOT enter an access token, external authorization claims, or protected-API
 authorization input ({{chain-id}}, rule 4). A workload receiving it as
 intra-domain context is a control-plane participant.
 
-Handles are opaque, high-entropy, and hop-specific ({{chain-id}},
-{{chain-id-privacy}}). Resource Authorization Servers therefore cannot use
-them to correlate a user across SaaS boundaries.
+Handles are opaque, high-entropy, and hop-specific ({{chain-id}}). Resource
+Authorization Servers therefore cannot use them to correlate a user across
+SaaS boundaries.
 
 The chain is not unlinkable: the IdP correlates it, participants sharing a
 handle can correlate that hop, and actor lineage and timing may correlate
