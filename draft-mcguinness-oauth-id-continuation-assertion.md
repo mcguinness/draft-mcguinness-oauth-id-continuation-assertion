@@ -272,39 +272,36 @@ Identity Continuation Assertion. Handles H0 and H1 below name the successive
 hops ({{chain-id}}).
 
 ~~~
-  root credential
-       |
-       v
-  [ IdP ]  mints ID-JAG(H0); owns the envelope and hop tree
-       |
-       v
-  [ accepting RAS ]  redeems it, issues an access token, binds H0
-       |
-       v
-  [ TTS or carrier ]  derives H0 into intra-domain request context
-       |
-       v
-  [ Continuation Assertion Issuer ]  attests the accepted hop, actor, and key
-       |
-       v
-  [ IdP ]  authorizes the next target, mints ID-JAG(H1)
+RAS   Client     IdP      Workload      CAI
+ |       |        |           |          |
+ |       base ID-JAG exchange |          |
+ |       |-------->           |          |
+ |       issue ID-JAG (H0)    |          |
+ |       <--------|           |          |
+ present ID-JAG   |           |          |
+ <-------|        |           |          |
+ issue access token, bind H0  |          |
+ |------->        |           |          |
+ |       |        |           |          |
+  carrier surfaces H0 to a later workload
+ |       |        |           |          |
+ |       |        |           request assertion
+ |       |        |           |---------->
+ |       |        |           attest hop, actor, key
+ |       |        |           <----------|
+ |       |        present assertion      |
+ |       |        <-----------|          |
+ |       |        issue ID-JAG (H1)      |
+ |       |        |----------->          |
 ~~~
 
-The responsibilities never mix:
+The workload that continues is a later party, not the original client that
+established the chain.
 
-* the IdP owns the root-chain envelope and the hop tree, and alone resolves
-  each audience-local subject;
-* the accepting RAS decides whether the issued authorization was accepted and
-  binds the hop to it ({{ras-processing}});
-* a trusted intra-domain carrier associates the accepted authorization with the
-  current request inside the domain ({{transaction-token-context}});
-* the Continuation Assertion Issuer attests the accepted hop, the current actor, and its key
-  ({{assertion-issuance}}); and
-* the IdP alone authorizes the next target against the envelope and mints the
-  next ID-JAG ({{validation}}, {{onward-id-jag}}).
-
-Each role validates the inputs within its authority; no artifact or role alone
-authorizes continuation.
+Each role validates only within its authority, and no artifact or role alone
+authorizes continuation ({{security-trust-model}}); the per-role rules are in
+{{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
+{{validation}}, and {{onward-id-jag}}.
 
 # When to Use This Profile Versus Offline Attenuation {#decision-rule}
 
