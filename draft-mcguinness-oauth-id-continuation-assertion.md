@@ -564,17 +564,17 @@ to scope. Client authentication is required on every exchange
 
 ### Establishing a Chain {#root-establishment}
 
-The IdP, not the client, establishes a chain. It MUST do so when a direct
-ID-JAG exchange is governed by a continuation-capable governing authorization,
-and MUST include the root handle in the ID-JAG. The exchange MUST include a
-valid DPoP proof {{RFC9449}}, and the IdP MUST bind the resulting ID-JAG to that
-key in `cnf`; without valid proof it MUST NOT include an
+The IdP, not the client, establishes a chain, and MUST do so when a root
+exchange is governed by a continuation-capable governing authorization;
+advertised support ({{metadata}}) signals capability, not authority. To
+establish, the IdP MUST include the root handle in the ID-JAG. The root
+exchange MUST include a valid DPoP proof {{RFC9449}}, which the IdP MUST bind
+to the ID-JAG in `cnf`. Absent the continuation authorization or a valid
+proof, the IdP MUST NOT establish a chain or include an
 `identity_continuation_handle`. The IdP MAY defer materializing chain state
 until the first continuation, provided the handle still resolves to the same
 root and envelope; this does not relax the reservation durability of
-{{validation-replay}}. Without continuation authorization, the IdP MUST
-NOT establish a chain or include a handle. Advertised support ({{metadata}})
-signals capability, not authority.
+{{validation-replay}}.
 
 The root subject token MUST resolve to one of these lifecycle anchors:
 
@@ -584,55 +584,49 @@ The root subject token MUST resolve to one of these lifecycle anchors:
 * a SAML `SessionIndex` {{SAML2.Core}} resolving to an active IdP session
   for that user and presenter.
 
-The IdP MUST NOT root a chain from an unresolved anchor or an access token.
-Non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
+The IdP MUST NOT root a chain from an unresolved anchor or an access token;
+non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
 only for resolution and MUST NOT enter assertions or chain context.
 
 Server-side consent and policy make the governing authorization
-continuation-capable and populate the root-chain envelope, derived from
-authentication, consent, and tenant policy:
+continuation-capable and populate the root-chain envelope from authentication,
+consent, and tenant policy:
 
-* the authenticated user;
-* the authentication context (`auth_time`, `acr`, `amr`);
+* the authenticated user and authentication context (`auth_time`, `acr`,
+  `amr`);
 * the authorization basis for onward targets;
 * the continuation authorization: the actors or trust domains permitted to
   continue the chain, and the basis on which that permission was established;
-* any maximum actor-chain depth set by policy;
-* the chain's governing authorization ({{lifecycle}}); and
-* the chain's expiry.
+* any maximum actor-chain depth set by policy; and
+* the governing authorization ({{lifecycle}}) and the chain's expiry.
 
 Token claims cannot supply these values. Every dimension is an
-establishment-time ceiling: later policy MAY narrow or revoke it but MUST NOT
-broaden it; broadening requires a new chain. An envelope MAY enumerate exact
-audience and resource pairs with their permitted scopes and authorization
-details {{RFC9396}}; otherwise it records a
-stable, policy-based basis, fixed at establishment, against which the IdP
-evaluates each requested target at request time. A policy-based basis is not
-whatever the user could authorize later: it is the enforceable record captured
-at establishment, and consent granted afterward cannot broaden it.
+establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
+broaden; broadening requires a new chain, and consent granted afterward does
+not widen the envelope. An envelope MAY enumerate exact audience and resource
+pairs with their permitted scopes and authorization details {{RFC9396}};
+otherwise it records a stable, policy-based basis, fixed at establishment and
+not whatever the user could later authorize, against which the IdP evaluates
+each requested target at request time.
 
-The root actor is the authenticated OAuth client under the mapping in
-{{client-identity}}. An optional `actor_token` MUST be valid, MUST be accepted
-for continuation, and MUST designate the IdP where applicable. It MUST also be
-sender-constrained to the confirmed key and MUST identify that client.
-Only after validation does the IdP record the root actor and key. The root
-actor's identity rests entirely on this client authentication
-({{client-identity}}); base ID-JAG's recommendation to use a confidential
-client therefore applies to a continuation-capable root.
+The root actor is the authenticated OAuth client, under the mapping in
+{{client-identity}} on which its identity rests entirely; base ID-JAG's
+recommendation to use a confidential client therefore applies to a
+continuation-capable root. An optional `actor_token` MUST be valid, accepted
+for continuation, and sender-constrained to the confirmed key, and MUST
+identify that client and designate the IdP where applicable; the IdP records
+the root actor and key only after this validation.
 
 For every root or child hop, the IdP records the target RAS and the CAIs mapped
-to it; the mapping MAY be static tenant configuration.
-Only a mapped CAI may attest that hop. A terminal RAS ignores the
-handle; only a continuation-aware RAS can bind it and make the hop
-continuable. Grant-profile advertisement is discovery only; a party that
-requires onward continuation SHOULD consult it when available.
+to it; the mapping MAY be static tenant configuration, and only a mapped CAI
+may attest that hop.
 
 Establishment is at-least-once: retrying a lost response MAY create a second
 chain. Revocation of the governing authorization applies to every chain rooted
 in it, and the actor-chain depth bound is enforced per branch; the IdP MUST
 enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
-to the governing authorization; a retried establishment MUST NOT evade these
-limits.
+to the governing authorization, and a retried establishment MUST NOT evade
+these limits.
 
 ### Presenter Authentication {#client-identity}
 
@@ -1042,8 +1036,9 @@ discover them rather than be configured out of band ({{security-trust-model}}):
   accepts. Each issuer publishes its signing keys per {{RFC8414}} or as a JWK
   Set.
 
-Absent these signals, a party learns of support out of band or by attempting an
-exchange.
+A party that requires onward continuation SHOULD consult this advertisement
+when available; absent these signals, it learns of support out of band or by
+attempting an exchange.
 
 # Security Considerations {#security}
 
