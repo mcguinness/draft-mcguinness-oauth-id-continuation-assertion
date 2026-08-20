@@ -558,7 +558,7 @@ any `authorization_details` are supplied by the Token Exchange request and
 never by the assertion ({{assertion-claims}}).
 
 The request MAY also include `authorization_details` {{RFC9396}}; the
-authorization-basis check ({{validation}}, rule 14) applies equally to it and
+authorization-basis check ({{validation}}, rule 7) applies equally to it and
 to scope. Client authentication is required on every exchange
 ({{client-identity}}).
 
@@ -643,7 +643,7 @@ mutual-TLS variant {{RFC8705}} ({{open-items}}).
 The `actor_token` MUST NOT be bearer: for a JWT the IdP verifies `cnf.jkt`,
 and for an opaque token it obtains equivalent confirmation from authoritative
 metadata such as introspection {{RFC7662}}. Its issuer, acceptance, sender
-constraint, and applicability are checked by {{validation}} rule 10.
+constraint, and applicability are checked by {{validation}} rule 5.
 
 The IdP MUST compare the actor `iss` and `sub` as case-sensitive strings with
 no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
@@ -682,90 +682,76 @@ the confirmed key, must agree:
 
 ### Request Validation {#validation}
 
-The IdP MUST reject the request unless every rule below holds. Their order is
-not significant, though one rule's input may come from another's resolution:
-the tenant used to check CAI trust comes from resolving the
-presented handle.
+The IdP MUST reject the request unless every rule below holds; their order is
+not significant, though one rule's input may come from another's resolution.
 
-1. the request contains exactly one each of `grant_type`, `subject_token`,
-   `subject_token_type`, `requested_token_type`, `actor_token`, and
-   `actor_token_type`; the `grant_type` is
-   `urn:ietf:params:oauth:grant-type:token-exchange`, and the
-   `subject_token_type` is
-   `urn:ietf:params:oauth:token-type:identity-continuation`;
+1. **Request parameters.**
+   * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
+     `requested_token_type`, `actor_token`, `actor_token_type`, `audience`,
+     and `resource`;
+   * at most one each of `scope` and `authorization_details`, both OPTIONAL
+     and, when present, evaluated by rule 7; and
+   * `grant_type` is `urn:ietf:params:oauth:grant-type:token-exchange`,
+     `subject_token_type` is
+     `urn:ietf:params:oauth:token-type:identity-continuation`, and
+     `requested_token_type` is `urn:ietf:params:oauth:token-type:id-jag`;
 
-2. the request contains exactly one `audience` and one `resource` parameter,
-   and at most one `scope` and one `authorization_details`; `scope` and
-   `authorization_details` are OPTIONAL, each evaluated by rule 14 when present;
+2. **Assertion well-formedness.**
+   * the assertion is a JWT whose JOSE `typ` header is
+     `oauth-identity-continuation+jwt`;
+   * it contains exactly one value for each claim required by
+     {{assertion-claims}} and none of the claims that section forbids;
+   * `iss`, `aud`, `identity_continuation_handle`, and `jti` are non-empty
+     strings, `act` and `cnf` are JSON objects with `cnf` naming exactly one
+     confirmation method, and `iat` and `exp` are NumericDate numbers;
+   * the signature validates under an acceptable algorithm ({{security-alg}},
+     {{RFC8725}}); and
+   * `aud` exactly matches the IdP's issuer identifier;
 
-3. the assertion is a JWT containing exactly one value for each required claim
-   defined in {{assertion-claims}}; `iss`, `aud`,
-   `identity_continuation_handle`, and `jti` are non-empty strings; `act` and
-   `cnf` are JSON objects, with `cnf` containing exactly one confirmation
-   method; `iat` and `exp` are JSON numbers representing NumericDate values;
-   and the JOSE `typ` header is `oauth-identity-continuation+jwt`;
+3. **Issuer trust.** The assertion `iss` is trusted for the tenant, mapped to
+   the hop's accepting RAS, and authorized to pair with the `actor_token`
+   issuer for that tenant;
 
-4. the assertion signature validates and its algorithm is acceptable, per
-   {{security-alg}} and {{RFC8725}};
+4. **Chain state.**
+   * the handle identifies a RAS-accepted hop ({{hop-activation}}) on an
+     active chain;
+   * no ancestor subtree is revoked; and
+   * the actor lineage that results from collapsing consecutive same-actor
+     entries, as the onward `act` will ({{onward-id-jag}}), is within its
+     depth bound, which counts lineage entries, not hops;
 
-5. the assertion `aud` exactly matches the IdP's issuer identifier;
+5. **Current actor and binding.**
+   * `act` is present, conforms to the schema of {{assertion-claims}}, and
+     identifies the current actor, which is the OAuth client the request is
+     authenticated as ({{client-identity}});
+   * the `actor_token_type` names a token type the IdP supports, and the
+     `actor_token` has a trusted issuer for the actor's domain and tenant, is
+     valid for that type, is accepted, designates the IdP where applicable,
+     authenticates the actor, and is sender-constrained to the key confirmed
+     by the assertion's `cnf` ({{client-identity}});
+   * the request proves possession of the `cnf` key with a matching DPoP
+     proof ({{client-identity}}, {{RFC9449}});
+   * the actor is permitted by the chain's continuation authorization
+     ({{root-establishment}}) to continue from the presented hop; and
+   * the IdP can resolve, for the requested `audience`, both the
+     audience-local subject and the actor's client identifier
+     ({{client-identity}});
 
-6. assertion `iss` is trusted for the tenant, mapped to the hop's accepting RAS,
-   and authorized to pair with the `actor_token` issuer for that tenant;
+6. **Freshness and replay.**
+   * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
+     seconds), `exp` follows `iat`, the assertion is unexpired, and its
+     lifetime does not exceed 300 seconds; and
+   * `jti` is not yet reserved for the assertion issuer, or is RESERVED or
+     ISSUED under a fingerprint matching this request (permitting idempotent
+     retry; see {{validation-replay}}); a RESERVED or ISSUED `jti` under a
+     different fingerprint, or a FAILED `jti`, is rejected;
 
-7. the handle identifies a RAS-accepted hop ({{hop-activation}}) on an active
-   chain, no ancestor
-   subtree is revoked, and the actor lineage that results from collapsing
-   consecutive same-actor entries, as the onward `act` will ({{onward-id-jag}}),
-   is within its depth bound; the bound counts lineage entries, not hops;
-
-8. the assertion does not contain a top-level `sub`, `auth_time`, `acr`,
-   `amr`, or `sid` claim, nor an `audience`, `resource`, `scope`,
-   `authorization_details`, or `requested_token_type` claim
-   ({{assertion-claims}});
-
-9. the assertion's `act` claim is present, conforms to the schema of
-   {{assertion-claims}}, and identifies the current actor;
-
-10. the request and actor are bound:
-    * the request is authenticated as an OAuth client that is the same
-      entity as the current actor ({{client-identity}});
-    * the `actor_token_type` names a token type the IdP supports, and the
-      `actor_token` has a trusted issuer for the actor's domain and tenant, is
-      valid for that type, is accepted, designates the IdP where applicable,
-      and authenticates the actor;
-    * the `actor_token` is sender-constrained to the key confirmed by the
-      assertion's `cnf` ({{client-identity}});
-    * that actor is the actor named in `act`; and
-    * that actor is permitted by the chain's continuation authorization
-      ({{root-establishment}}) to continue from the presented hop;
-
-11. the request proves possession of the `cnf` key with a matching DPoP proof
-    ({{client-identity}}, {{RFC9449}});
-
-12. `jti` is not yet reserved for the assertion issuer, or is RESERVED or
-    ISSUED under a fingerprint matching this request (permitting idempotent
-    retry; see the reservation rules in {{validation-replay}}); a RESERVED or
-    ISSUED `jti` under
-    a different fingerprint, or a FAILED `jti`, is rejected;
-
-13. `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
-    seconds), `exp` follows `iat`, the assertion is unexpired, and its lifetime
-    does not exceed 300 seconds;
-
-14. requested audience, resource, scopes, and authorization details are
-    within the root-chain envelope as recorded at establishment and within
-    current IdP actor policy; authorization-details containment uses the
-    comparison rules defined for each authorization-detail type, since
-    {{RFC9396}} defines no generic comparison, and a detail type whose rules
-    the IdP does not implement is rejected;
-
-15. the requested output token type is
-    `urn:ietf:params:oauth:token-type:id-jag`; and
-
-16. the IdP can resolve, for the requested `audience`, both the
-    audience-local subject and the current actor's client identifier
-    ({{client-identity}}).
+7. **Envelope containment.** The requested audience, resource, scopes, and
+   authorization details are within the root-chain envelope as recorded at
+   establishment and within current IdP actor policy; authorization-details
+   containment uses the comparison rules defined for each authorization-detail
+   type, since {{RFC9396}} defines no generic comparison, and a detail type
+   whose rules the IdP does not implement is rejected.
 
 ### Replay Reservation and Retry {#validation-replay}
 
@@ -827,7 +813,7 @@ API.
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG containing the resolved target `sub` and
-fresh handle. An idempotent retry (rule 12; {{validation-replay}}) instead
+fresh handle. An idempotent retry (rule 6; {{validation-replay}}) instead
 returns the previously issued grant unchanged, creating no new hop or handle.
 
 On failure, the IdP returns an OAuth error {{RFC6749}}, {{RFC8693}}, and
@@ -895,7 +881,7 @@ presented hop's lineage; it never copies lineage from the assertion. Siblings
 do not contribute. Consecutive identical actors collapse to one entry, though
 the hop record remains; policy MAY limit disclosed depth, narrowing what a
 target sees without changing the depth bound the IdP enforces
-({{validation}}, rule 7).
+({{validation}}, rule 4).
 
 The target RAS validates the ID-JAG, issues its access token, and, if
 continuation-aware, binds the handle. The ID-JAG `client_id` is the current
@@ -1103,13 +1089,13 @@ A continuation requires all of these, and no one of them suffices alone:
 
 * the CAI mapped to the presented hop's accepting Resource
   Authorization Server, which attests the chain-to-actor transition
-  ({{validation}}, rule 6);
+  ({{validation}}, rule 3);
 * the workload identity issuer trusted for the current actor's trust domain,
   which authenticates the actor through the `actor_token` ({{validation}},
-  rule 10);
-* live proof of possession of the confirmed key ({{validation}}, rule 11); and
+  rule 5);
+* live proof of possession of the confirmed key ({{validation}}, rule 5); and
 * the IdP's own root-chain envelope and current-actor policy
-  ({{validation}}, rule 14).
+  ({{validation}}, rule 7).
 
 The IdP MUST authorize CAI and actor-token issuer pairings per
 tenant; separate trust in each is insufficient. It MUST scope CAI
@@ -1552,7 +1538,7 @@ Server-side state:
 The envelope also records the governing authorization, permitted continuers,
 and expiry. A deployment with unknown onward targets records an
 authorization-basis ceiling instead and evaluates each target at continuation
-time ({{validation}}, rule 14).
+time ({{validation}}, rule 7).
 
 The IdP creates a fresh root hop, H0, for this chain and embeds it as a
 claim of the ID-JAG it is about to issue ({{chain-id}}, rule 1); the hop is
@@ -1855,7 +1841,7 @@ Suppose TravelSaaS must also call PartnerSaaS at `https://partner.example/`,
 whose Resource Authorization Server does not trust `idp.example`. The chain
 cannot continue there: the IdP holds no pairwise subject for that audience
 and no authorization basis covers it, so a continuation request for that
-target fails ({{validation}}, rules 14 and 16; `invalid_target`). This is
+target fails ({{validation}}, rules 5 and 7; `invalid_target`). This is
 the profile's boundary, not a deployment error: continuation serves the set
 of Resource Authorization Servers that trust the common IdP.
 
@@ -2021,7 +2007,7 @@ For a deployment that expects dynamic targets, the envelope's basis is
 Alice's standing consent as recorded when the chain was established (for
 example, a productivity read-access grant) and tenant policy, with no
 enumerated targets; the IdP evaluates each dynamic target against that
-recorded basis at continuation time ({{validation}}, rule 14). A scope granted
+recorded basis at continuation time ({{validation}}, rule 7). A scope granted
 only later does not extend this chain. The same exchange succeeds only if
 read access to the mail service is within Alice's standing consent and tenant
 policy permits `briefing-agent` to reach it. A request for `mail.send`,
@@ -2107,7 +2093,7 @@ The eventual upstreams are not known at root time, so, unlike the worked
 example whose envelope enumerated each onward target, this envelope records an
 authorization-basis ceiling, Alice's standing consent and tenant policy, with
 no enumerated targets; enterprise policy permits `tool-gateway` to continue it
-({{root-establishment}}, {{validation}}, rule 14). GatewayRAS accepts the
+({{root-establishment}}, {{validation}}, rule 7). GatewayRAS accepts the
 ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
 
 AgentApp then invokes the gateway with its access token and no continuation
@@ -2127,7 +2113,7 @@ the IdP as in {{example-chained}}, now requesting
 
 Because the envelope enumerates no targets, the IdP evaluates this dynamically
 chosen target against the recorded basis, Alice's standing consent and tenant
-policy at establishment ({{validation}}, rule 14). Wiki read access is within
+policy at establishment ({{validation}}, rule 7). Wiki read access is within
 that basis and enterprise policy permits `tool-gateway` to reach it, so the
 exchange succeeds and the IdP constructs the onward lineage with `tool-gateway`
 atop `agent-app`. A target hint from the gateway informs issuance limits and
