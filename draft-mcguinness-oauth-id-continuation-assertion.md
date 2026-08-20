@@ -338,53 +338,41 @@ authorization, and issuance.
 # Continuation Handles (`identity_continuation_handle`) {#chain-id}
 
 An `identity_continuation_handle` is an opaque, non-bearer reference to one
-IdP-held hop. H0 identifies the accepted source hop; an assertion presents H0
-to continue from it, and on success the IdP creates a child H1 and places H1,
-not H0, in the onward ID-JAG. The child's immutable parent is the presented
-hop, so in the {{example}} chain the TravelRAS hop (H1) is a child of the
-ExpenseRAS hop (H0). Reusing H0 for another permitted target creates a sibling
-of H1, not a descendant; concurrent children are independent siblings.
+IdP-held hop of a chain. The IdP mints a fresh handle for each hop and carries
+it in that hop's ID-JAG; continuing from a hop produces a child hop with its
+own handle, recorded against the hop it continued from.
 
 The following rules apply:
 
-1. When it establishes a chain ({{root-establishment}}), the IdP MUST embed a
-   fresh hop reference as the `identity_continuation_handle` claim of the issued
-   ID-JAG, for the root hop and for each continuation hop.
-   Handle values MUST NOT be reused across hops. An ID-JAG that carries the
-   `identity_continuation_handle` claim is continuation-capable.
+1. The IdP MUST embed a fresh `identity_continuation_handle` claim in each
+   issued ID-JAG, for the root hop and every continuation hop
+   ({{root-establishment}}), and MUST NOT reuse a handle across hops. An ID-JAG
+   carrying this claim is continuation-capable.
 
 2. `identity_continuation_handle` MUST contain at least 128 bits of entropy,
    MUST NOT contain user-identifying information, and MUST consist of 22 to
    256 characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`,
    `0`-`9`, `-`, `_`).
 
-3. The handle crosses a trust boundary only inside an ID-JAG to the RAS or an
-   Identity Continuation Assertion to the IdP, never standalone.
+3. The handle travels only inside an ID-JAG (to the RAS) or an Identity
+   Continuation Assertion (to the IdP), never standalone, and MUST NOT appear
+   in an access token or external Resource Server authorization claim.
+   Authorized workloads MAY observe it only as intra-domain context
+   ({{transaction-token-context}}).
 
-4. The handle MUST NOT appear in an access token or external Resource Server
-   authorization claim. Authorized workloads MAY observe it only in
-   intra-domain context subject to {{transaction-token-context}}.
+4. A continuation-aware RAS binds the handle to the authorization state it
+   establishes ({{ras-processing}}); RASes, Resource Servers, and CAIs MUST NOT
+   modify the value. A hop is continuable only after that acceptance and binding
+   ({{hop-activation}}); the IdP MUST use the handle only to resolve hop state,
+   subject, and policy, never as authority.
 
-5. The IdP performs end-to-end audit correlation; each RAS logs its local
-   subject.
-
-6. A continuation-aware Resource Authorization Server binds
-   `identity_continuation_handle` to the authorization state it establishes
-   ({{ras-processing}}); Resource
-   Authorization Servers, Resource Servers, and CAIs MUST NOT
-   modify the value.
-
-7. A hop is continuable only after RAS acceptance and binding
-   ({{hop-activation}}). The handle conveys no authority; the IdP MUST use it
-   only to resolve hop state, subject, and policy.
-
-8. A hop's parent reference is immutable. The IdP MUST derive lineage solely
-   by walking parent references from the presented hop to the root, and MUST
-   NOT maintain or extend a single chain-wide actor history: concurrent
-   sibling continuations are independent branches.
+5. A hop's parent reference is immutable. The IdP MUST derive lineage only by
+   walking parent references to the root, and MUST NOT keep a single chain-wide
+   actor history; concurrent sibling continuations are independent branches. The
+   IdP performs end-to-end audit correlation; each RAS logs its local subject.
 
 The IdP MAY derive handles from an internal delegation identifier using a
-keyed one-way function if rules 1, 2, and 8 remain satisfied and the resulting
+keyed one-way function if rules 1, 2, and 5 remain satisfied and the resulting
 handles remain unlinkable.
 
 # Chain Lifetime and Revocation {#lifecycle}
@@ -1171,7 +1159,7 @@ A hop's `identity_continuation_handle` is visible only to its ID-JAG client,
 accepting Resource Authorization Server, and IdP, plus the domain's
 carrier, CAI, and authorized workloads. It MUST
 NOT enter an access token, external authorization claims, or protected-API
-authorization input ({{chain-id}}, rule 4). A workload receiving it as
+authorization input ({{chain-id}}, rule 3). A workload receiving it as
 intra-domain context is a control-plane participant.
 
 Handles are opaque, high-entropy, and hop-specific ({{chain-id}}). Resource
@@ -1322,7 +1310,7 @@ Claim Description:
   appears in an Identity Continuation Assertion and in a continuation-capable
   ID-JAG, and its value may also travel in intra-domain chain context; it
   MUST NOT be placed in an access token or a Resource Server's external
-  authorization claims ({{chain-id}}, rules 3 and 4).
+  authorization claims ({{chain-id}}, rule 3).
 
 Change Controller:
 : IETF
