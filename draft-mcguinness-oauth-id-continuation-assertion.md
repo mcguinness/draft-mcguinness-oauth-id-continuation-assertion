@@ -563,7 +563,7 @@ Continuation Assertion for the root credential and additionally supplies the
 actor authentication and DPoP proof described below. The IdP establishes the
 chain; no request parameter asks it to do so ({{root-establishment}}).
 
-### Direct ID-JAG Request
+### Request
 
 A direct request, in which the subject token is a normal subject token such as
 an ID Token, refresh token, or SAML assertion:
@@ -584,6 +584,33 @@ On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}). The
 direct request and its ID-JAG conform to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it for continuation-capable issuance.
+
+A chained request, in which the subject token is an Identity Continuation
+Assertion:
+
+~~~
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+audience=https://ras.travel.example/
+resource=https://api.travel.example/
+scope=trips.read
+subject_token=<identity-continuation-assertion>
+subject_token_type=<identity-continuation-token-type>
+actor_token=<sender-constrained-current-actor-credential>
+actor_token_type=<actor-token-type>
+~~~
+
+The `subject_token_type` value above is
+`urn:ietf:params:oauth:token-type:identity-continuation`.
+
+The requested `audience`, `resource`, `scope`, `requested_token_type`, and
+any `authorization_details` are supplied by the Token Exchange request and
+never by the assertion ({{excluded-claims}}).
+
+The request MAY also include `authorization_details` {{RFC9396}}; the
+authorization-basis check ({{validation}}, rule 14) applies equally to it and
+to scope. Client authentication is required on every exchange
+({{client-identity}}).
 
 ### Establishing a Chain {#root-establishment}
 
@@ -648,36 +675,7 @@ enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
 to the governing authorization; a retried establishment MUST NOT evade these
 limits.
 
-### Chained ID-JAG Request
-
-A chained request, in which the subject token is an Identity Continuation
-Assertion:
-
-~~~
-grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-audience=https://ras.travel.example/
-resource=https://api.travel.example/
-scope=trips.read
-subject_token=<identity-continuation-assertion>
-subject_token_type=<identity-continuation-token-type>
-actor_token=<sender-constrained-current-actor-credential>
-actor_token_type=<actor-token-type>
-~~~
-
-The `subject_token_type` value above is
-`urn:ietf:params:oauth:token-type:identity-continuation`.
-
-The requested `audience`, `resource`, `scope`, `requested_token_type`, and
-any `authorization_details` are supplied by the Token Exchange request and
-never by the assertion ({{excluded-claims}}).
-
-The request MAY also include `authorization_details` {{RFC9396}}; the
-authorization-basis check ({{validation}}, rule 14) applies equally to it and
-to scope. Client authentication is required on every exchange
-({{client-identity}}).
-
-### Sender-Constrained Presentation {#sender-constrained-presentation}
+### Presenter Authentication {#client-identity}
 
 This section applies to a chained request; a direct request's DPoP requirement
 is specified in {{root-establishment}}.
@@ -704,8 +702,6 @@ The onward ID-JAG MUST use the same DPoP key.
 Key rotation takes effect when the actor obtains a new assertion and actor
 token bound to the new key.
 
-### Client Identity and Authentication {#client-identity}
-
 The current actor MUST authenticate as an OAuth client, and the IdP MUST map
 that client authoritatively to an actor identity; self-asserted mappings
 MUST NOT be accepted. On a continuation exchange the IdP MUST also match that
@@ -730,19 +726,6 @@ the confirmed key, must agree:
 | `actor_token` | the actor vouched for by its workload-identity issuer |
 | Assertion `act` | the actor the CAI bound to the accepted hop |
 | DPoP | live possession of the key binding all three to this request |
-
-### Continuation Handle Delivery {#handle-delivery}
-
-The IdP delivers the hop reference in the issued ID-JAG's
-`identity_continuation_handle` claim ({{chain-id}}, rule 1; {{onward-id-jag}}),
-not as a separate Token Exchange response parameter. The accepting Resource
-Authorization Server binds it ({{ras-processing}}) and the domain then surfaces
-it to continuers as intra-domain context ({{transaction-token-context}}).
-
-There is no chain-expiry response parameter: chain lifetime is authoritative at
-the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
-through task or authorization state, an optional ID-JAG claim, or a management
-API.
 
 ### Request Validation {#validation}
 
@@ -799,13 +782,13 @@ presented handle.
       valid for that type, is accepted, designates the IdP where applicable,
       and authenticates the actor;
     * the `actor_token` is sender-constrained to the key confirmed by the
-      assertion's `cnf` ({{sender-constrained-presentation}});
+      assertion's `cnf` ({{client-identity}});
     * that actor is the actor named in `act`; and
     * that actor is permitted by the chain's continuation authorization
       ({{root-establishment}}) to continue from the presented hop;
 
 11. the request proves possession of the `cnf` key with a matching DPoP proof
-    ({{sender-constrained-presentation}}, {{RFC9449}});
+    ({{client-identity}}, {{RFC9449}});
 
 12. `jti` is not yet reserved for the assertion issuer, or is RESERVED or
     ISSUED under a fingerprint matching this request (permitting idempotent
@@ -876,7 +859,18 @@ idempotency remains out of scope. The CAI SHOULD account for
 retries separately from fan-out while preventing retry claims from bypassing
 limits.
 
-### Success and Error Responses {#validation-response}
+### Response {#onward-id-jag}
+
+The IdP delivers the hop reference in the issued ID-JAG's
+`identity_continuation_handle` claim ({{chain-id}}, rule 1; {{onward-id-jag}}),
+not as a separate Token Exchange response parameter. The accepting Resource
+Authorization Server binds it ({{ras-processing}}) and the domain then surfaces
+it to continuers as intra-domain context ({{transaction-token-context}}).
+
+There is no chain-expiry response parameter: chain lifetime is authoritative at
+the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
+through task or authorization state, an optional ID-JAG claim, or a management
+API.
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG containing the resolved target `sub` and
@@ -900,8 +894,6 @@ withdrawn continuation authorization cannot re-root at all. Target-specific
 errors (`invalid_target`, `invalid_scope`, `invalid_authorization_details`)
 leave the chain otherwise continuable, so a
 client abandons only the current request.
-
-### Onward ID-JAG {#onward-id-jag}
 
 The onward ID-JAG conforms to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
@@ -1246,7 +1238,7 @@ Change Controller:
 : IETF
 
 Specification Document(s):
-: This document, {{validation-response}}
+: This document, {{onward-id-jag}}
 
 ## OAuth URI Registration
 
@@ -2224,7 +2216,7 @@ This non-normative appendix lists unresolved design questions.
    profile ({{rationale-pull}})?
 
 4. **Mutual-TLS binding.** Should this profile and ID-JAG add mutual-TLS
-   binding together ({{sender-constrained-presentation}})?
+   binding together ({{client-identity}})?
 
 5. **A client establishment parameter.** Should a client be able to require
    or suppress chain establishment, or negotiate lifetime, depth, or
