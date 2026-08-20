@@ -146,12 +146,13 @@ call path):
 ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
 
-Each trust domain from which the chain continues has three roles: the RAS that
-accepts an ID-JAG and binds the hop; a trusted carrier, typically a Transaction
-Token Service (TTS), that carries the hop reference to workloads inside the
-domain; and a Chain Authority (CA) that issues the Identity Continuation
-Assertion a workload presents to the IdP.
-One party may operate all three within a domain ({{security-tts}}).
+Each trust domain from which the chain continues has two roles: the RAS that
+accepts an ID-JAG and binds the hop, and a Chain Authority (CA) that issues the
+Identity Continuation Assertion a workload presents to the IdP. Between them, a
+trusted intra-domain carrier surfaces the hop reference to workloads inside the
+domain ({{transaction-token-context}}); the carrier is a deployment choice, not
+a distinct role. One party may operate all of these within a domain
+({{security-trust-model}}).
 
 ## Relationship to ID-JAG and Identity Chaining
 
@@ -163,7 +164,7 @@ This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 * an `identity_continuation_handle` claim in continuation-capable ID-JAGs;
 * RAS binding of that claim to accepted authorization state;
 * continuation-exchange validation rules;
-* intra-domain Transaction Token context; and
+* intra-domain handle propagation; and
 * discovery metadata.
 
 # Conventions and Definitions {#terms}
@@ -199,13 +200,8 @@ Chain:
 
 Chain Authority (CA):
 : The role trusted by the IdP to issue Identity Continuation Assertions for a
-  tenant. It may be a RAS, TTS, gateway, or dedicated service, but never
+  tenant. It may be a RAS, gateway, or dedicated service, but never
   resolves the target audience's user subject.
-
-Transaction Token Service (TTS):
-: The service that, within a trust domain, derives a bound hop's continuation
-  handle from Resource Authorization Server state into the intra-domain chain
-  context its workloads carry ({{transaction-token-context}}).
 
 Current actor (presenting actor):
 : The workload presenting the assertion to the IdP, named by `act` and
@@ -301,9 +297,8 @@ The responsibilities never mix:
   each audience-local subject;
 * the accepting RAS decides whether the issued authorization was accepted and
   binds the hop to it ({{ras-processing}});
-* a Transaction Token Service, or an equivalent trusted carrier, associates the
-  accepted authorization with the current request inside the domain
-  ({{transaction-token-context}});
+* a trusted intra-domain carrier associates the accepted authorization with the
+  current request inside the domain ({{transaction-token-context}});
 * the Chain Authority attests the accepted hop, the current actor, and its key
   ({{assertion-issuance}}); and
 * the IdP alone authorizes the next target against the envelope and mints the
@@ -444,7 +439,7 @@ bypassing the RAS-acceptance path. Actor authentication and the issuance
 protocol are deployment-specific.
 
 A presenting workload is a control-plane participant, not a
-bare-handle-transporting application ({{handle-carriers}}): it reads the handle
+bare-handle-transporting application: it reads the handle
 from its
 own intra-domain context and presents it to its Chain Authority, along with its
 key and any narrowing hints. That handle is advisory input, not an authority
@@ -464,7 +459,7 @@ It MUST authenticate the actor and issue only after establishing that:
 4. `act` names that actor and, if offline attenuation reached the actor, its
    delegation artifact is valid.
 
-Possession of a handle or Transaction Token is insufficient. The Chain
+Possession of a handle or carrier token is insufficient. The Chain
 Authority MUST bind the actor to the current transaction, verify that the
 handle matches that transaction's RAS-bound state, and recheck authoritative,
 uncached RAS state to confirm that the authorization remains active and
@@ -525,22 +520,6 @@ The following rules apply:
 The IdP MAY derive handles from an internal delegation identifier using a
 keyed one-way function if rules 1, 2, and 8 remain satisfied and the resulting
 handles remain unlinkable.
-
-## Continuation Handle Carriers {#handle-carriers}
-
-A handle travels by one of three carriers, depending on context lifetime:
-
-| Situation | Authoritative store | Application carries |
-|---|---|---|
-| Cross-domain hop ({{ras-processing}}) | IdP hop state | Assertion to the IdP, then ID-JAG to the RAS |
-| Active request ({{transaction-token-context}}) | RAS authorization state | Access token; the TTS derives the context |
-| Scheduled execution ({{task-provenance}}) | Durable task/RAS authorization | Opaque task identifier |
-
-An external or requesting application never selects or persists a bare handle
-for transport; it carries an artifact from which trusted server-side state
-derives the handle. An authorized intra-domain control-plane workload is
-different: it reads the handle from that state and presents it to its Chain
-Authority ({{assertion-issuance}}).
 
 ## Handle Freshness and Unlinkability {#chain-id-privacy}
 
@@ -1127,55 +1106,30 @@ explicit intersection model.
 ## Durable Task Authorization {#task-provenance}
 
 Scheduled continuation MUST root in durable RAS authorization, not a
-scheduler-held handle: a scheduler holding the handle would turn it into a
-durable, bearer-like credential outside the per-call key proof and RAS binding
-that gate every other use. The scheduler holds only a task identifier; each
-authenticated run derives the handle from active task state and still
-requires an assertion from a mapped Chain Authority.
+scheduler-held handle, which would become a durable bearer-like credential
+outside the per-call key proof and RAS binding that gate every other use. The
+scheduler holds only a task identifier; each authenticated run re-derives the
+handle from active task state and still requires an assertion from a mapped
+Chain Authority.
 
-# Transaction Token Chain Context {#transaction-token-context}
+# Intra-Domain Handle Propagation {#transaction-token-context}
 
-A trusted intra-domain carrier associates the accepted hop with the current
-request. Such a carrier is server-derived, bound to the current credential,
-key, and RAS authorization, non-overridable by the requester, confined to the
-trust domain, and re-derived when replaced, as the rules below require. A
-Transaction Token is the standardized realization of these properties; an
-equivalent carrier is permitted only where all of them hold
-({{security-envelope}}).
+Within a trust domain, an authorized workload learns the accepted hop's handle
+from a trusted intra-domain carrier, never from a requester-supplied value. The
+carrier is server-derived and bound to the current credential, key, and RAS
+authorization; non-overridable by the requester; confined to the trust domain;
+and re-derived when replaced. A Transaction Token
+{{I-D.ietf-oauth-transaction-tokens}} is one realization of these properties;
+the specific carrier is deployment-specific ({{rationale-txn}}).
 
-Within a trust domain, a TTS derives the handle from RAS-bound authorization
-state and places it in Transaction Token context
-{{I-D.ietf-oauth-transaction-tokens}}:
-
-~~~ json
-"tctx": {
-  "identity_continuation": {
-    "iss": "https://idp.example/",
-    "tenant": "tenant-123",
-    "handle": "kW4uJ8pTe2NxA6rQvD1zYs"
-  }
-}
-~~~
-
-The `identity_continuation` object has the following members:
-
-* `iss` (REQUIRED): the exact IdP issuer identifier.
-* `handle` (REQUIRED): the hop's continuation handle.
-* `tenant` (REQUIRED except for a single-tenant IdP issuer, identified by
-  `iss`): the tenant.
-
-A recipient MUST ignore unknown members. A malformed or repeated object MUST
-be treated as carrying no chain context.
-
-The requester MUST NOT supply or override this member. Before deriving, the
-protected endpoint or TTS MUST validate live proof of possession of the
-confirmed key presented on the current call. It MUST then derive the member
-from the authorization record bound to that verified credential, key, and RAS
-state, never from a session or subject, which could otherwise bind the wrong
-user's authorization state to this call. The token MUST
-NOT be accepted outside its trust domain and is normally forwarded
-unmodified. A replacement token MUST re-derive the member from the same
-RAS-bound state.
+The requester MUST NOT supply or override the handle. Before deriving, the
+protected endpoint or carrier MUST validate live proof of possession of the
+confirmed key presented on the current call, then derive the handle from the
+authorization record bound to that verified credential, key, and RAS state,
+never from a session or subject, which could otherwise bind the wrong user's
+authorization state to this call. The carrier MUST NOT be accepted outside its
+trust domain; a replacement re-derives the handle from the same RAS-bound
+state.
 
 Authorized intra-domain workloads MAY read the handle. They MUST NOT place it
 in access tokens, external authorization claims, responses, webhooks, errors,
@@ -1197,7 +1151,7 @@ and the OAuth guidance of {{RFC9700}}. It addresses these adversaries:
   ({{client-identity}});
 * a malicious Resource Server or audience attempting cross-domain correlation
   ({{privacy}}); and
-* a faulty or co-located Transaction Token Service ({{security-tts}}).
+* a faulty or co-located intra-domain carrier ({{security-trust-model}}).
 
 ## Sender Constraint and Proof of Possession
 
@@ -1224,32 +1178,11 @@ any offline attenuation segment; the IdP still enforces only the envelope.
 Because the assertion is target-agnostic, a permitted actor may select any
 target within that ceiling.
 
-Wrong-handle association can continue the wrong user's bounded chain. The TTS
-establishes the authoritative association between the request and the handle by
-deriving it from the current credential's RAS-bound state; a handle a workload
-supplies is not authoritative, and the Chain Authority rejects substitution.
-Another carrier MAY be used only if it provides the same properties
-({{transaction-token-context}}): server-derived; bound to
-the credential, key, and RAS authorization; non-overridable; domain-confined;
-and re-derived when replaced.
-
-## Trust in the Transaction Token Service {#security-tts}
-
-A faulty TTS can splice a valid wrong-user hop into a transaction, and every
-downstream check at the Chain Authority and IdP still sees a well-formed
-continuation. The TTS MUST key derivation to the presented credential, not a
-session or subject, and SHOULD be monitored independently.
-
-One operator MAY run the RAS, TTS, and Chain Authority. Where independent
-acceptance evidence matters, deployments SHOULD separate them or audit the
-binding-to-attestation path.
-
-## Trust in the Chain Authority {#security-chain-authority}
-
-The IdP MUST scope Chain Authority trust by issuer, keys, tenant, and mapped
-RAS. Deployments SHOULD minimize that scope and monitor anomalies. Trust is
-established out of band or through federation, as in {{RFC7523}}. Handle
-confidentiality provides defense in depth, not authorization.
+Wrong-handle association can continue the wrong user's bounded chain. The
+intra-domain carrier establishes the authoritative association between the
+request and the handle by deriving it from the current credential's RAS-bound
+state ({{transaction-token-context}}); a handle a workload supplies is not
+authoritative, and the Chain Authority rejects substitution.
 
 ## Trust in Actor Token Issuers {#security-actor-issuers}
 
@@ -1272,21 +1205,15 @@ A continuation requires all of these, and no one of them suffices alone:
   ({{validation}}, rule 14).
 
 The IdP MUST authorize Chain Authority and actor-token issuer pairings per
-tenant; separate trust in each is insufficient.
+tenant; separate trust in each is insufficient. It MUST scope Chain Authority
+trust by issuer, keys, tenant, and mapped RAS, established out of band or through
+federation ({{RFC7523}}).
 
-The anchors MAY be co-located, with this resulting blast radius:
-
-| Compromised | What it yields | What still bounds it |
-|---|---|---|
-| Chain Authority | Can attest mapped hops | Still needs permitted actor, key proof, and envelope |
-| Actor issuer | Can mint actor identities | Needs mapped CA, key proof, and envelope |
-| Chain Authority + actor issuer | Can fabricate an actor transition | Still envelope-bounded |
-| RAS + TTS + Chain Authority | Can fabricate acceptance and attestation | Still envelope-bounded |
-
-No compromise listed above yields authority beyond the root-chain envelope.
-Co-locating anchors trades away the defense in depth that the conjunction
-otherwise provides. If the IdP is also co-located, even the envelope backstop
-becomes organizational rather than protocol-separated.
+One operator MAY run the RAS, carrier, and Chain Authority. Co-locating these
+anchors trades away the defense in depth the conjunction otherwise provides, so
+where independent acceptance evidence matters, deployments SHOULD separate them
+or audit the binding-to-attestation path. If the IdP is also co-located, even
+the envelope backstop becomes organizational rather than protocol-separated.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -1304,7 +1231,7 @@ configuration; `kid` MAY select among them. It MUST NOT trust assertion
 
 A hop's `identity_continuation_handle` is visible only to its ID-JAG client,
 accepting Resource Authorization Server, and IdP, plus the domain's
-Transaction Token Service, Chain Authority, and authorized workloads. It MUST
+carrier, Chain Authority, and authorized workloads. It MUST
 NOT enter an access token, external authorization claims, or protected-API
 authorization input ({{chain-id}}, rule 4). A workload receiving it as
 intra-domain context is a control-plane participant.
