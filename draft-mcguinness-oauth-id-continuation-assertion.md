@@ -519,16 +519,17 @@ Propagated context MUST NOT override the root-chain envelope.
 ## Token Exchange {#token-exchange}
 
 An Identity Continuation Assertion is used as the `subject_token` of an OAuth
-2.0 Token Exchange request {{RFC8693}}. A direct and a chained request use the
-same Token Exchange framework: a chained request substitutes an Identity
-Continuation Assertion for the root credential and additionally supplies the
-actor authentication and DPoP proof described below. The IdP establishes the
-chain; no request parameter asks it to do so ({{root-establishment}}).
+2.0 Token Exchange request {{RFC8693}}. The root exchange and a continuation
+exchange use the same Token Exchange framework: a continuation exchange
+substitutes an Identity Continuation Assertion for the root credential and
+additionally supplies the actor authentication and DPoP proof described below.
+The IdP establishes the chain; no request parameter asks it to do so
+({{root-establishment}}).
 
 ### Request
 
-A direct request, in which the subject token is a normal subject token such as
-an ID Token, refresh token, or SAML assertion:
+The root exchange presents a normal subject token, such as an ID Token,
+refresh token, or SAML assertion:
 
 ~~~
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
@@ -542,13 +543,12 @@ actor_token=<sender-constrained-current-actor-credential> (OPTIONAL)
 actor_token_type=<actor-token-type>                       (OPTIONAL)
 ~~~
 
-On a direct request, `actor_token` is OPTIONAL ({{root-establishment}}). The
-direct request and its ID-JAG conform to the base ID-JAG profile
+On the root exchange, `actor_token` is OPTIONAL ({{root-establishment}}). The
+root exchange and its ID-JAG conform to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it for continuation-capable issuance.
 
-A chained request, in which the subject token is an Identity Continuation
-Assertion:
+A continuation exchange presents an Identity Continuation Assertion:
 
 ~~~
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
@@ -648,8 +648,8 @@ limits.
 
 ### Presenter Authentication {#client-identity}
 
-This section applies to a chained request; a direct request's DPoP requirement
-is specified in {{root-establishment}}.
+This section applies to a continuation exchange; the root exchange's DPoP
+requirement is specified in {{root-establishment}}.
 
 The actor MUST present a DPoP proof {{RFC9449}} for the key in
 `cnf.jkt`.
@@ -1067,7 +1067,7 @@ and the OAuth guidance of {{RFC9700}}. It addresses these adversaries:
   wrong user's chain ({{security-envelope}});
 * a compromised CAI or actor-token issuer
   ({{security-trust-model}});
-* a party influencing the client-to-actor mapping, which on a direct request
+* a party influencing the client-to-actor mapping, which on a root exchange
   carrying no `actor_token` is the sole authenticator of the root actor
   ({{client-identity}});
 * a malicious Resource Server or audience attempting cross-domain correlation
