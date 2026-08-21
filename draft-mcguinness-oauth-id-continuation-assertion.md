@@ -371,10 +371,6 @@ The following rules apply:
    actor history; concurrent sibling continuations are independent branches. The
    IdP performs end-to-end audit correlation; each RAS logs its local subject.
 
-The IdP MAY derive handles from an internal delegation identifier using a
-keyed one-way function if rules 1, 2, and 5 remain satisfied and the resulting
-handles remain unlinkable.
-
 # Chain Lifetime and Revocation {#lifecycle}
 
 A chain is continuable only while active at the IdP. Each cross-boundary hop
@@ -500,7 +496,7 @@ actor to the current transaction, verify that the
 handle matches that transaction's RAS-bound state, and recheck authoritative,
 uncached RAS state to confirm that the authorization remains active and
 continuation remains permitted. It MUST enforce per-transaction and per-actor
-rate and fan-out limits with audit records. Target or purpose hints MAY narrow
+rate and fan-out limits. Target or purpose hints MAY narrow
 CAI issuance but MUST NOT control the IdP's target decision.
 Propagated context MUST NOT override the root-chain envelope.
 
@@ -571,10 +567,7 @@ establish, the IdP MUST include the root handle in the ID-JAG. The root
 exchange MUST include a valid DPoP proof {{RFC9449}}, which the IdP MUST bind
 to the ID-JAG in `cnf`. Absent the continuation authorization or a valid
 proof, the IdP MUST NOT establish a chain or include an
-`identity_continuation_handle`. The IdP MAY defer materializing chain state
-until the first continuation, provided the handle still resolves to the same
-root and envelope; this does not relax the reservation durability of
-{{validation-replay}}.
+`identity_continuation_handle`.
 
 The root subject token MUST resolve to one of these lifecycle anchors:
 
@@ -1006,7 +999,16 @@ retains and expires the reservation by the same clock it uses to evaluate
 actor that repeatedly continues as itself never trips it; the fan-out, rate,
 and hop-count limits of {{root-establishment}} bound such retry-driven growth
 instead. The IdP prunes expired or revoked hop state, and the CAI accounts for
-retries separately from fan-out.
+retries separately from fan-out and keeps audit records of its issuance and
+limit enforcement.
+
+An IdP can derive handles from an internal delegation identifier using a
+keyed one-way function, provided the derived handles still satisfy rules 1, 2,
+and 5 of {{chain-id}} and remain unlinkable.
+
+An IdP can defer materializing chain state until the first continuation,
+provided the handle still resolves to the same root and envelope; deferral
+does not relax the reservation durability of {{validation-replay}}.
 
 # Security Considerations {#security}
 
