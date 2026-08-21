@@ -160,54 +160,53 @@ Table of Contents
 
 1.  Introduction
 
-   OAuth 2.0 [RFC6749] issues access to a specific audience, and OAuth
-   2.0 Token Exchange [RFC8693] exchanges one token for another when a
-   request crosses a trust boundary.  The Identity Assertion JWT
-   Authorization Grant (ID-JAG)
+   OAuth 2.0 [RFC6749] issues access tokens scoped to their intended
+   audiences, and OAuth 2.0 Token Exchange [RFC8693] trades one token
+   for another when a request crosses a trust boundary.  The Identity
+   Assertion JWT Authorization Grant (ID-JAG)
    [I-D.ietf-oauth-identity-assertion-authz-grant] applies Token
-   Exchange to identity: an IdP Authorization Server (IdP) mints an
-   authorization grant that names the user for a single downstream
-   audience.  Each of these exchanges assumes the subject's credential
-   (an ID Token, refresh token, or SAML assertion) is present when the
-   grant is minted.
+   Exchange to identity: an IdP Authorization Server (IdP) mints a grant
+   that names the user for a single downstream audience.  Each such
+   exchange assumes the user's credential (an ID Token, refresh token,
+   or SAML assertion) is still available when the grant is minted.
 
-   Many requests outlive that moment.  An authenticated request can
-   cross several services after the user is no longer present, or reach
-   an audience the original credential does not address.  The first hop
+   In practice, many requests outlive that moment.  An authenticated
+   request may cross several services after the user is gone, or reach
+   an audience the original credential never addressed.  The first hop
    can still present the user's credential to obtain an ID-JAG, but a
-   later workload in the chain holds none of those credentials.  The
-   difficulty is sharpest when Resource Authorization Servers name the
-   user with audience-local (pairwise) subject identifiers that only the
-   IdP can resolve, a different value at each server.  The later
-   workload cannot name the user for the next audience at all.  Only the
-   IdP can perform that mapping, so continuation is a fresh mint from
-   the IdP, not a reused or offline-attenuated token.
+   workload further along the chain holds none of these credentials.
+   This is hardest when each Resource Authorization Server names the
+   user by a pairwise, audience-local subject that only the IdP can
+   resolve, and that differs at every server: the later workload has no
+   way to name the user for the next audience.  Only the IdP can perform
+   that mapping, so each continuation is a fresh mint from the IdP
+   rather than a reused or offline-attenuated token.
 
    This document defines the Identity Continuation Assertion: a short-
    lived, sender-constrained JWT that a later workload presents as the
-   subject_token of a Token Exchange request, in return for the next
-   audience-scoped ID-JAG and without another user interaction.  The
-   assertion carries a continuation handle that binds the request to
+   subject_token of a Token Exchange request to obtain the next
+   audience-scoped ID-JAG, with no further user interaction.  The
+   assertion carries a continuation handle that ties the request to the
    authorization state the IdP recorded when the chain was established.
-   Each Resource Authorization Server (RAS) trusts only the IdP to name
-   the user and scope authority.  At every hop the IdP both resolves
-   identity and checks the requested authority against the root-chain
-   envelope, so continuation stays a fresh policy decision rather than a
-   bearer of standing authority.
+   A Resource Authorization Server (RAS) still trusts only the IdP to
+   name the user and scope authority; at each hop the IdP resolves
+   identity and re-checks the requested authority against the root-chain
+   envelope.  Continuation therefore stays a fresh policy decision at
+   every boundary, never a bearer of standing authority.
 
-   Each trust domain from which the chain continues has two roles: a RAS
-   that accepts an ID-JAG and binds the hop, and a Continuation
-   Assertion Issuer (CAI) that issues the Identity Continuation
-   Assertion a workload presents to the IdP.  Between them, a trusted
-   intra-domain carrier surfaces the accepted hop's handle to workloads
-   inside the domain (Section 6.6); the carrier is a deployment choice,
-   not a distinct role.  One party may operate all of these within a
-   domain (Section 9.7).
+   Each trust domain the chain continues from has two roles: a RAS that
+   accepts an ID-JAG and binds the hop, and a Continuation Assertion
+   Issuer (CAI) that mints the Identity Continuation Assertion the
+   workload presents to the IdP.  A trusted intra-domain carrier
+   surfaces the accepted hop's handle to workloads inside the domain
+   (Section 6.6); the carrier is a deployment choice, not a role of its
+   own, and one party may run all of these within a domain
+   (Section 9.7).
 
-   This profile does not define a new access-token format, does not
-   allow a Resource Server to consume the Identity Continuation
-   Assertion directly, and does not allow a CAI to name the user for the
-   target audience.
+   The profile stays deliberately narrow: it defines no new access-token
+   format, a Resource Server never consumes the Identity Continuation
+   Assertion directly, and a CAI never names the user for the target
+   audience.
 
 1.1.  When to Use This Profile Versus Offline Attenuation
 
