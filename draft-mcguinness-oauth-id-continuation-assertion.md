@@ -4,6 +4,7 @@ abbrev: "Identity Continuation Assertion"
 category: std
 
 docname: draft-mcguinness-oauth-id-continuation-assertion-latest
+submissiontype: IETF
 number:
 date:
 consensus: false
