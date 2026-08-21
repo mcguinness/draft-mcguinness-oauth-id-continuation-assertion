@@ -1019,10 +1019,12 @@ metadata {{RFC8414}} with the following parameter:
   `identity_continuation_handle` claim. Default `false`. A continuation-capable
   ID-JAG is still the `urn:ietf:params:oauth:token-type:id-jag` type, so this
   flag advertises the capability rather than a new token type. It composes
-  additively with the IdP's base ID-JAG Token Exchange advertisement: the
-  requested and issued token type is unchanged, and the flag signals only the
-  added acceptance of continuation assertions and issuance of handle-carrying
-  ID-JAGs.
+  additively with base ID-JAG discovery: an IdP that sets this flag also lists
+  `urn:ietf:params:oauth:token-type:id-jag` in its
+  `identity_chaining_requested_token_types_supported`
+  ({{I-D.ietf-oauth-identity-assertion-authz-grant}}), and the flag signals
+  only the added acceptance of continuation assertions and issuance of
+  handle-carrying ID-JAGs.
 
 ## Resource Authorization Server Metadata
 
@@ -1118,7 +1120,7 @@ that actor. The assertion MUST NOT be accepted as bearer {{RFC7800}}; every
 exchange requires live proof of possession of the `cnf` key via a DPoP proof
 {{RFC9449}} ({{client-identity}}). A captured assertion is therefore useless
 without the private key, and because the onward ID-JAG is bound to the same
-key ({{root-establishment}}), possession is demonstrated continuously across
+key ({{client-identity}}), possession is demonstrated continuously across
 the chain, not once at issuance.
 
 ## Durable Task Authorization {#task-provenance}
@@ -1259,9 +1261,8 @@ external authorization claims, or protected-API authorization input
 ({{chain-id}}, rule 3). A workload receiving it as intra-domain context is a
 control-plane participant.
 
-Handles are opaque, high-entropy, and hop-specific ({{chain-id}}). Resource
-Authorization Servers therefore cannot use them to correlate a user across
-SaaS boundaries.
+Handles are opaque, high-entropy, and hop-specific ({{chain-id}}), so they do
+not provide a common cross-RAS identifier for a user.
 
 The chain is not unlinkable: the IdP correlates it, participants sharing a
 handle can correlate that hop, and actor lineage and timing may correlate
@@ -1967,7 +1968,7 @@ the binding extension. TravelService then calls BookingAPI with AT3.
 
 TravelService itself is the current-domain actor that obtains the next
 ID-JAG; it does not pass the handle to a sibling workload
-({{root-establishment}}).
+({{transaction-token-context}}).
 
 ### Reaching a Target Outside the Trust Circle {#example-federation-edge}
 
