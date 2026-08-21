@@ -1224,20 +1224,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       removing an issuer or revoking its keys de-authorizes it for
       existing chains.  Acceptance remains the IdP's decision.
 
-   The IdP MUST apply its local tenant and issuer policy to a nominated
-   issuer before using it; a RAS nomination alone MUST NOT trigger
-   metadata retrieval or other dereferencing.  When the CAI issuer
-   identifier is also an OAuth authorization server issuer identifier,
-   the IdP SHOULD obtain the CAI's signing keys from the jwks_uri in
-   that issuer's authorization server metadata, located and retrieved
-   over TLS per [RFC8414], Section 3, and refresh them on rotation.
-   Metadata that is missing, is malformed, omits jwks_uri, or whose
-   issuer does not exactly equal the authorized identifier ([RFC8414],
-   Section 3.3) MUST NOT supply verification keys.  The IdP uses only a
-   jwks_uri from such validated metadata, never a jwks_uri or key set
-   the Resource Authorization Server supplies.  For any other CAI, or
-   when discovery yields no valid keys, the IdP uses authenticated
-   configuration or rejects the assertion.
+   When a CAI's issuer identifier is that of an OAuth authorization
+   server, the IdP obtains its signing keys from that server's jwks_uri
+   ([RFC8414]); any other CAI uses authenticated configuration.  A RAS
+   nomination MUST NOT by itself trigger that retrieval or authorize the
+   issuer; the IdP applies its own issuer policy first.
 
 8.  Implementation Considerations
 
@@ -1275,11 +1266,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    continuation, provided the handle still resolves to the same root and
    envelope; deferral does not relax the reservation durability of
    Section 6.3.5.
-
-   An IdP that dereferences a nominated issuer's metadata (Section 7)
-   applies the usual server-side request-forgery safeguards: it
-   validates TLS, bounds redirects and response size, and refuses
-   internal or link-local addresses.
 
 9.  Security Considerations
 
