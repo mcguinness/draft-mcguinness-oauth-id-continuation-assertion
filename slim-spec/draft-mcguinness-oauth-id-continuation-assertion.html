@@ -2715,16 +2715,19 @@ Acceptance remains the IdP's decision.<a href="#section-7.2-4.2.1" class="pilcro
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-7.2-5">When a CAI issuer identifier is an https URL, the IdP <span class="bcp14">SHOULD</span> resolve the CAI's
-signing keys from the <code>jwks_uri</code> in the authorization server metadata located
-for that issuer per <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>, Section 3, retrieved over TLS, and refresh
-them on rotation; a CAI that is not itself an authorization server needs only
-<code>issuer</code> and <code>jwks_uri</code> in that metadata. The IdP <span class="bcp14">MUST</span> confirm that the
-<code>issuer</code> value in the retrieved metadata equals the authorized CAI issuer
-identifier, and resolves keys from that issuer's own endpoint, never from a
-<code>jwks_uri</code> or key set the Resource Authorization Server supplies. Where the
-issuer is not reachable, or the identifier is not an https URL, the IdP
-obtains its signing keys from authenticated configuration instead.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+<p id="section-7.2-5">The IdP <span class="bcp14">MUST</span> apply its local tenant and issuer policy to a nominated issuer
+before using it; a RAS nomination alone <span class="bcp14">MUST NOT</span> trigger metadata retrieval or
+other dereferencing. When the CAI issuer identifier is also an OAuth
+authorization server issuer identifier, the IdP <span class="bcp14">SHOULD</span> obtain the CAI's
+signing keys from the <code>jwks_uri</code> in that issuer's authorization server
+metadata, located and retrieved over TLS per <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>, Section 3, and
+refresh them on rotation. Metadata that is missing, is malformed, omits
+<code>jwks_uri</code>, or whose <code>issuer</code> does not exactly equal the authorized identifier
+(<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>, Section 3.3) <span class="bcp14">MUST NOT</span> supply verification keys. The IdP uses only
+a <code>jwks_uri</code> from such validated metadata, never a <code>jwks_uri</code> or key set the
+Resource Authorization Server supplies. For any other CAI, or when discovery
+yields no valid keys, the IdP uses authenticated configuration or rejects the
+assertion.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2758,6 +2761,9 @@ and 5 of <a href="#chain-id" class="auto internal xref">Section 4</a> and remain
 <p id="section-8-6">An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
 does not relax the reservation durability of <a href="#validation-replay" class="auto internal xref">Section 6.3.5</a>.<a href="#section-8-6" class="pilcrow">¶</a></p>
+<p id="section-8-7">An IdP that dereferences a nominated issuer's metadata (<a href="#metadata" class="auto internal xref">Section 7</a>) applies
+the usual server-side request-forgery safeguards: it validates TLS, bounds
+redirects and response size, and refuses internal or link-local addresses.<a href="#section-8-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security">
