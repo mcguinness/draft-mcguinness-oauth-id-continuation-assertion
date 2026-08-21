@@ -1714,7 +1714,7 @@ claim set:<a href="#section-3.2-1" class="pilcrow">¶</a></p>
 <code>iss</code>:</dt>
           <dd style="margin-left: 1.5em" id="section-3.2-4.2">
             <p id="section-3.2-4.2.1"><span class="bcp14">REQUIRED</span>. The CAI that issued the assertion; the IdP verifies its issuer
-trust and keys per <a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 3.<a href="#section-3.2-4.2.1" class="pilcrow">¶</a></p>
+trust per <a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 3, and its signature under rule 2.<a href="#section-3.2-4.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-3.2-4.3">
@@ -1896,27 +1896,27 @@ Identity Continuation Assertion. Handles H0 and H1 below name the successive
 hops (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-6.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-6.1-2">
 <pre>
-RAS   Client     IdP      Workload      CAI
- |       |        |           |          |
- |       base ID-JAG exchange |          |
- |       |--------&gt;           |          |
- |       issue ID-JAG (H0)    |          |
- |       &lt;--------|           |          |
- present ID-JAG   |           |          |
- &lt;-------|        |           |          |
- issue access token, bind H0  |          |
- |-------&gt;        |           |          |
- |       |        |           |          |
-  carrier surfaces H0 to a later workload
- |       |        |           |          |
- |       |        |           request assertion
- |       |        |           |----------&gt;
- |       |        |           attest hop, actor, key
- |       |        |           &lt;----------|
- |       |        present assertion      |
- |       |        &lt;-----------|          |
- |       |        issue ID-JAG (H1)      |
- |       |        |-----------&gt;          |
+  Client      Workload    CAI         IdP         RAS
+  |           |           |           |           |
+  | base ID-JAG exchange  |           |           |
+  |----------------------------------&gt;|           |
+  | issue ID-JAG (H0)     |           |           |
+  |&lt;----------------------------------|           |
+  | present ID-JAG        |           |           |
+  |----------------------------------------------&gt;|
+  | issue access token, bind H0       |           |
+  |&lt;----------------------------------------------|
+  |           |           |           |           |
+  | carrier surfaces H0 to a later workload       |
+  |           |           |           |           |
+  |           | request assertion     |           |
+  |           |----------&gt;|           |           |
+  |           | attest hop, actor, key|           |
+  |           |&lt;----------|           |           |
+  |           | present assertion     |           |
+  |           |----------------------&gt;|           |
+  |           | issue ID-JAG (H1)     |           |
+  |           |&lt;----------------------|           |
 </pre><a href="#section-6.1-2" class="pilcrow">¶</a>
 </div>
 <p id="section-6.1-3">H1 then travels to the next boundary exactly as H0 did, and the loop repeats
@@ -2002,6 +2002,7 @@ refresh token, or SAML assertion:<a href="#section-6.3.1-1" class="pilcrow">¶</
 POST /token HTTP/1.1
 Host: idp.example
 Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof of possession of the cnf key&gt;
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;requested_token_type=urn:ietf:params:oauth:token-type:id-jag
@@ -2368,8 +2369,8 @@ order-independent set, the exact <code>authorization_details</code> JSON after f
 decoding (a different serialization is a different request), the actor's <code>iss</code>
 and <code>sub</code>, the confirmed key's <code>cnf.jkt</code> thumbprint, and a SHA-256 hash of the
 exact <code>subject_token</code> after form decoding, which binds the fingerprint to the
-specific assertion and its handle. Reservation <span class="bcp14">MUST</span> be atomic, so a race
-between concurrent redemptions cannot bypass this binding. An identical retry
+specific assertion and its handle. Concurrent redemptions <span class="bcp14">MUST NOT</span> bypass this
+binding (<a href="#implementation" class="auto internal xref">Section 8</a>). An identical retry
 <span class="bcp14">MUST</span> return the same previously issued grant, not a new one, and a request that
 does not match that fingerprint <span class="bcp14">MUST</span> be rejected. Replay uniqueness <span class="bcp14">MUST</span> be
 keyed on (<code>iss</code>, <code>jti</code>); partitioning by tenant alone would let two assertion
@@ -3004,7 +3005,7 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
           <dd class="break"></dd>
 <dt id="section-11.1-2.9">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.1-2.10">
-            <p id="section-11.1-2.10.1">This document, <a href="#onward-id-jag" class="auto internal xref">Section 6.3.7</a><a href="#section-11.1-2.10.1" class="pilcrow">¶</a></p>
+            <p id="section-11.1-2.10.1">This document, <a href="#error-response" class="auto internal xref">Section 6.3.8</a><a href="#section-11.1-2.10.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -3585,7 +3586,7 @@ authorization:<a href="#appendix-B.1-8" class="pilcrow">¶</a></p>
      |&lt;-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------&gt;|                 |
      |&lt;-------------------AT1--------| bind H0         |
-     |------------------request + AT1 + DPoP---------&gt;|
+     |------------------request + AT1 + DPoP----------&gt;|
      |               |               |&lt;-resolve AT1----|
      |               |               |--bound H0------&gt;|
      |               |               |    derive H0 into tctx
@@ -4258,9 +4259,10 @@ map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.<a href
 <a href="#appendix-B.3.1" class="section-number selfRef">B.3.1. </a><a href="#name-root-exchange-the-runtime-r" class="section-name selfRef">Root Exchange: The Runtime Roots the Chain</a>
           </h4>
 <p id="appendix-B.3.1-1">AgentApp performs a root exchange for the one audience it knows: GatewayRAS.
-The eventual upstreams are not known at root time, so, unlike the worked
-example whose envelope enumerated each onward target, this envelope records an
-authorization-basis ceiling, Alice's standing consent and tenant policy, with
+The eventual upstreams are not known at root time, so, unlike the interactive
+example (<a href="#example" class="auto internal xref">Appendix B.1</a>), whose envelope enumerated each onward target, this
+envelope records an authorization-basis ceiling, Alice's standing consent and
+tenant policy, with
 no enumerated targets; enterprise policy permits <code>tool-gateway</code> to continue it
 (<a href="#root-establishment" class="auto internal xref">Section 6.3.2</a>, <a href="#validation" class="auto internal xref">Section 6.3.4</a>, rules 5 and 7). GatewayRAS accepts the
 ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in <a href="#example-context" class="auto internal xref">Appendix B.1.2</a>.<a href="#appendix-B.3.1-1" class="pilcrow">¶</a></p>
@@ -4355,7 +4357,7 @@ POST /identity-continuation-assertion HTTP/1.1
 DPoP: &lt;proof&gt;
 
 identity_continuation_handle=&lt;handle&gt;
-audience=https://idp.example/
+&amp;audience=https://idp.example/
 </pre><a href="#appendix-C-3.4.2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-C-3.4.3">

@@ -379,7 +379,8 @@ Table of Contents
    The claims have the following meanings and requirements:
 
    iss:  REQUIRED.  The CAI that issued the assertion; the IdP verifies
-      its issuer trust and keys per Section 6.3.4, rule 3.
+      its issuer trust per Section 6.3.4, rule 3, and its signature
+      under rule 2.
 
    aud:  REQUIRED.  A single string exactly matching the IdP issuer
       identifier, not its token endpoint URL.
@@ -517,27 +518,27 @@ Table of Contents
    the next from an Identity Continuation Assertion.  Handles H0 and H1
    below name the successive hops (Section 4).
 
-   RAS   Client     IdP      Workload      CAI
-    |       |        |           |          |
-    |       base ID-JAG exchange |          |
-    |       |-------->           |          |
-    |       issue ID-JAG (H0)    |          |
-    |       <--------|           |          |
-    present ID-JAG   |           |          |
-    <-------|        |           |          |
-    issue access token, bind H0  |          |
-    |------->        |           |          |
-    |       |        |           |          |
-     carrier surfaces H0 to a later workload
-    |       |        |           |          |
-    |       |        |           request assertion
-    |       |        |           |---------->
-    |       |        |           attest hop, actor, key
-    |       |        |           <----------|
-    |       |        present assertion      |
-    |       |        <-----------|          |
-    |       |        issue ID-JAG (H1)      |
-    |       |        |----------->          |
+     Client      Workload    CAI         IdP         RAS
+     |           |           |           |           |
+     | base ID-JAG exchange  |           |           |
+     |---------------------------------->|           |
+     | issue ID-JAG (H0)     |           |           |
+     |<----------------------------------|           |
+     | present ID-JAG        |           |           |
+     |---------------------------------------------->|
+     | issue access token, bind H0       |           |
+     |<----------------------------------------------|
+     |           |           |           |           |
+     | carrier surfaces H0 to a later workload       |
+     |           |           |           |           |
+     |           | request assertion     |           |
+     |           |---------->|           |           |
+     |           | attest hop, actor, key|           |
+     |           |<----------|           |           |
+     |           | present assertion     |           |
+     |           |---------------------->|           |
+     |           | issue ID-JAG (H1)     |           |
+     |           |<----------------------|           |
 
    H1 then travels to the next boundary exactly as H0 did, and the loop
    repeats until a hop reaches a terminal RAS.  A hop is PENDING when
@@ -611,6 +612,7 @@ Table of Contents
 POST /token HTTP/1.1
 Host: idp.example
 Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &requested_token_type=urn:ietf:params:oauth:token-type:id-jag
@@ -919,13 +921,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    request), the actor's iss and sub, the confirmed key's cnf.jkt
    thumbprint, and a SHA-256 hash of the exact subject_token after form
    decoding, which binds the fingerprint to the specific assertion and
-   its handle.  Reservation MUST be atomic, so a race between concurrent
-   redemptions cannot bypass this binding.  An identical retry MUST
-   return the same previously issued grant, not a new one, and a request
-   that does not match that fingerprint MUST be rejected.  Replay
-   uniqueness MUST be keyed on (iss, jti); partitioning by tenant alone
-   would let two assertion issuers in one tenant collide on a reused
-   jti.
+   its handle.  Concurrent redemptions MUST NOT bypass this binding
+   (Section 8).  An identical retry MUST return the same previously
+   issued grant, not a new one, and a request that does not match that
+   fingerprint MUST be rejected.  Replay uniqueness MUST be keyed on
+   (iss, jti); partitioning by tenant alone would let two assertion
+   issuers in one tenant collide on a reused jti.
 
    The IdP MUST retain the reservation through exp plus the maximum
    permitted clock skew, so an in-window retry is honored; a reservation
@@ -1449,7 +1450,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Change Controller:  IETF
 
-   Specification Document(s):  This document, Section 6.3.7
+   Specification Document(s):  This document, Section 6.3.8
 
 11.2.  OAuth URI Registration
 
@@ -1893,7 +1894,7 @@ B.1.  Three-Hop Interactive Example
         |<-ID-JAG(H0)---|               |                 |
         |------------------ID-JAG------>|                 |
         |<-------------------AT1--------| bind H0         |
-        |------------------request + AT1 + DPoP--------->|
+        |------------------request + AT1 + DPoP---------->|
         |               |               |<-resolve AT1----|
         |               |               |--bound H0------>|
         |               |               |    derive H0 into tctx
@@ -2503,12 +2504,13 @@ B.3.1.  Root Exchange: The Runtime Roots the Chain
 
    AgentApp performs a root exchange for the one audience it knows:
    GatewayRAS.  The eventual upstreams are not known at root time, so,
-   unlike the worked example whose envelope enumerated each onward
-   target, this envelope records an authorization-basis ceiling, Alice's
-   standing consent and tenant policy, with no enumerated targets;
-   enterprise policy permits tool-gateway to continue it (Section 6.3.2,
-   Section 6.3.4, rules 5 and 7).  GatewayRAS accepts the ID-JAG and
-   binds H0 exactly as ExpenseRAS bound H0 in Appendix B.1.2.
+   unlike the interactive example (Appendix B.1), whose envelope
+   enumerated each onward target, this envelope records an
+   authorization-basis ceiling, Alice's standing consent and tenant
+   policy, with no enumerated targets; enterprise policy permits tool-
+   gateway to continue it (Section 6.3.2, Section 6.3.4, rules 5 and 7).
+   GatewayRAS accepts the ID-JAG and binds H0 exactly as ExpenseRAS
+   bound H0 in Appendix B.1.2.
 
    AgentApp then invokes the gateway with its access token and no
    continuation input.  AgentApp can read H0 in its ID-JAG, but it
@@ -2578,7 +2580,7 @@ Appendix C.  Open Items for Working Group Discussion
       DPoP: <proof>
 
       identity_continuation_handle=<handle>
-      audience=https://idp.example/
+      &audience=https://idp.example/
 
        The authenticated workload and proof key would determine act and
        cnf.  The profile could also define errors, discovery, retry, and
