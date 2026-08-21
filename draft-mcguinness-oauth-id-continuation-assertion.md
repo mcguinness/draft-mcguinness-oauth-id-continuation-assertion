@@ -415,13 +415,12 @@ NOT refresh them.
 The IdP MUST revoke whole chains and MAY revoke an individual hop's subtree.
 It MUST reject continuation from revoked state.
 
-For a grant-anchored chain, the IdP MUST provide a user- or
+For a grant-anchored chain, the IdP SHOULD provide a user- or
 administrator-facing interface showing the chain's root context, hop graph,
-lineage, granted targets, expiry, and any recorded purpose; it MUST support
-whole-chain revocation
-and subtree revocation when offered. It SHOULD notify the user or
-administrator at establishment and near expiry. The same interface is
-RECOMMENDED for session-anchored chains. See {{GRANT-MGMT}}.
+lineage, granted targets, expiry, and any recorded purpose, and offering
+whole-chain and subtree revocation. It SHOULD notify the user or administrator
+at establishment and near expiry. The same interface is RECOMMENDED for
+session-anchored chains. See {{GRANT-MGMT}}.
 
 # Multi-Hop Cross-Domain Access {#access}
 
