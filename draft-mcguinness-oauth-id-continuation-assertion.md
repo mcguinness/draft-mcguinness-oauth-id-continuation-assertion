@@ -301,7 +301,7 @@ The claims have the following meanings and requirements:
 
 `iss`:
 : REQUIRED. The CAI that issued the assertion; the IdP verifies its issuer
-  trust and keys per {{validation}}, rule 3.
+  trust per {{validation}}, rule 3, and its signature under rule 2.
 
 `aud`:
 : REQUIRED. A single string exactly matching the IdP issuer identifier, not
@@ -532,6 +532,7 @@ refresh token, or SAML assertion:
 POST /token HTTP/1.1
 Host: idp.example
 Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &requested_token_type=urn:ietf:params:oauth:token-type:id-jag
@@ -788,8 +789,8 @@ order-independent set, the exact `authorization_details` JSON after form
 decoding (a different serialization is a different request), the actor's `iss`
 and `sub`, the confirmed key's `cnf.jkt` thumbprint, and a SHA-256 hash of the
 exact `subject_token` after form decoding, which binds the fingerprint to the
-specific assertion and its handle. Reservation MUST be atomic, so a race
-between concurrent redemptions cannot bypass this binding. An identical retry
+specific assertion and its handle. Concurrent redemptions MUST NOT bypass this
+binding ({{implementation}}). An identical retry
 MUST return the same previously issued grant, not a new one, and a request that
 does not match that fingerprint MUST be rejected. Replay uniqueness MUST be
 keyed on (`iss`, `jti`); partitioning by tenant alone would let two assertion
@@ -1274,7 +1275,7 @@ Change Controller:
 : IETF
 
 Specification Document(s):
-: This document, {{onward-id-jag}}
+: This document, {{error-response}}
 
 ## OAuth URI Registration
 
@@ -1574,7 +1575,7 @@ authorization:
      |<-ID-JAG(H0)---|               |                 |
      |------------------ID-JAG------>|                 |
      |<-------------------AT1--------| bind H0         |
-     |------------------request + AT1 + DPoP--------->|
+     |------------------request + AT1 + DPoP---------->|
      |               |               |<-resolve AT1----|
      |               |               |--bound H0------>|
      |               |               |    derive H0 into tctx
@@ -2197,9 +2198,10 @@ To reach Wiki, the gateway continues the chain:
 ### Root Exchange: The Runtime Roots the Chain
 
 AgentApp performs a root exchange for the one audience it knows: GatewayRAS.
-The eventual upstreams are not known at root time, so, unlike the worked
-example whose envelope enumerated each onward target, this envelope records an
-authorization-basis ceiling, Alice's standing consent and tenant policy, with
+The eventual upstreams are not known at root time, so, unlike the interactive
+example ({{example}}), whose envelope enumerated each onward target, this
+envelope records an authorization-basis ceiling, Alice's standing consent and
+tenant policy, with
 no enumerated targets; enterprise policy permits `tool-gateway` to continue it
 ({{root-establishment}}, {{validation}}, rules 5 and 7). GatewayRAS accepts the
 ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
@@ -2270,7 +2272,7 @@ This non-normative appendix lists unresolved design questions.
    DPoP: <proof>
 
    identity_continuation_handle=<handle>
-   audience=https://idp.example/
+   &audience=https://idp.example/
    ~~~
 
    The authenticated workload and proof key would determine `act` and `cnf`.
