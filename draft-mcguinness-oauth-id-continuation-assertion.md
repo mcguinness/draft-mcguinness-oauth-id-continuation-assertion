@@ -386,7 +386,7 @@ The following rules apply:
 A chain is continuable only while active at the IdP. Each cross-boundary hop
 is a fresh policy check. Revoking a hop stops its subtree at the next
 continuation, fail-closed, but does not invalidate already issued ID-JAGs or
-access tokens; the revocation window is therefore bounded by their short
+access tokens; the revocation window is therefore bounded by their respective
 lifetimes.
 
 This is the deliberate difference from an offline-attenuated token, whose
@@ -854,8 +854,10 @@ by placing the authenticated current actor atop the presented hop's lineage;
 it never copies lineage from the assertion, and siblings do not contribute.
 Consecutive identical actors collapse to one entry, though the hop record
 remains; policy MAY limit disclosed depth, narrowing what a target sees without
-changing the depth bound the IdP enforces ({{validation}}, rule 4). The
-following is a
+changing the depth bound the IdP enforces ({{validation}}, rule 4). Because
+policy may narrow the disclosed lineage, a Resource Authorization Server
+MUST NOT read the absence of a further nested `act` as proof that no earlier
+actor exists. The following is a
 non-normative example of the onward ID-JAG issued by the IdP:
 
 ~~~ json
@@ -900,9 +902,9 @@ target RAS.
 
 On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
 
-* it MUST return `invalid_continuation` ({{iana}}) when the presented handle
-  cannot support this continuation, distinguishing a dead hop from a malformed
-  request; and
+* it MUST return `invalid_continuation` ({{iana}}) only when the handle is
+  permanently unusable: unknown, on an expired or ended chain, on a revoked
+  hop or ancestor, or with continuation authorization withdrawn; and
 * it SHOULD use `invalid_request` for a malformed, inconsistent, or
   unacceptable token, `invalid_dpop_proof` for a DPoP failure, and
   `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
@@ -913,7 +915,7 @@ Recovery requires establishing a new chain and succeeds only where the
 governing authorization is still continuation-capable: a session-anchored chain
 re-roots by re-authenticating the user, a grant-anchored chain from its
 still-valid grant without the user, and a handle disabled by withdrawn
-continuation authorization cannot re-root at all. The target-specific errors
+continuation authorization cannot re-root at all. The other errors
 leave the chain otherwise continuable, so a client abandons only the current
 request.
 
@@ -1046,12 +1048,17 @@ the nominated issuers rather than be configured out of band
 ({{security-trust-model}}):
 
 `identity_continuation_issuers`:
-: OPTIONAL. An array of CAI issuer identifiers that this Resource Authorization
-  Server authorizes to attest hops it accepts. The advertisement is a
-  nomination only: the IdP MUST establish each issuer's identity and signing
-  keys independently, through authenticated configuration or federation, and
-  the advertisement alone MUST NOT establish key trust or override the IdP's
-  tenant issuer-pairing policy. Acceptance remains the IdP's decision.
+: OPTIONAL. A JSON array of CAI issuer identifiers, each a `StringOrURI`
+  {{RFC7519}}, that this Resource Authorization Server authorizes to attest
+  hops it accepts; an empty array authorizes none. Values are compared with
+  the assertion `iss` as exact, case-sensitive strings, and duplicates are
+  ignored. The advertisement is a nomination only: the IdP MUST establish each
+  issuer's identity and signing keys independently, through authenticated
+  configuration or federation, and the advertisement alone MUST NOT establish
+  key trust or override the IdP's tenant issuer-pairing policy. Because the IdP
+  evaluates issuer trust and keys against its current configuration, removing
+  an issuer or revoking its keys de-authorizes it for existing chains.
+  Acceptance remains the IdP's decision.
 
 # Implementation Considerations {#implementation}
 
@@ -1207,7 +1214,9 @@ but the accept-and-continue gate ({{hop-activation}}) is only as trustworthy as
 the mapped CAI. Because the IdP has no channel to
 recheck RAS state itself, a CAI attesting from a
 cached read could attest a hop the RAS has since revoked; the authoritative
-recheck required at issuance ({{assertion-issuance}}) closes this window.
+recheck required at issuance ({{assertion-issuance}}) narrows this window but
+does not close it, since revocation after issuance still lands within the
+assertion's lifetime plus any delay in RAS state reaching the CAI.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -1230,6 +1239,16 @@ verify `typ`, reject `alg=none` and symmetric algorithms, and allowlist
 asymmetric algorithms. It MUST select keys from trusted issuer configuration;
 `kid` MAY select among them. It MUST NOT trust assertion `jku`, `x5u`, embedded
 `jwk`, or other supplied key material.
+
+## Metadata Disclosure {#security-metadata}
+
+Advertising `identity_continuation_issuers` ({{metadata}}) in publicly readable
+authorization server metadata reveals which CAIs a Resource Authorization
+Server trusts, and can thereby disclose federation topology, tenant
+relationships, and deployment structure, the concern base ID-JAG raises for its
+own issuer advertisements. A deployment whose CAI relationships are sensitive
+SHOULD omit the advertisement and convey the nomination out of band or through
+access-controlled discovery.
 
 # Privacy Considerations {#privacy}
 
