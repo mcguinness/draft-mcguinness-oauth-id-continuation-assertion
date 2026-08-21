@@ -2340,40 +2340,31 @@ this profile builds.
 
 -01
 
-* Renamed Chain Authority to Continuation Assertion Issuer and direct/chained
-  exchanges to root/continuation exchanges.
-* Restructured to mirror the base ID-JAG profile and aligned terminology (IdP
-  Authorization Server), Token Exchange request/response formatting, and
-  `resource` cardinality (zero or more, per RFC 8707); consolidated request
-  validation into seven thematic rules and split the response into successful,
-  onward ID-JAG construction, and error handling with hop activation as its
-  own section.
-* Separated normative requirements from realization detail: added a
-  non-normative Implementation Considerations section, demoted the intra-domain
-  carrier to a deployment mechanism (keeping its security properties), and
-  removed deployment and operational over-reach (grant-management interface,
-  rate/fan-out limits, logging, topology, cached-read and co-location wording,
-  lineage disclosure).
-* Placed protocol requirements in the protocol sections (replay fingerprint,
-  root authentication-context copy) with their threat rationale in Security;
-  expanded Security Considerations, the root-chain envelope, and the rationale
-  for asymmetric-only signing; made chain revocation testable.
-* Bound the originating IdP and tenant to the accepted hop: the RAS records
-  them with the handle and confirmed key, the carrier preserves the
-  association, and the CAI derives the assertion audience from that binding
-  rather than requester input; CAI issuance is in-domain only.
-* Made the RAS `identity_continuation_issuers` advertisement a nomination only,
-  with the IdP establishing issuer identity and key trust independently;
-  completed its definition, added a Metadata Disclosure security subsection,
-  and named the base identity-chaining metadata parameter the IdP flag
-  composes with.
-* Clarified lifetimes and errors: distinguished the ID-JAG, assertion, and
-  access-token windows and stated the residual stale-revocation window
-  honestly; narrowed `invalid_continuation` to permanently-unusable handles;
-  and noted a depth-limited `act` is not proof no earlier actor exists.
-* Corrected the Token Exchange examples and cross-references, softened the
-  handle-correlation claim, trimmed the open-items appendix, and marked the
-  draft an individual submission.
+* Renamed Chain Authority to Continuation Assertion Issuer and the
+  direct/chained exchanges to root/continuation exchanges, and aligned with the
+  base ID-JAG profile: terminology (IdP Authorization Server), Token Exchange
+  request/response formatting, and `resource` cardinality (zero or more, per
+  RFC 8707).
+* Restructured for clarity and scope: grouped request validation into seven
+  rules; split the response into success, onward ID-JAG construction, and
+  errors; added a non-normative Implementation Considerations section; and
+  demoted the intra-domain carrier and other deployment guidance out of
+  normative text.
+* Bound the originating IdP and tenant to the accepted hop, so the CAI derives
+  the assertion audience from that binding rather than requester input;
+  restricted CAI issuance to the RAS trust domain.
+* Made the RAS `identity_continuation_issuers` advertisement a nomination only
+  (the IdP establishes issuer trust and keys independently) and added a
+  Metadata Disclosure security consideration.
+* Tightened the security model: relocated the replay-fingerprint and
+  authentication-context requirements into the protocol sections with their
+  rationale in Security; narrowed `invalid_continuation` to permanently
+  unusable handles; distinguished the ID-JAG, assertion, and access-token
+  lifetimes; clarified that a depth-limited `act` is not proof of complete
+  lineage; and made chain revocation testable.
+* Corrected the examples and cross-references, expanded the root-chain
+  envelope and design rationale, softened the handle-correlation claim,
+  trimmed the open items, and marked the draft an individual submission.
 
 -00
 
