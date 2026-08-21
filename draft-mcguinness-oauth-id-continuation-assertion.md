@@ -414,12 +414,9 @@ The IdP MUST bound chain lifetime by the governing authorization and reject
 expired chains. It MUST revoke whole chains and MAY revoke an individual hop's
 subtree, and MUST reject continuation from revoked state.
 
-For a grant-anchored chain, the IdP SHOULD provide a user- or
-administrator-facing interface showing the chain's root context, hop graph,
-lineage, granted targets, expiry, and any recorded purpose, and offering
-whole-chain and subtree revocation. It SHOULD notify the user or administrator
-at establishment and near expiry. The same interface is RECOMMENDED for
-session-anchored chains. See {{GRANT-MGMT}}.
+How an IdP surfaces chains to users and administrators for review and
+revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
+management for that purpose.
 
 # Multi-Hop Cross-Domain Access {#access}
 
