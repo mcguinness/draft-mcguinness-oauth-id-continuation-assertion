@@ -912,8 +912,7 @@ binding makes it ACCEPTED. A mapped CAI attests a hop only once it
 is ACCEPTED, so a PENDING hop yields no assertion and reaches no continuation
 exchange. A fresh assertion from the mapped CAI
 lets the IdP evaluate the hop as CONTINUABLE for one request; CONTINUABLE is
-not stored but holds only while rules 6, 7, and 9 to 11 of {{validation}} hold
-for
+not stored but holds only while rules 3, 4, and 5 of {{validation}} hold for
 that request. There is no RAS callback.
 
 | State | Where it lives | Meaning |
