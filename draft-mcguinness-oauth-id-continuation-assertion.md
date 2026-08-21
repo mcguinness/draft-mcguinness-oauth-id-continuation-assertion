@@ -4,7 +4,6 @@ abbrev: "Identity Continuation Assertion"
 category: std
 
 docname: draft-mcguinness-oauth-id-continuation-assertion-latest
-submissiontype: IETF
 number:
 date:
 consensus: false
@@ -481,9 +480,10 @@ ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
 
 The CAI mints the Identity Continuation Assertion a workload presents to
 continue a chain across a boundary. It MUST issue only for an actor in the
-attested RAS's trust domain unless tenant configuration explicitly authorizes
-that external actor and its keys; actor authentication and the issuance
-protocol are deployment-specific.
+attested RAS's trust domain; actor authentication and the issuance protocol
+are deployment-specific. The CAI MUST set the assertion's `aud` to the IdP
+recorded in the hop's RAS binding ({{ras-processing}}); it MUST NOT accept an
+IdP audience supplied by the requester.
 
 The current actor is a control-plane participant, not a bare-handle
 transporter: it presents the handle read from its own intra-domain context,
@@ -931,8 +931,9 @@ on accepting a continuation-capable ID-JAG:
    which includes validating the grant, authenticating the presenting client,
    verifying the sender constraint, applying local authorization policy, and
    issuing an access token sender-constrained to the confirmed key; and
-2. bind `identity_continuation_handle` to the authorization state it
-   establishes, recording whether continuation is permitted.
+2. bind `identity_continuation_handle`, the ID-JAG's issuer and tenant, and
+   the confirmed key to the authorization state it establishes, recording
+   whether continuation is permitted.
 
 The RAS MUST bind the handle and issue the access token as one outcome: no
 access token without its binding, and no binding without a token. Repeated
@@ -981,8 +982,8 @@ neither narrows nor widens it.
 Within a trust domain, an authorized workload learns the accepted hop's handle
 from a trusted intra-domain carrier. The carrier:
 
-* MUST be server-derived and MUST bind the handle to the current credential,
-  key, and RAS authorization;
+* MUST be server-derived and MUST bind the handle, its originating IdP and
+  tenant, and the current credential and key to the RAS authorization;
 * MUST NOT be supplied or overridden by the requester;
 * MUST NOT be accepted outside the trust domain; and
 * MUST be re-derived when replaced.
@@ -2272,10 +2273,11 @@ This non-normative appendix lists unresolved design questions.
    DPoP: <proof>
 
    identity_continuation_handle=<handle>
-   &audience=https://idp.example/
    ~~~
 
-   The authenticated workload and proof key would determine `act` and `cnf`.
+   The authenticated workload and proof key would determine `act` and `cnf`,
+   and the IdP audience would derive from the hop's binding rather than be
+   supplied.
    The profile could also define errors, discovery, retry, and optional
    target/resource constraints enforced by the IdP as ceilings.
 
