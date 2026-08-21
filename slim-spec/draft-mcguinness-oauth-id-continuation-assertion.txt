@@ -682,7 +682,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       IdP session for that user and client; or
 
    *  a SAML SessionIndex [SAML2.Core] resolving to an active IdP
-      session for that user and presenter.
+      session for that user and client.
 
    The IdP MUST NOT root a chain from an unresolved anchor or an access
    token; non-user-rooted authority is out of scope. sid and
