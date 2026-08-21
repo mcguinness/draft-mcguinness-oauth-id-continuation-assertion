@@ -2358,10 +2358,22 @@ this profile builds.
   root authentication-context copy) with their threat rationale in Security;
   expanded Security Considerations, the root-chain envelope, and the rationale
   for asymmetric-only signing; made chain revocation testable.
+* Bound the originating IdP and tenant to the accepted hop: the RAS records
+  them with the handle and confirmed key, the carrier preserves the
+  association, and the CAI derives the assertion audience from that binding
+  rather than requester input; CAI issuance is in-domain only.
 * Made the RAS `identity_continuation_issuers` advertisement a nomination only,
-  with the IdP establishing issuer identity and key trust independently.
-* Corrected the Token Exchange examples, trimmed the open-items appendix, and
-  marked the draft an individual submission.
+  with the IdP establishing issuer identity and key trust independently;
+  completed its definition, added a Metadata Disclosure security subsection,
+  and named the base identity-chaining metadata parameter the IdP flag
+  composes with.
+* Clarified lifetimes and errors: distinguished the ID-JAG, assertion, and
+  access-token windows and stated the residual stale-revocation window
+  honestly; narrowed `invalid_continuation` to permanently-unusable handles;
+  and noted a depth-limited `act` is not proof no earlier actor exists.
+* Corrected the Token Exchange examples and cross-references, softened the
+  handle-correlation claim, trimmed the open-items appendix, and marked the
+  draft an individual submission.
 
 -00
 
