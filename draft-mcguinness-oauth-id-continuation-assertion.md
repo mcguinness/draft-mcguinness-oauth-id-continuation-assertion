@@ -2315,35 +2315,28 @@ this profile builds.
 
 -01
 
-* Renamed Chain Authority to Continuation Assertion Issuer, and direct/chained
+* Renamed Chain Authority to Continuation Assertion Issuer and direct/chained
   exchanges to root/continuation exchanges.
-* Restructured to mirror the base ID-JAG profile, and aligned terminology (IdP
-  Authorization Server), Token Exchange request and response formatting, and
-  `resource` cardinality (now zero or more, per RFC 8707) with it.
-* Consolidated the Token Exchange processing rules and grouped request
-  validation into seven thematic rules.
-* Added a non-normative Implementation Considerations section and demoted the
-  intra-domain carrier from a role to a deployment mechanism, keeping its
-  security properties normative.
-* Made the RAS `identity_continuation_issuers` advertisement a nomination only;
-  the IdP establishes issuer identity and key trust independently.
-* Removed the grant-management interface requirement and other deployment and
-  operational over-reach (rate and fan-out limits, logging, role topology,
-  cached-read and co-location wording, lineage disclosure), keeping the
-  observable security requirements.
-* Expanded Security Considerations with the threat and rationale for each item,
-  and moved the replay fingerprint and root authentication-context
-  requirements into the protocol sections, leaving their threat rationale in
-  Security.
-* Split the Token Exchange response into successful response, onward ID-JAG
-  construction, and error handling, and promoted hop activation to its own
-  section.
-* Expanded the root-chain envelope (enumerated-target and policy-basis forms),
-  made chain revocation testable, and added rationale for asymmetric-only
-  signing.
-* Corrected the Token Exchange examples (client authentication, response cache
-  headers) and trimmed the open-items appendix.
-* Marked the draft an individual submission.
+* Restructured to mirror the base ID-JAG profile and aligned terminology (IdP
+  Authorization Server), Token Exchange request/response formatting, and
+  `resource` cardinality (zero or more, per RFC 8707); consolidated request
+  validation into seven thematic rules and split the response into successful,
+  onward ID-JAG construction, and error handling with hop activation as its
+  own section.
+* Separated normative requirements from realization detail: added a
+  non-normative Implementation Considerations section, demoted the intra-domain
+  carrier to a deployment mechanism (keeping its security properties), and
+  removed deployment and operational over-reach (grant-management interface,
+  rate/fan-out limits, logging, topology, cached-read and co-location wording,
+  lineage disclosure).
+* Placed protocol requirements in the protocol sections (replay fingerprint,
+  root authentication-context copy) with their threat rationale in Security;
+  expanded Security Considerations, the root-chain envelope, and the rationale
+  for asymmetric-only signing; made chain revocation testable.
+* Made the RAS `identity_continuation_issuers` advertisement a nomination only,
+  with the IdP establishing issuer identity and key trust independently.
+* Corrected the Token Exchange examples, trimmed the open-items appendix, and
+  marked the draft an individual submission.
 
 -00
 
