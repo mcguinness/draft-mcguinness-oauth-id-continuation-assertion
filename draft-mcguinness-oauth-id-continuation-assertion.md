@@ -407,13 +407,8 @@ lifetime, since
 redemption is not a continuation.
 
 The IdP MUST bound chain lifetime by the governing authorization and reject
-expired chains.
-
-`auth_time`, `acr`, and `amr` are fixed at root issuance; continuation MUST
-NOT refresh them.
-
-The IdP MUST revoke whole chains and MAY revoke an individual hop's subtree.
-It MUST reject continuation from revoked state.
+expired chains. It MUST revoke whole chains and MAY revoke an individual hop's
+subtree, and MUST reject continuation from revoked state.
 
 For a grant-anchored chain, the IdP SHOULD provide a user- or
 administrator-facing interface showing the chain's root context, hop graph,
@@ -459,7 +454,7 @@ The workload that continues is a later party, not the original client that
 established the chain.
 
 Each role validates only within its authority, and no artifact or role alone
-authorizes continuation ({{security-trust-model}}); the per-role rules are in
+authorizes continuation ({{security-trust-model}}); the detailed rules are in
 {{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
 {{validation}}, and {{onward-id-jag}}.
 
@@ -473,10 +468,10 @@ protocol are deployment-specific.
 A presenting workload is a control-plane participant, not a bare-handle
 transporter: it presents the handle read from its own intra-domain context,
 with its key and any narrowing hints, to its CAI. The
-handle is advisory input, re-verified against RAS-bound state by the checks
-below before any assertion issues.
+handle is advisory input, re-verified against RAS-bound state
+({{hop-activation}}) by the checks below before any assertion issues.
 
-It MUST authenticate the actor and issue only after establishing that:
+The CAI MUST authenticate the actor and issue only after establishing that:
 
 1. the handle came through an authenticated, confidential,
    integrity-protected chain path or equivalent authenticated state;
@@ -621,8 +616,9 @@ these limits.
 
 ### Presenter Authentication {#client-identity}
 
-This section applies to a continuation exchange; the root exchange's DPoP
-requirement is specified in {{root-establishment}}.
+The client-to-actor mapping below applies to every exchange; the `act` and
+`actor_token` matching and the DPoP proof apply to a continuation exchange, and
+the root exchange's DPoP requirement is specified in {{root-establishment}}.
 
 The current actor MUST authenticate as an OAuth client; the IdP MUST map that
 client authoritatively to an actor identity and MUST match that identity to
@@ -760,7 +756,7 @@ idempotency remains out of scope. Realization guidance is in {{implementation}}.
 ### Response {#onward-id-jag}
 
 The IdP delivers the hop reference in the issued ID-JAG's
-`identity_continuation_handle` claim ({{chain-id}}, rule 1; {{onward-id-jag}}),
+`identity_continuation_handle` claim ({{chain-id}}, rule 1),
 not as a separate Token Exchange response parameter. The accepting Resource
 Authorization Server binds it ({{ras-processing}}) and the domain then surfaces
 it to continuers as intra-domain context ({{transaction-token-context}}).
@@ -898,10 +894,11 @@ rechecked authoritative RAS state before attesting
 ({{assertion-issuance}}). Absent CAI compromise
 ({{security-trust-model}}), an issued-but-rejected ID-JAG
 cannot be continued because no mapped CAI may attest it. A mapped
-CAI is mandatory; its absence fails closed. Acceptance gates
-continuation but does not bound downstream authority: the IdP evaluates later
-targets against the root envelope, and local RAS authorization neither narrows
-nor widens it.
+CAI is mandatory; its absence fails closed.
+
+Acceptance gates continuation but does not bound downstream authority: the IdP
+evaluates later targets against the root envelope, and local RAS authorization
+neither narrows nor widens it.
 
 ## Intra-Domain Handle Propagation {#transaction-token-context}
 
@@ -974,15 +971,19 @@ This section is non-normative. It describes ways an IdP can realize this
 document's requirements; conformance depends only on the normative sections.
 
 The replay reservation ({{validation-replay}}) is typically held in strongly
-consistent state: only one concurrent request reaches ISSUED, and a concurrent
-request under a matching fingerprint waits for or retries that result. The IdP
-retains and expires the reservation by the same clock it uses to evaluate
-`exp`. Because the actor-chain depth bound counts collapsed lineage entries, an
-actor that repeatedly continues as itself never trips it; the fan-out, rate,
-and hop-count limits of {{root-establishment}} bound such retry-driven growth
-instead. The IdP prunes expired or revoked hop state, and the CAI accounts for
-retries separately from fan-out and keeps audit records of its issuance and
-limit enforcement.
+consistent state: only one concurrent request reaches ISSUED, a concurrent
+request under a matching fingerprint waits for or retries that result, and the
+IdP retains and expires the reservation by the same clock it uses to evaluate
+`exp`.
+
+Because the actor-chain depth bound counts collapsed lineage entries, an actor
+that repeatedly continues as itself never trips it; the fan-out, rate, and
+hop-count limits of {{root-establishment}} bound such retry-driven growth
+instead, and the IdP prunes expired or revoked hop state.
+
+The CAI accounts for retries separately from fan-out and keeps audit records of
+its issuance and limit enforcement. The IdP performs end-to-end audit
+correlation across a chain, while each RAS logs only its local subject.
 
 An IdP can derive handles from an internal delegation identifier using a
 keyed one-way function, provided the derived handles still satisfy rules 1, 2,
@@ -991,9 +992,6 @@ and 5 of {{chain-id}} and remain unlinkable.
 An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
 does not relax the reservation durability of {{validation-replay}}.
-
-The IdP performs end-to-end audit correlation, while each RAS logs its local
-subject.
 
 # Security Considerations {#security}
 
