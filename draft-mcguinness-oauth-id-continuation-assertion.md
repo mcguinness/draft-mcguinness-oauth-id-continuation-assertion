@@ -785,47 +785,50 @@ Cache-Control: no-store
 }
 ~~~
 
-The IdP delivers the hop reference as the ID-JAG's
-`identity_continuation_handle` claim ({{chain-id}}, rule 1), a claim inside
-`access_token` and not a separate Token Exchange response parameter. The
-accepting Resource Authorization Server binds it ({{ras-processing}}) and the
-domain then surfaces it to continuers as intra-domain context
-({{transaction-token-context}}).
-
-There is no chain-expiry response parameter: chain lifetime is authoritative at
-the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
-through task or authorization state, an optional ID-JAG claim, or a management
-API.
+The hop reference is delivered as the ID-JAG's `identity_continuation_handle`
+claim ({{chain-id}}, rule 1), a claim inside `access_token` and not a separate
+Token Exchange response parameter; the accepting Resource Authorization Server
+binds it ({{ras-processing}}), and the domain then surfaces it to continuers as
+intra-domain context ({{transaction-token-context}}). There is likewise no
+chain-expiry response parameter: chain lifetime is authoritative at the IdP
+({{lifecycle}}), and a deployment needing advance warning conveys it through
+task or authorization state, an optional ID-JAG claim, or a management API.
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG containing the resolved target `sub` and
 fresh handle. An idempotent retry (rule 6; {{validation-replay}}) instead
 returns the previously issued grant unchanged, creating no new hop or handle.
 
-On failure, the IdP returns an OAuth error {{RFC6749}}, {{RFC8693}}, and
-SHOULD use `invalid_request` for malformed, inconsistent, or unacceptable
-tokens; `invalid_dpop_proof` for DPoP failure; and `invalid_target`,
-`invalid_scope`, or `invalid_authorization_details` for requests outside the
-envelope.
+On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
 
-The IdP MUST return `invalid_continuation` ({{iana}}) when the presented handle
-cannot support this continuation, distinguishing a dead hop from the
-`invalid_request` of a malformed request. Such a handle is terminal: retrying
-it cannot succeed. Recovery requires establishing a new chain and succeeds only
-where the governing authorization is still continuation-capable: a
-session-anchored chain re-roots by re-authenticating the user, a grant-anchored
-chain from its still-valid grant without the user; a handle disabled by
-withdrawn continuation authorization cannot re-root at all. Target-specific
-errors (`invalid_target`, `invalid_scope`, `invalid_authorization_details`)
-leave the chain otherwise continuable, so a
-client abandons only the current request.
+* it MUST return `invalid_continuation` ({{iana}}) when the presented handle
+  cannot support this continuation, distinguishing a dead hop from a malformed
+  request; and
+* it SHOULD use `invalid_request` for a malformed, inconsistent, or
+  unacceptable token, `invalid_dpop_proof` for a DPoP failure, and
+  `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
+  request outside the envelope.
+
+An `invalid_continuation` handle is terminal: retrying it cannot succeed.
+Recovery requires establishing a new chain and succeeds only where the
+governing authorization is still continuation-capable: a session-anchored chain
+re-roots by re-authenticating the user, a grant-anchored chain from its
+still-valid grant without the user, and a handle disabled by withdrawn
+continuation authorization cannot re-root at all. The target-specific errors
+leave the chain otherwise continuable, so a client abandons only the current
+request.
 
 The onward ID-JAG conforms to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it: its `sub` is the IdP-issued pairwise subject for the target
 audience, and `aud_sub` remains available under the base profile where the
-target's native subject namespace differs. The following is a non-normative
-example of the onward ID-JAG issued by the IdP:
+target's native subject namespace differs. The IdP constructs `act` by placing
+the authenticated current actor atop the presented hop's lineage; it never
+copies lineage from the assertion, and siblings do not contribute. Consecutive
+identical actors collapse to one entry, though the hop record remains; policy
+MAY limit disclosed depth, narrowing what a target sees without changing the
+depth bound the IdP enforces ({{validation}}, rule 4). The following is a
+non-normative example of the onward ID-JAG issued by the IdP:
 
 ~~~ json
 {
@@ -862,16 +865,8 @@ example of the onward ID-JAG issued by the IdP:
 }
 ~~~
 
-The IdP constructs `act` by placing the authenticated current actor atop the
-presented hop's lineage; it never copies lineage from the assertion. Siblings
-do not contribute. Consecutive identical actors collapse to one entry, though
-the hop record remains; policy MAY limit disclosed depth, narrowing what a
-target sees without changing the depth bound the IdP enforces
-({{validation}}, rule 4).
-
-The target RAS validates the ID-JAG, issues its access token, and, if
-continuation-aware, binds the handle. The ID-JAG `client_id` is the current
-actor's identifier at that RAS.
+The onward ID-JAG's `client_id` is the current actor's identifier at the
+target RAS.
 
 ## Access Token Request {#ras-processing}
 
