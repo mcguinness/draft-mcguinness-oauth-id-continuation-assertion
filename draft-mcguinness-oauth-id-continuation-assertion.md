@@ -899,22 +899,9 @@ rechecked authoritative RAS state before attesting
 ({{security-trust-model}}), an issued-but-rejected ID-JAG
 cannot be continued because no mapped CAI may attest it. A mapped
 CAI is mandatory; its absence fails closed. Acceptance gates
-continuation but does not bound downstream authority ({{ras-gate}}).
-
-### A Gate, Not a Ceiling {#ras-gate}
-
-RAS acceptance is a gate, not a downstream ceiling. The IdP evaluates later
-targets against the root envelope; local RAS authorization neither narrows nor
-widens it.
-
-### Durable Task Authorization {#task-provenance}
-
-Scheduled continuation MUST root in durable RAS authorization, not a
-scheduler-held handle, which would become a durable bearer-like credential
-outside the per-call key proof and RAS binding that gate every other use. The
-scheduler holds only a task identifier; each authenticated run re-derives the
-handle from active task state and still requires an assertion from a mapped
-CAI.
+continuation but does not bound downstream authority: the IdP evaluates later
+targets against the root envelope, and local RAS authorization neither narrows
+nor widens it.
 
 ## Intra-Domain Handle Propagation {#transaction-token-context}
 
@@ -1029,6 +1016,15 @@ and the OAuth guidance of {{RFC9700}}. It addresses these adversaries:
 
 The assertion MUST NOT be accepted as bearer {{RFC7800}}. It requires live
 proof of the actor's `cnf` key.
+
+## Durable Task Authorization {#task-provenance}
+
+Scheduled continuation MUST root in durable RAS authorization, not a
+scheduler-held handle, which would become a durable bearer-like credential
+outside the per-call key proof and RAS binding that gate every other use. The
+scheduler holds only a task identifier; each authenticated run re-derives the
+handle from active task state and still requires an assertion from a mapped
+CAI.
 
 ## Short Lifetime and Replay {#security-replay}
 
@@ -2198,7 +2194,7 @@ This non-normative appendix lists unresolved design questions.
 
 11. **RAS-derived narrowing.** Cross-domain scope vocabularies are not
     generally comparable, so RAS-derived narrowing, if ever defined, would need
-    signed constraints and an explicit intersection model ({{ras-gate}}).
+    signed constraints and an explicit intersection model ({{hop-activation}}).
 
 # Acknowledgments
 {:numbered="false"}
