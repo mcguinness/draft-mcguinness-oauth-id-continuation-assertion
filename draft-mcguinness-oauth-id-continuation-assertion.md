@@ -469,11 +469,12 @@ attests the still-active binding ({{hop-activation}}). The workload that
 continues is a later party, not the original client that established the chain.
 
 Each role validates only within its authority, and no artifact or role alone
-authorizes continuation ({{security-trust-model}}). The detailed rules follow
-the order the handle travels: the RAS binds it ({{ras-processing}}), the domain
-surfaces it ({{transaction-token-context}}), the CAI issues the assertion
-({{assertion-issuance}}), and the IdP validates ({{validation}}) and issues the
-next ID-JAG ({{onward-id-jag}}).
+authorizes continuation ({{security-trust-model}}). The sections that follow
+trace artifact production and processing: the CAI issues the assertion
+({{assertion-issuance}}), the IdP validates the exchange and issues the next
+ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
+({{ras-processing}}), and the domain surfaces the handle to later continuers
+({{transaction-token-context}}).
 
 ## Issuing the Assertion {#assertion-issuance}
 
@@ -787,7 +788,7 @@ ISSUED result or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
 idempotency remains out of scope. Realization guidance is in {{implementation}}.
 
-### Response {#onward-id-jag}
+### Successful Response {#success-response}
 
 The Token Exchange response follows the base ID-JAG profile: the ID-JAG is
 returned in `access_token`, with `token_type` `N_A`.
@@ -820,24 +821,7 @@ presented hop and issues an ID-JAG containing the resolved target `sub` and
 fresh handle. An idempotent retry (rule 6; {{validation-replay}}) instead
 returns the previously issued grant unchanged, creating no new hop or handle.
 
-On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
-
-* it MUST return `invalid_continuation` ({{iana}}) when the presented handle
-  cannot support this continuation, distinguishing a dead hop from a malformed
-  request; and
-* it SHOULD use `invalid_request` for a malformed, inconsistent, or
-  unacceptable token, `invalid_dpop_proof` for a DPoP failure, and
-  `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
-  request outside the envelope.
-
-An `invalid_continuation` handle is terminal: retrying it cannot succeed.
-Recovery requires establishing a new chain and succeeds only where the
-governing authorization is still continuation-capable: a session-anchored chain
-re-roots by re-authenticating the user, a grant-anchored chain from its
-still-valid grant without the user, and a handle disabled by withdrawn
-continuation authorization cannot re-root at all. The target-specific errors
-leave the chain otherwise continuable, so a client abandons only the current
-request.
+### Onward ID-JAG Construction {#onward-id-jag}
 
 The onward ID-JAG conforms to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
@@ -889,7 +873,28 @@ non-normative example of the onward ID-JAG issued by the IdP:
 The onward ID-JAG's `client_id` is the current actor's identifier at the
 target RAS.
 
-## Access Token Request Processing {#ras-processing}
+### Error Response and Recovery {#error-response}
+
+On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
+
+* it MUST return `invalid_continuation` ({{iana}}) when the presented handle
+  cannot support this continuation, distinguishing a dead hop from a malformed
+  request; and
+* it SHOULD use `invalid_request` for a malformed, inconsistent, or
+  unacceptable token, `invalid_dpop_proof` for a DPoP failure, and
+  `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
+  request outside the envelope.
+
+An `invalid_continuation` handle is terminal: retrying it cannot succeed.
+Recovery requires establishing a new chain and succeeds only where the
+governing authorization is still continuation-capable: a session-anchored chain
+re-roots by re-authenticating the user, a grant-anchored chain from its
+still-valid grant without the user, and a handle disabled by withdrawn
+continuation authorization cannot re-root at all. The target-specific errors
+leave the chain otherwise continuable, so a client abandons only the current
+request.
+
+## Continuation-Aware RAS Processing {#ras-processing}
 
 Only a RAS from which continuation occurs implements this extension. A
 terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
@@ -914,9 +919,10 @@ handle in an access token, external authorization claim, or protected-API
 authorization input. It exposes the binding only privately within its trust
 domain.
 
-### Hop Activation {#hop-activation}
+## Hop Activation {#hop-activation}
 
-A hop moves through three states. The IdP creates it PENDING. Successful RAS
+A hop moves through three states, spanning the IdP, RAS, and CAI. These are
+conceptual states, not values carried on the wire. The IdP creates it PENDING. Successful RAS
 binding makes it ACCEPTED. A mapped CAI attests a hop only once it
 is ACCEPTED, so a PENDING hop yields no assertion and reaches no continuation
 exchange. A fresh assertion from the mapped CAI
