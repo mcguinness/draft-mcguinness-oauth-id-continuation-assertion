@@ -371,8 +371,9 @@ The following rules apply:
    subject, and policy, never as authority.
 
 5. A hop's parent reference is immutable. The IdP MUST derive lineage only by
-   walking parent references to the root, and MUST NOT keep a single chain-wide
-   actor history; concurrent sibling continuations are independent branches.
+   walking parent references to the root; it does not maintain a single
+   chain-wide actor history, so concurrent sibling continuations are
+   independent branches.
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -489,8 +490,7 @@ Possession of a handle or carrier token is insufficient. The CAI MUST bind the
 actor to the current transaction, verify that the
 handle matches that transaction's RAS-bound state, and recheck authoritative,
 uncached RAS state to confirm that the authorization remains active and
-continuation remains permitted. It MUST enforce per-transaction and per-actor
-rate and fan-out limits. Target or purpose hints MAY narrow
+continuation remains permitted. Target or purpose hints MAY narrow
 CAI issuance but MUST NOT control the IdP's target decision.
 Propagated context MUST NOT override the root-chain envelope.
 
@@ -621,10 +621,9 @@ may attest that hop.
 
 Establishment is at-least-once: retrying a lost response MAY create a second
 chain. Revocation of the governing authorization applies to every chain rooted
-in it, and the actor-chain depth bound is enforced per branch; the IdP MUST
-enforce configured fan-out, rate, and hop-count limits as an aggregate keyed
-to the governing authorization, and a retried establishment MUST NOT evade
-these limits.
+in it, and the actor-chain depth bound is enforced per branch. Configured
+fan-out, rate, and hop-count limits MUST aggregate per governing authorization,
+and a retried establishment MUST NOT evade them.
 
 ### Presenter Authentication {#client-identity}
 
@@ -950,8 +949,8 @@ bind the wrong user's authorization state to this call.
 
 Authorized intra-domain workloads MAY read the handle. They MUST NOT place it
 in access tokens, external authorization claims, responses, webhooks, errors,
-or calls to non-participants, and SHOULD omit it from logs and traces. The
-handle conveys no authority.
+or calls to non-participants; deployments also keep it out of logs and
+traces. The handle conveys no authority.
 
 # Authorization Server Metadata {#metadata}
 
@@ -998,7 +997,7 @@ the nominated issuers rather than be configured out of band
   the advertisement alone MUST NOT establish key trust or override the IdP's
   tenant issuer-pairing policy. Acceptance remains the IdP's decision.
 
-A party that requires onward continuation SHOULD consult this advertisement
+A party that requires onward continuation can consult this advertisement
 when available; absent these signals, it learns of support out of band or by
 attempting an exchange.
 
@@ -1131,7 +1130,7 @@ otherwise the mapping is established out of band or through federation
 
 One operator MAY run the RAS, carrier, and CAI. Co-locating these
 anchors trades away the defense in depth the conjunction otherwise provides, so
-where independent acceptance evidence matters, deployments SHOULD separate them
+where independent acceptance evidence matters, deployments can separate them
 or audit the binding-to-attestation path. If the IdP is also co-located, even
 the envelope backstop becomes organizational rather than protocol-separated.
 
@@ -1176,7 +1175,7 @@ issued to two audiences within one short window and carrying the same
 actor-chain shape may infer they belong to one user's transaction, even without
 a shared handle. The onward ID-JAG's `act` chain also names the prior actors to
 the accepting RAS outright, with no correlation needed; {{onward-id-jag}} lets
-policy limit the disclosed depth. Deployments SHOULD disclose handles only to
+policy limit the disclosed depth. Deployments disclose handles only to
 participants that continue or administer the chain. They MAY limit lineage
 exposed to each audience, subject to audit requirements.
 
