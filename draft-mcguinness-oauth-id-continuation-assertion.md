@@ -368,8 +368,7 @@ The following rules apply:
 
 5. A hop's parent reference is immutable. The IdP MUST derive lineage only by
    walking parent references to the root, and MUST NOT keep a single chain-wide
-   actor history; concurrent sibling continuations are independent branches. The
-   IdP performs end-to-end audit correlation; each RAS logs its local subject.
+   actor history; concurrent sibling continuations are independent branches.
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -928,14 +927,11 @@ and re-derived when replaced. A Transaction Token
 {{I-D.ietf-oauth-transaction-tokens}} is one realization of these properties;
 the specific carrier is deployment-specific ({{rationale-txn}}).
 
-The requester MUST NOT supply or override the handle. Before deriving, the
-protected endpoint or carrier MUST validate live proof of possession of the
-confirmed key presented on the current call, then derive the handle from the
-authorization record bound to that verified credential, key, and RAS state,
-never from a session or subject, which could otherwise bind the wrong user's
-authorization state to this call. The carrier MUST NOT be accepted outside its
-trust domain; a replacement re-derives the handle from the same RAS-bound
-state.
+Before deriving, the protected endpoint or carrier MUST validate live proof
+of possession of the confirmed key presented on the current call, then derive
+the handle from the authorization record bound to that verified credential,
+key, and RAS state, never from a session or subject, which could otherwise
+bind the wrong user's authorization state to this call.
 
 Authorized intra-domain workloads MAY read the handle. They MUST NOT place it
 in access tokens, external authorization claims, responses, webhooks, errors,
@@ -1009,6 +1005,9 @@ and 5 of {{chain-id}} and remain unlinkable.
 An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
 does not relax the reservation durability of {{validation-replay}}.
+
+The IdP performs end-to-end audit correlation, while each RAS logs its local
+subject.
 
 # Security Considerations {#security}
 
