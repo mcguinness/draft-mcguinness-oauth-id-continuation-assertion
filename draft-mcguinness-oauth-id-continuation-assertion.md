@@ -723,7 +723,7 @@ from another's resolution.
      strings, `act` and `cnf` are JSON objects with `cnf` naming exactly one
      confirmation method, and `iat` and `exp` are NumericDate numbers;
    * the signature validates under an acceptable algorithm ({{security-alg}},
-     {{RFC8725}}); and
+     {{RFC8725}}) with the issuer's resolved signing keys ({{metadata}}); and
    * `aud` exactly matches the IdP's issuer identifier;
 
 3. **Issuer trust.** The assertion `iss` is trusted for the tenant, mapped to
@@ -1050,12 +1050,23 @@ the nominated issuers rather than be configured out of band
   hops it accepts; an empty array authorizes none. Values are compared with
   the assertion `iss` as exact, case-sensitive strings, and duplicates are
   ignored. The advertisement is a nomination only: the IdP MUST establish each
-  issuer's identity and signing keys independently, through authenticated
-  configuration or federation, and the advertisement alone MUST NOT establish
-  key trust or override the IdP's tenant issuer-pairing policy. Because the IdP
+  issuer's identity and signing keys independently, and the advertisement
+  alone MUST NOT establish key trust or override the IdP's tenant
+  issuer-pairing policy. Because the IdP
   evaluates issuer trust and keys against its current configuration, removing
   an issuer or revoking its keys de-authorizes it for existing chains.
   Acceptance remains the IdP's decision.
+
+When a CAI issuer identifier is an https URL, the IdP SHOULD resolve the CAI's
+signing keys from the `jwks_uri` in the authorization server metadata located
+for that issuer per {{RFC8414}}, Section 3, retrieved over TLS, and refresh
+them on rotation; a CAI that is not itself an authorization server needs only
+`issuer` and `jwks_uri` in that metadata. The IdP MUST confirm that the
+`issuer` value in the retrieved metadata equals the authorized CAI issuer
+identifier, and resolves keys from that issuer's own endpoint, never from a
+`jwks_uri` or key set the Resource Authorization Server supplies. Where the
+issuer is not reachable, or the identifier is not an https URL, the IdP
+obtains its signing keys from authenticated configuration instead.
 
 # Implementation Considerations {#implementation}
 
@@ -1196,8 +1207,8 @@ the candidate mapping from that server's advertised
 `identity_continuation_issuers` ({{metadata}}). That advertisement is a
 nomination only: it scopes each server to naming issuers for its own hops but
 does not itself establish issuer or key trust. The IdP independently
-authenticates each CAI issuer and its signing keys, and tenant policy
-authorizes the resulting server, CAI, and actor-token-issuer combination.
+authenticates each CAI issuer and its signing keys ({{metadata}}), and tenant
+policy authorizes the resulting server, CAI, and actor-token-issuer combination.
 Absent the advertisement, the mapping is configured out of band.
 
 One operator may run the RAS, carrier, and CAI. Co-locating these
@@ -2301,7 +2312,9 @@ This non-normative appendix lists unresolved design questions.
    and the IdP audience would derive from the hop's binding rather than be
    supplied.
    The profile could also define errors, discovery, retry, and optional
-   target/resource constraints enforced by the IdP as ceilings.
+   target/resource constraints enforced by the IdP as ceilings. The CAI's
+   signing-key discovery is already specified ({{metadata}}), so this item
+   concerns only the issuance request and response.
 
 5. **Authorization-basis representation.** Should the envelope expose a
    testable representation of the authorization ceiling, for example:
