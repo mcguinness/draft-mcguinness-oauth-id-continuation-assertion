@@ -422,8 +422,9 @@ continuations; an ID-JAG already issued remains redeemable for its own
 lifetime, since redemption is not a continuation.
 
 The IdP MUST bound chain lifetime by the governing authorization and reject
-expired chains. It MUST be able to revoke an entire chain and MAY revoke an
-individual hop's subtree, and MUST reject continuation from revoked state.
+expired chains. It MUST support administrative revocation of an entire chain
+and MAY revoke an individual hop's subtree, and MUST reject continuation on a
+revoked, expired, or ended chain.
 
 How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
@@ -505,11 +506,11 @@ The CAI MUST authenticate the actor and issue only after establishing that:
 5. the actor is bound to the current transaction and the handle matches that
    transaction's RAS-bound state; and
 
-6. an authoritative, uncached recheck of RAS state confirms the authorization
+6. a recheck against authoritative RAS state confirms the authorization
    remains active and continuation remains permitted.
 
 Possession of a handle or carrier token alone is insufficient. Target or
-purpose hints MAY narrow CAI issuance but MUST NOT control the IdP's target
+purpose hints can narrow CAI issuance but MUST NOT control the IdP's target
 decision, and propagated context MUST NOT override the root-chain envelope.
 
 ## Token Exchange {#token-exchange}
@@ -640,14 +641,14 @@ identify that client and designate the IdP where applicable; the IdP records
 the root actor and key only after this validation.
 
 For every root or child hop, the IdP records the target RAS and the CAIs mapped
-to it; the mapping MAY be static tenant configuration, and only a mapped CAI
+to it; the mapping may be static tenant configuration, and only a mapped CAI
 may attest that hop.
 
 Establishment is at-least-once: retrying a lost response MAY create a second
 chain. Revocation of the governing authorization applies to every chain rooted
-in it, and the actor-chain depth bound is enforced per branch. Configured
-fan-out, rate, and hop-count limits MUST aggregate per governing authorization,
-and a retried establishment MUST NOT evade them.
+in it, and the actor-chain depth bound is enforced per branch. A retried
+establishment MUST NOT evade the fan-out, rate, or hop-count limits configured
+for the governing authorization ({{implementation}}).
 
 ### Presenter Authentication {#client-identity}
 
@@ -775,13 +776,20 @@ The reservation model gives a client idempotent recovery after a lost response
 while preventing one assertion from authorizing more than one distinct request.
 
 After validation, grant issuance reserves the assertion's (`iss`, `jti`), bound
-to a fingerprint of the request it first authorizes ({{security-replay}}), and
-records the reservation as RESERVED, ISSUED, or FAILED (distinct from the hop
-states of {{hop-activation}}). An identical retry MUST return the same
-previously issued grant, not a new one, and a request that does not match that
-fingerprint MUST be rejected. Replay uniqueness MUST be keyed on (`iss`,
-`jti`); partitioning by tenant alone would let two assertion issuers in one
-tenant collide on a reused `jti`.
+to a fingerprint of the request it first authorizes, and records the
+reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
+{{hop-activation}}). The fingerprint MUST cover `audience` as an exact string,
+the `resource` values as an order-independent set, `scope` as an
+order-independent set, the exact `authorization_details` JSON after form
+decoding (a different serialization is a different request), the actor's `iss`
+and `sub`, the confirmed key's `cnf.jkt` thumbprint, and a SHA-256 hash of the
+exact `subject_token` after form decoding, which binds the fingerprint to the
+specific assertion and its handle. Reservation MUST be atomic, so a race
+between concurrent redemptions cannot bypass this binding. An identical retry
+MUST return the same previously issued grant, not a new one, and a request that
+does not match that fingerprint MUST be rejected. Replay uniqueness MUST be
+keyed on (`iss`, `jti`); partitioning by tenant alone would let two assertion
+issuers in one tenant collide on a reused `jti`.
 
 The IdP MUST retain the reservation through `exp` plus the maximum permitted
 clock skew, so an in-window retry is honored; a reservation that does not reach
@@ -832,12 +840,17 @@ The onward ID-JAG conforms to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it: its `sub` is the IdP-issued pairwise subject for the target
 audience, and `aud_sub` remains available under the base profile where the
-target's native subject namespace differs. The IdP constructs `act` by placing
-the authenticated current actor atop the presented hop's lineage; it never
-copies lineage from the assertion, and siblings do not contribute. Consecutive
-identical actors collapse to one entry, though the hop record remains; policy
-MAY limit disclosed depth, narrowing what a target sees without changing the
-depth bound the IdP enforces ({{validation}}, rule 4). The following is a
+target's native subject namespace differs. The IdP MUST copy the root
+authentication context (`auth_time`, `acr`, `amr`) unchanged where
+{{I-D.ietf-oauth-identity-assertion-authz-grant}} requires those claims;
+continuation MUST NOT extend or strengthen it, for example by raising `acr` or
+adding `amr` beyond the user's root authentication. The IdP constructs `act`
+by placing the authenticated current actor atop the presented hop's lineage;
+it never copies lineage from the assertion, and siblings do not contribute.
+Consecutive identical actors collapse to one entry, though the hop record
+remains; policy MAY limit disclosed depth, narrowing what a target sees without
+changing the depth bound the IdP enforces ({{validation}}, rule 4). The
+following is a
 non-normative example of the onward ID-JAG issued by the IdP:
 
 ~~~ json
@@ -916,8 +929,8 @@ on accepting a continuation-capable ID-JAG:
 2. bind `identity_continuation_handle` to the authorization state it
    establishes, recording whether continuation is permitted.
 
-Binding and token issuance MUST be atomic, so no access token is issued
-without its binding and no binding is recorded without a token. Repeated
+The RAS MUST bind the handle and issue the access token as one outcome: no
+access token without its binding, and no binding without a token. Repeated
 redemption of one ID-JAG MUST bind to the same hop authorization record, so a
 retry cannot create multiple records for one grant. The RAS MUST NOT place the
 handle in an access token, external authorization claim, or protected-API
@@ -927,13 +940,13 @@ domain.
 ## Hop Activation {#hop-activation}
 
 A hop moves through three states, spanning the IdP, RAS, and CAI. These are
-conceptual states, not values carried on the wire. The IdP creates it PENDING. Successful RAS
-binding makes it ACCEPTED. A mapped CAI attests a hop only once it
-is ACCEPTED, so a PENDING hop yields no assertion and reaches no continuation
-exchange. A fresh assertion from the mapped CAI
-lets the IdP evaluate the hop as CONTINUABLE for one request; CONTINUABLE is
-not stored but holds only while rules 3, 4, and 5 of {{validation}} hold for
-that request. There is no RAS callback.
+conceptual states, not values carried on the wire. The IdP creates it PENDING.
+Successful RAS binding makes it ACCEPTED. A mapped CAI attests a hop only once
+it is ACCEPTED, so a PENDING hop yields no assertion and reaches no
+continuation exchange. A fresh assertion from the mapped CAI lets the IdP
+evaluate the hop as CONTINUABLE for one request; CONTINUABLE is not stored but
+holds only while rules 3, 4, and 5 of {{validation}} hold for that request.
+There is no RAS callback.
 
 | State | Where it lives | Meaning |
 |---|---|---|
@@ -1043,12 +1056,16 @@ The replay reservation ({{validation-replay}}) is typically held in strongly
 consistent state: only one concurrent request reaches ISSUED, a concurrent
 request under a matching fingerprint waits for or retries that result, and the
 IdP retains and expires the reservation by the same clock it uses to evaluate
-`exp`.
+`exp`. A RAS can make the handle binding and token issuance of
+{{ras-processing}} one outcome with a local transaction, or with a
+compensating action that revokes a token whose binding did not commit.
 
 Because the actor-chain depth bound counts collapsed lineage entries, an actor
 that repeatedly continues as itself never trips it; the fan-out, rate, and
 hop-count limits of {{root-establishment}} bound such retry-driven growth
-instead, and the IdP prunes expired or revoked hop state.
+instead, and the IdP prunes expired or revoked hop state. A deployment
+configures those limits and enforces them per governing authorization, so
+sibling branches of one chain share one budget and a retry cannot escape them.
 
 The CAI accounts for retries separately from fan-out and keeps audit records of
 its issuance and limit enforcement. The IdP performs end-to-end audit
@@ -1093,7 +1110,7 @@ the chain, not once at issuance.
 
 ## Durable Task Authorization {#task-provenance}
 
-Scheduled continuation MUST root in durable RAS authorization, not a
+Scheduled continuation MUST derive from durable RAS task authorization, not a
 scheduler-held handle, which would become a durable bearer-like credential
 outside the per-call key proof and RAS binding that gate every other use. The
 scheduler holds only a task identifier; each authenticated run re-derives the
@@ -1102,28 +1119,19 @@ CAI.
 
 ## Short Lifetime and Replay {#security-replay}
 
-The 300-second ceiling and the reservation of (`iss`, `jti`)
-({{validation-replay}}) limit replay to the IdP continuation exchange. That
-reservation MUST bind (`iss`, `jti`) to a fingerprint of the whole request:
-`audience` and `resource` as exact strings, `scope` as an order-independent
-set, the exact `authorization_details` JSON after form decoding (a different
-serialization is a different request), the actor's `iss` and `sub`, the
-confirmed key's `cnf.jkt` thumbprint, and a SHA-256 hash of the exact
-`subject_token` after form decoding, which binds the fingerprint to the
-specific assertion and its handle. It MUST be atomic, so that neither a loose
-fingerprint nor a race lets one assertion authorize a second, different
-request.
+The 300-second ceiling and the single-use (`iss`, `jti`) reservation
+({{validation-replay}}) confine replay to the IdP continuation exchange. The
+request fingerprint that reservation binds ties each assertion to the one
+request it first authorized; without it, a resubmitted assertion could
+authorize a second, different request within its window.
 
 ## Root Authentication Context {#security-assurance}
 
 Downstream resources may gate access on authentication strength (`acr`) or
 methods (`amr`); if continuation could raise those claims, an actor could reach
 a step-up-gated resource the user never authenticated strongly enough for.
-Authentication context therefore comes only from the root envelope.
-Continuation MUST NOT extend or strengthen it, for example by presenting a
-higher `acr` or added `amr` than the user performed at root; the IdP MUST copy
-it unchanged into onward ID-JAGs ({{onward-id-jag}}) when
-{{I-D.ietf-oauth-identity-assertion-authz-grant}} requires those claims.
+Authentication context therefore comes only from the root envelope, copied
+unchanged into onward ID-JAGs ({{onward-id-jag}}).
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
@@ -1180,7 +1188,7 @@ authenticates each CAI issuer and its signing keys, and tenant policy
 authorizes the resulting server, CAI, and actor-token-issuer combination.
 Absent the advertisement, the mapping is configured out of band.
 
-One operator MAY run the RAS, carrier, and CAI. Co-locating these
+One operator may run the RAS, carrier, and CAI. Co-locating these
 anchors trades away the defense in depth the conjunction otherwise provides, so
 where independent acceptance evidence matters, deployments can separate them
 or audit the binding-to-attestation path. If the IdP is also co-located, even
@@ -1192,8 +1200,8 @@ overriding that server's local decision; the envelope still bounds the result,
 but the accept-and-continue gate ({{hop-activation}}) is only as trustworthy as
 the mapped CAI. Because the IdP has no channel to
 recheck RAS state itself, a CAI attesting from a
-cached read could attest a hop the RAS has since revoked; the uncached recheck
-required at issuance ({{assertion-issuance}}) closes this window.
+cached read could attest a hop the RAS has since revoked; the authoritative
+recheck required at issuance ({{assertion-issuance}}) closes this window.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -1239,8 +1247,8 @@ a shared handle.
 
 The onward ID-JAG's `act` chain also names the prior actors to the accepting
 RAS outright, with no correlation needed; {{onward-id-jag}} lets policy limit
-the disclosed depth, and deployments MAY limit the lineage exposed to each
-audience, subject to audit requirements.
+the disclosed depth, and deployments may limit the lineage exposed to each
+audience.
 
 # IANA Considerations {#iana}
 
