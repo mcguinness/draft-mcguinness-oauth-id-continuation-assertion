@@ -596,7 +596,7 @@ The root subject token MUST resolve to one of these lifecycle anchors:
 * an ID Token `sid` {{OIDC.FrontChannelLogout}} resolving to an active IdP
   session for that user and client; or
 * a SAML `SessionIndex` {{SAML2.Core}} resolving to an active IdP session
-  for that user and presenter.
+  for that user and client.
 
 The IdP MUST NOT root a chain from an unresolved anchor or an access token;
 non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
