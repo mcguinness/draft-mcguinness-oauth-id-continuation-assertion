@@ -619,12 +619,17 @@ consent, and tenant policy:
 Token claims cannot supply these values. Every dimension is an
 establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
 broaden; broadening requires a new chain, and consent granted afterward does
-not widen the envelope. An envelope MAY enumerate exact targets, each an
-audience with its resource where used, permitted scopes, and authorization
-details {{RFC9396}};
-otherwise it records a stable, policy-based basis, fixed at establishment and
-not whatever the user could later authorize, against which the IdP evaluates
-each requested target at request time.
+not widen the envelope.
+
+The envelope takes one of two forms:
+
+* an enumerated-target envelope, listing the permitted audiences and, where
+  used, their resources, scopes, and authorization details {{RFC9396}}; or
+* a policy-basis envelope, a stable authorization basis against which the IdP
+  evaluates each requested target at request time.
+
+Either form is fixed at establishment, not whatever the user could later
+authorize.
 
 The root actor is the authenticated OAuth client, under the mapping in
 {{client-identity}} on which its identity rests entirely; base ID-JAG's
@@ -992,7 +997,11 @@ metadata {{RFC8414}} with the following parameter:
   and issues continuation-capable ID-JAGs carrying the
   `identity_continuation_handle` claim. Default `false`. A continuation-capable
   ID-JAG is still the `urn:ietf:params:oauth:token-type:id-jag` type, so this
-  flag advertises the capability rather than a new token type.
+  flag advertises the capability rather than a new token type. It composes
+  additively with the IdP's base ID-JAG Token Exchange advertisement: the
+  requested and issued token type is unchanged, and the flag signals only the
+  added acceptance of continuation assertions and issuance of handle-carrying
+  ID-JAGs.
 
 ## Resource Authorization Server Metadata
 
@@ -1024,10 +1033,6 @@ the nominated issuers rather than be configured out of band
   keys independently, through authenticated configuration or federation, and
   the advertisement alone MUST NOT establish key trust or override the IdP's
   tenant issuer-pairing policy. Acceptance remains the IdP's decision.
-
-A party that requires onward continuation can consult this advertisement
-when available; absent these signals, it learns of support out of band or by
-attempting an exchange.
 
 # Implementation Considerations {#implementation}
 
