@@ -83,7 +83,7 @@ informative:
 
 This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JWT used as an OAuth 2.0 Token Exchange subject token. It
-lets an Identity Provider (IdP) issue an onward Identity Assertion JWT
+lets an IdP Authorization Server (IdP) issue an onward Identity Assertion JWT
 Authorization Grant (ID-JAG) when a user's request crosses service boundaries
 after the user is no longer present. The profile targets deployments in which
 several Resource Authorization Servers trust one IdP and use audience-local
@@ -98,7 +98,7 @@ OAuth 2.0 {{RFC6749}} issues access to a specific audience, and OAuth 2.0
 Token Exchange {{RFC8693}} exchanges one token for another when a request
 crosses a trust boundary. The Identity Assertion JWT Authorization Grant
 (ID-JAG) {{I-D.ietf-oauth-identity-assertion-authz-grant}} applies Token
-Exchange to identity: an Identity Provider (IdP) mints an authorization grant
+Exchange to identity: an IdP Authorization Server (IdP) mints an authorization grant
 that names the user for a single downstream audience. Each of these exchanges
 assumes the subject's credential, an ID Token, refresh token, or SAML
 assertion, is present when the grant is minted.
@@ -170,13 +170,14 @@ This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 
 This document uses the following terms:
 
-Identity Provider (IdP):
+IdP Authorization Server (IdP):
 : The authority that authenticates the user, maps the user to each
   audience-local subject, and issues onward grants.
 
 Resource Authorization Server (RAS):
 : An Authorization Server that protects a particular API and trusts the
   IdP for subject resolution. It exchanges an ID-JAG for an API access token.
+  {{I-D.ietf-oauth-identity-assertion-authz-grant}} abbreviates this role (AS).
 
 Resource Server (RS):
 : The protected API. It never consumes an Identity Continuation Assertion or
@@ -204,8 +205,9 @@ Current actor (presenting actor):
 
 Root actor:
 : The actor at the root of a chain: the authenticated OAuth client that
-  obtains the first ID-JAG ({{client-identity}}). Unlike a current actor,
-  it need not present an `actor_token`.
+  obtains the first ID-JAG ({{client-identity}}); this is the Client of
+  {{I-D.ietf-oauth-identity-assertion-authz-grant}} at the root exchange.
+  Unlike a current actor, it need not present an `actor_token`.
 
 Tenant:
 : The administrative boundary within which the chain and CAI
@@ -509,15 +511,18 @@ The root exchange presents a normal subject token, such as an ID Token,
 refresh token, or SAML assertion:
 
 ~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-audience=https://ras.travel.example/
-resource=https://api.travel.example/
-scope=trips.read
-subject_token=<id_token | refresh_token | SAML assertion>
-subject_token_type=<normal-subject-token-type>
-actor_token=<sender-constrained-current-actor-credential> (OPTIONAL)
-actor_token_type=<actor-token-type>                       (OPTIONAL)
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<id_token | refresh_token | SAML assertion>
+&subject_token_type=<normal-subject-token-type>
+&client_assertion=<client authentication>
 ~~~
 
 On the root exchange, `actor_token` is OPTIONAL ({{root-establishment}}). The
@@ -525,18 +530,25 @@ root exchange and its ID-JAG conform to the base ID-JAG profile
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
 extends it for continuation-capable issuance.
 
-A continuation exchange presents an Identity Continuation Assertion:
+A continuation exchange presents an Identity Continuation Assertion and adds
+the `actor_token` and a DPoP proof of the `cnf` key:
 
 ~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
+
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-audience=https://ras.travel.example/
-resource=https://api.travel.example/
-scope=trips.read
-subject_token=<identity-continuation-assertion>
-subject_token_type=<identity-continuation-token-type>
-actor_token=<sender-constrained-current-actor-credential>
-actor_token_type=<actor-token-type>
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<identity-continuation-assertion>
+&subject_token_type=<identity-continuation-token-type>
+&actor_token=<sender-constrained-current-actor-credential>
+&actor_token_type=<actor-token-type>
+&client_assertion=<client authentication>
 ~~~
 
 The `subject_token_type` value above is
@@ -663,10 +675,10 @@ not significant, though one rule's input may come from another's resolution.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
-     `requested_token_type`, `actor_token`, `actor_token_type`, `audience`,
-     and `resource`;
-   * at most one each of `scope` and `authorization_details`, both OPTIONAL
-     and, when present, evaluated by rule 7; and
+     `requested_token_type`, `actor_token`, `actor_token_type`, and
+     `audience`;
+   * at most one each of `resource`, `scope`, and `authorization_details`, all
+     OPTIONAL and, when present, evaluated by rule 7; and
    * `grant_type` is `urn:ietf:params:oauth:grant-type:token-exchange`,
      `subject_token_type` is
      `urn:ietf:params:oauth:token-type:identity-continuation`, and
@@ -755,11 +767,28 @@ idempotency remains out of scope. Realization guidance is in {{implementation}}.
 
 ### Response {#onward-id-jag}
 
-The IdP delivers the hop reference in the issued ID-JAG's
-`identity_continuation_handle` claim ({{chain-id}}, rule 1),
-not as a separate Token Exchange response parameter. The accepting Resource
-Authorization Server binds it ({{ras-processing}}) and the domain then surfaces
-it to continuers as intra-domain context ({{transaction-token-context}}).
+The Token Exchange response follows the base ID-JAG profile: the ID-JAG is
+returned in `access_token`, with `token_type` `N_A`.
+
+~~~
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+
+{
+  "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
+  "access_token": "<continuation-capable ID-JAG, compact JWS>",
+  "token_type": "N_A",
+  "expires_in": 300
+}
+~~~
+
+The IdP delivers the hop reference as the ID-JAG's
+`identity_continuation_handle` claim ({{chain-id}}, rule 1), a claim inside
+`access_token` and not a separate Token Exchange response parameter. The
+accepting Resource Authorization Server binds it ({{ras-processing}}) and the
+domain then surfaces it to continuers as intra-domain context
+({{transaction-token-context}}).
 
 There is no chain-expiry response parameter: chain lifetime is authoritative at
 the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
@@ -933,7 +962,9 @@ metadata {{RFC8414}} with the following parameter:
   Assertions of the
   `urn:ietf:params:oauth:token-type:identity-continuation` subject token type
   and issues continuation-capable ID-JAGs carrying the
-  `identity_continuation_handle` claim. Default `false`.
+  `identity_continuation_handle` claim. Default `false`. A continuation-capable
+  ID-JAG is still the `urn:ietf:params:oauth:token-type:id-jag` type, so this
+  flag advertises the capability rather than a new token type.
 
 ## Resource Authorization Server Metadata
 
