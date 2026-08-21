@@ -115,6 +115,7 @@ Table of Contents
      9.7.  Conjunctive Trust and Issuer Pairing
      9.8.  Actor Chain Integrity
      9.9.  Token, Type, and Algorithm Confusion
+     9.10. Metadata Disclosure
    10. Privacy Considerations
    11. IANA Considerations
      11.1.  OAuth Extensions Error Registration
@@ -465,7 +466,7 @@ Table of Contents
    boundary hop is a fresh policy check.  Revoking a hop stops its
    subtree at the next continuation, fail-closed, but does not
    invalidate already issued ID-JAGs or access tokens; the revocation
-   window is therefore bounded by their short lifetimes.
+   window is therefore bounded by their respective lifetimes.
 
    This is the deliberate difference from an offline-attenuated token,
    whose minted child stays usable for its lifetime without contacting
@@ -559,9 +560,11 @@ Table of Contents
 
    The CAI mints the Identity Continuation Assertion a workload presents
    to continue a chain across a boundary.  It MUST issue only for an
-   actor in the attested RAS's trust domain unless tenant configuration
-   explicitly authorizes that external actor and its keys; actor
-   authentication and the issuance protocol are deployment-specific.
+   actor in the attested RAS's trust domain; actor authentication and
+   the issuance protocol are deployment-specific.  The CAI MUST set the
+   assertion's aud to the IdP recorded in the hop's RAS binding
+   (Section 6.4); it MUST NOT accept an IdP audience supplied by the
+   requester.
 
    The current actor is a control-plane participant, not a bare-handle
    transporter: it presents the handle read from its own intra-domain
@@ -990,8 +993,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Consecutive identical actors collapse to one entry, though the hop
    record remains; policy MAY limit disclosed depth, narrowing what a
    target sees without changing the depth bound the IdP enforces
-   (Section 6.3.4, rule 4).  The following is a non-normative example of
-   the onward ID-JAG issued by the IdP:
+   (Section 6.3.4, rule 4).  Because policy may narrow the disclosed
+   lineage, a Resource Authorization Server MUST NOT read the absence of
+   a further nested act as proof that no earlier actor exists.  The
+   following is a non-normative example of the onward ID-JAG issued by
+   the IdP:
 
    {
      "iss": "https://idp.example/",
@@ -1033,9 +1039,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    On failure, the IdP returns an OAuth error ([RFC6749], [RFC8693]):
 
-   *  it MUST return invalid_continuation (Section 11) when the
-      presented handle cannot support this continuation, distinguishing
-      a dead hop from a malformed request; and
+   *  it MUST return invalid_continuation (Section 11) only when the
+      handle is permanently unusable: unknown, on an expired or ended
+      chain, on a revoked hop or ancestor, or with continuation
+      authorization withdrawn; and
 
    *  it SHOULD use invalid_request for a malformed, inconsistent, or
       unacceptable token, invalid_dpop_proof for a DPoP failure, and
@@ -1048,8 +1055,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    a session-anchored chain re-roots by re-authenticating the user, a
    grant-anchored chain from its still-valid grant without the user, and
    a handle disabled by withdrawn continuation authorization cannot re-
-   root at all.  The target-specific errors leave the chain otherwise
-   continuable, so a client abandons only the current request.
+   root at all.  The other errors leave the chain otherwise continuable,
+   so a client abandons only the current request.
 
 6.4.  Continuation-Aware RAS Processing
 
@@ -1070,7 +1077,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
        policy, and issuing an access token sender-constrained to the
        confirmed key; and
 
-   2.  bind identity_continuation_handle to the authorization state it
+   2.  bind identity_continuation_handle, the ID-JAG's issuer and
+       tenant, and the confirmed key to the authorization state it
        establishes, recording whether continuation is permitted.
 
    The RAS MUST bind the handle and issue the access token as one
@@ -1130,8 +1138,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Within a trust domain, an authorized workload learns the accepted
    hop's handle from a trusted intra-domain carrier.  The carrier:
 
-   *  MUST be server-derived and MUST bind the handle to the current
-      credential, key, and RAS authorization;
+   *  MUST be server-derived and MUST bind the handle, its originating
+      IdP and tenant, and the current credential and key to the RAS
+      authorization;
 
    *  MUST NOT be supplied or overridden by the requester;
 
@@ -1170,10 +1179,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       continuation-capable ID-JAG is still the
       urn:ietf:params:oauth:token-type:id-jag type, so this flag
       advertises the capability rather than a new token type.  It
-      composes additively with the IdP's base ID-JAG Token Exchange
-      advertisement: the requested and issued token type is unchanged,
-      and the flag signals only the added acceptance of continuation
-      assertions and issuance of handle-carrying ID-JAGs.
+      composes additively with base ID-JAG discovery: an IdP that sets
+      this flag also lists urn:ietf:params:oauth:token-type:id-jag in
+      its identity_chaining_requested_token_types_supported
+      ([I-D.ietf-oauth-identity-assertion-authz-grant]), and the flag
+      signals only the added acceptance of continuation assertions and
+      issuance of handle-carrying ID-JAGs.
 
 7.2.  Resource Authorization Server Metadata
 
@@ -1199,14 +1210,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    IdP can discover the nominated issuers rather than be configured out
    of band (Section 9.7):
 
-   identity_continuation_issuers:  OPTIONAL.  An array of CAI issuer
-      identifiers that this Resource Authorization Server authorizes to
-      attest hops it accepts.  The advertisement is a nomination only:
-      the IdP MUST establish each issuer's identity and signing keys
-      independently, through authenticated configuration or federation,
-      and the advertisement alone MUST NOT establish key trust or
-      override the IdP's tenant issuer-pairing policy.  Acceptance
-      remains the IdP's decision.
+   identity_continuation_issuers:  OPTIONAL.  A JSON array of CAI issuer
+      identifiers, each a StringOrURI [RFC7519], that this Resource
+      Authorization Server authorizes to attest hops it accepts; an
+      empty array authorizes none.  Values are compared with the
+      assertion iss as exact, case-sensitive strings, and duplicates are
+      ignored.  The advertisement is a nomination only: the IdP MUST
+      establish each issuer's identity and signing keys independently,
+      through authenticated configuration or federation, and the
+      advertisement alone MUST NOT establish key trust or override the
+      IdP's tenant issuer-pairing policy.  Because the IdP evaluates
+      issuer trust and keys against its current configuration, removing
+      an issuer or revoking its keys de-authorizes it for existing
+      chains.  Acceptance remains the IdP's decision.
 
 8.  Implementation Considerations
 
@@ -1277,7 +1293,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    proof of possession of the cnf key via a DPoP proof [RFC9449]
    (Section 6.3.3).  A captured assertion is therefore useless without
    the private key, and because the onward ID-JAG is bound to the same
-   key (Section 6.3.2), possession is demonstrated continuously across
+   key (Section 6.3.3), possession is demonstrated continuously across
    the chain, not once at issuance.
 
 9.2.  Durable Task Authorization
@@ -1382,7 +1398,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    trustworthy as the mapped CAI.  Because the IdP has no channel to
    recheck RAS state itself, a CAI attesting from a cached read could
    attest a hop the RAS has since revoked; the authoritative recheck
-   required at issuance (Section 6.2) closes this window.
+   required at issuance (Section 6.2) narrows this window but does not
+   close it, since revocation after issuance still lands within the
+   assertion's lifetime plus any delay in RAS state reaching the CAI.
 
 9.8.  Actor Chain Integrity
 
@@ -1409,6 +1427,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    trust assertion jku, x5u, embedded jwk, or other supplied key
    material.
 
+9.10.  Metadata Disclosure
+
+   Advertising identity_continuation_issuers (Section 7) in publicly
+   readable authorization server metadata reveals which CAIs a Resource
+   Authorization Server trusts, and can thereby disclose federation
+   topology, tenant relationships, and deployment structure, the concern
+   base ID-JAG raises for its own issuer advertisements.  A deployment
+   whose CAI relationships are sensitive SHOULD omit the advertisement
+   and convey the nomination out of band or through access-controlled
+   discovery.
+
 10.  Privacy Considerations
 
    A hop's identity_continuation_handle is visible only to its ID-JAG
@@ -1418,9 +1447,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    authorization input (Section 4, rule 3).  A workload receiving it as
    intra-domain context is a control-plane participant.
 
-   Handles are opaque, high-entropy, and hop-specific (Section 4).
-   Resource Authorization Servers therefore cannot use them to correlate
-   a user across SaaS boundaries.
+   Handles are opaque, high-entropy, and hop-specific (Section 4), so
+   they do not provide a common cross-RAS identifier for a user.
 
    The chain is not unlinkable: the IdP correlates it, participants
    sharing a handle can correlate that hop, and actor lineage and timing
@@ -2250,7 +2278,7 @@ B.1.6.  Third Hop: TravelService Continues to BookingRAS
 
    TravelService itself is the current-domain actor that obtains the
    next ID-JAG; it does not pass the handle to a sibling workload
-   (Section 6.3.2).
+   (Section 6.6).
 
 B.1.7.  Reaching a Target Outside the Trust Circle
 
@@ -2580,12 +2608,12 @@ Appendix C.  Open Items for Working Group Discussion
       DPoP: <proof>
 
       identity_continuation_handle=<handle>
-      &audience=https://idp.example/
 
        The authenticated workload and proof key would determine act and
-       cnf.  The profile could also define errors, discovery, retry, and
-       optional target/resource constraints enforced by the IdP as
-       ceilings.
+       cnf, and the IdP audience would derive from the hop's binding
+       rather than be supplied.  The profile could also define errors,
+       discovery, retry, and optional target/resource constraints
+       enforced by the IdP as ceilings.
 
    5.  *Authorization-basis representation.* Should the envelope expose
        a testable representation of the authorization ceiling, for
