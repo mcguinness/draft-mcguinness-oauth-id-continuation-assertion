@@ -440,27 +440,27 @@ Identity Continuation Assertion. Handles H0 and H1 below name the successive
 hops ({{chain-id}}).
 
 ~~~
-RAS   Client     IdP      Workload      CAI
- |       |        |           |          |
- |       base ID-JAG exchange |          |
- |       |-------->           |          |
- |       issue ID-JAG (H0)    |          |
- |       <--------|           |          |
- present ID-JAG   |           |          |
- <-------|        |           |          |
- issue access token, bind H0  |          |
- |------->        |           |          |
- |       |        |           |          |
-  carrier surfaces H0 to a later workload
- |       |        |           |          |
- |       |        |           request assertion
- |       |        |           |---------->
- |       |        |           attest hop, actor, key
- |       |        |           <----------|
- |       |        present assertion      |
- |       |        <-----------|          |
- |       |        issue ID-JAG (H1)      |
- |       |        |----------->          |
+  Client      Workload    CAI         IdP         RAS
+  |           |           |           |           |
+  | base ID-JAG exchange  |           |           |
+  |---------------------------------->|           |
+  | issue ID-JAG (H0)     |           |           |
+  |<----------------------------------|           |
+  | present ID-JAG        |           |           |
+  |---------------------------------------------->|
+  | issue access token, bind H0       |           |
+  |<----------------------------------------------|
+  |           |           |           |           |
+  | carrier surfaces H0 to a later workload       |
+  |           |           |           |           |
+  |           | request assertion     |           |
+  |           |---------->|           |           |
+  |           | attest hop, actor, key|           |
+  |           |<----------|           |           |
+  |           | present assertion     |           |
+  |           |---------------------->|           |
+  |           | issue ID-JAG (H1)     |           |
+  |           |<----------------------|           |
 ~~~
 
 H1 then travels to the next boundary exactly as H0 did, and the loop repeats
