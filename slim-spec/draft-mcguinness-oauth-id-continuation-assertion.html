@@ -4468,12 +4468,28 @@ expanded Security Considerations, the root-chain envelope, and the rationale
 for asymmetric-only signing; made chain revocation testable.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.5">
-          <p id="appendix-E-3.5.1">Made the RAS <code>identity_continuation_issuers</code> advertisement a nomination only,
-with the IdP establishing issuer identity and key trust independently.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.5.1">Bound the originating IdP and tenant to the accepted hop: the RAS records
+them with the handle and confirmed key, the carrier preserves the
+association, and the CAI derives the assertion audience from that binding
+rather than requester input; CAI issuance is in-domain only.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.6">
-          <p id="appendix-E-3.6.1">Corrected the Token Exchange examples, trimmed the open-items appendix, and
-marked the draft an individual submission.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.6.1">Made the RAS <code>identity_continuation_issuers</code> advertisement a nomination only,
+with the IdP establishing issuer identity and key trust independently;
+completed its definition, added a Metadata Disclosure security subsection,
+and named the base identity-chaining metadata parameter the IdP flag
+composes with.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.7">
+          <p id="appendix-E-3.7.1">Clarified lifetimes and errors: distinguished the ID-JAG, assertion, and
+access-token windows and stated the residual stale-revocation window
+honestly; narrowed <code>invalid_continuation</code> to permanently-unusable handles;
+and noted a depth-limited <code>act</code> is not proof no earlier actor exists.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.8">
+          <p id="appendix-E-3.8.1">Corrected the Token Exchange examples and cross-references, softened the
+handle-correlation claim, trimmed the open-items appendix, and marked the
+draft an individual submission.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-00<a href="#appendix-E-4" class="pilcrow">¶</a></p>
