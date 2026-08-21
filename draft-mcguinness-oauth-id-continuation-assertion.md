@@ -2319,7 +2319,7 @@ this profile builds.
   exchanges to root/continuation exchanges.
 * Restructured to mirror the base ID-JAG profile, and aligned terminology (IdP
   Authorization Server), Token Exchange request and response formatting, and
-  `resource` cardinality (now OPTIONAL) with it.
+  `resource` cardinality (now zero or more, per RFC 8707) with it.
 * Consolidated the Token Exchange processing rules and grouped request
   validation into seven thematic rules.
 * Added a non-normative Implementation Considerations section and demoted the
@@ -2328,9 +2328,21 @@ this profile builds.
 * Made the RAS `identity_continuation_issuers` advertisement a nomination only;
   the IdP establishes issuer identity and key trust independently.
 * Removed the grant-management interface requirement and other deployment and
-  operational over-reach (rate and fan-out limits, logging, role topology),
-  keeping the observable security requirements.
-* Expanded Security Considerations with the threat and rationale for each item.
+  operational over-reach (rate and fan-out limits, logging, role topology,
+  cached-read and co-location wording, lineage disclosure), keeping the
+  observable security requirements.
+* Expanded Security Considerations with the threat and rationale for each item,
+  and moved the replay fingerprint and root authentication-context
+  requirements into the protocol sections, leaving their threat rationale in
+  Security.
+* Split the Token Exchange response into successful response, onward ID-JAG
+  construction, and error handling, and promoted hop activation to its own
+  section.
+* Expanded the root-chain envelope (enumerated-target and policy-basis forms),
+  made chain revocation testable, and added rationale for asymmetric-only
+  signing.
+* Corrected the Token Exchange examples (client authentication, response cache
+  headers) and trimmed the open-items appendix.
 * Marked the draft an individual submission.
 
 -00
