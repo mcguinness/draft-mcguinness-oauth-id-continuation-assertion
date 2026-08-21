@@ -746,50 +746,25 @@ not significant, though one rule's input may come from another's resolution.
 
 The reservation model gives a client idempotent recovery after a lost response
 while preventing one assertion from authorizing more than one distinct request.
-It fixes each assertion's outcome to a single request fingerprint.
 
-After validation, grant issuance MUST atomically reserve (`iss`, `jti`) and
-bind it to a fingerprint of:
+After validation, grant issuance reserves the assertion's (`iss`, `jti`), bound
+to a fingerprint of the request it first authorizes ({{security-replay}}), and
+records the reservation as RESERVED, ISSUED, or FAILED (distinct from the hop
+states of {{hop-activation}}). An identical retry MUST return the same
+previously issued grant, not a new one, and a request that does not match that
+fingerprint MUST be rejected. Replay uniqueness MUST be keyed on (`iss`,
+`jti`); partitioning by tenant alone would let two assertion issuers in one
+tenant collide on a reused `jti`.
 
-* `audience` and `resource` as exact strings;
-* `scope` as an order-independent set;
-* the exact `authorization_details` JSON as received after form decoding
-  (different serializations are different requests);
-* the actor's `iss` and `sub`;
-* the confirmed key's `cnf.jkt` thumbprint; and
-* a SHA-256 hash of the exact `subject_token` value after form decoding, which
-  binds the fingerprint to the specific assertion and its handle.
-
-The record states are RESERVED, ISSUED, and FAILED, distinct from the hop
-states of {{hop-activation}}:
-
-* reservation MUST occur only after target and policy validation;
-* once reserved, the tuple MUST NOT be released for another fingerprint;
-* an identical retry MUST return the same previously issued grant, not a new
-  one, and a different fingerprint MUST be rejected;
-* only one concurrent request can reach ISSUED; a concurrent request under a
-  matching fingerprint waits for or retries that result; and
-* the IdP MUST retain the tuple through `exp` plus the maximum permitted clock
-  skew, using the same clock used to evaluate `exp`; a reservation that does
-  not reach ISSUED before `exp` becomes FAILED, which is terminal and requires
-  a fresh assertion.
-
-Replay uniqueness MUST use (`iss`, `jti`), not an unbound tenant partition;
-partitioning by tenant alone would let two assertion issuers in one tenant
-collide on a reused `jti`.
-
-The IdP needs strongly consistent replay state. Because the actor-chain depth
-bound counts collapsed lineage entries, an actor that repeatedly continues as
-itself never trips it; the fan-out, rate, and hop-count limits of
-{{root-establishment}} bound such growth instead, and the IdP MUST prune
-expired or revoked hop state.
+The IdP MUST retain the reservation through `exp` plus the maximum permitted
+clock skew, so an in-window retry is honored; a reservation that does not reach
+ISSUED before `exp` becomes FAILED, which is terminal and requires a fresh
+assertion.
 
 After a lost response, a client MAY retry the same assertion to recover the
 ISSUED result or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. The CAI SHOULD account for
-retries separately from fan-out while preventing retry claims from bypassing
-limits.
+idempotency remains out of scope. Realization guidance is in {{implementation}}.
 
 ### Response {#onward-id-jag}
 
@@ -1018,6 +993,21 @@ A party that requires onward continuation SHOULD consult this advertisement
 when available; absent these signals, it learns of support out of band or by
 attempting an exchange.
 
+# Implementation Considerations {#implementation}
+
+This section is non-normative. It describes ways an IdP can realize this
+document's requirements; conformance depends only on the normative sections.
+
+The replay reservation ({{validation-replay}}) is typically held in strongly
+consistent state: only one concurrent request reaches ISSUED, and a concurrent
+request under a matching fingerprint waits for or retries that result. The IdP
+retains and expires the reservation by the same clock it uses to evaluate
+`exp`. Because the actor-chain depth bound counts collapsed lineage entries, an
+actor that repeatedly continues as itself never trips it; the fan-out, rate,
+and hop-count limits of {{root-establishment}} bound such retry-driven growth
+instead. The IdP prunes expired or revoked hop state, and the CAI accounts for
+retries separately from fan-out.
+
 # Security Considerations {#security}
 
 This profile assumes TLS, a correct IdP subject map and root-chain envelope,
@@ -1042,8 +1032,17 @@ proof of the actor's `cnf` key.
 
 ## Short Lifetime and Replay {#security-replay}
 
-The 300-second ceiling and atomic reservation of (`iss`, `jti`)
-({{validation-replay}}) limit replay to the IdP continuation exchange.
+The 300-second ceiling and the reservation of (`iss`, `jti`)
+({{validation-replay}}) limit replay to the IdP continuation exchange. That
+reservation MUST bind (`iss`, `jti`) to a fingerprint of the whole request:
+`audience` and `resource` as exact strings, `scope` as an order-independent
+set, the exact `authorization_details` JSON after form decoding (a different
+serialization is a different request), the actor's `iss` and `sub`, the
+confirmed key's `cnf.jkt` thumbprint, and a SHA-256 hash of the exact
+`subject_token` after form decoding, which binds the fingerprint to the
+specific assertion and its handle. It MUST be atomic, so that neither a loose
+fingerprint nor a race lets one assertion authorize a second, different
+request.
 
 ## Root Authentication Context {#security-assurance}
 
