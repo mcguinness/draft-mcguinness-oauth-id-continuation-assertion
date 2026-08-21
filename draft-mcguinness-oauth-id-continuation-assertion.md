@@ -268,7 +268,7 @@ claim set:
 
 ~~~ json
 {
-  "iss": "https://ca.expenses.example/",
+  "iss": "https://cai.expenses.example/",
   "aud": "https://idp.example/",
   "identity_continuation_handle": "kW4uJ8pTe2NxA6rQvD1zYs",
 
@@ -1395,7 +1395,7 @@ payload and state blocks below them are tagged "On the wire" when they cross a
 trust boundary,
 "Intra-domain context" when they travel only within one trust domain, and
 "Server-side state" when they are never transmitted. Continuation handles
-are written H0, H1, and H2, one per hop.
+are written H0, H1, and so on, one per hop.
 
 ## Worked Example (Same-IdP) {#example}
 
@@ -1419,10 +1419,11 @@ crosses a trust boundary only inside an ID-JAG or Identity Continuation
 Assertion and travels within a domain only as derived chain context.
 
 Participants are grouped by trust domain; all trust the IdP at
-`https://idp.example/`. Each domain from which continuation occurs has three
-logical roles: a Resource Authorization Server that binds the accepted hop, a
-Transaction Token Service (TTS) that derives its chain context, and a CAI that
-attests continuation. A deployment may co-locate those roles.
+`https://idp.example/`. Each domain from which continuation occurs has two
+roles: a Resource Authorization Server that binds the accepted hop and a CAI
+that attests continuation, plus a trusted intra-domain carrier, realized here
+as a Transaction Token Service (TTS), that derives its chain context. A
+deployment may co-locate these.
 
 * Expense domain (`expenses.example`): client `expense-app`, workload
   `expense-service`, and ExpenseRAS / Expense TTS / Expense CAI, in front of
@@ -1477,7 +1478,7 @@ grant before crossing the boundary:
 {{example-third-hop}} repeats the pattern from TravelSaaS to terminal
 BookingRAS.
 
-### First Hop: Direct ID-JAG for ExpenseRAS {#example-first-hop}
+### First Hop: Root ID-JAG for ExpenseRAS {#example-first-hop}
 
 ExpenseApp holds an ID Token for the authenticated user and exchanges it at the
 IdP for an ID-JAG scoped to ExpenseRAS. The request is DPoP-bound to
@@ -1527,7 +1528,7 @@ time ({{validation}}, rule 7).
 
 The IdP creates a fresh root hop, H0, for this chain and embeds it as a
 claim of the ID-JAG it is about to issue ({{chain-id}}, rule 1); the hop is
-PENDING until a Resource Authorization Server accepts it ({{ras-processing}}).
+PENDING until a Resource Authorization Server accepts it ({{hop-activation}}).
 The Token Exchange response carries the ID-JAG and no continuation-specific
 response member; H0 travels inside the ID-JAG.
 
@@ -1642,7 +1643,7 @@ On the wire (decoded assertion):
 
 ~~~ json
 {
-  "iss": "https://ca.expenses.example/",
+  "iss": "https://cai.expenses.example/",
   "aud": "https://idp.example/",
   "identity_continuation_handle": "kW4uJ8pTe2NxA6rQvD1zYs",
 
@@ -1661,7 +1662,7 @@ On the wire (decoded assertion):
 }
 ~~~
 
-### Chained Exchange for the TravelRAS ID-JAG {#example-chained}
+### Continuation Exchange for the TravelRAS ID-JAG {#example-chained}
 
 ExpenseService presents the assertion to the IdP as the `subject_token`,
 DPoP-bound to its own key.
@@ -1692,8 +1693,8 @@ actor named in `act`; H0 is CONTINUABLE; and the requested TravelRAS,
 TravelAPI, and `trips.read` values match the Travel target entry in the
 root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.
 Instead, the assertion from ExpenseSaaS's mapped CAI,
-`https://ca.expenses.example/`, is the evidence that H0 reached ACCEPTED state
-and is CONTINUABLE ({{ras-processing}}).
+`https://cai.expenses.example/`, is the evidence that H0 reached ACCEPTED state
+and is CONTINUABLE ({{hop-activation}}).
 
 The IdP resolves the user's TravelRAS pairwise subject and creates H1 as a
 child of H0. The decoded ID-JAG carries H1 and the newly constructed
@@ -1851,9 +1852,7 @@ each run derives fresh context from the active authorization
   the Scheduler is an internal platform component, holding only the task
   identifier, that triggers each run.
 * Calendar domain (`calendar.example`): CalendarRAS only, in front of
-  CalendarAPI. It is terminal in every run, an ordinary ID-JAG Resource
-  Authorization Server that needs no continuation support
-  ({{ras-processing}}).
+  CalendarAPI. It is terminal in every run.
 * Mail domain (`mail.example`): MailRAS in front of MailAPI, reached only
   in the dynamic-target scenario below ({{example-dynamic}}); likewise
   terminal.
@@ -1866,7 +1865,7 @@ its terminal target.
 
 Alice authorizes "summarize my calendar every morning." Because the task must
 outlive her session, `briefing-agent` uses a refresh token from a
-continuation-capable grant as the direct exchange's subject token. The chain
+continuation-capable grant as the root exchange's subject token. The chain
 is therefore anchored to that grant, not Alice's current session
 ({{root-establishment}}, {{lifecycle}}). The root ID-JAG targets the
 platform's TaskRAS; the envelope records both that root target and the
@@ -2033,28 +2032,12 @@ weakening the original assertion's audience check.
   own tool-invocation surface (`resource=https://gateway.example/`),
   scoped under tenant `tenant-gw-01`.
 * Wiki domain (`wiki.example`): WikiRAS only, in front of WikiAPI. It is
-  terminal in this chain, an ordinary ID-JAG Resource Authorization
-  Server that needs no continuation support ({{ras-processing}}).
+  terminal in this chain.
 
 Alice has pairwise subjects at GatewayRAS and WikiRAS, which only the IdP can
 map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.
 
-The runtime roots the chain at the gateway:
-
-~~~
- AgentApp          IdP          GatewayRAS       GatewayAPI/TTS
-     |               |               |                 |
-     |--ID Token---->|               |                 |
-     |<-ID-JAG(H0)---|               |                 |
-     |------------------ID-JAG------>|                 |
-     |<--------------gateway AT------| bind H0         |
-     |------------tool request + AT + DPoP----------->|
-     |               |               |<-resolve AT-----|
-     |               |               |--bound H0------>|
-     |               |               |    derive H0 into tctx
-~~~
-
-After resolving the tool request to Wiki, the gateway continues the chain:
+To reach Wiki, the gateway continues the chain:
 
 ~~~
  ToolGateway       Gateway CAI        IdP          WikiRAS/API
@@ -2073,12 +2056,12 @@ After resolving the tool request to Wiki, the gateway continues the chain:
 
 ### Root Exchange: The Runtime Roots the Chain
 
-AgentApp performs a direct exchange for the one audience it knows: GatewayRAS.
+AgentApp performs a root exchange for the one audience it knows: GatewayRAS.
 The eventual upstreams are not known at root time, so, unlike the worked
 example whose envelope enumerated each onward target, this envelope records an
 authorization-basis ceiling, Alice's standing consent and tenant policy, with
 no enumerated targets; enterprise policy permits `tool-gateway` to continue it
-({{root-establishment}}, {{validation}}, rule 7). GatewayRAS accepts the
+({{root-establishment}}, {{validation}}, rules 5 and 7). GatewayRAS accepts the
 ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
 
 AgentApp then invokes the gateway with its access token and no continuation
@@ -2087,7 +2070,7 @@ handle used for this call. Gateway TTS derives H0 from the authorization
 that GatewayRAS bound to the presented access token
 ({{transaction-token-context}}).
 
-### Chained Exchange: The Gateway Continues
+### Continuation Exchange: The Gateway Continues
 
 Resolving the tool call, the gateway selects Wiki as the upstream, a target no
 one enumerated when AgentApp rooted the chain. ToolGateway reads H0 from its
@@ -2098,7 +2081,8 @@ the IdP as in {{example-chained}}, now requesting
 
 Because the envelope enumerates no targets, the IdP evaluates this dynamically
 chosen target against the recorded basis, Alice's standing consent and tenant
-policy at establishment ({{validation}}, rule 7). Wiki read access is within
+policy at establishment ({{validation}}, rules 5 and 7). Wiki read access is
+within
 that basis and enterprise policy permits `tool-gateway` to reach it, so the
 exchange succeeds and the IdP constructs the onward lineage with `tool-gateway`
 atop `agent-app`. A target hint from the gateway informs issuance limits and
