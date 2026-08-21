@@ -44,7 +44,6 @@ normative:
   RFC9396:
   RFC9449:
   I-D.ietf-oauth-identity-assertion-authz-grant:
-  I-D.ietf-oauth-transaction-tokens:
   OIDC.FrontChannelLogout:
     title: "OpenID Connect Front-Channel Logout 1.0"
     target: "https://openid.net/specs/openid-connect-frontchannel-1_0.html"
@@ -59,6 +58,7 @@ normative:
       - org: "OASIS"
 
 informative:
+  I-D.ietf-oauth-transaction-tokens:
   RFC6755:
   RFC6838:
   RFC8417:
@@ -98,8 +98,9 @@ OAuth 2.0 {{RFC6749}} issues access to a specific audience, and OAuth 2.0
 Token Exchange {{RFC8693}} exchanges one token for another when a request
 crosses a trust boundary. The Identity Assertion JWT Authorization Grant
 (ID-JAG) {{I-D.ietf-oauth-identity-assertion-authz-grant}} applies Token
-Exchange to identity: an IdP Authorization Server (IdP) mints an authorization grant
-that names the user for a single downstream audience. Each of these exchanges
+Exchange to identity: an IdP Authorization Server (IdP) mints an
+authorization grant that names the user for a single downstream audience. Each
+of these exchanges
 assumes the subject's credential, an ID Token, refresh token, or SAML
 assertion, is present when the grant is minted.
 
@@ -346,20 +347,21 @@ own handle, recorded against the hop it continued from.
 
 The following rules apply:
 
-1. The IdP MUST embed a fresh `identity_continuation_handle` claim in each
-   issued ID-JAG, for the root hop and every continuation hop
-   ({{root-establishment}}), and MUST NOT reuse a handle across hops. An ID-JAG
-   carrying this claim is continuation-capable.
+1. When it establishes or continues a chain ({{root-establishment}}), the IdP
+   MUST embed a fresh `identity_continuation_handle` claim in the issued
+   ID-JAG, for that root or child hop, and MUST NOT reuse a handle across hops.
+   An ID-JAG carrying this claim is continuation-capable.
 
 2. `identity_continuation_handle` MUST contain at least 128 bits of entropy,
    MUST NOT contain user-identifying information, and MUST consist of 22 to
    256 characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`,
    `0`-`9`, `-`, `_`).
 
-3. The handle travels only inside an ID-JAG (to the RAS) or an Identity
-   Continuation Assertion (to the IdP), never standalone, and MUST NOT appear
-   in an access token or external Resource Server authorization claim.
-   Authorized workloads MAY observe it only as intra-domain context
+3. The handle crosses a trust boundary only inside an ID-JAG (to the RAS) or
+   an Identity Continuation Assertion (to the IdP), never standalone, and
+   MUST NOT appear in an access token or external Resource Server
+   authorization claim. Authorized workloads MAY observe it only as
+   intra-domain context
    ({{transaction-token-context}}).
 
 4. A continuation-aware RAS binds the handle to the authorization state it
@@ -601,8 +603,9 @@ consent, and tenant policy:
 Token claims cannot supply these values. Every dimension is an
 establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
 broaden; broadening requires a new chain, and consent granted afterward does
-not widen the envelope. An envelope MAY enumerate exact audience and resource
-pairs with their permitted scopes and authorization details {{RFC9396}};
+not widen the envelope. An envelope MAY enumerate exact targets, each an
+audience with its resource where used, permitted scopes, and authorization
+details {{RFC9396}};
 otherwise it records a stable, policy-based basis, fixed at establishment and
 not whatever the user could later authorize, against which the IdP evaluates
 each requested target at request time.
@@ -632,11 +635,14 @@ The client-to-actor mapping below applies to every exchange; the `act` and
 `actor_token` matching and the DPoP proof apply to a continuation exchange, and
 the root exchange's DPoP requirement is specified in {{root-establishment}}.
 
-The current actor MUST authenticate as an OAuth client; the IdP MUST map that
-client authoritatively to an actor identity and MUST match that identity to
-the assertion's `act` and the `actor_token`. Self-asserted mappings MUST NOT
-be accepted. A sender-constrained JWT MAY serve as both client assertion
-and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
+The current actor MUST authenticate as an OAuth client, and the IdP MUST map
+that client authoritatively to an actor identity; self-asserted mappings
+MUST NOT be accepted. On a continuation exchange, the IdP MUST also match that
+identity to the assertion's `act` and the `actor_token`; on a root exchange,
+client authentication alone identifies the root actor
+({{root-establishment}}). A sender-constrained JWT MAY serve as both client
+assertion and `actor_token` when it satisfies both profiles; for {{RFC7523}}
+its `sub`
 is the `client_id` and the IdP MUST authorize its issuer for that client, and
 otherwise the client authenticates separately. The onward ID-JAG `client_id`
 is the current actor's identifier at the target RAS, so the actor needs a
@@ -932,15 +938,15 @@ neither narrows nor widens it.
 ## Intra-Domain Handle Propagation {#transaction-token-context}
 
 Within a trust domain, an authorized workload learns the accepted hop's handle
-from a trusted intra-domain carrier, never from a requester-supplied value. The
-carrier is server-derived and bound to the current credential, key, and RAS
-authorization; non-overridable by the requester; confined to the trust domain;
-and re-derived when replaced. A Transaction Token
-{{I-D.ietf-oauth-transaction-tokens}} is one realization of these properties;
-the specific carrier is deployment-specific ({{rationale-txn}}).
+from a trusted intra-domain carrier. The carrier MUST be server-derived and
+MUST bind the handle to the current credential, key, and RAS authorization; the
+requester MUST NOT supply or override it; the carrier MUST NOT be accepted
+outside the trust domain; and a replacement carrier MUST re-derive the handle.
+The specific carrier is deployment-specific: a Transaction Token
+{{I-D.ietf-oauth-transaction-tokens}} is one realization ({{rationale-txn}}).
 
-Before deriving, the protected endpoint or carrier MUST validate live proof
-of possession of the confirmed key presented on the current call, then derive
+Before deriving, the protected endpoint or carrier MUST validate live proof of
+possession of the confirmed key presented on the current call, and MUST derive
 the handle from the authorization record bound to that verified credential,
 key, and RAS state, never from a session or subject, which could otherwise
 bind the wrong user's authorization state to this call.
@@ -982,15 +988,18 @@ the base `urn:ietf:params:oauth:grant-profile:id-jag` profile and the
 `urn:ietf:params:oauth:grant-type:jwt-bearer` grant type on which ID-JAG
 depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
 
-A Resource Authorization Server MAY additionally advertise the Continuation
-Assertion Issuer(s) authoritative for the hops it accepts, so the IdP can
-discover them rather than be configured out of band ({{security-trust-model}}):
+A Resource Authorization Server MAY advertise the Continuation Assertion
+Issuers it authorizes to attest the hops it accepts, so the IdP can discover
+the nominated issuers rather than be configured out of band
+({{security-trust-model}}):
 
 `identity_continuation_issuers`:
-: OPTIONAL. An array of issuer identifiers whose Identity Continuation
-  Assertions the IdP accepts for hops this Resource Authorization Server
-  accepts. Each issuer publishes its signing keys per {{RFC8414}} or as a JWK
-  Set.
+: OPTIONAL. An array of CAI issuer identifiers that this Resource Authorization
+  Server authorizes to attest hops it accepts. The advertisement is a
+  nomination only: the IdP MUST establish each issuer's identity and signing
+  keys independently, through authenticated configuration or federation, and
+  the advertisement alone MUST NOT establish key trust or override the IdP's
+  tenant issuer-pairing policy. Acceptance remains the IdP's decision.
 
 A party that requires onward continuation SHOULD consult this advertisement
 when available; absent these signals, it learns of support out of band or by
@@ -1071,9 +1080,9 @@ request.
 
 ## Root Authentication Context {#security-assurance}
 
-Authentication context comes only from the root envelope. Continuation MUST
-NOT extend or strengthen it, for example by presenting a higher `acr` or added
-`amr` than the user performed at root; the IdP MUST copy it unchanged into
+Authentication context comes only from the root envelope. Continuation
+MUST NOT extend or strengthen it, for example by presenting a higher `acr` or
+added `amr` than the user performed at root; the IdP MUST copy it unchanged into
 onward ID-JAGs ({{onward-id-jag}}) when
 {{I-D.ietf-oauth-identity-assertion-authz-grant}} requires those claims.
 
@@ -1154,8 +1163,8 @@ configuration; `kid` MAY select among them. It MUST NOT trust assertion
 
 A hop's `identity_continuation_handle` is visible only to its ID-JAG client,
 accepting Resource Authorization Server, and IdP, plus the domain's
-carrier, CAI, and authorized workloads. It MUST
-NOT enter an access token, external authorization claims, or protected-API
+carrier, CAI, and authorized workloads. It
+MUST NOT enter an access token, external authorization claims, or protected-API
 authorization input ({{chain-id}}, rule 3). A workload receiving it as
 intra-domain context is a control-plane participant.
 
@@ -1337,8 +1346,9 @@ Metadata Name:
 : identity_continuation_issuers
 
 Metadata Description:
-: Array of issuer identifiers whose Identity Continuation Assertions the IdP
-  accepts for hops a Resource Authorization Server accepts
+: Array of CAI issuer identifiers a Resource Authorization Server authorizes to
+  attest hops it accepts (a nomination; the IdP establishes issuer key trust
+  independently)
 
 Change Controller:
 : IETF
@@ -1659,7 +1669,9 @@ The Expense TTS derives this context from AT1's authorization record; neither
 ExpenseApp nor ExpenseService supplies H0. The Transaction Token remains
 inside `expenses.example` and is normally forwarded unchanged within that
 domain. A replacement token requires the TTS to re-derive the member
-({{transaction-token-context}}).
+({{transaction-token-context}}). The `tctx.identity_continuation` encoding
+shown is illustrative and deployment-defined; this document standardizes no
+carrier schema.
 
 ### Obtaining the Identity Continuation Assertion {#example-ica}
 
@@ -2220,6 +2232,18 @@ this profile builds.
 {:numbered="false"}
 
 \[\[ To be removed from the final specification ]]
+
+-01
+
+* Renamed Chain Authority to Continuation Assertion Issuer, and direct/chained
+  exchanges to root/continuation exchanges.
+* Consolidated the Multi-Hop Cross-Domain Access processing rules and grouped
+  request validation into seven thematic rules.
+* Added a non-normative Implementation Considerations section; demoted the
+  intra-domain carrier from a role to a deployment mechanism (its security
+  properties remain normative).
+* Relaxed `resource` to OPTIONAL and aligned terminology and Token Exchange
+  request/response formatting with the base ID-JAG profile.
 
 -00
 
