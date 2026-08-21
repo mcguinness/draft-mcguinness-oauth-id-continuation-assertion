@@ -452,47 +452,54 @@ RAS   Client     IdP      Workload      CAI
  |       |        |----------->          |
 ~~~
 
-The workload that continues is a later party, not the original client that
-established the chain.
+H1 then travels to the next boundary exactly as H0 did, and the loop repeats
+until a hop reaches a terminal RAS. A hop is PENDING when the IdP issues its
+ID-JAG, ACCEPTED once the RAS binds it, and CONTINUABLE while a mapped CAI
+attests the still-active binding ({{hop-activation}}). The workload that
+continues is a later party, not the original client that established the chain.
 
 Each role validates only within its authority, and no artifact or role alone
-authorizes continuation ({{security-trust-model}}); the detailed rules are in
-{{ras-processing}}, {{transaction-token-context}}, {{assertion-issuance}},
-{{validation}}, and {{onward-id-jag}}.
+authorizes continuation ({{security-trust-model}}). The detailed rules follow
+the order the handle travels: the RAS binds it ({{ras-processing}}), the domain
+surfaces it ({{transaction-token-context}}), the CAI issues the assertion
+({{assertion-issuance}}), and the IdP validates ({{validation}}) and issues the
+next ID-JAG ({{onward-id-jag}}).
 
 ## Issuing the Assertion {#assertion-issuance}
 
-The CAI MUST issue only for an actor in the attested RAS's trust
-domain unless tenant configuration explicitly authorizes that external actor
-and its keys. Actor authentication and the issuance
+The CAI mints the Identity Continuation Assertion a workload presents to
+continue a chain across a boundary. It MUST issue only for an actor in the
+attested RAS's trust domain unless tenant configuration explicitly authorizes
+that external actor and its keys; actor authentication and the issuance
 protocol are deployment-specific.
 
-A presenting workload is a control-plane participant, not a bare-handle
+The current actor is a control-plane participant, not a bare-handle
 transporter: it presents the handle read from its own intra-domain context,
-with its key and any narrowing hints, to its CAI. The
-handle is advisory input, re-verified against RAS-bound state
-({{hop-activation}}) by the checks below before any assertion issues.
+with its key and any narrowing hints, to its CAI. The handle is advisory
+input, re-verified against RAS-bound state ({{hop-activation}}) by the checks
+below before any assertion issues.
 
 The CAI MUST authenticate the actor and issue only after establishing that:
 
 1. the handle came through an authenticated, confidential,
    integrity-protected chain path or equivalent authenticated state;
 
-2. the presenting actor is authorized under CAI policy to continue
-   the chain;
+2. the current actor is authorized under CAI policy to continue the chain;
 
-3. the presenting actor controls the key placed in `cnf`; and
+3. the current actor controls the key placed in `cnf`;
 
 4. `act` names that actor and, if offline attenuation reached the actor, its
-   delegation artifact is valid.
+   delegation artifact is valid;
 
-Possession of a handle or carrier token is insufficient. The CAI MUST bind the
-actor to the current transaction, verify that the
-handle matches that transaction's RAS-bound state, and recheck authoritative,
-uncached RAS state to confirm that the authorization remains active and
-continuation remains permitted. Target or purpose hints MAY narrow
-CAI issuance but MUST NOT control the IdP's target decision.
-Propagated context MUST NOT override the root-chain envelope.
+5. the actor is bound to the current transaction and the handle matches that
+   transaction's RAS-bound state; and
+
+6. an authoritative, uncached recheck of RAS state confirms the authorization
+   remains active and continuation remains permitted.
+
+Possession of a handle or carrier token alone is insufficient. Target or
+purpose hints MAY narrow CAI issuance but MUST NOT control the IdP's target
+decision, and propagated context MUST NOT override the root-chain envelope.
 
 ## Token Exchange {#token-exchange}
 
@@ -504,7 +511,7 @@ additionally supplies the actor authentication and DPoP proof described below.
 The IdP establishes the chain; no request parameter asks it to do so
 ({{root-establishment}}).
 
-### Request
+### Request {#request}
 
 The root exchange presents a normal subject token, such as an ID Token,
 refresh token, or SAML assertion:
@@ -672,8 +679,9 @@ the confirmed key, must agree:
 
 ### Request Validation {#validation}
 
-The IdP MUST reject the request unless every rule below holds; their order is
-not significant, though one rule's input may come from another's resolution.
+For a continuation exchange, the IdP MUST reject the request unless every rule
+below holds; their order is not significant, though one rule's input may come
+from another's resolution.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -868,7 +876,7 @@ non-normative example of the onward ID-JAG issued by the IdP:
 The onward ID-JAG's `client_id` is the current actor's identifier at the
 target RAS.
 
-## Access Token Request {#ras-processing}
+## Access Token Request Processing {#ras-processing}
 
 Only a RAS from which continuation occurs implements this extension. A
 terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
@@ -929,10 +937,14 @@ neither narrows nor widens it.
 ## Intra-Domain Handle Propagation {#transaction-token-context}
 
 Within a trust domain, an authorized workload learns the accepted hop's handle
-from a trusted intra-domain carrier. The carrier MUST be server-derived and
-MUST bind the handle to the current credential, key, and RAS authorization; the
-requester MUST NOT supply or override it; the carrier MUST NOT be accepted
-outside the trust domain; and a replacement carrier MUST re-derive the handle.
+from a trusted intra-domain carrier. The carrier:
+
+* MUST be server-derived and MUST bind the handle to the current credential,
+  key, and RAS authorization;
+* MUST NOT be supplied or overridden by the requester;
+* MUST NOT be accepted outside the trust domain; and
+* MUST be re-derived when replaced.
+
 The specific carrier is deployment-specific: a Transaction Token
 {{I-D.ietf-oauth-transaction-tokens}} is one realization ({{rationale-txn}}).
 
