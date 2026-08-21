@@ -1048,8 +1048,15 @@ and the OAuth guidance of {{RFC9700}}. It addresses these adversaries:
 
 ## Sender Constraint and Proof of Possession
 
-The assertion MUST NOT be accepted as bearer {{RFC7800}}. It requires live
-proof of the actor's `cnf` key.
+A continuation assertion names the actor the IdP will treat as the chain's
+current holder. As a bearer token it would let any party that captured it, in
+transit, from a log, or from a compromised intermediary, continue the chain as
+that actor. The assertion MUST NOT be accepted as bearer {{RFC7800}}; every
+exchange requires live proof of possession of the `cnf` key via a DPoP proof
+{{RFC9449}} ({{client-identity}}). A captured assertion is therefore useless
+without the private key, and because the onward ID-JAG is bound to the same
+key ({{root-establishment}}), possession is demonstrated continuously across
+the chain, not once at issuance.
 
 ## Durable Task Authorization {#task-provenance}
 
@@ -1076,10 +1083,13 @@ request.
 
 ## Root Authentication Context {#security-assurance}
 
-Authentication context comes only from the root envelope. Continuation
-MUST NOT extend or strengthen it, for example by presenting a higher `acr` or
-added `amr` than the user performed at root; the IdP MUST copy it unchanged into
-onward ID-JAGs ({{onward-id-jag}}) when
+Downstream resources may gate access on authentication strength (`acr`) or
+methods (`amr`); if continuation could raise those claims, an actor could reach
+a step-up-gated resource the user never authenticated strongly enough for.
+Authentication context therefore comes only from the root envelope.
+Continuation MUST NOT extend or strengthen it, for example by presenting a
+higher `acr` or added `amr` than the user performed at root; the IdP MUST copy
+it unchanged into onward ID-JAGs ({{onward-id-jag}}) when
 {{I-D.ietf-oauth-identity-assertion-authz-grant}} requires those claims.
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
@@ -1100,9 +1110,15 @@ prevents a handle-holding party from bypassing the RAS-acceptance path.
 
 ## Trust in Actor Token Issuers {#security-actor-issuers}
 
-The IdP MUST accept actor tokens only from issuers trusted for the actor's
-domain and tenant. An untrusted or out-of-scope issuer MUST be rejected even
-with a valid CAI assertion.
+The `actor_token` authenticates the current actor to the IdP, so a rogue or
+over-scoped actor-token issuer is an impersonation vector: a party controlling
+one issuer could mint a token naming an actor in another domain or tenant and
+continue that actor's chains. The IdP MUST accept actor tokens only from
+issuers trusted for the actor's own domain and tenant, and MUST reject an
+untrusted or out-of-scope issuer even when a valid CAI assertion accompanies
+it. CAI attestation of the hop and actor-token authentication of the actor are
+independent checks ({{security-trust-model}}); neither substitutes for the
+other.
 
 ## Conjunctive Trust and Issuer Pairing {#security-trust-model}
 
@@ -1145,15 +1161,25 @@ required at issuance ({{assertion-issuance}}) closes this window.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
-Lineage is IdP-constructed. An assertion names only the current actor; the IdP
-MUST reject any mismatch. Offline-segment actors do not enter lineage.
+The `act` lineage records who has acted in the delegation. A compromised actor
+could try to forge it, to hide its own identity, impersonate a more privileged
+prior actor, or fabricate a delegation that never happened. This profile
+denies that by construction: an assertion names only the current actor, and
+the IdP builds the onward lineage itself by walking the hop's immutable parent
+references ({{onward-id-jag}}), never by copying a chain the assertion
+supplies. The IdP MUST reject any mismatch between the current actor and `act`.
+Because lineage derives from IdP-held state rather than assertion input, a
+party cannot rewrite history it does not control; offline-attenuation
+segments, which the IdP does not observe, do not enter lineage.
 
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
-The IdP MUST verify `typ`, reject `alg=none` and symmetric algorithms, and
-allowlist asymmetric algorithms. It MUST select keys from trusted issuer
-configuration; `kid` MAY select among them. It MUST NOT trust assertion
-`jku`, `x5u`, embedded `jwk`, or other supplied key material.
+An attacker may try to pass one token type off as another, downgrade the
+signature algorithm, or steer verification to a key it controls. The IdP MUST
+verify `typ`, reject `alg=none` and symmetric algorithms, and allowlist
+asymmetric algorithms. It MUST select keys from trusted issuer configuration;
+`kid` MAY select among them. It MUST NOT trust assertion `jku`, `x5u`, embedded
+`jwk`, or other supplied key material.
 
 # Privacy Considerations {#privacy}
 
