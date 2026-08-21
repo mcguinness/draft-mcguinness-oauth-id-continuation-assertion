@@ -40,6 +40,7 @@ normative:
   RFC7800:
   RFC8414:
   RFC8693:
+  RFC8707:
   RFC8725:
   RFC9396:
   RFC9449:
@@ -537,7 +538,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &scope=trips.read
 &subject_token=<id_token | refresh_token | SAML assertion>
 &subject_token_type=<normal-subject-token-type>
-&client_assertion=<client authentication>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT>
 ~~~
 
 On the root exchange, `actor_token` is OPTIONAL ({{root-establishment}}). The
@@ -560,18 +562,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &resource=https://api.travel.example/
 &scope=trips.read
 &subject_token=<identity-continuation-assertion>
-&subject_token_type=<identity-continuation-token-type>
+&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
 &actor_token=<sender-constrained-current-actor-credential>
 &actor_token_type=<actor-token-type>
-&client_assertion=<client authentication>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT>
 ~~~
-
-The `subject_token_type` value above is
-`urn:ietf:params:oauth:token-type:identity-continuation`.
 
 The requested `audience`, `resource`, `scope`, `requested_token_type`, and
 any `authorization_details` are supplied by the Token Exchange request and
-never by the assertion ({{assertion-claims}}).
+never by the assertion ({{assertion-claims}}). A request can carry multiple
+`resource` indicators {{RFC8707}}, which the IdP treats as an order-independent
+set.
 
 The request MAY also include `authorization_details` {{RFC9396}}; the
 authorization-basis check ({{validation}}, rule 7) applies equally to it and
@@ -696,8 +698,9 @@ from another's resolution.
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
      `requested_token_type`, `actor_token`, `actor_token_type`, and
      `audience`;
-   * at most one each of `resource`, `scope`, and `authorization_details`, all
-     OPTIONAL and, when present, evaluated by rule 7; and
+   * zero or more `resource`, and at most one each of `scope` and
+     `authorization_details`, all OPTIONAL and, when present, evaluated by
+     rule 7; and
    * `grant_type` is `urn:ietf:params:oauth:grant-type:token-exchange`,
      `subject_token_type` is
      `urn:ietf:params:oauth:token-type:identity-continuation`, and
@@ -793,6 +796,7 @@ returned in `access_token`, with `token_type` `N_A`.
 HTTP/1.1 200 OK
 Content-Type: application/json
 Cache-Control: no-store
+Pragma: no-cache
 
 {
   "issued_token_type": "urn:ietf:params:oauth:token-type:id-jag",
@@ -1157,12 +1161,13 @@ tenant; separate trust in each is insufficient. Tenant determination MUST
 derive from authenticated material, not requester-supplied input. It MUST
 scope CAI trust by issuer, keys, tenant, and mapped RAS. Because the IdP
 records the accepting Resource Authorization Server for each hop, it MAY learn
-that mapping
-from the server's advertised `identity_continuation_issuers` ({{metadata}}),
-which roots issuer trust in the Resource Authorization Server trust the IdP
-already holds and scopes each server to naming issuers only for its own hops;
-otherwise the mapping is established out of band or through federation
-({{RFC7523}}).
+the candidate mapping from that server's advertised
+`identity_continuation_issuers` ({{metadata}}). That advertisement is a
+nomination only: it scopes each server to naming issuers for its own hops but
+does not itself establish issuer or key trust. The IdP independently
+authenticates each CAI issuer and its signing keys, and tenant policy
+authorizes the resulting server, CAI, and actor-token-issuer combination.
+Absent the advertisement, the mapping is configured out of band.
 
 One operator MAY run the RAS, carrier, and CAI. Co-locating these
 anchors trades away the defense in depth the conjunction otherwise provides, so
@@ -1577,14 +1582,14 @@ Content-Type: application/x-www-form-urlencoded
 DPoP: <proof signed by the expense-app key>
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-audience=https://ras.expenses.example/
-resource=https://api.expenses.example/
-scope=expenses.read
-subject_token=<id_token>
-subject_token_type=urn:ietf:params:oauth:token-type:id_token
-actor_token=<sender-constrained expense-app credential>
-actor_token_type=urn:ietf:params:oauth:token-type:jwt
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.expenses.example/
+&resource=https://api.expenses.example/
+&scope=expenses.read
+&subject_token=<id_token>
+&subject_token_type=urn:ietf:params:oauth:token-type:id_token
+&actor_token=<sender-constrained expense-app credential>
+&actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
 The IdP resolves the ID Token's `sid` to the anchoring session and verifies
@@ -1762,14 +1767,14 @@ Content-Type: application/x-www-form-urlencoded
 DPoP: <proof signed by the expense-service key>
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-audience=https://ras.travel.example/
-resource=https://api.travel.example/
-scope=trips.read
-subject_token=<identity-continuation-assertion>
-subject_token_type=<identity-continuation-token-type>
-actor_token=<sender-constrained expense-service credential>
-actor_token_type=urn:ietf:params:oauth:token-type:jwt
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<identity-continuation-assertion>
+&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&actor_token=<sender-constrained expense-service credential>
+&actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
 The IdP runs the checks of {{validation}}: the DPoP key matches both the
@@ -2067,6 +2072,8 @@ On the wire (response):
 ~~~
 HTTP/1.1 400 Bad Request
 Content-Type: application/json
+Cache-Control: no-store
+Pragma: no-cache
 
 {
   "error": "invalid_target"
