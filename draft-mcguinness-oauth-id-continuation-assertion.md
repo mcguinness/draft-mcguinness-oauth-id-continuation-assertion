@@ -232,7 +232,7 @@ Intra-domain carrier:
   ({{transaction-token-context}}).
 
 Continuation Handle (`identity_continuation_handle`):
-: An opaque, unguessable, IdP-generated reference to one hop of a delegation
+: An opaque, unguessable, IdP-generated reference to one hop of a continuation
   chain; see {{chain-id}}.
 
 Hop:
@@ -656,18 +656,22 @@ The client-to-actor mapping below applies to every exchange; the `act` and
 `actor_token` matching and the DPoP proof apply to a continuation exchange, and
 the root exchange's DPoP requirement is specified in {{root-establishment}}.
 
-The current actor MUST authenticate as an OAuth client, and the IdP MUST map
-that client authoritatively to an actor identity; self-asserted mappings
-MUST NOT be accepted. On a continuation exchange, the IdP MUST also match that
-identity to the assertion's `act` and the `actor_token`; on a root exchange,
-client authentication alone identifies the root actor
-({{root-establishment}}). A sender-constrained JWT MAY serve as both client
-assertion and `actor_token` when it satisfies both profiles; for {{RFC7523}}
-its `sub`
-is the `client_id` and the IdP MUST authorize its issuer for that client, and
-otherwise the client authenticates separately. The onward ID-JAG `client_id`
-is the current actor's identifier at the target RAS, so the actor needs a
-registration or resolvable client identity at each target.
+The current actor MUST authenticate as an OAuth client. Four rules govern how
+that authentication maps to an actor identity:
+
+* *Authoritative mapping.* The IdP MUST map the authenticated client to an
+  actor identity; self-asserted mappings MUST NOT be accepted.
+* *Root versus continuation.* On a root exchange, client authentication alone
+  identifies the root actor ({{root-establishment}}). On a continuation
+  exchange, the IdP MUST also match that identity to the assertion's `act` and
+  the `actor_token`.
+* *Dual-use JWT.* A sender-constrained JWT MAY serve as both client assertion
+  and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
+  is the `client_id` and the IdP MUST authorize its issuer for that client.
+  Otherwise the client authenticates separately.
+* *Target registration.* The onward ID-JAG `client_id` is the current actor's
+  identifier at the target RAS, so the actor needs a registration or resolvable
+  client identity at each target.
 
 The `actor_token` MUST NOT be bearer: for a JWT the IdP verifies `cnf.jkt`,
 and for an opaque token it obtains equivalent confirmation from authoritative
@@ -1229,10 +1233,10 @@ asymmetric algorithms. It MUST select keys from trusted issuer configuration;
 
 A hop's `identity_continuation_handle` is visible only to its ID-JAG client,
 accepting Resource Authorization Server, and IdP, plus the domain's
-carrier, CAI, and authorized workloads. It
-MUST NOT enter an access token, external authorization claims, or protected-API
-authorization input ({{chain-id}}, rule 3). A workload receiving it as
-intra-domain context is a control-plane participant.
+carrier, CAI, and authorized workloads. It never enters an access token,
+external authorization claims, or protected-API authorization input
+({{chain-id}}, rule 3). A workload receiving it as intra-domain context is a
+control-plane participant.
 
 Handles are opaque, high-entropy, and hop-specific ({{chain-id}}). Resource
 Authorization Servers therefore cannot use them to correlate a user across
@@ -1378,11 +1382,11 @@ Claim Name:
 
 Claim Description:
 : An opaque, IdP-generated reference to one hop of a
-  delegation chain, used to correlate a continuation to its chain
+  continuation chain, used to correlate a continuation to its chain
   and parent hop and to resolve the per-audience subject. This claim
   appears in an Identity Continuation Assertion and in a continuation-capable
-  ID-JAG, and its value may also travel in intra-domain chain context; it
-  MUST NOT be placed in an access token or a Resource Server's external
+  ID-JAG, and its value may also travel in intra-domain chain context; it is
+  not placed in an access token or a Resource Server's external
   authorization claims ({{chain-id}}, rule 3).
 
 Change Controller:
@@ -1491,6 +1495,17 @@ recipient-bound direct grant remains a possible simplification, but it forces
 the IdP to authenticate every actor and hold per-actor policy directly, which
 does not scale across domains.
 
+## Why Asymmetric Signing Only {#rationale-alg}
+
+This profile requires asymmetric signing and forbids encryption and nested
+signing ({{names}}), tighter than RFC 8725 {{RFC8725}}, which also permits
+verified symmetric algorithms. The restriction is deliberate: asymmetric
+verification avoids distributing a shared secret across domains and the
+key-confusion risk a symmetric key between the CAI and IdP would create
+({{security-alg}}); TLS on every hop and the assertion's minimal contents make
+encryption unnecessary; and a single compact signed form removes an
+interoperability choice between issuers and verifiers.
+
 # Examples {#examples}
 
 This non-normative appendix illustrates three deployment shapes: interactive
@@ -1503,9 +1518,11 @@ payload and state blocks below them are tagged "On the wire" when they cross a
 trust boundary,
 "Intra-domain context" when they travel only within one trust domain, and
 "Server-side state" when they are never transmitted. Continuation handles
-are written H0, H1, and so on, one per hop.
+are written H0, H1, and so on, one per hop. The examples use Transaction
+Tokens as the intra-domain carrier for illustration only; the profile does not
+require them ({{transaction-token-context}}).
 
-## Worked Example (Same-IdP) {#example}
+## Three-Hop Interactive Example {#example}
 
 This section walks the canonical same-IdP flow end-to-end for a single
 user: ExpenseApp invokes ExpenseSaaS; ExpenseService, the workload handling
@@ -2032,8 +2049,8 @@ state:
  Scheduler   BriefingAgent      Platform TTS
      |              |                 |
      |---trigger--->|                 | task-123
-     |              |-task-123 + key->|
-     |              |                 | verify key + task; derive H0
+     |              |-task-123+proof->|
+     |              |                 | verify proof + task; derive H0
      |              |<-fresh TT(H0)---|
 ~~~
 
@@ -2198,7 +2215,8 @@ that GatewayRAS bound to the presented access token
 Resolving the tool call, the gateway selects Wiki as the upstream, a target no
 one enumerated when AgentApp rooted the chain. ToolGateway reads H0 from its
 transaction context, obtains an assertion from Gateway CAI, and presents it to
-the IdP as in {{example-chained}}, now requesting
+the IdP with a DPoP proof of the `cnf` key, as in {{example-chained}}, now
+requesting
 `audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`, and
 `scope=wiki.read`.
 
@@ -2230,40 +2248,21 @@ This non-normative appendix lists unresolved design questions.
 
 \[\[ To be removed before publication as an RFC ]]
 
-1. **Nested own-domain `act` segments.** Should a future version let a CAI add
-   verified own-domain actors to `act`, with the leaf outermost
-   and the IdP deduplicating and depth-limiting the composed lineage? Or should
-   offline-actor audit remain in the evidence layer
-   ({{I-D.mcguinness-oauth-actor-receipts}},
-   {{I-D.mcguinness-oauth-actor-proofs}})?
-
-2. **Signed assertion versus a recipient-bound direct profile.**
+1. **Signed assertion versus a recipient-bound direct profile.**
    Could the IdP bind a continuation credential to an intended actor, actor
    class, trust domain, or key and accept it with client authentication,
    sender-constrained `actor_token`, and live key proof? Is the CAI's actor/key
    attestation and domain-local gate worth its added
    trust configuration ({{rationale-grant-type}})?
 
-3. **Pull topology.** Should target-side resolution be defined as a companion
-   profile ({{rationale-pull}})?
-
-4. **Mutual-TLS binding.** Should this profile and ID-JAG add mutual-TLS
+2. **Mutual-TLS binding.** Should this profile and ID-JAG add mutual-TLS
    binding together ({{client-identity}})?
 
-5. **A client establishment parameter.** Should a client be able to require
+3. **A client establishment parameter.** Should a client be able to require
    or suppress chain establishment, or negotiate lifetime, depth, or
    permitted continuers ({{root-establishment}})?
 
-6. **Other chain-context carriers.** Should this profile standardize an
-   alternative to Transaction Tokens that derives the handle from RAS-bound
-   state and is not requester-supplied or overridable? Actor-signed hop proofs
-   are one candidate {{I-D.mcguinness-oauth-actor-proofs}}.
-
-7. **Discovery.** Which accepted actor-token types, issuers, proof methods,
-   confirmation methods, lifetime limits, endpoints, bindings, and error
-   capabilities should IdP metadata advertise ({{metadata}})?
-
-8. **CAI issuance.** Should the document define an interoperable
+4. **CAI issuance.** Should the document define an interoperable
    token-endpoint-style issuance request ({{assertion-issuance}})?
 
    ~~~
@@ -2278,7 +2277,7 @@ This non-normative appendix lists unresolved design questions.
    The profile could also define errors, discovery, retry, and optional
    target/resource constraints enforced by the IdP as ceilings.
 
-9. **Authorization-basis representation.** Should the envelope expose a
+5. **Authorization-basis representation.** Should the envelope expose a
    testable representation of the authorization ceiling, for example:
 
    ~~~ json
@@ -2292,14 +2291,15 @@ This non-normative appendix lists unresolved design questions.
    permission have a dedicated consent scope even though establishment can
    occur without a client-requested scope?
 
-10. **A non-user root.** Should a sibling profile root continuation in
-    tenant- or workload-scoped authorization while retaining this profile's
-    envelope, revocation, and boundary-crossing model, or is that out of
-    scope ({{decision-rule}})?
-
-11. **RAS-derived narrowing.** Cross-domain scope vocabularies are not
-    generally comparable, so RAS-derived narrowing, if ever defined, would need
-    signed constraints and an explicit intersection model ({{hop-activation}}).
+Further questions are tracked in the project's issue list rather than expanded
+here: nested own-domain `act` segments and offline-actor audit
+({{I-D.mcguinness-oauth-actor-receipts}},
+{{I-D.mcguinness-oauth-actor-proofs}}); a pull topology with target-side
+resolution ({{rationale-pull}}); an alternative chain-context carrier that
+derives the handle from RAS-bound state; IdP discovery metadata for accepted
+actor-token types, issuers, and proof methods ({{metadata}}); a non-user root
+profile ({{decision-rule}}); and RAS-derived narrowing with a signed
+intersection model ({{hop-activation}}).
 
 # Acknowledgments
 {:numbered="false"}
