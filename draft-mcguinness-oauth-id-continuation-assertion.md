@@ -95,27 +95,25 @@ attenuation for intra-domain fan-out that does not change the subject.
 
 # Introduction
 
-OAuth 2.0 {{RFC6749}} issues access tokens scoped to their intended audiences,
-and OAuth 2.0 Token Exchange {{RFC8693}} trades one token for another when a
+OAuth 2.0 {{RFC6749}} issues access tokens for use at protected resources, and
+OAuth 2.0 Token Exchange {{RFC8693}} trades one token for another when a
 request crosses a trust boundary. The Identity Assertion JWT Authorization
 Grant (ID-JAG) {{I-D.ietf-oauth-identity-assertion-authz-grant}} applies Token
-Exchange to
-identity: an IdP Authorization Server (IdP) mints a grant that names the user
-for a single downstream audience. Each such exchange assumes the user's
-credential (an ID Token, refresh token, or SAML assertion) is still available
-when the grant is minted.
+Exchange to identity: an IdP Authorization Server (IdP) mints a grant that
+names the user for a single downstream audience. Each such exchange assumes
+the subject's credential (an ID Token, refresh token, or SAML assertion) is
+still available when the grant is minted.
 
 In practice, many requests outlive that moment. An authenticated request may
-cross several services after the user is gone, or reach an audience the
-original credential never addressed. The first hop can still present the
-user's credential to obtain an ID-JAG, but a workload further along the chain
-holds none of these credentials. This is hardest when each Resource
-Authorization Server names the user by a pairwise, audience-local subject that
-only the IdP can resolve, and that differs at every server: the later workload
-has no way to
-name the user for the next audience. Only the IdP can perform that mapping, so
-each continuation is a fresh mint from the IdP rather than a reused or
-offline-attenuated token.
+cross several services after the user is no longer present, or reach an
+audience the original credential never addressed. The first hop can still
+present the subject's credential to obtain an ID-JAG, but a workload further
+along the chain holds none of these credentials. This is hardest when each
+Resource Authorization Server names the user by a pairwise, audience-local
+subject that only the IdP can resolve, and that differs at every server: the
+later workload has no way to name the user for the next audience. Only the IdP
+can perform that mapping, so each continuation is a fresh mint from the IdP
+rather than a reused or offline-attenuated token.
 
 This document defines the Identity Continuation Assertion: a short-lived,
 sender-constrained JWT that a later workload presents as the `subject_token`
@@ -688,8 +686,8 @@ no mutual-TLS variant {{RFC8705}} ({{open-items}}). The onward ID-JAG MUST use
 the same DPoP key; key rotation takes effect when the actor obtains a new
 assertion and actor token bound to the new key.
 
-Four signals identify the actor on a continuation exchange, and all four must
-agree:
+Four signals bind the continuation request to the current actor. The
+identities and key possession they establish must be mutually consistent:
 
 | Signal | What it establishes |
 |---|---|
@@ -1246,9 +1244,10 @@ asymmetric algorithms. It MUST select keys from trusted issuer configuration;
 
 Advertising `identity_continuation_issuers` ({{metadata}}) in publicly readable
 authorization server metadata reveals which CAIs a Resource Authorization
-Server trusts, and can thereby disclose federation topology, tenant
-relationships, and deployment structure, the same concern the base ID-JAG
-profile raises for its own issuer advertisements. A deployment whose CAI
+Server authorizes to attest its hops, and can thereby disclose federation
+topology, tenant relationships, and deployment structure, the same
+disclosure concern the base ID-JAG profile raises for issuer-specific
+metadata. A deployment whose CAI
 relationships are sensitive SHOULD omit the advertisement and convey the
 nomination out of band or through
 access-controlled discovery.
