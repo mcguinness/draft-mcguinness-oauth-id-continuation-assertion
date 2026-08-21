@@ -2270,13 +2270,21 @@ this profile builds.
 
 * Renamed Chain Authority to Continuation Assertion Issuer, and direct/chained
   exchanges to root/continuation exchanges.
-* Consolidated the Multi-Hop Cross-Domain Access processing rules and grouped
-  request validation into seven thematic rules.
-* Added a non-normative Implementation Considerations section; demoted the
-  intra-domain carrier from a role to a deployment mechanism (its security
-  properties remain normative).
-* Relaxed `resource` to OPTIONAL and aligned terminology and Token Exchange
-  request/response formatting with the base ID-JAG profile.
+* Restructured to mirror the base ID-JAG profile, and aligned terminology (IdP
+  Authorization Server), Token Exchange request and response formatting, and
+  `resource` cardinality (now OPTIONAL) with it.
+* Consolidated the Token Exchange processing rules and grouped request
+  validation into seven thematic rules.
+* Added a non-normative Implementation Considerations section and demoted the
+  intra-domain carrier from a role to a deployment mechanism, keeping its
+  security properties normative.
+* Made the RAS `identity_continuation_issuers` advertisement a nomination only;
+  the IdP establishes issuer identity and key trust independently.
+* Removed the grant-management interface requirement and other deployment and
+  operational over-reach (rate and fan-out limits, logging, role topology),
+  keeping the observable security requirements.
+* Expanded Security Considerations with the threat and rationale for each item.
+* Marked the draft an individual submission.
 
 -00
 
