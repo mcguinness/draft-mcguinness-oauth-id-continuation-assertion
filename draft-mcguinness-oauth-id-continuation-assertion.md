@@ -7,7 +7,7 @@ docname: draft-mcguinness-oauth-id-continuation-assertion-latest
 submissiontype: IETF
 number:
 date:
-consensus: true
+consensus: false
 v: 3
 area: "Security"
 workgroup: "Web Authorization Protocol"
@@ -2075,6 +2075,17 @@ weakening the original assertion's audience check.
 
 Alice has pairwise subjects at GatewayRAS and WikiRAS, which only the IdP can
 map. H0 is the root hop bound at GatewayRAS; H1 is the terminal Wiki hop.
+
+The runtime roots the chain at the gateway:
+
+~~~
+ AgentApp          IdP          GatewayRAS
+     |               |               |
+     |--ID Token---->|               |
+     |<--ID-JAG(H0)--|               |
+     |----------------ID-JAG-------->| bind H0
+     |<-------------gateway AT-------|
+~~~
 
 To reach Wiki, the gateway continues the chain:
 
