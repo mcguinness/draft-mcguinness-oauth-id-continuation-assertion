@@ -1053,15 +1053,19 @@ the nominated issuers rather than be configured out of band
   issuer's identity and signing keys independently, and the advertisement
   alone MUST NOT establish key trust or override the IdP's tenant
   issuer-pairing policy. Because the IdP
-  evaluates issuer trust and keys against its current configuration, removing
-  an issuer or revoking its keys de-authorizes it for existing chains.
+  evaluates issuer trust and keys against its current trusted issuer and key
+  state, removing an issuer or revoking its keys de-authorizes it for existing
+  chains.
   Acceptance remains the IdP's decision.
 
 When a CAI's issuer identifier is that of an OAuth authorization server, the
-IdP obtains its signing keys from that server's `jwks_uri` ({{RFC8414}}); any
-other CAI uses authenticated configuration. A RAS nomination MUST NOT by
-itself trigger that retrieval or authorize the issuer; the IdP applies its own
-issuer policy first.
+IdP obtains its signing keys from the `jwks_uri` in that server's metadata
+({{RFC8414}}); a CAI without such a `jwks_uri`, like any other CAI, uses
+authenticated configuration. A RAS nomination MUST NOT by itself trigger that
+retrieval or authorize the issuer; the IdP applies its own issuer policy
+first. The IdP MUST refresh remotely obtained keys under a bounded cache
+policy, so a key removed from the JWK Set stops validating once the refresh
+takes effect.
 
 # Implementation Considerations {#implementation}
 
