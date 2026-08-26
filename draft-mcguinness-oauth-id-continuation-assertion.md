@@ -2367,17 +2367,19 @@ this profile builds.
   the assertion audience from that binding rather than requester input;
   restricted CAI issuance to the RAS trust domain.
 * Made the RAS `identity_continuation_issuers` advertisement a nomination only
-  (the IdP establishes issuer trust and keys independently) and added a
-  Metadata Disclosure security consideration.
+  (the IdP establishes issuer trust and keys independently, resolving an
+  authorization-server CAI's keys from its `jwks_uri`) and added a Metadata
+  Disclosure security consideration.
 * Tightened the security model: relocated the replay-fingerprint and
   authentication-context requirements into the protocol sections with their
   rationale in Security; narrowed `invalid_continuation` to permanently
   unusable handles; distinguished the ID-JAG, assertion, and access-token
   lifetimes; clarified that a depth-limited `act` is not proof of complete
   lineage; and made chain revocation testable.
-* Corrected the examples and cross-references, expanded the root-chain
-  envelope and design rationale, softened the handle-correlation claim,
-  trimmed the open items, and marked the draft an individual submission.
+* Rewrote the Introduction; corrected the examples and cross-references,
+  expanded the root-chain envelope and design rationale, softened the
+  handle-correlation claim, trimmed the open items, and marked the draft an
+  individual submission.
 
 -00
 
