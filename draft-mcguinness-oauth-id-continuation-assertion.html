@@ -1056,7 +1056,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">McGuinness</td>
-<td class="center">Expires 22 February 2027</td>
+<td class="center">Expires 27 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-21" class="published">21 August 2026</time>
+<time datetime="2026-08-26" class="published">26 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-22">22 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-27">27 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1131,7 +1131,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 22 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 27 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2267,7 +2267,7 @@ confirmation method, and <code>iat</code> and <code>exp</code> are NumericDate n
 </li>
                 <li class="normal" id="section-6.3.4-2.2.2.4">
                   <p id="section-6.3.4-2.2.2.4.1">the signature validates under an acceptable algorithm (<a href="#security-alg" class="auto internal xref">Section 9.9</a>,
-<span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>); and<a href="#section-6.3.4-2.2.2.4.1" class="pilcrow">¶</a></p>
+<span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>) with the issuer's resolved signing keys (<a href="#metadata" class="auto internal xref">Section 7</a>); and<a href="#section-6.3.4-2.2.2.4.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-6.3.4-2.2.2.5">
                   <p id="section-6.3.4-2.2.2.5.1"><code>aud</code> exactly matches the IdP's issuer identifier;<a href="#section-6.3.4-2.2.2.5.1" class="pilcrow">¶</a></p>
@@ -2706,15 +2706,24 @@ the nominated issuers rather than be configured out of band
 hops it accepts; an empty array authorizes none. Values are compared with
 the assertion <code>iss</code> as exact, case-sensitive strings, and duplicates are
 ignored. The advertisement is a nomination only: the IdP <span class="bcp14">MUST</span> establish each
-issuer's identity and signing keys independently, through authenticated
-configuration or federation, and the advertisement alone <span class="bcp14">MUST NOT</span> establish
-key trust or override the IdP's tenant issuer-pairing policy. Because the IdP
-evaluates issuer trust and keys against its current configuration, removing
-an issuer or revoking its keys de-authorizes it for existing chains.
+issuer's identity and signing keys independently, and the advertisement
+alone <span class="bcp14">MUST NOT</span> establish key trust or override the IdP's tenant
+issuer-pairing policy. Because the IdP
+evaluates issuer trust and keys against its current trusted issuer and key
+state, removing an issuer or revoking its keys de-authorizes it for existing
+chains.
 Acceptance remains the IdP's decision.<a href="#section-7.2-4.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
+<p id="section-7.2-5">When a CAI's issuer identifier is that of an OAuth authorization server, the
+IdP obtains its signing keys from the <code>jwks_uri</code> in that server's metadata
+(<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>); a CAI without such a <code>jwks_uri</code>, like any other CAI, uses
+authenticated configuration. A RAS nomination <span class="bcp14">MUST NOT</span> by itself trigger that
+retrieval or authorize the issuer; the IdP applies its own issuer policy
+first. The IdP <span class="bcp14">MUST</span> refresh remotely obtained keys under a bounded cache
+policy, so a key removed from the JWK Set stops validating once the refresh
+takes effect.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2905,8 +2914,8 @@ the candidate mapping from that server's advertised
 <code>identity_continuation_issuers</code> (<a href="#metadata" class="auto internal xref">Section 7</a>). That advertisement is a
 nomination only: it scopes each server to naming issuers for its own hops but
 does not itself establish issuer or key trust. The IdP independently
-authenticates each CAI issuer and its signing keys, and tenant policy
-authorizes the resulting server, CAI, and actor-token-issuer combination.
+authenticates each CAI issuer and its signing keys (<a href="#metadata" class="auto internal xref">Section 7</a>), and tenant
+policy authorizes the resulting server, CAI, and actor-token-issuer combination.
 Absent the advertisement, the mapping is configured out of band.<a href="#section-9.7-3" class="pilcrow">¶</a></p>
 <p id="section-9.7-4">One operator may run the RAS, carrier, and CAI. Co-locating these
 anchors trades away the defense in depth the conjunction otherwise provides, so
@@ -4395,7 +4404,9 @@ The authenticated workload and proof key would determine <code>act</code> and <c
 and the IdP audience would derive from the hop's binding rather than be
 supplied.
 The profile could also define errors, discovery, retry, and optional
-target/resource constraints enforced by the IdP as ceilings.<a href="#appendix-C-3.4.3" class="pilcrow">¶</a></p>
+target/resource constraints enforced by the IdP as ceilings. The CAI's
+signing-key discovery is already specified (<a href="#metadata" class="auto internal xref">Section 7</a>), so this item
+concerns only the issuance request and response.<a href="#appendix-C-3.4.3" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.5">
           <p id="appendix-C-3.5.1"><strong>Authorization-basis representation.</strong> Should the envelope expose a
