@@ -1056,7 +1056,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">McGuinness</td>
-<td class="center">Expires 22 February 2027</td>
+<td class="center">Expires 27 February 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-08-21" class="published">21 August 2026</time>
+<time datetime="2026-08-26" class="published">26 August 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-02-22">22 February 2027</time></dd>
+<dd class="expires"><time datetime="2027-02-27">27 February 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1131,7 +1131,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 22 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 27 February 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2709,17 +2709,21 @@ ignored. The advertisement is a nomination only: the IdP <span class="bcp14">MUS
 issuer's identity and signing keys independently, and the advertisement
 alone <span class="bcp14">MUST NOT</span> establish key trust or override the IdP's tenant
 issuer-pairing policy. Because the IdP
-evaluates issuer trust and keys against its current configuration, removing
-an issuer or revoking its keys de-authorizes it for existing chains.
+evaluates issuer trust and keys against its current trusted issuer and key
+state, removing an issuer or revoking its keys de-authorizes it for existing
+chains.
 Acceptance remains the IdP's decision.<a href="#section-7.2-4.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
 <p id="section-7.2-5">When a CAI's issuer identifier is that of an OAuth authorization server, the
-IdP obtains its signing keys from that server's <code>jwks_uri</code> (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>); any
-other CAI uses authenticated configuration. A RAS nomination <span class="bcp14">MUST NOT</span> by
-itself trigger that retrieval or authorize the issuer; the IdP applies its own
-issuer policy first.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
+IdP obtains its signing keys from the <code>jwks_uri</code> in that server's metadata
+(<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>); a CAI without such a <code>jwks_uri</code>, like any other CAI, uses
+authenticated configuration. A RAS nomination <span class="bcp14">MUST NOT</span> by itself trigger that
+retrieval or authorize the issuer; the IdP applies its own issuer policy
+first. The IdP <span class="bcp14">MUST</span> refresh remotely obtained keys under a bounded cache
+policy, so a key removed from the JWK Set stops validating once the refresh
+takes effect.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
