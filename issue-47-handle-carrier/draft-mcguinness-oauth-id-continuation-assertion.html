@@ -1809,8 +1809,8 @@ An ID-JAG carrying this claim is continuation-capable.<a href="#section-4-3.1.1"
         <li id="section-4-3.3">
           <p id="section-4-3.3.1">Across a trust boundary, the handle is accepted only inside an ID-JAG (by
 the RAS) or an Identity Continuation Assertion (by the IdP), never as a
-standalone value. Within that RAS's trust domain, authorized workloads <span class="bcp14">MAY</span>
-observe it only through a carrier (<a href="#transaction-token-context" class="auto internal xref">Section 6.6</a>).<a href="#section-4-3.3.1" class="pilcrow">¶</a></p>
+standalone value; within that RAS's trust domain it travels only by a
+carrier (<a href="#transaction-token-context" class="auto internal xref">Section 6.6</a>).<a href="#section-4-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-4-3.4">
           <p id="section-4-3.4.1">A continuation-aware RAS binds the handle to the authorization state it
@@ -2605,47 +2605,25 @@ neither narrows nor widens it.<a href="#section-6.5-5" class="pilcrow">¶</a></p
         <h3 id="name-intra-domain-handle-propaga">
 <a href="#section-6.6" class="section-number selfRef">6.6. </a><a href="#name-intra-domain-handle-propaga" class="section-name selfRef">Intra-Domain Handle Propagation</a>
         </h3>
-<p id="section-6.6-1">Within a trust domain, an authorized workload learns the accepted hop's handle
-from a trusted intra-domain carrier. Whatever its form, the carrier:<a href="#section-6.6-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-6.6-2.1">
-            <p id="section-6.6-2.1.1"><span class="bcp14">MUST</span> be server-derived and <span class="bcp14">MUST</span> bind the handle and the current credential
-and key to the RAS authorization, which records the hop's originating IdP
-and tenant (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>);<a href="#section-6.6-2.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-6.6-2.2">
-            <p id="section-6.6-2.2.1"><span class="bcp14">MUST</span> be integrity-protected, and the handle <span class="bcp14">MUST NOT</span> be accepted from any
-other requester-controlled input;<a href="#section-6.6-2.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-6.6-2.3">
-            <p id="section-6.6-2.3.1"><span class="bcp14">MUST NOT</span> be accepted outside the trust domain; and<a href="#section-6.6-2.3.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-6.6-2.4">
-            <p id="section-6.6-2.4.1"><span class="bcp14">MUST</span> be re-derived when replaced.<a href="#section-6.6-2.4.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
-<p id="section-6.6-3">Before deriving, the protected endpoint or carrier <span class="bcp14">MUST</span> validate live proof of
-possession of the confirmed key presented on the current call, and <span class="bcp14">MUST</span> derive
-the handle from the authorization record bound to that verified credential,
-key, and RAS state, never from a session or subject, which could otherwise
-bind the wrong user's authorization state to this call.<a href="#section-6.6-3" class="pilcrow">¶</a></p>
-<p id="section-6.6-4">The specific carrier is deployment-specific. A Transaction Token
+<p id="section-6.6-1">Within a trust domain, a workload learns the accepted hop's handle from a
+carrier the domain derives from the RAS binding (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>). The
+handle surfaced for a call <span class="bcp14">MUST</span> be the one bound to the authorization whose
+sender-constrained access token was presented, and its proof of possession
+verified, on that call; it is never taken from requester-supplied input or
+derived from a session or subject, which could otherwise bind the wrong
+user's authorization state to the call. The CAI verifies it against RAS-bound
+state before issuing (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-6.6-1" class="pilcrow">¶</a></p>
+<p id="section-6.6-2">The carrier is deployment-specific and is accepted only within the domain
+(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>). A Transaction Token
 <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> is one realization (<a href="#rationale-txn" class="auto internal xref">Appendix A.2</a>).
-Where the RAS and the continuing workload share one trust domain, a claim in
-the access token the accepting RAS issues is another. Such a token <span class="bcp14">MUST</span> be a
-signed JWT, for example per <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span>, sender-constrained to the confirmed
-key (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>), and audienced to protected resources in the RAS's
-trust domain: the RAS populates the claim from the binding at issuance, and
-the signature seals it to the token's subject and confirmed key. A claim is
-fixed at issuance and cannot reflect a later revocation; the CAI's recheck
-against authoritative RAS state (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>) applies to every
-carrier.<a href="#section-6.6-4" class="pilcrow">¶</a></p>
-<p id="section-6.6-5">Authorized intra-domain workloads <span class="bcp14">MAY</span> read the handle. They <span class="bcp14">MUST NOT</span> place it
-in external authorization claims, responses, webhooks, errors, or calls to
-non-participants, or accept it as authorization input at a protected API;
-deployments also keep it out of logs and traces. A carrier <span class="bcp14">SHOULD NOT</span> expose
-it to a party with no role in continuation, such as a Resource Server, which
-has no obligations under this specification. The handle conveys no authority.<a href="#section-6.6-5" class="pilcrow">¶</a></p>
+A claim in the accepting RAS's own sender-constrained access token, read from
+the signed JWT <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> or from its introspection response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>, is
+another; the RAS populates it from the binding at issuance, so it cannot
+reflect a later revocation, which the CAI recheck covers for every carrier.<a href="#section-6.6-2" class="pilcrow">¶</a></p>
+<p id="section-6.6-3">The handle conveys no authority. A Resource Server has no obligations under
+this specification, so a carrier <span class="bcp14">SHOULD NOT</span> expose the handle to a party with
+no role in continuation; deployments also keep it out of logs, traces, and
+responses.<a href="#section-6.6-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3816,10 +3794,9 @@ ExpenseService, the workload that will complete the request.<a href="#appendix-B
 </pre><a href="#appendix-B.1.2-7" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1.2-8">The Expense TTS derives this context from AT1's authorization record; neither
-ExpenseApp nor ExpenseService supplies H0. The Transaction Token remains
-inside <code>expenses.example</code> and is normally forwarded unchanged within that
-domain. A replacement token requires the TTS to re-derive the member
-(<a href="#transaction-token-context" class="auto internal xref">Section 6.6</a>). The <code>tctx.identity_continuation</code> encoding
+ExpenseApp nor ExpenseService supplies H0 (<a href="#transaction-token-context" class="auto internal xref">Section 6.6</a>). The
+Transaction Token remains inside <code>expenses.example</code> and is normally forwarded
+unchanged within that domain. The <code>tctx.identity_continuation</code> encoding
 shown is illustrative and deployment-defined; this document standardizes no
 carrier schema.<a href="#appendix-B.1.2-8" class="pilcrow">¶</a></p>
 </section>
@@ -4492,10 +4469,11 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Replaced the access-token prohibition on the handle with carrier
-requirements, permitting a signed, sender-constrained JWT access token from
-the accepting RAS as a carrier within its trust domain; the CAI recheck
-names every carrier, and the gateway example uses that carrier.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Replaced the access-token prohibition on the handle, and the carrier
+requirements that restated the CAI preconditions, with one rule: the handle
+surfaced for a call is the one bound to the access token presented on it.
+A claim in the accepting RAS's own access token is a permitted carrier; the
+CAI recheck names every carrier, and the gateway example uses that carrier.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>

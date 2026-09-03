@@ -446,9 +446,8 @@ Table of Contents
 
    3.  Across a trust boundary, the handle is accepted only inside an
        ID-JAG (by the RAS) or an Identity Continuation Assertion (by the
-       IdP), never as a standalone value.  Within that RAS's trust
-       domain, authorized workloads MAY observe it only through a
-       carrier (Section 6.6).
+       IdP), never as a standalone value; within that RAS's trust domain
+       it travels only by a carrier (Section 6.6).
 
    4.  A continuation-aware RAS binds the handle to the authorization
        state it establishes (Section 6.4); RASes, Resource Servers, and
@@ -1136,48 +1135,29 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 6.6.  Intra-Domain Handle Propagation
 
-   Within a trust domain, an authorized workload learns the accepted
-   hop's handle from a trusted intra-domain carrier.  Whatever its form,
-   the carrier:
+   Within a trust domain, a workload learns the accepted hop's handle
+   from a carrier the domain derives from the RAS binding (Section 6.4).
+   The handle surfaced for a call MUST be the one bound to the
+   authorization whose sender-constrained access token was presented,
+   and its proof of possession verified, on that call; it is never taken
+   from requester-supplied input or derived from a session or subject,
+   which could otherwise bind the wrong user's authorization state to
+   the call.  The CAI verifies it against RAS-bound state before issuing
+   (Section 6.2).
 
-   *  MUST be server-derived and MUST bind the handle and the current
-      credential and key to the RAS authorization, which records the
-      hop's originating IdP and tenant (Section 6.4);
-
-   *  MUST be integrity-protected, and the handle MUST NOT be accepted
-      from any other requester-controlled input;
-
-   *  MUST NOT be accepted outside the trust domain; and
-
-   *  MUST be re-derived when replaced.
-
-   Before deriving, the protected endpoint or carrier MUST validate live
-   proof of possession of the confirmed key presented on the current
-   call, and MUST derive the handle from the authorization record bound
-   to that verified credential, key, and RAS state, never from a session
-   or subject, which could otherwise bind the wrong user's authorization
-   state to this call.
-
-   The specific carrier is deployment-specific.  A Transaction Token
+   The carrier is deployment-specific and is accepted only within the
+   domain (Section 6.2).  A Transaction Token
    [I-D.ietf-oauth-transaction-tokens] is one realization
-   (Appendix A.2).  Where the RAS and the continuing workload share one
-   trust domain, a claim in the access token the accepting RAS issues is
-   another.  Such a token MUST be a signed JWT, for example per
-   [RFC9068], sender-constrained to the confirmed key (Section 6.4), and
-   audienced to protected resources in the RAS's trust domain: the RAS
-   populates the claim from the binding at issuance, and the signature
-   seals it to the token's subject and confirmed key.  A claim is fixed
-   at issuance and cannot reflect a later revocation; the CAI's recheck
-   against authoritative RAS state (Section 6.2) applies to every
-   carrier.
+   (Appendix A.2).  A claim in the accepting RAS's own sender-
+   constrained access token, read from the signed JWT [RFC9068] or from
+   its introspection response [RFC7662], is another; the RAS populates
+   it from the binding at issuance, so it cannot reflect a later
+   revocation, which the CAI recheck covers for every carrier.
 
-   Authorized intra-domain workloads MAY read the handle.  They MUST NOT
-   place it in external authorization claims, responses, webhooks,
-   errors, or calls to non-participants, or accept it as authorization
-   input at a protected API; deployments also keep it out of logs and
-   traces.  A carrier SHOULD NOT expose it to a party with no role in
-   continuation, such as a Resource Server, which has no obligations
-   under this specification.  The handle conveys no authority.
+   The handle conveys no authority.  A Resource Server has no
+   obligations under this specification, so a carrier SHOULD NOT expose
+   the handle to a party with no role in continuation; deployments also
+   keep it out of logs, traces, and responses.
 
 7.  Authorization Server Metadata
 
@@ -2121,10 +2101,9 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
    }
 
    The Expense TTS derives this context from AT1's authorization record;
-   neither ExpenseApp nor ExpenseService supplies H0.  The Transaction
-   Token remains inside expenses.example and is normally forwarded
-   unchanged within that domain.  A replacement token requires the TTS
-   to re-derive the member (Section 6.6).  The
+   neither ExpenseApp nor ExpenseService supplies H0 (Section 6.6).  The
+   Transaction Token remains inside expenses.example and is normally
+   forwarded unchanged within that domain.  The
    tctx.identity_continuation encoding shown is illustrative and
    deployment-defined; this document standardizes no carrier schema.
 
@@ -2704,11 +2683,12 @@ Document History
 
    -02
 
-   *  Replaced the access-token prohibition on the handle with carrier
-      requirements, permitting a signed, sender-constrained JWT access
-      token from the accepting RAS as a carrier within its trust domain;
-      the CAI recheck names every carrier, and the gateway example uses
-      that carrier.
+   *  Replaced the access-token prohibition on the handle, and the
+      carrier requirements that restated the CAI preconditions, with one
+      rule: the handle surfaced for a call is the one bound to the
+      access token presented on it.  A claim in the accepting RAS's own
+      access token is a permitted carrier; the CAI recheck names every
+      carrier, and the gateway example uses that carrier.
 
    -01
 
