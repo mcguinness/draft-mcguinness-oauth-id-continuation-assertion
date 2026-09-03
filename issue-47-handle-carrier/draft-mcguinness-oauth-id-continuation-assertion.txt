@@ -1915,10 +1915,10 @@ B.1.  Three-Hop Interactive Example
    ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 
    Proof of possession uses DPoP.  JWTs are shown as decoded payloads;
-   JOSE headers, signatures, and client authentication are omitted.  The
-   handle crosses a trust boundary only inside an ID-JAG or Identity
-   Continuation Assertion and travels within a domain only as derived
-   chain context.
+   JOSE headers, signatures, and client authentication are omitted.
+   Across a trust boundary the handle is accepted only inside an ID-JAG
+   or Identity Continuation Assertion; within a domain it travels only
+   as derived chain context.
 
    Participants are grouped by trust domain; all trust the IdP at
    https://idp.example/. Each domain from which continuation occurs has

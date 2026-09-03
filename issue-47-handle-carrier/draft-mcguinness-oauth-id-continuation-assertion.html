@@ -3599,9 +3599,9 @@ ExpenseApp -&gt; ExpenseRAS -&gt; TravelRAS -&gt; BookingRAS
 </pre><a href="#appendix-B.1-3" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1-4">Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE
-headers, signatures, and client authentication are omitted. The handle
-crosses a trust boundary only inside an ID-JAG or Identity Continuation
-Assertion and travels within a domain only as derived chain context.<a href="#appendix-B.1-4" class="pilcrow">¶</a></p>
+headers, signatures, and client authentication are omitted. Across a trust
+boundary the handle is accepted only inside an ID-JAG or Identity Continuation
+Assertion; within a domain it travels only as derived chain context.<a href="#appendix-B.1-4" class="pilcrow">¶</a></p>
 <p id="appendix-B.1-5">Participants are grouped by trust domain; all trust the IdP at
 <code>https://idp.example/</code>. Each domain from which continuation occurs has two
 roles: a Resource Authorization Server that binds the accepted hop and a CAI
