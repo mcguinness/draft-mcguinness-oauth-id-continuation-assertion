@@ -446,9 +446,9 @@ Table of Contents
 
    3.  Across a trust boundary, the handle is accepted only inside an
        ID-JAG (by the RAS) or an Identity Continuation Assertion (by the
-       IdP), never as a standalone value.  Within the accepting RAS's
-       trust domain, authorized workloads MAY observe it only through a
-       carrier that meets Section 6.6.
+       IdP), never as a standalone value.  Within that RAS's trust
+       domain, authorized workloads MAY observe it only through a
+       carrier (Section 6.6).
 
    4.  A continuation-aware RAS binds the handle to the authorization
        state it establishes (Section 6.4); RASes, Resource Servers, and
@@ -591,9 +591,9 @@ Table of Contents
    5.  the actor is bound to the current transaction and the handle
        matches that transaction's RAS-bound state; and
 
-   6.  a recheck against authoritative RAS state, whichever carrier
-       delivered the handle, confirms the authorization remains active
-       and continuation remains permitted.
+   6.  a recheck against authoritative RAS state, whatever the carrier,
+       confirms the authorization remains active and continuation
+       remains permitted.
 
    Possession of a handle or carrier token alone is insufficient.
    Target or purpose hints can narrow CAI issuance but MUST NOT control
@@ -1088,9 +1088,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    outcome: no access token without its binding, and no binding without
    a token.  Repeated redemption of one ID-JAG MUST bind to the same hop
    authorization record, so a retry cannot create multiple records for
-   one grant.  The binding stays within the RAS's trust domain, where
-   workloads learn the handle only through a carrier that meets
-   Section 6.6.
+   one grant.  The RAS exposes the binding only within its trust domain
+   (Section 6.6).
 
 6.5.  Hop Activation
 
@@ -1145,9 +1144,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       credential and key to the RAS authorization, which records the
       hop's originating IdP and tenant (Section 6.4);
 
-   *  MUST be integrity-protected so that the party presenting it cannot
-      alter the handle, and the handle MUST NOT be accepted from any
-      other requester-controlled input;
+   *  MUST be integrity-protected, and the handle MUST NOT be accepted
+      from any other requester-controlled input;
 
    *  MUST NOT be accepted outside the trust domain; and
 
@@ -1166,27 +1164,20 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    trust domain, a claim in the access token the accepting RAS issues is
    another.  Such a token MUST be a signed JWT, for example per
    [RFC9068], sender-constrained to the confirmed key (Section 6.4), and
-   audience-restricted to protected resources in the RAS's trust domain;
-   an opaque or bearer token cannot serve.  The RAS populates the claim
-   afresh from the binding each time it issues a token, and its
-   signature seals the handle to the token's subject and confirmed key,
-   so a requester cannot pair another user's handle with its own call.
-   The token returns to the ID-JAG client, which already holds the
-   handle from its ID-JAG, and is accepted only by the resources it is
-   audienced to; they validate it, including proof of possession of that
-   key, as they would any sender-constrained access token before reading
-   the claim.  A signed claim is fixed at issuance and cannot reflect a
-   later revocation; the CAI's recheck against authoritative RAS state
-   (Section 6.2) applies to every carrier and catches a stale one.
+   audienced to protected resources in the RAS's trust domain: the RAS
+   populates the claim from the binding at issuance, and the signature
+   seals it to the token's subject and confirmed key.  A claim is fixed
+   at issuance and cannot reflect a later revocation; the CAI's recheck
+   against authoritative RAS state (Section 6.2) applies to every
+   carrier.
 
    Authorized intra-domain workloads MAY read the handle.  They MUST NOT
    place it in external authorization claims, responses, webhooks,
    errors, or calls to non-participants, or accept it as authorization
    input at a protected API; deployments also keep it out of logs and
-   traces.  Because a Resource Server has no obligations under this
-   specification, the handle SHOULD NOT be exposed, through any carrier,
-   to a party with no role in continuation.  The handle conveys no
-   authority.
+   traces.  A carrier SHOULD NOT expose it to a party with no role in
+   continuation, such as a Resource Server, which has no obligations
+   under this specification.  The handle conveys no authority.
 
 7.  Authorization Server Metadata
 
@@ -1477,16 +1468,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 10.  Privacy Considerations
 
-   A hop's identity_continuation_handle is intended for its ID-JAG
+   A hop's identity_continuation_handle is visible only to its ID-JAG
    client, the accepting Resource Authorization Server, the IdP, and the
-   domain's carrier, CAI, and authorized workloads.  Across a trust
-   boundary it is accepted only inside an ID-JAG or an assertion
-   (Section 4, rule 3); an access token that carries it reaches the ID-
-   JAG client, which already holds it.  A party with no continuation
-   role that observes it, such as a Resource Server that shares the
-   audience of such a token, learns only that the hop is continuable and
-   an opaque identifier for it (Section 6.6).  A workload receiving it
-   as intra-domain context is a control-plane participant.
+   domain's carrier, CAI, and authorized workloads, plus the audiences
+   of an access token that carries it (Section 6.6), which learn only
+   that the hop is continuable and an opaque identifier for it; the
+   client already holds it from its ID-JAG.  A workload receiving it as
+   intra-domain context is a control-plane participant.
 
    Handles are opaque, high-entropy, and hop-specific (Section 4), so
    they do not provide a common cross-RAS identifier for a user.
@@ -1607,10 +1595,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       a continuation chain, used to correlate a continuation to its
       chain and parent hop and to resolve the per-audience subject.
       This claim appears in an Identity Continuation Assertion and in a
-      continuation-capable ID-JAG, and its value may also travel within
-      one trust domain in an intra-domain carrier, including as a claim
-      in an access token issued by the accepting Resource Authorization
-      Server (Section 6.6).
+      continuation-capable ID-JAG, and its value may also travel in
+      intra-domain chain context, including an access token the
+      accepting Resource Authorization Server issues (Section 6.6).
 
    Change Controller:  IETF
 
@@ -1910,10 +1897,8 @@ Appendix B.  Examples
    only within one trust domain, and "Server-side state" when they are
    never transmitted.  Continuation handles are written H0, H1, and so
    on, one per hop.  The first two examples use Transaction Tokens as
-   the carrier and the gateway example uses a claim in the access token,
-   which the client holds but only the gateway domain accepts; both are
-   for illustration only, and the profile requires neither
-   (Section 6.6).
+   the carrier and the gateway example a claim in the access token, for
+   illustration only; the profile requires neither (Section 6.6).
 
 B.1.  Three-Hop Interactive Example
 
@@ -1931,9 +1916,9 @@ B.1.  Three-Hop Interactive Example
 
    Proof of possession uses DPoP.  JWTs are shown as decoded payloads;
    JOSE headers, signatures, and client authentication are omitted.  The
-   handle is accepted across a trust boundary only inside an ID-JAG or
-   Identity Continuation Assertion and travels within a domain only as
-   derived chain context.
+   handle crosses a trust boundary only inside an ID-JAG or Identity
+   Continuation Assertion and travels within a domain only as derived
+   chain context.
 
    Participants are grouped by trust domain; all trust the IdP at
    https://idp.example/. Each domain from which continuation occurs has
@@ -2091,10 +2076,9 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
    from an ID-JAG that ExpenseRAS rejected, is not usable: no CAI
    attests a hop that its Resource Authorization Server never accepted.
 
-   ExpenseRAS keeps this association in a private internal record.  This
-   deployment surfaces it through a Transaction Token rather than as a
-   claim in AT1 (Section 6.6); the gateway example (Appendix B.3) shows
-   the access-token carrier.
+   ExpenseRAS keeps this association in a private internal record.  In
+   this deployment it is not serialized into AT1; the gateway example
+   (Appendix B.3) shows that carrier.
 
    Server-side state:
 
@@ -2544,10 +2528,9 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
    *  Gateway domain (gateway.example): workload tool-gateway, and
       GatewayRAS / Gateway CAI, in front of the gateway's own tool-
       invocation surface (resource=https://gateway.example/), scoped
-      under tenant tenant-gw-01.  The domain runs no Transaction Token
-      Service: GatewayRAS issues signed, DPoP-bound JWT access tokens
-      audienced to its own resources and carries the handle as a claim
-      in them (Section 6.6).
+      under tenant tenant-gw-01.  Instead of a Transaction Token
+      Service, GatewayRAS carries the handle as a claim in its signed,
+      DPoP-bound JWT access tokens (Section 6.6).
 
    *  Wiki domain (wiki.example): WikiRAS only, in front of WikiAPI.  It
       is terminal in this chain.
@@ -2593,28 +2576,23 @@ B.3.1.  Root Exchange: The Runtime Roots the Chain
    bound H0 in Appendix B.1.2.
 
    AgentApp then invokes the gateway with its access token and no
-   continuation input.  AgentApp already holds H0 in its ID-JAG and
-   learns nothing new from the claim.  It presents the token but cannot
-   alter or select the handle inside it: GatewayRAS populated H0 from
-   the binding when it issued the token, and its signature seals H0 to
-   the token's subject and confirmed key.  ToolGateway, the token's
-   audience, validates the token and its DPoP binding as it would any
-   access token, then reads H0 from the claim and accepts no handle from
-   any other input AgentApp controls (Section 6.6).
+   continuation input.  AgentApp presents the token but cannot alter or
+   select the handle inside it: GatewayRAS populated H0 from the binding
+   at issuance, and its signature seals H0 to the token's subject and
+   confirmed key.  ToolGateway validates the token and its DPoP binding,
+   reads H0 from the claim, and accepts no handle from any other input
+   AgentApp controls (Section 6.6).
 
-   On the wire (decoded gateway access token, the carrier in this
-   deployment; AgentApp holds it, and only gateway.example resources
-   accept it):
+   On the wire (decoded gateway access token; only gateway.example
+   resources accept it):
 
    {
      "iss": "https://ras.gateway.example/",
      "aud": "https://gateway.example/",
      "sub": "gateway-pairwise-subject",
      "client_id": "agent-app",
-     "scope": "tools.invoke",
      "cnf": { "jkt": "base64url-agent-app-key-thumbprint" },
      "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
-     "iat": 1710000210,
      "exp": 1710000810
    }
 
@@ -2649,9 +2627,8 @@ B.3.3.  Points Worth Noticing
       the gateway never holds or presents it.
 
    *  GatewayRAS, not AgentApp, selects H0: the access token carries it
-      as a claim sealed by the issuer's signature.  Gateway CAI still
-      rechecks the live binding, since a claim fixed at issuance cannot
-      reflect a later revocation.
+      as a claim sealed by the issuer's signature, and Gateway CAI still
+      rechecks the live binding.
 
    *  The IdP evaluates every dynamically selected target against the
       root envelope and constructs the gateway's actor lineage.
@@ -2727,12 +2704,11 @@ Document History
 
    -02
 
-   *  Replaced the prohibition on carrying the handle in an access token
-      with the requirements any carrier must meet, permitted a signed,
-      sender-constrained JWT access token issued by the accepting RAS as
-      a carrier accepted only in its trust domain, made the CAI's live
-      recheck explicit for every carrier, and switched the gateway
-      example to that carrier.
+   *  Replaced the access-token prohibition on the handle with carrier
+      requirements, permitting a signed, sender-constrained JWT access
+      token from the accepting RAS as a carrier within its trust domain;
+      the CAI recheck names every carrier, and the gateway example uses
+      that carrier.
 
    -01
 
