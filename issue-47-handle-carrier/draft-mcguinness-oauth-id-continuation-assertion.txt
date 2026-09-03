@@ -444,11 +444,11 @@ Table of Contents
        consist of 22 to 256 characters drawn from the base64url alphabet
        (A-Z, a-z, 0-9, -, _).
 
-   3.  The handle crosses a trust boundary only inside an ID-JAG (to the
-       RAS) or an Identity Continuation Assertion (to the IdP), never
-       standalone.  Within the accepting RAS's trust domain, authorized
-       workloads MAY observe it only through a carrier that meets
-       Section 6.6.
+   3.  Across a trust boundary, the handle is accepted only inside an
+       ID-JAG (by the RAS) or an Identity Continuation Assertion (by the
+       IdP), never as a standalone value.  Within the accepting RAS's
+       trust domain, authorized workloads MAY observe it only through a
+       carrier that meets Section 6.6.
 
    4.  A continuation-aware RAS binds the handle to the authorization
        state it establishes (Section 6.4); RASes, Resource Servers, and
@@ -1145,7 +1145,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       credential and key to the RAS authorization, which records the
       hop's originating IdP and tenant (Section 6.4);
 
-   *  MUST NOT be supplied or overridden by the requester;
+   *  MUST be integrity-protected so that the party presenting it cannot
+      alter the handle, and the handle MUST NOT be accepted from any
+      other requester-controlled input;
 
    *  MUST NOT be accepted outside the trust domain; and
 
@@ -1162,15 +1164,20 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    [I-D.ietf-oauth-transaction-tokens] is one realization
    (Appendix A.2).  Where the RAS and the continuing workload share one
    trust domain, a claim in the access token the accepting RAS issues is
-   another.  The RAS derives the handle afresh from the binding each
-   time it issues a token, and its signature seals the handle to the
-   token's subject and confirmed key, so a requester cannot pair another
-   user's handle with its own call.  The protected endpoint validates
-   the token, including proof of possession of that key, as it would any
-   sender-constrained access token before reading the claim.  A signed
-   claim is fixed at issuance and cannot reflect a later revocation; the
-   CAI's recheck against authoritative RAS state (Section 6.2) applies
-   to every carrier and catches a stale one.
+   another.  Such a token MUST be a signed JWT, for example per
+   [RFC9068], sender-constrained to the confirmed key (Section 6.4), and
+   audience-restricted to protected resources in the RAS's trust domain;
+   an opaque or bearer token cannot serve.  The RAS populates the claim
+   afresh from the binding each time it issues a token, and its
+   signature seals the handle to the token's subject and confirmed key,
+   so a requester cannot pair another user's handle with its own call.
+   The token returns to the ID-JAG client, which already holds the
+   handle from its ID-JAG, and is accepted only by the resources it is
+   audienced to; they validate it, including proof of possession of that
+   key, as they would any sender-constrained access token before reading
+   the claim.  A signed claim is fixed at issuance and cannot reflect a
+   later revocation; the CAI's recheck against authoritative RAS state
+   (Section 6.2) applies to every carrier and catches a stale one.
 
    Authorized intra-domain workloads MAY read the handle.  They MUST NOT
    place it in external authorization claims, responses, webhooks,
@@ -1472,13 +1479,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    A hop's identity_continuation_handle is intended for its ID-JAG
    client, the accepting Resource Authorization Server, the IdP, and the
-   domain's carrier, CAI, and authorized workloads, and it leaves the
-   domain only inside an ID-JAG or an assertion (Section 4, rule 3).  A
-   party with no continuation role that observes it, such as a Resource
-   Server that shares the audience of an access token carrying it as a
-   claim, learns only that the hop is continuable and an opaque
-   identifier for it (Section 6.6).  A workload receiving it as intra-
-   domain context is a control-plane participant.
+   domain's carrier, CAI, and authorized workloads.  Across a trust
+   boundary it is accepted only inside an ID-JAG or an assertion
+   (Section 4, rule 3); an access token that carries it reaches the ID-
+   JAG client, which already holds it.  A party with no continuation
+   role that observes it, such as a Resource Server that shares the
+   audience of such a token, learns only that the hop is continuable and
+   an opaque identifier for it (Section 6.6).  A workload receiving it
+   as intra-domain context is a control-plane participant.
 
    Handles are opaque, high-entropy, and hop-specific (Section 4), so
    they do not provide a common cross-RAS identifier for a user.
@@ -1810,6 +1818,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               DOI 10.17487/RFC8705, February 2020,
               <https://www.rfc-editor.org/rfc/rfc8705>.
 
+   [RFC9068]  Bertocci, V., "JSON Web Token (JWT) Profile for OAuth 2.0
+              Access Tokens", RFC 9068, DOI 10.17487/RFC9068, October
+              2021, <https://www.rfc-editor.org/rfc/rfc9068>.
+
    [RFC9700]  Lodderstedt, T., Bradley, J., Labunets, A., and D. Fett,
               "Best Current Practice for OAuth 2.0 Security", BCP 240,
               RFC 9700, DOI 10.17487/RFC9700, January 2025,
@@ -1898,8 +1910,9 @@ Appendix B.  Examples
    only within one trust domain, and "Server-side state" when they are
    never transmitted.  Continuation handles are written H0, H1, and so
    on, one per hop.  The first two examples use Transaction Tokens as
-   the intra-domain carrier and the gateway example uses a claim in the
-   access token, for illustration only; the profile requires neither
+   the carrier and the gateway example uses a claim in the access token,
+   which the client holds but only the gateway domain accepts; both are
+   for illustration only, and the profile requires neither
    (Section 6.6).
 
 B.1.  Three-Hop Interactive Example
@@ -1918,9 +1931,9 @@ B.1.  Three-Hop Interactive Example
 
    Proof of possession uses DPoP.  JWTs are shown as decoded payloads;
    JOSE headers, signatures, and client authentication are omitted.  The
-   handle crosses a trust boundary only inside an ID-JAG or Identity
-   Continuation Assertion and travels within a domain only as derived
-   chain context.
+   handle is accepted across a trust boundary only inside an ID-JAG or
+   Identity Continuation Assertion and travels within a domain only as
+   derived chain context.
 
    Participants are grouped by trust domain; all trust the IdP at
    https://idp.example/. Each domain from which continuation occurs has
@@ -2532,8 +2545,9 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
       GatewayRAS / Gateway CAI, in front of the gateway's own tool-
       invocation surface (resource=https://gateway.example/), scoped
       under tenant tenant-gw-01.  The domain runs no Transaction Token
-      Service: GatewayRAS issues JWT access tokens and carries the
-      handle as a claim in them (Section 6.6).
+      Service: GatewayRAS issues signed, DPoP-bound JWT access tokens
+      audienced to its own resources and carries the handle as a claim
+      in them (Section 6.6).
 
    *  Wiki domain (wiki.example): WikiRAS only, in front of WikiAPI.  It
       is terminal in this chain.
@@ -2580,15 +2594,17 @@ B.3.1.  Root Exchange: The Runtime Roots the Chain
 
    AgentApp then invokes the gateway with its access token and no
    continuation input.  AgentApp already holds H0 in its ID-JAG and
-   learns nothing new from the claim, but it cannot supply or select the
-   handle used for this call: GatewayRAS derived H0 from the binding
-   when it issued the token, and its signature seals H0 to the token's
-   subject and confirmed key.  ToolGateway, the token's audience,
-   validates the token and its DPoP binding as it would any access
-   token, then reads H0 from the claim (Section 6.6).
+   learns nothing new from the claim.  It presents the token but cannot
+   alter or select the handle inside it: GatewayRAS populated H0 from
+   the binding when it issued the token, and its signature seals H0 to
+   the token's subject and confirmed key.  ToolGateway, the token's
+   audience, validates the token and its DPoP binding as it would any
+   access token, then reads H0 from the claim and accepts no handle from
+   any other input AgentApp controls (Section 6.6).
 
-   Gateway access token (decoded), the intra-domain carrier in this
-   deployment:
+   On the wire (decoded gateway access token, the carrier in this
+   deployment; AgentApp holds it, and only gateway.example resources
+   accept it):
 
    {
      "iss": "https://ras.gateway.example/",
@@ -2709,6 +2725,15 @@ Document History
 
    [[ To be removed before publication as an RFC ]]
 
+   -02
+
+   *  Replaced the prohibition on carrying the handle in an access token
+      with the requirements any carrier must meet, permitted a signed,
+      sender-constrained JWT access token issued by the accepting RAS as
+      a carrier accepted only in its trust domain, made the CAI's live
+      recheck explicit for every carrier, and switched the gateway
+      example to that carrier.
+
    -01
 
    *  Renamed Chain Authority to Continuation Assertion Issuer and the
@@ -2726,12 +2751,6 @@ Document History
    *  Bound the originating IdP and tenant to the accepted hop, so the
       CAI derives the assertion audience from that binding rather than
       requester input; restricted CAI issuance to the RAS trust domain.
-
-   *  Replaced the prohibition on carrying the handle in an access token
-      with the requirements any intra-domain carrier must meet,
-      permitted a claim in the accepting RAS's own access token within
-      one trust domain, made the CAI's live recheck explicit for every
-      carrier, and switched the gateway example to that carrier.
 
    *  Made the RAS identity_continuation_issuers advertisement a
       nomination only (the IdP establishes issuer trust and keys
