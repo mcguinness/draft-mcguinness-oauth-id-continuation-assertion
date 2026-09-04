@@ -1138,12 +1138,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Within a trust domain, a workload learns the accepted hop's handle
    from a carrier that the domain derives from the RAS binding
-   (Section 6.4).  The handle surfaced for a call MUST be read from
-   active RAS-bound state that the authenticated context of that call
-   selects.  The value is never taken from requester-supplied input, and
-   the state is never selected by a session or subject alone, which
-   could bind the wrong user's authorization state to the call.  What
-   selects the state depends on where the call lands:
+   (Section 6.4).  The handle surfaced for a call MUST be read from RAS-
+   bound state that the authenticated context of that call selects.  The
+   requester cannot control or separately override the value, and the
+   state is never selected by a session or subject alone, which could
+   bind the wrong user's authorization state to the call.  What selects
+   the state depends on where the call lands:
 
    *  at ingress, the sender-constrained access token whose proof of
       possession the resource verified;
@@ -2720,11 +2720,11 @@ Document History
    *  Removed the prohibition on carrying the handle in an access token,
       along with the carrier requirements that restated the CAI
       preconditions.  One rule remains: the handle surfaced for a call
-      is the one bound to the access token presented on it.  The
-      accepting RAS's own access token is now a permitted carrier, the
-      CAI recheck names every carrier, and the gateway example uses that
-      carrier.  The handle is also registered as an introspection
-      response member.
+      is read from the RAS-bound state that the call's authenticated
+      context selects.  The accepting RAS's own access token is now a
+      permitted carrier, the CAI recheck names every carrier, and the
+      gateway example uses that carrier.  The handle is also registered
+      as an introspection response member.
 
    -01
 
