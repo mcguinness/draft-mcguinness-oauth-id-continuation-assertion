@@ -1595,8 +1595,10 @@ tenant. It never resolves the target audience's user subject.<a href="#section-2
         <dd class="break"></dd>
 <dt id="section-2-3.17">Attestation:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.18">
-          <p id="section-2-3.18.1">A CAI's signed statement, in an Identity Continuation Assertion, that a hop
-accepted by a RAS it is mapped to remains continuable (<a href="#hop-activation" class="auto internal xref">Section 6.5</a>).<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.18.1">A CAI's signed statement, in an Identity Continuation Assertion, that binds
+the authenticated actor and key to a hop accepted by a RAS it is mapped to,
+whose local authorization remains active and permits continuation
+(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.19">Current actor (presenting actor):</dt>
@@ -2341,10 +2343,11 @@ confirmation method, and <code>iat</code> and <code>exp</code> are NumericDate n
               </ul>
 </li>
             <li id="section-6.3.4-2.3">
-              <p id="section-6.3.4-2.3.1"><strong>Issuer trust.</strong> The assertion <code>iss</code> exactly matches the ID-JAG <code>aud</code>
-recorded for the hop or an issuer identifier mapped to that RAS, is trusted
-for the tenant, and is authorized to pair with the <code>actor_token</code> issuer for
-that tenant;<a href="#section-6.3.4-2.3.1" class="pilcrow">¶</a></p>
+              <p id="section-6.3.4-2.3.1"><strong>Issuer trust.</strong> The assertion <code>iss</code> is the RAS issuer identifier that the
+recorded ID-JAG <code>aud</code> names, whether that claim was a string or a
+one-element array, or an issuer identifier mapped to that RAS; it is
+trusted for the tenant and authorized to pair with the <code>actor_token</code> issuer
+for that tenant;<a href="#section-6.3.4-2.3.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-6.3.4-2.4">
               <p id="section-6.3.4-2.4.1"><strong>Chain state.</strong><a href="#section-6.3.4-2.4.1" class="pilcrow">¶</a></p>
@@ -2833,8 +2836,8 @@ document's requirements; conformance depends only on the normative sections.<a h
             </tr>
           </tbody>
         </table>
-<p id="section-8.1-2">Collapsed is the default: it adds no CAI mapping and no self-entry in
-<code>identity_continuation_issuers</code>. The RAS still advertises the continuation
+<p id="section-8.1-2">Collapsed is the default: it adds no configured CAI mapping and no self-entry
+in <code>identity_continuation_issuers</code>. The RAS still advertises the continuation
 profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). Both topologies produce
 the same Identity Continuation Assertion and apply the same CAI requirements;
@@ -3052,8 +3055,9 @@ so separating the CAI isolates keys and components but does not create a
 protocol-level quorum. A compromised RAS can fabricate acceptance state in
 either topology, since a delegated CAI reads that state as authoritative; a
 compromised delegated CAI can additionally attest a hop the RAS refused. In
-both topologies, revocation after issuance leaves the assertion valid for its
-remaining lifetime; delegation adds any delay in RAS state reaching the CAI.
+both topologies, RAS-local authorization revocation after issuance, which the
+IdP cannot observe, leaves the assertion valid for its remaining lifetime;
+delegation adds any delay in RAS state reaching the CAI.
 The root envelope still bounds the result.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>

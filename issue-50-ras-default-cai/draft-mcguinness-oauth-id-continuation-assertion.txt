@@ -296,8 +296,9 @@ Table of Contents
       resolves the target audience's user subject.
 
    Attestation:  A CAI's signed statement, in an Identity Continuation
-      Assertion, that a hop accepted by a RAS it is mapped to remains
-      continuable (Section 6.5).
+      Assertion, that binds the authenticated actor and key to a hop
+      accepted by a RAS it is mapped to, whose local authorization
+      remains active and permits continuation (Section 6.2).
 
    Current actor (presenting actor):  The workload presenting the
       assertion to the IdP, named by act and authenticated by
@@ -889,10 +890,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  aud exactly matches the IdP's issuer identifier;
 
-   3.  *Issuer trust.* The assertion iss exactly matches the ID-JAG aud
-       recorded for the hop or an issuer identifier mapped to that RAS,
-       is trusted for the tenant, and is authorized to pair with the
-       actor_token issuer for that tenant;
+   3.  *Issuer trust.* The assertion iss is the RAS issuer identifier
+       that the recorded ID-JAG aud names, whether that claim was a
+       string or a one-element array, or an issuer identifier mapped to
+       that RAS; it is trusted for the tenant and authorized to pair
+       with the actor_token issuer for that tenant;
 
    4.  *Chain state.*
 
@@ -1304,13 +1306,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
                                  Table 4
 
-   Collapsed is the default: it adds no CAI mapping and no self-entry in
-   identity_continuation_issuers.  The RAS still advertises the
-   continuation profile (Section 7), and the IdP still holds the RAS's
-   issuer, key, tenant, and issuer-pairing trust (Section 9.7).  Both
-   topologies produce the same Identity Continuation Assertion and apply
-   the same CAI requirements; they differ only in how the CAI reaches
-   the accepted hop's state.
+   Collapsed is the default: it adds no configured CAI mapping and no
+   self-entry in identity_continuation_issuers.  The RAS still
+   advertises the continuation profile (Section 7), and the IdP still
+   holds the RAS's issuer, key, tenant, and issuer-pairing trust
+   (Section 9.7).  Both topologies produce the same Identity
+   Continuation Assertion and apply the same CAI requirements; they
+   differ only in how the CAI reaches the accepted hop's state.
 
    A delegated topology can propagate the handle in several ways:
 
@@ -1492,10 +1494,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    compromised RAS can fabricate acceptance state in either topology,
    since a delegated CAI reads that state as authoritative; a
    compromised delegated CAI can additionally attest a hop the RAS
-   refused.  In both topologies, revocation after issuance leaves the
-   assertion valid for its remaining lifetime; delegation adds any delay
-   in RAS state reaching the CAI.  The root envelope still bounds the
-   result.
+   refused.  In both topologies, RAS-local authorization revocation
+   after issuance, which the IdP cannot observe, leaves the assertion
+   valid for its remaining lifetime; delegation adds any delay in RAS
+   state reaching the CAI.  The root envelope still bounds the result.
 
 9.9.  Actor Chain Integrity
 
