@@ -4149,10 +4149,23 @@ exchange, not here (<a href="#assertion-request" class="auto internal xref">Sect
 <code>https://gateway.example/</code>, the resource <code>tool-gateway</code> is registered to
 operate; reads H0 from it and rechecks that the binding is still active;
 confirms that policy permits <code>tool-gateway</code> to continue; and issues the
-assertion bound to the proven key. The response names <code>https://idp.example/</code>
-as the <code>audience</code>, so ToolGateway knows where to present it.<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.3-5">On the wire (decoded assertion):<a href="#appendix-B.1.3-5" class="pilcrow">¶</a></p>
+assertion bound to the proven key.<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-5">On the wire (issuance response):<a href="#appendix-B.1.3-5" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.3-6">
+<pre>
+{
+  "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
+  "access_token": "&lt;the assertion below, compact JWS&gt;",
+  "token_type": "N_A",
+  "audience": "https://idp.example/",
+  "expires_in": 120
+}
+</pre><a href="#appendix-B.1.3-6" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1.3-7">The <code>audience</code> tells ToolGateway which IdP the assertion is for; it is where
+the request for the next ID-JAG goes.<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-8">On the wire (decoded assertion):<a href="#appendix-B.1.3-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.3-9">
 <pre>
 {
   "iss": "https://ras.gateway.example/",
@@ -4172,10 +4185,10 @@ as the <code>audience</code>, so ToolGateway knows where to present it.<a href="
   "exp": 1710000350,
   "jti": "ica-gw-0001"
 }
-</pre><a href="#appendix-B.1.3-6" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.3-9" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.3-7">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
-can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-10">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
+can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-continue">
@@ -4183,8 +4196,9 @@ can substitute another handle (<a href="#handle-propagation" class="auto interna
           <h4 id="name-toolgateway-continues-to-wi">
 <a href="#appendix-B.1.4" class="section-number selfRef">B.1.4. </a><a href="#name-toolgateway-continues-to-wi" class="section-name selfRef">ToolGateway Continues to WikiRAS</a>
           </h4>
-<p id="appendix-B.1.4-1">ToolGateway resolves the token endpoint of <code>https://idp.example/</code> from that
-IdP's metadata and presents the assertion there as the <code>subject_token</code> of a
+<p id="appendix-B.1.4-1">ToolGateway resolves the token endpoint of <code>https://idp.example/</code>, the
+<code>audience</code> it was given, from that IdP's metadata and presents the assertion
+there as the <code>subject_token</code> of a
 continuation exchange, with its actor credential and a DPoP proof of the same
 key, requesting an ID-JAG for WikiRAS. <code>tool-gateway</code> is a registered client
 of the IdP; its sender-constrained credential serves as both client assertion
@@ -4544,7 +4558,8 @@ carrier schema.<a href="#appendix-B.2.2-8" class="pilcrow">¶</a></p>
           </h4>
 <p id="appendix-B.2.3-1">ExpenseService obtains an assertion covering H0 by presenting its Transaction
 Token as the <code>subject_token</code> at Expense CAI's token endpoint
-(<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>).
+(<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>); the response's <code>audience</code>,
+<code>https://idp.example/</code>, tells it where to request the next ID-JAG.
 Before issuing, Expense CAI authenticates ExpenseService, verifies its key,
 confirms that H0 belongs to the transaction that ExpenseService is serving,
 and rechecks that ExpenseRAS's authorization remains active. The IdP's per-hop
@@ -4887,7 +4902,8 @@ designated actor, derives H0 into fresh intra-domain context
 (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). Neither the Scheduler nor BriefingAgent
 selects H0.<a href="#appendix-B.3.2-5" class="pilcrow">¶</a></p>
 <p id="appendix-B.3.2-6">BriefingAgent exchanges that Transaction Token at Platform CAI's token
-endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>). Before issuing, Platform CAI
+endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>) and presents the assertion to the IdP
+the response's <code>audience</code> names. Before issuing, Platform CAI
 authenticates <code>briefing-agent</code>, verifies its key and transaction, and rechecks
 that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in

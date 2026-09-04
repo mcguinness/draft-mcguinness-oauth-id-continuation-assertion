@@ -2334,9 +2334,20 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    https://gateway.example/, the resource tool-gateway is registered to
    operate; reads H0 from it and rechecks that the binding is still
    active; confirms that policy permits tool-gateway to continue; and
-   issues the assertion bound to the proven key.  The response names
-   https://idp.example/ as the audience, so ToolGateway knows where to
-   present it.
+   issues the assertion bound to the proven key.
+
+   On the wire (issuance response):
+
+   {
+     "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
+     "access_token": "<the assertion below, compact JWS>",
+     "token_type": "N_A",
+     "audience": "https://idp.example/",
+     "expires_in": 120
+   }
+
+   The audience tells ToolGateway which IdP the assertion is for; it is
+   where the request for the next ID-JAG goes.
 
    On the wire (decoded assertion):
 
@@ -2364,12 +2375,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 B.1.4.  ToolGateway Continues to WikiRAS
 
-   ToolGateway resolves the token endpoint of https://idp.example/ from
-   that IdP's metadata and presents the assertion there as the
-   subject_token of a continuation exchange, with its actor credential
-   and a DPoP proof of the same key, requesting an ID-JAG for WikiRAS.
-   tool-gateway is a registered client of the IdP; its sender-
-   constrained credential serves as both client assertion and
+   ToolGateway resolves the token endpoint of https://idp.example/, the
+   audience it was given, from that IdP's metadata and presents the
+   assertion there as the subject_token of a continuation exchange, with
+   its actor credential and a DPoP proof of the same key, requesting an
+   ID-JAG for WikiRAS. tool-gateway is a registered client of the IdP;
+   its sender-constrained credential serves as both client assertion and
    actor_token under the dual-use rule of Section 6.4.3:
 
 POST /token HTTP/1.1
@@ -2691,12 +2702,14 @@ B.2.3.  Obtaining the Identity Continuation Assertion
 
    ExpenseService obtains an assertion covering H0 by presenting its
    Transaction Token as the subject_token at Expense CAI's token
-   endpoint (Section 6.3).  Before issuing, Expense CAI authenticates
-   ExpenseService, verifies its key, confirms that H0 belongs to the
-   transaction that ExpenseService is serving, and rechecks that
-   ExpenseRAS's authorization remains active.  The IdP's per-hop map
-   designates Expense CAI to attest hops accepted by ExpenseRAS
-   (Section 6.2, Section 6.4.2).
+   endpoint (Section 6.3); the response's audience,
+   https://idp.example/, tells it where to request the next ID-JAG.
+   Before issuing, Expense CAI authenticates ExpenseService, verifies
+   its key, confirms that H0 belongs to the transaction that
+   ExpenseService is serving, and rechecks that ExpenseRAS's
+   authorization remains active.  The IdP's per-hop map designates
+   Expense CAI to attest hops accepted by ExpenseRAS (Section 6.2,
+   Section 6.4.2).
 
    On the wire (decoded assertion):
 
@@ -3003,7 +3016,8 @@ B.3.2.  Each Run (Alice Absent)
    BriefingAgent selects H0.
 
    BriefingAgent exchanges that Transaction Token at Platform CAI's
-   token endpoint (Section 6.3).  Before issuing, Platform CAI
+   token endpoint (Section 6.3) and presents the assertion to the IdP
+   the response's audience names.  Before issuing, Platform CAI
    authenticates briefing-agent, verifies its key and transaction, and
    rechecks that PlatformRAS's H0 authorization remains active.  The
    assertion and onward ID-JAG have the shapes shown in Appendix B.2.3
