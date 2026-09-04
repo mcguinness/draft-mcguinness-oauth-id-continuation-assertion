@@ -141,25 +141,28 @@ Table of Contents
      A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
      A.6.  Why Asymmetric Signing Only
    Appendix B.  Examples
-     B.1.  Three-Hop Interactive Example
-       B.1.1.  Root ID-JAG for ExpenseRAS
-       B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain
+     B.1.  Gateway Example (Co-located RAS and CAI)
+       B.1.1.  Root Exchange
+       B.1.2.  GatewayRAS Binds H0 and Issues the Access Token
+       B.1.3.  ToolGateway Obtains the Assertion
+       B.1.4.  ToolGateway Continues to WikiRAS
+       B.1.5.  WikiRAS Redeems an Ordinary ID-JAG
+       B.1.6.  What a Gateway Implements
+     B.2.  Three-Hop Interactive Example
+       B.2.1.  Root ID-JAG for ExpenseRAS
+       B.2.2.  ExpenseRAS Acceptance and the Expense-Domain Chain
                Context
-       B.1.3.  Obtaining the Identity Continuation Assertion
-       B.1.4.  Continuation Exchange for the TravelRAS ID-JAG
-       B.1.5.  TravelRAS Acceptance and the Travel-Domain Chain
+       B.2.3.  Obtaining the Identity Continuation Assertion
+       B.2.4.  Continuation Exchange for the TravelRAS ID-JAG
+       B.2.5.  TravelRAS Acceptance and the Travel-Domain Chain
                Context
-       B.1.6.  TravelService Continues to BookingRAS
-       B.1.7.  Reaching a Target Outside the Trust Circle
-     B.2.  Background Agent Example (User-Scheduled Continuation)
-       B.2.1.  Setup (Alice Present)
-       B.2.2.  Each Run (Alice Absent)
-       B.2.3.  A Dynamic Target
-       B.2.4.  Points Worth Noticing
-     B.3.  Gateway Example (Dynamic Upstream Audiences)
-       B.3.1.  Root Exchange: The Runtime Roots the Chain
-       B.3.2.  Continuation Exchange: The Gateway Continues
-       B.3.3.  Points Worth Noticing
+       B.2.6.  TravelService Continues to BookingRAS
+       B.2.7.  Reaching a Target Outside the Trust Circle
+     B.3.  Background Agent Example (User-Scheduled Continuation)
+       B.3.1.  Setup (Alice Present)
+       B.3.2.  Each Run (Alice Absent)
+       B.3.3.  A Dynamic Target
+       B.3.4.  Points Worth Noticing
    Appendix C.  Open Items for Working Group Discussion
    Acknowledgments
    Document History
@@ -2088,10 +2091,13 @@ A.6.  Why Asymmetric Signing Only
 
 Appendix B.  Examples
 
-   This non-normative appendix illustrates three deployment shapes:
-   interactive application chaining (Appendix B.1), an unattended
-   background agent (Appendix B.2), and a gateway with dynamically
-   selected upstream audiences (Appendix B.3).
+   This non-normative appendix illustrates three deployment shapes: a
+   tool gateway that selects its upstream at request time
+   (Appendix B.1), interactive application chaining across three domains
+   (Appendix B.2), and an unattended background agent (Appendix B.3).
+   The gateway example comes first because it is the simplest
+   deployment: one domain runs RAS and CAI together, and the handle
+   travels in the access token.
 
    Message sequences are vertical lifelines with time flowing downward.
    The payload and state blocks below them are tagged "On the wire" when
@@ -2099,16 +2105,345 @@ Appendix B.  Examples
    only within one trust domain, and "Server-side state" when they are
    never transmitted.  Continuation handles are written H0, H1, and so
    on, one per hop.  Each example identifies its deployment topology
-   before describing the flow.
+   before describing the flow.  JWTs are shown as decoded payloads; JOSE
+   headers and signatures are omitted.  Except where shown, client
+   authentication is omitted.  Proof of possession uses DPoP.
 
-B.1.  Three-Hop Interactive Example
+B.1.  Gateway Example (Co-located RAS and CAI)
 
-   This section walks the canonical same-IdP flow end-to-end for a
-   single user: ExpenseApp invokes ExpenseSaaS; ExpenseService, the
-   workload handling that request, calls TravelAPI to reach TravelSaaS;
-   and TravelService, the TravelSaaS workload that handles that call, in
-   turn calls BookingAPI to complete the itinerary.  All parties trust
-   one enterprise IdP at https://idp.example/.
+   An agent runtime, AgentApp, calls a tool gateway on behalf of Alice.
+   The gateway decides at request time which upstream API a tool call
+   needs, here a wiki, so AgentApp knows the gateway's audience but not
+   the eventual upstream, and the gateway holds no assertion of Alice's
+   identity addressed to it.  This example shows the gateway obtaining
+   an audience-specific ID-JAG for the wiki without ever seeing Alice's
+   credential.  It is the simplest deployment of this profile and the
+   one a gateway vendor implements.
+
+   Topology: co-located.  GatewayRAS is the Resource Authorization
+   Server (RAS) that accepts the ID-JAG and also the Continuation
+   Assertion Issuer (CAI) for the hops it accepts, so it needs no
+   separate CAI mapping.  It carries the handle in the access tokens it
+   issues.
+
+   All parties trust one enterprise IdP at https://idp.example/, tenant
+   tenant-123.  Alice has pairwise subjects at GatewayRAS and WikiRAS,
+   which only the IdP can map.
+
+   *  Agent domain (agent.example): client agent-app, the confidential
+      runtime that holds Alice's session and roots the chain.
+
+   *  Gateway domain (gateway.example): GatewayRAS, the gateway's
+      authorization server at https://ras.gateway.example/, and the
+      workload tool-gateway, the Resource Server at
+      https://gateway.example/ that AgentApp calls.
+
+   *  Wiki domain (wiki.example): WikiRAS at https://ras.wiki.example/,
+      an ordinary ID-JAG authorization server in front of WikiAPI at
+      https://api.wiki.example/. It is terminal in this chain.
+
+   H0 is the root hop, bound at GatewayRAS; H1 is the wiki hop, which
+   nobody continues.
+
+AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
+    |            |               |                |               |
+    |-ID Token-->|               |                |               |
+    |<-ID-JAG H0-|               |                |               |
+    |-jwt-bearer: ID-JAG + DPoP->| bind H0        |               |
+    |<--access token, H0 claim---|                |               |
+    |----------tool call with AT + DPoP---------->|               |
+    |            |               |<--exchange AT--|               |
+    |            |               |-assertion H0-->|               |
+    |            |<-assertion, actor token, DPoP--|               |
+    |            |-----------ID-JAG H1----------->|               |
+    |            |               |                |-ID-JAG, DPoP->|
+    |            |               |                |   (no binding)|
+    |            |               |                |<---wiki AT----|
+    |            |               |                |-call WikiAPI->|
+    |<-------------------result-------------------|               |
+
+B.1.1.  Root Exchange
+
+   AgentApp exchanges Alice's ID Token, whose sid anchors the chain to
+   her IdP session (Section 6.4.2), for an ID-JAG addressed to
+   GatewayRAS, the one audience it knows:
+
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the agent-app key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.gateway.example/
+&resource=https://gateway.example/
+&scope=tools.invoke
+&subject_token=<id_token>
+&subject_token_type=urn:ietf:params:oauth:token-type:id_token
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<agent-app JWT>
+
+   Server-side consent and tenant policy make the governing
+   authorization continuation-capable, so the IdP establishes a chain
+   and embeds H0 (Section 6.4.2).  Because the upstreams are unknown at
+   root time, the root-chain envelope records an authorization basis,
+   Alice's standing consent and tenant policy, rather than enumerated
+   targets, and enterprise policy permits tool-gateway to continue it.
+
+   On the wire (decoded ID-JAG for GatewayRAS):
+
+   {
+     "iss": "https://idp.example/",
+     "aud": "https://ras.gateway.example/",
+     "sub": "gateway-pairwise-subject",
+
+     "client_id": "agent-app",
+     "resource": "https://gateway.example/",
+     "scope": "tools.invoke",
+
+     "auth_time": 1710000200,
+     "acr": "urn:example:loa:2",
+     "amr": ["pwd", "mfa"],
+
+     "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
+
+     "cnf": {
+       "jkt": "base64url-agent-app-key-thumbprint"
+     },
+
+     "iat": 1710000205,
+     "exp": 1710000505,
+     "jti": "idjag-gateway-01"
+   }
+
+B.1.2.  GatewayRAS Binds H0 and Issues the Access Token
+
+   AgentApp redeems the ID-JAG at GatewayRAS with the jwt-bearer grant,
+   exactly as for any ID-JAG, proving the same key the ID-JAG is bound
+   to:
+
+POST /token HTTP/1.1
+Host: ras.gateway.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the agent-app key>
+
+grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
+&assertion=<the ID-JAG above>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<agent-app JWT>
+
+   GatewayRAS advertises the continuation grant profile (Section 7) and
+   so recognizes the handle.  It binds H0, the issuing IdP, the tenant
+   it associates with that IdP, and the confirmed key to the
+   authorization state behind the access token, in the same outcome that
+   issues the token (Section 6.5).
+
+   Server-side state at GatewayRAS:
+
+   {
+     "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
+     "status": "ACCEPTED",
+     "authorization_state": "gw-authz-7a1e",
+     "idp": "https://idp.example/",
+     "tenant": "tenant-123",
+     "client_id": "agent-app",
+     "cnf_jkt": "base64url-agent-app-key-thumbprint",
+     "bound_at": 1710000210
+   }
+
+   GatewayRAS issues the access token as a signed JWT that carries H0 as
+   a claim, the access-token carrier of Section 8.1.
+
+   On the wire (decoded access token):
+
+   {
+     "iss": "https://ras.gateway.example/",
+     "aud": "https://gateway.example/",
+     "sub": "gateway-pairwise-subject",
+     "client_id": "agent-app",
+     "scope": "tools.invoke",
+     "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
+     "cnf": {
+       "jkt": "base64url-agent-app-key-thumbprint"
+     },
+     "iat": 1710000210,
+     "exp": 1710000810,
+     "jti": "at-gw-0001"
+   }
+
+   AgentApp calls the gateway with this token and a DPoP proof.  It
+   chooses which token to present, and with it which authorization, but
+   cannot alter the handle inside the token or pair it with another
+   token's key.
+
+B.1.3.  ToolGateway Obtains the Assertion
+
+   ToolGateway validates the access token and its DPoP binding as any
+   resource server would.  Resolving the tool call, it selects the wiki
+   as the upstream.  To continue Alice's chain there it needs an
+   Identity Continuation Assertion, which it obtains by exchanging the
+   access token it just received at GatewayRAS's token endpoint,
+   authenticating as the OAuth client tool-gateway and proving its own
+   key (Section 6.3):
+
+POST /token HTTP/1.1
+Host: ras.gateway.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the tool-gateway key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&subject_token=<the access token above>
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<tool-gateway JWT>
+
+   The access token is bound to the agent-app key; the DPoP proof on
+   this request proves the tool-gateway key, which GatewayRAS places in
+   the assertion's cnf, and is not matched against the token's own cnf.
+   No audience, resource, or scope is sent: the upstream is chosen at
+   the IdP exchange, not here (Section 6.3.1).
+
+   GatewayRAS confirms the token is its own, unexpired, and addressed to
+   https://gateway.example/, the resource tool-gateway is registered to
+   operate; reads H0 from it and rechecks that the binding is still
+   active; confirms that policy permits tool-gateway to continue; and
+   issues the assertion bound to the proven key.
+
+   On the wire (decoded assertion):
+
+   {
+     "iss": "https://ras.gateway.example/",
+     "aud": "https://idp.example/",
+     "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
+
+     "act": {
+       "iss": "https://gateway.example/",
+       "sub": "tool-gateway"
+     },
+
+     "cnf": {
+       "jkt": "base64url-tool-gateway-key-thumbprint"
+     },
+
+     "iat": 1710000230,
+     "exp": 1710000350,
+     "jti": "ica-gw-0001"
+   }
+
+   Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so
+   neither can substitute another handle (Section 6.7).
+
+B.1.4.  ToolGateway Continues to WikiRAS
+
+   ToolGateway presents the assertion to the IdP as the subject_token of
+   a continuation exchange, with its actor credential and a DPoP proof
+   of the same key, requesting an ID-JAG for WikiRAS. tool-gateway is a
+   registered client of the IdP; its sender-constrained credential
+   serves as both client assertion and actor_token under the dual-use
+   rule of Section 6.4.3:
+
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the tool-gateway key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.wiki.example/
+&resource=https://api.wiki.example/
+&scope=wiki.read
+&subject_token=<identity-continuation-assertion>
+&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&actor_token=<sender-constrained tool-gateway credential>
+&actor_token_type=urn:ietf:params:oauth:token-type:jwt
+
+   The IdP validates the exchange (Section 6.4.4).  The assertion is
+   signed by GatewayRAS, the RAS recorded for H0's hop, so its issuer is
+   trusted without a separate CAI mapping.  H0 names an accepted hop on
+   an active chain.  The act claim names tool-gateway, the authenticated
+   client, and the DPoP proof matches cnf.  The wiki target falls within
+   the recorded basis, Alice's standing consent and tenant policy, which
+   is how a target nobody enumerated at root time is admitted; wiki.read
+   is evaluated against that basis, not against the root tools.invoke
+   scope.  The IdP resolves Alice's wiki subject and issues the ID-JAG
+   with H1 and tool-gateway atop agent-app in the lineage.
+
+   On the wire (decoded ID-JAG for WikiRAS):
+
+   {
+     "iss": "https://idp.example/",
+     "aud": "https://ras.wiki.example/",
+     "sub": "wiki-pairwise-subject",
+
+     "client_id": "tool-gateway",
+     "resource": "https://api.wiki.example/",
+     "scope": "wiki.read",
+
+     "auth_time": 1710000200,
+     "acr": "urn:example:loa:2",
+     "amr": ["pwd", "mfa"],
+
+     "identity_continuation_handle": "Zp3kRt8VbN2wLq6YsD4mXe",
+
+     "act": {
+       "iss": "https://gateway.example/",
+       "sub": "tool-gateway",
+       "act": {
+         "iss": "https://agent.example/",
+         "sub": "agent-app"
+       }
+     },
+
+     "cnf": {
+       "jkt": "base64url-tool-gateway-key-thumbprint"
+     },
+
+     "iat": 1710000235,
+     "exp": 1710000535,
+     "jti": "idjag-wiki-01"
+   }
+
+   A target outside the basis fails with invalid_target; the chain stays
+   continuable and only that tool call fails (Section 6.4.8).
+   Appendix B.3.3 shows one.
+
+B.1.5.  WikiRAS Redeems an Ordinary ID-JAG
+
+   ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant
+   and a DPoP proof of the same key.  WikiRAS implements nothing from
+   this profile: it validates the ID-JAG as the base profile requires,
+   ignores the handle, and issues an access token without binding H1
+   (Section 6.5).  ToolGateway calls WikiAPI as Alice's wiki subject and
+   returns the result to AgentApp.  Each further tool call repeats the
+   exchange of Appendix B.1.3 and creates a sibling hop under H0 (H2,
+   and so on).
+
+B.1.6.  What a Gateway Implements
+
+   The gateway domain adds two things to an ordinary OAuth deployment:
+
+   *  GatewayRAS binds the handle when it redeems a continuation-capable
+      ID-JAG, places it in the access token, and issues assertions from
+      its token endpoint by Token Exchange.
+
+   *  tool-gateway exchanges the access token it received for an
+      assertion, then presents that assertion, its actor credential, and
+      a DPoP proof to the IdP for the next ID-JAG.
+
+   Outside the domain nothing changes.  AgentApp performs a base ID-JAG
+   exchange and never shares Alice's credential, and WikiRAS runs the
+   base profile unmodified.
+
+B.2.  Three-Hop Interactive Example
+
+   This section walks a three-domain flow with separate CAIs and a
+   Transaction Token carrier end-to-end for a single user: ExpenseApp
+   invokes ExpenseSaaS; ExpenseService, the workload handling that
+   request, calls TravelAPI to reach TravelSaaS; and TravelService, the
+   TravelSaaS workload that handles that call, in turn calls BookingAPI
+   to complete the itinerary.  All parties trust one enterprise IdP at
+   https://idp.example/.
 
    Topology: separate CAI with a Transaction Token carrier.
 
@@ -2117,8 +2452,6 @@ B.1.  Three-Hop Interactive Example
 
    ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 
-   Proof of possession uses DPoP.  JWTs are shown as decoded payloads;
-   JOSE headers, signatures, and client authentication are omitted.
    Across a trust boundary the handle is accepted only inside an ID-JAG
    or Identity Continuation Assertion; within a domain it travels only
    as derived chain context.
@@ -2138,7 +2471,7 @@ B.1.  Three-Hop Interactive Example
       (Section 6.5).
 
    *  Outside the trust circle: PartnerSaaS (partner.example), reached
-      in Appendix B.1.7.
+      in Appendix B.2.7.
 
    The user has a pairwise subject at each RAS, which only the IdP can
    map.  Handles are H0 at ExpenseRAS, H1 at TravelRAS, and H2 in the
@@ -2176,10 +2509,10 @@ B.1.  Three-Hop Interactive Example
          |              |             |             |--bound H1-->|
          |              |             |             | derive into TT
 
-   Appendix B.1.6 repeats the pattern from TravelSaaS to terminal
+   Appendix B.2.6 repeats the pattern from TravelSaaS to terminal
    BookingRAS.
 
-B.1.1.  Root ID-JAG for ExpenseRAS
+B.2.1.  Root ID-JAG for ExpenseRAS
 
    ExpenseApp holds an ID Token for the authenticated user and exchanges
    it at the IdP for an ID-JAG scoped to ExpenseRAS.  The request is
@@ -2259,7 +2592,7 @@ B.1.1.  Root ID-JAG for ExpenseRAS
      "jti": "idjag-expense-01"
    }
 
-B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
+B.2.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
 
    ExpenseApp exchanges this ID-JAG at ExpenseRAS for an access token
    (AT1), exactly as for any ID-JAG
@@ -2325,7 +2658,7 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
    tctx.identity_continuation encoding shown is illustrative and
    deployment-defined; this document standardizes no carrier schema.
 
-B.1.3.  Obtaining the Identity Continuation Assertion
+B.2.3.  Obtaining the Identity Continuation Assertion
 
    ExpenseService obtains an assertion covering H0 by presenting its
    Transaction Token as the subject_token at Expense CAI's token
@@ -2357,7 +2690,7 @@ B.1.3.  Obtaining the Identity Continuation Assertion
      "jti": "b8Rn5Yx1Qe4Nk2Wf6zVc9d"
    }
 
-B.1.4.  Continuation Exchange for the TravelRAS ID-JAG
+B.2.4.  Continuation Exchange for the TravelRAS ID-JAG
 
    ExpenseService presents the assertion to the IdP as the
    subject_token, DPoP-bound to its own key.
@@ -2431,14 +2764,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      "jti": "idjag-travel-01"
    }
 
-B.1.5.  TravelRAS Acceptance and the Travel-Domain Chain Context
+B.2.5.  TravelRAS Acceptance and the Travel-Domain Chain Context
 
    ExpenseService exchanges the TravelRAS ID-JAG at TravelRAS for an
    access token (AT2), presenting a fresh DPoP proof with the same
    expense-service key.  TravelRAS recognizes the continuation grant
    profile just as ExpenseRAS did: it validates the ID-JAG,
    authenticates ExpenseService, and, on success, atomically binds H1 to
-   the authorization state behind AT2, exactly as Appendix B.1.2
+   the authorization state behind AT2, exactly as Appendix B.2.2
    describes for ExpenseRAS and H0.
 
    ExpenseService calls TravelAPI with AT2.  The Travel TTS derives H1
@@ -2461,11 +2794,11 @@ B.1.5.  TravelRAS Acceptance and the Travel-Domain Chain Context
    TravelRAS, not ExpenseRAS, is now the accepted authorization from
    which continuation will occur.
 
-B.1.6.  TravelService Continues to BookingRAS
+B.2.6.  TravelService Continues to BookingRAS
 
    TravelService needs a reservation from BookingSaaS.  Processing the
    request whose Transaction Token carries H1, it obtains the same
-   assertion shape as Appendix B.1.3 from Travel CAI, now naming H1,
+   assertion shape as Appendix B.2.3 from Travel CAI, now naming H1,
    travel-service, and TravelService's confirmed key.
 
    TravelService exchanges the assertion, DPoP-bound to its own key, for
@@ -2512,7 +2845,7 @@ B.1.6.  TravelService Continues to BookingRAS
    next ID-JAG; it does not pass the handle to a sibling workload
    (Section 6.7).
 
-B.1.7.  Reaching a Target Outside the Trust Circle
+B.2.7.  Reaching a Target Outside the Trust Circle
 
    Suppose TravelSaaS must also call PartnerSaaS at
    https://partner.example/, whose Resource Authorization Server does
@@ -2531,7 +2864,7 @@ B.1.7.  Reaching a Target Outside the Trust Circle
    continuation handle stay in the Travel domain; neither is sent to
    PartnerSaaS.
 
-B.2.  Background Agent Example (User-Scheduled Continuation)
+B.3.  Background Agent Example (User-Scheduled Continuation)
 
    The user is present when the task is created and absent at every run.
    Unlike the interactive example, the root hop is bound to durable,
@@ -2551,14 +2884,14 @@ B.2.  Background Agent Example (User-Scheduled Continuation)
       CalendarAPI.  It is terminal in every run.
 
    *  Mail domain (mail.example): MailRAS in front of MailAPI, reached
-      only in the dynamic-target scenario below (Appendix B.2.3);
+      only in the dynamic-target scenario below (Appendix B.3.3);
       likewise terminal.
 
    The Scheduler stores only task-123.  H0 remains bound to the
    PlatformRAS task authorization across runs; each run receives a fresh
    child of H0 for its terminal target.
 
-B.2.1.  Setup (Alice Present)
+B.3.1.  Setup (Alice Present)
 
    Alice authorizes "summarize my calendar every morning."  Because the
    task must outlive her session, briefing-agent uses a refresh token
@@ -2576,8 +2909,8 @@ B.2.1.  Setup (Alice Present)
    (https://ras.calendar.example/, https://api.calendar.example/)
        permitted scopes: calendar.read
 
-   The response and RAS-binding pattern match Appendix B.1.1 and
-   Appendix B.1.2; the request differs by using a refresh token to
+   The response and RAS-binding pattern match Appendix B.2.1 and
+   Appendix B.2.2; the request differs by using a refresh token to
    obtain a grant-anchored chain.  PlatformRAS binds H0 to the durable
    task authorization.
 
@@ -2605,7 +2938,7 @@ B.2.1.  Setup (Alice Present)
    PlatformRAS's own durable state and means nothing outside the
    platform.
 
-B.2.2.  Each Run (Alice Absent)
+B.3.2.  Each Run (Alice Absent)
 
    Each run first authenticates the trigger and derives H0 from active
    task state:
@@ -2644,8 +2977,8 @@ B.2.2.  Each Run (Alice Absent)
    token endpoint (Section 6.3).  Before issuing, Platform CAI
    authenticates briefing-agent, verifies its key and transaction, and
    rechecks that PlatformRAS's H0 authorization remains active.  The
-   assertion and onward ID-JAG have the shapes shown in Appendix B.1.3
-   and Appendix B.1.4.
+   assertion and onward ID-JAG have the shapes shown in Appendix B.2.3
+   and Appendix B.2.4.
 
    Each run presents H0 and receives a different child.  CalendarRAS is
    terminal, so it issues the access token without binding that child.
@@ -2653,13 +2986,13 @@ B.2.2.  Each Run (Alice Absent)
    run's child (Section 4, Section 6.5).
 
    Had this run also needed https://api.mail.example/ behind
-   https://ras.mail.example/ (Appendix B.2.3), briefing-agent would
+   https://ras.mail.example/ (Appendix B.3.3), briefing-agent would
    present H0 again for a second assertion and receive a second,
    independent child for MailRAS.  MailRAS is also terminal and does not
    bind it.  The Mail and Calendar children share H0 as their parent;
    neither carries the other's lineage.
 
-B.2.3.  A Dynamic Target
+B.3.3.  A Dynamic Target
 
    Suppose the platform later extends the briefing to include unread
    mail, which requires https://api.mail.example/ behind
@@ -2694,7 +3027,7 @@ B.2.3.  A Dynamic Target
    narrow or revoke it but cannot broaden it.  A target-specific failure
    leaves the chain continuable for other authorized targets.
 
-B.2.4.  Points Worth Noticing
+B.3.4.  Points Worth Noticing
 
    *  Stealing task-123 reveals no handle and does not authorize a
       trigger.
@@ -2714,135 +3047,6 @@ B.2.4.  Points Worth Noticing
    deployments need a differently rooted authorization, such as
    administrative policy at the IdP, which is out of scope for this
    document.
-
-B.3.  Gateway Example (Dynamic Upstream Audiences)
-
-   AgentApp knows the gateway audience but not the eventual upstream.
-   The gateway knows the upstream but holds no end-user assertion
-   addressed to it.  This flow lets the gateway obtain an audience-
-   specific grant without weakening the original assertion's audience
-   check.
-
-   Topology: co-located; GatewayRAS also holds the CAI role.
-
-   *  AgentPlatform domain (agent.example): client agent-app only, the
-      confidential runtime that hosts Alice's session and roots the
-      chain; it has no Resource Authorization Server of its own in this
-      example.
-
-   *  Gateway domain (gateway.example): workload tool-gateway and
-      GatewayRAS, in front of the gateway's own tool-invocation surface
-      (resource=https://gateway.example/), scoped under tenant tenant-
-      gw-01.
-
-   *  Wiki domain (wiki.example): WikiRAS only, in front of WikiAPI.  It
-      is terminal in this chain.
-
-   Alice has pairwise subjects at GatewayRAS and WikiRAS, which only the
-   IdP can map.  H0 is the root hop bound at GatewayRAS; H1 is the
-   terminal Wiki hop.
-
-   The runtime roots the chain at the gateway:
-
-    AgentApp          IdP          GatewayRAS
-        |               |               |
-        |--ID Token---->|               |
-        |<--ID-JAG(H0)--|               |
-        |----------------ID-JAG-------->| bind H0
-        |<---------gateway AT-----------|
-
-   To reach Wiki, the gateway continues the chain:
-
-    ToolGateway      GatewayRAS/CAI       IdP          WikiRAS/API
-         |                 |               |                 |
-         |--token exchange->|               |                 |
-         |  (gateway AT)    | resolve H0    |                 |
-         |<-assertion-------|               |                 |
-         |-------------------------------->|                 |
-         |         assertion + DPoP         |                 |
-         |<--------------------------------| ID-JAG(H1)      |
-         |------------------------------------------------->|
-         |                 ID-JAG to WikiRAS                |
-         |<-------------------------------------------------| wiki AT
-         |---------------------call WikiAPI with AT-------->|
-         |                 |               |      no binding (terminal)
-
-B.3.1.  Root Exchange: The Runtime Roots the Chain
-
-   AgentApp performs a root exchange for the one audience it knows:
-   GatewayRAS.  The eventual upstreams are not known at root time, so,
-   unlike the interactive example (Appendix B.1), whose envelope
-   enumerated each onward target, this envelope records an
-   authorization-basis ceiling, Alice's standing consent and tenant
-   policy, with no enumerated targets; enterprise policy permits tool-
-   gateway to continue it (Section 6.4.2, Section 6.4.4, rules 5 and 7).
-   GatewayRAS accepts the ID-JAG and binds H0 exactly as ExpenseRAS
-   bound H0 in Appendix B.1.2.
-
-   AgentApp then invokes the gateway with its access token and no
-   continuation input.  AgentApp chooses which token to present, and
-   with it which authorization.  ToolGateway validates the token and its
-   DPoP binding, then presents that same token to GatewayRAS's token
-   endpoint when it needs an assertion (Section 6.3).  GatewayRAS
-   resolves the token to the authorization record where it bound H0.
-   Neither AgentApp nor ToolGateway selects or supplies H0 as issuance
-   input, so neither can substitute another handle (Section 6.7).
-
-B.3.2.  Continuation Exchange: The Gateway Continues
-
-   Resolving the tool call, the gateway selects Wiki as the upstream, a
-   target no one enumerated when AgentApp rooted the chain.  ToolGateway
-   exchanges the access token AgentApp presented for an assertion at
-   GatewayRAS's token endpoint, authenticating as tool-gateway with a
-   DPoP proof (Section 6.3):
-
-POST /token HTTP/1.1
-Host: ras.gateway.example
-Content-Type: application/x-www-form-urlencoded
-DPoP: <proof of possession of tool-gateway's key>
-
-grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-&requested_token_type=urn:ietf:params:oauth:token-type:identity-continuation
-&subject_token=<the gateway access token>
-&subject_token_type=urn:ietf:params:oauth:token-type:access_token
-&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<tool-gateway JWT>
-
-   GatewayRAS confirms the token is its own, unexpired, and valid for
-   the tool-invocation resource tool-gateway operates, resolves H0 from
-   the authorization it bound, and returns an assertion with
-   iss=https://ras.gateway.example/, act naming tool-gateway, and cnf
-   holding the DPoP key.  ToolGateway then presents the assertion to the
-   IdP with a DPoP proof of that key, as in Appendix B.1.4, now
-   requesting audience=https://ras.wiki.example/,
-   resource=https://api.wiki.example/, and scope=wiki.read.
-
-   Because the envelope enumerates no targets, the IdP evaluates this
-   dynamically chosen target against the recorded basis, Alice's
-   standing consent and tenant policy at establishment (Section 6.4.4,
-   rules 5 and 7).  Wiki read access is within that basis and enterprise
-   policy permits tool-gateway to reach it, so the exchange succeeds and
-   the IdP constructs the onward lineage with tool-gateway atop agent-
-   app.  A target hint from the gateway informs issuance limits and
-   logging only; the IdP, not the gateway, decides whether a target is
-   in the envelope.
-
-   WikiRAS is terminal and redeems the resulting ID-JAG without binding
-   H1.  Each permitted tool call repeats this exchange and creates a
-   sibling hop under H0; a target outside the basis fails with
-   invalid_target as in Appendix B.2.3.
-
-B.3.3.  Points Worth Noticing
-
-   *  AgentApp alone presents Alice's root credential (the ID Token);
-      the gateway never holds or presents it.
-
-   *  ToolGateway obtains the assertion by exchanging the access token
-      it received; GatewayRAS resolves H0 from its own binding, so no
-      handle carrier is needed.
-
-   *  The IdP evaluates every dynamically selected target against the
-      root envelope and constructs the gateway's actor lineage.
 
 Appendix C.  Open Items for Working Group Discussion
 
@@ -2898,6 +3102,11 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Rewrote the gateway example as the first, end-to-end example for
+      gateway implementers: co-located RAS and CAI, handle carried in
+      the access token, assertion obtained by Token Exchange, and an
+      ordinary ID-JAG redemption at the terminal RAS.
 
    *  Defined Token Exchange issuance of the assertion at the token
       endpoint of a CAI that is an authorization server, with the access
