@@ -1920,8 +1920,8 @@ server (<a href="#assertion-token-exchange" class="auto internal xref">Section 6
 <p id="section-6.1-3">How a workload obtains an assertion by other means, and how the bound handle
 reaches a separate CAI inside the RAS's trust domain, are deployment-specific,
 subject to the provenance rule in <a href="#handle-propagation" class="auto internal xref">Section 6.6</a>.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.1-4">The RAS and CAI roles may be held by the same party (co-located) or by a
-separate party (separate); see <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. The IdP
+<p id="section-6.1-4">The accepting RAS may itself hold the CAI role (co-located), or a separately
+mapped CAI may hold it (separate); see <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. The IdP
 accepts an assertion for a hop only from a CAI mapped to the hop's
 accepting RAS (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 3), and the RAS itself is always
 mapped.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
