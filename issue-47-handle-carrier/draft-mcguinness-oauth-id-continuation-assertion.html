@@ -2647,8 +2647,8 @@ cannot reflect a later revocation.<a href="#section-6.6-6.2.1" class="pilcrow">�
 </li>
           <li class="normal" id="section-6.6-6.3">
             <p id="section-6.6-6.3.1">For an opaque access token issued by the accepting RAS, its introspection
-response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> can carry the handle as a member generated when
-introspection occurs.<a href="#section-6.6-6.3.1" class="pilcrow">¶</a></p>
+response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> can carry the handle as a member, generated when
+introspection occurs and present only when <code>active</code> is <code>true</code>.<a href="#section-6.6-6.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-6.6-7">Before issuing an assertion, the CAI verifies the handle against authoritative
@@ -3279,8 +3279,8 @@ Introspection Response" registry established by <span>[<a href="#RFC7662" class=
 <dt id="section-11.5-2.3">Description:</dt>
           <dd style="margin-left: 1.5em" id="section-11.5-2.4">
             <p id="section-11.5-2.4.1">The continuation handle bound to the introspected token's authorization,
-returned only to resources within the issuing server's trust domain
-(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>)<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
+present only when <code>active</code> is <code>true</code> and returned only to resources within
+the issuing server's trust domain (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>)<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.5-2.5">Change Controller:</dt>

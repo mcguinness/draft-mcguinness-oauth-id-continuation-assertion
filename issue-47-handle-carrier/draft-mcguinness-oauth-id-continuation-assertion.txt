@@ -1171,8 +1171,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       state and therefore cannot reflect a later revocation.
 
    *  For an opaque access token issued by the accepting RAS, its
-      introspection response [RFC7662] can carry the handle as a member
-      generated when introspection occurs.
+      introspection response [RFC7662] can carry the handle as a member,
+      generated when introspection occurs and present only when active
+      is true.
 
    Before issuing an assertion, the CAI verifies the handle against
    authoritative RAS state and confirms that continuation remains
@@ -1613,8 +1614,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Name:  identity_continuation_handle
 
    Description:  The continuation handle bound to the introspected
-      token's authorization, returned only to resources within the
-      issuing server's trust domain (Section 6.6)
+      token's authorization, present only when active is true and
+      returned only to resources within the issuing server's trust
+      domain (Section 6.6)
 
    Change Controller:  IESG
 
