@@ -1659,15 +1659,16 @@ issues the ID-JAG. That grant is a new hop, H1, whose parent is H0.<a href="#sec
             <p id="section-1.3-6.6.1">As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS and
 receives an access token. If the wiki's RAS does not implement this
 profile, it ignores the handle and the chain ends there. If it does, it
-binds H1 as in step 2, and steps 4 and 5 can repeat from the wiki's
-domain.<a href="#section-1.3-6.6.1" class="pilcrow">¶</a></p>
+binds H1 as in step 2; once the gateway calls the wiki API with that token
+as in step 3, steps 4 and 5 can repeat from the wiki's domain.<a href="#section-1.3-6.6.1" class="pilcrow">¶</a></p>
 </li>
         </ol>
 <p id="section-1.3-7">Three things are new in this flow: a claim in the ID-JAG (step 1), a binding
 kept at the RAS (step 2), and the assertion together with the exchange that
 consumes it (steps 4 and 5). The base exchanges of steps 1, 2, and 6 and the
-call of step 3 are unchanged. Alice's credential never leaves AgentApp, and no
-party other than the IdP ever names Alice for the wiki.<a href="#section-1.3-7" class="pilcrow">¶</a></p>
+call of step 3 are unchanged. Alice's ID Token is presented only to its issuing
+IdP, never to the gateway or the wiki, and no party other than the IdP ever
+names Alice for the wiki.<a href="#section-1.3-7" class="pilcrow">¶</a></p>
 <p id="section-1.3-8">Two states describe a hop. H0 is PENDING from step 1, when the IdP issues its
 ID-JAG, and ACCEPTED from step 2, when the RAS redeems the grant and binds the
 handle. The IdP is not told when that happens: acceptance is a fact held by
@@ -2043,7 +2044,7 @@ follow trace a chain in the same order.<a href="#section-5.1-1" class="pilcrow">
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">6</td>
-              <td class="text-left" rowspan="1" colspan="1">The next RAS redeems an ordinary ID-JAG under the base profile; a continuation-aware one binds the handle as in step 2, after which steps 4 and 5 can recur from its domain</td>
+              <td class="text-left" rowspan="1" colspan="1">The next RAS redeems an ordinary ID-JAG under the base profile; a continuation-aware one binds the handle as in step 2, after which steps 3 to 5 can recur from its domain</td>
               <td class="text-left" rowspan="1" colspan="1">
                 <a href="#ras-processing" class="auto internal xref">Section 5.3</a>
 </td>

@@ -361,15 +361,17 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    6.  As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS
        and receives an access token.  If the wiki's RAS does not
        implement this profile, it ignores the handle and the chain ends
-       there.  If it does, it binds H1 as in step 2, and steps 4 and 5
+       there.  If it does, it binds H1 as in step 2; once the gateway
+       calls the wiki API with that token as in step 3, steps 4 and 5
        can repeat from the wiki's domain.
 
    Three things are new in this flow: a claim in the ID-JAG (step 1), a
    binding kept at the RAS (step 2), and the assertion together with the
    exchange that consumes it (steps 4 and 5).  The base exchanges of
-   steps 1, 2, and 6 and the call of step 3 are unchanged.  Alice's
-   credential never leaves AgentApp, and no party other than the IdP
-   ever names Alice for the wiki.
+   steps 1, 2, and 6 and the call of step 3 are unchanged.  Alice's ID
+   Token is presented only to its issuing IdP, never to the gateway or
+   the wiki, and no party other than the IdP ever names Alice for the
+   wiki.
 
    Two states describe a hop.  H0 is PENDING from step 1, when the IdP
    issues its ID-JAG, and ACCEPTED from step 2, when the RAS redeems the
@@ -600,39 +602,37 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    maps those steps to the sections that specify them, and the sections
    that follow trace a chain in the same order.
 
-   +======+===============================================+============+
-   | Step | Obligation                                    | Specified  |
-   |      |                                               | in         |
-   +======+===============================================+============+
-   | 1    | The IdP embeds the handle claim in the ID-JAG | Section    |
-   |      | and establishes and bounds the chain          | 4,         |
-   |      |                                               | Section    |
-   |      |                                               | 5.2        |
-   +------+-----------------------------------------------+------------+
-   | 2    | A continuation-aware RAS binds the handle to  | Section    |
-   |      | the authorization it issues; the hop becomes  | 5.3,       |
-   |      | ACCEPTED                                      | Section    |
-   |      |                                               | 5.4        |
-   +------+-----------------------------------------------+------------+
-   | 3    | The call reaches the workload; within the     | Section    |
-   |      | domain, the bound handle reaches the CAI (a   | 5.5        |
-   |      | co-located RAS reads its own state)           |            |
-   +------+-----------------------------------------------+------------+
-   | 4    | The CAI issues the Identity Continuation      | Section    |
-   |      | Assertion, by Token Exchange when it is an    | 3,         |
-   |      | authorization server                          | Section    |
-   |      |                                               | 5.6        |
-   +------+-----------------------------------------------+------------+
-   | 5    | The workload presents the assertion with its  | Section    |
-   |      | actor credential and a DPoP proof; the IdP    | 5.7,       |
-   |      | validates the exchange, guards against        | Section    |
-   |      | replay, and issues the next ID-JAG            | 5.8        |
-   +------+-----------------------------------------------+------------+
-   | 6    | The next RAS redeems an ordinary ID-JAG under | Section    |
-   |      | the base profile; a continuation-aware one    | 5.3        |
-   |      | binds the handle as in step 2, after which    |            |
-   |      | steps 4 and 5 can recur from its domain       |            |
-   +------+-----------------------------------------------+------------+
+   +======+==============================================+=============+
+   | Step | Obligation                                   | Specified   |
+   |      |                                              | in          |
+   +======+==============================================+=============+
+   | 1    | The IdP embeds the handle claim in the ID-   | Section 4,  |
+   |      | JAG and establishes and bounds the chain     | Section     |
+   |      |                                              | 5.2         |
+   +------+----------------------------------------------+-------------+
+   | 2    | A continuation-aware RAS binds the handle to | Section     |
+   |      | the authorization it issues; the hop becomes | 5.3,        |
+   |      | ACCEPTED                                     | Section     |
+   |      |                                              | 5.4         |
+   +------+----------------------------------------------+-------------+
+   | 3    | The call reaches the workload; within the    | Section     |
+   |      | domain, the bound handle reaches the CAI (a  | 5.5         |
+   |      | co-located RAS reads its own state)          |             |
+   +------+----------------------------------------------+-------------+
+   | 4    | The CAI issues the Identity Continuation     | Section 3,  |
+   |      | Assertion, by Token Exchange when it is an   | Section     |
+   |      | authorization server                         | 5.6         |
+   +------+----------------------------------------------+-------------+
+   | 5    | The workload presents the assertion with its | Section     |
+   |      | actor credential and a DPoP proof; the IdP   | 5.7,        |
+   |      | validates the exchange, guards against       | Section     |
+   |      | replay, and issues the next ID-JAG           | 5.8         |
+   +------+----------------------------------------------+-------------+
+   | 6    | The next RAS redeems an ordinary ID-JAG      | Section     |
+   |      | under the base profile; a continuation-aware | 5.3         |
+   |      | one binds the handle as in step 2, after     |             |
+   |      | which steps 3 to 5 can recur from its domain |             |
+   +------+----------------------------------------------+-------------+
 
                                   Table 1
 
