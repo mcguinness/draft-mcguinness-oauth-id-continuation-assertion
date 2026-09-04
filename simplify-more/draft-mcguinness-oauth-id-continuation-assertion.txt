@@ -157,7 +157,7 @@ Table of Contents
        B.2.5.  The Pattern Repeats to BookingRAS (H2)
        B.2.6.  What Differs from the Gateway Example
      B.3.  Background Agent Example (Scheduled Continuation)
-       B.3.1.  Setup: Rooting the Chain in a Task
+       B.3.1.  Setup: Anchoring the Chain to a Grant
        B.3.2.  Each Run: Deriving H0 from Task State
        B.3.3.  Each Run: Continuing to CalendarRAS
        B.3.4.  A Dynamic Target
@@ -1364,10 +1364,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       indicating that the IdP accepts the urn:ietf:params:oauth:token-
       type:identity-continuation subject token type and issues
       continuation-capable ID-JAGs.  Such an ID-JAG is still the
-      urn:ietf:params:oauth:token-type:id-jag type, which the IdP lists
-      in identity_chaining_requested_token_types_supported as the base
-      profile requires
-      ([I-D.ietf-oauth-identity-assertion-authz-grant]); this flag adds
+      urn:ietf:params:oauth:token-type:id-jag type; an IdP that sets
+      this flag also lists that type in
+      identity_chaining_requested_token_types_supported
+      ([I-D.ietf-oauth-identity-assertion-authz-grant]).  This flag adds
       only the continuation capability.
 
 7.2.  Resource Authorization Server Metadata
@@ -2877,10 +2877,11 @@ B.2.6.  What Differs from the Gateway Example
 B.3.  Background Agent Example (Scheduled Continuation)
 
    Alice sets up a daily calendar briefing and is absent at every run.
-   Compared with the SaaS chain example, this one roots the chain in a
-   durable, platform-owned task authorization rather than in her
-   session, so that runs continue after she has gone, and it shows a
-   target nobody named at setup being refused.
+   Compared with the SaaS chain example, this one anchors the chain to
+   an OAuth grant rather than to her session and binds its root hop to
+   durable, platform-owned task authorization, so that runs continue
+   after she has gone.  It also shows a target nobody named at setup
+   being refused.
 
    Topology: separate CAI with a Transaction Token carrier.
 
@@ -2899,7 +2900,7 @@ B.3.  Background Agent Example (Scheduled Continuation)
    Alice's session; each run receives a fresh child of H0 for its
    terminal target.
 
-B.3.1.  Setup: Rooting the Chain in a Task
+B.3.1.  Setup: Anchoring the Chain to a Grant
 
    Alice authorizes "summarize my calendar every morning."  Because the
    task must outlive her session, briefing-agent presents a refresh

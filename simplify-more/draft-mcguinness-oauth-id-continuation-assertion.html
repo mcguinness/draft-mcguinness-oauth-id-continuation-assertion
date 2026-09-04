@@ -1424,7 +1424,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.14.2.3.1"><a href="#appendix-B.3" class="auto internal xref">B.3</a>.  <a href="#name-background-agent-example-sc" class="internal xref">Background Agent Example (Scheduled Continuation)</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.3.2.1">
-                    <p id="section-toc.1-1.14.2.3.2.1.1"><a href="#appendix-B.3.1" class="auto internal xref">B.3.1</a>.  <a href="#name-setup-rooting-the-chain-in-" class="internal xref">Setup: Rooting the Chain in a Task</a></p>
+                    <p id="section-toc.1-1.14.2.3.2.1.1"><a href="#appendix-B.3.1" class="auto internal xref">B.3.1</a>.  <a href="#name-setup-anchoring-the-chain-t" class="internal xref">Setup: Anchoring the Chain to a Grant</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.14.2.3.2.2">
                     <p id="section-toc.1-1.14.2.3.2.2.1"><a href="#appendix-B.3.2" class="auto internal xref">B.3.2</a>.  <a href="#name-each-run-deriving-h0-from-t" class="internal xref">Each Run: Deriving H0 from Task State</a></p>
@@ -2899,10 +2899,10 @@ metadata <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span> with th
             <p id="section-7.1-2.2.1"><span class="bcp14">OPTIONAL</span>. Boolean, default <code>false</code>, indicating that the IdP accepts the
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code> subject token type
 and issues continuation-capable ID-JAGs. Such an ID-JAG is still the
-<code>urn:ietf:params:oauth:token-type:id-jag</code> type, which the IdP lists in
-<code>identity_chaining_requested_token_types_supported</code> as the base profile
-requires (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>); this flag adds
-only the continuation capability.<a href="#section-7.1-2.2.1" class="pilcrow">¶</a></p>
+<code>urn:ietf:params:oauth:token-type:id-jag</code> type; an IdP that sets this flag
+also lists that type in <code>identity_chaining_requested_token_types_supported</code>
+(<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>). This flag adds only the
+continuation capability.<a href="#section-7.1-2.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -4753,10 +4753,10 @@ continuation actors above the root actor, before the terminal hop.<a href="#appe
 <a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-background-agent-example-sc" class="section-name selfRef">Background Agent Example (Scheduled Continuation)</a>
         </h3>
 <p id="appendix-B.3-1">Alice sets up a daily calendar briefing and is absent at every run. Compared
-with the SaaS chain example, this one roots the chain in a durable,
-platform-owned task authorization rather than in her session, so that runs
-continue after she has gone, and it shows a target nobody named at setup being
-refused.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+with the SaaS chain example, this one anchors the chain to an OAuth grant
+rather than to her session and binds its root hop to durable, platform-owned
+task authorization, so that runs continue after she has gone. It also shows a
+target nobody named at setup being refused.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.3-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.3-3.1">
@@ -4778,8 +4778,8 @@ It is terminal in every run.<a href="#appendix-B.3-3.2.1" class="pilcrow">¶</a>
 session; each run receives a fresh child of H0 for its terminal target.<a href="#appendix-B.3-4" class="pilcrow">¶</a></p>
 <div id="example-background-setup">
 <section id="appendix-B.3.1">
-          <h4 id="name-setup-rooting-the-chain-in-">
-<a href="#appendix-B.3.1" class="section-number selfRef">B.3.1. </a><a href="#name-setup-rooting-the-chain-in-" class="section-name selfRef">Setup: Rooting the Chain in a Task</a>
+          <h4 id="name-setup-anchoring-the-chain-t">
+<a href="#appendix-B.3.1" class="section-number selfRef">B.3.1. </a><a href="#name-setup-anchoring-the-chain-t" class="section-name selfRef">Setup: Anchoring the Chain to a Grant</a>
           </h4>
 <p id="appendix-B.3.1-1">Alice authorizes "summarize my calendar every morning." Because the task must
 outlive her session, <code>briefing-agent</code> presents a refresh token from a grant
