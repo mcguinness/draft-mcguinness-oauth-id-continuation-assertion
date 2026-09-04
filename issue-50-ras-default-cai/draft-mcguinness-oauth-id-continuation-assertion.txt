@@ -199,10 +199,10 @@ Table of Contents
    envelope.  Continuation therefore stays a fresh policy decision at
    every boundary, never a bearer of standing authority.
 
-   This protocol assigns obligations to two roles in the source trust
-   domain: a RAS that accepts an ID-JAG and binds the hop, and a
-   Continuation Assertion Issuer (CAI) that mints the assertion the
-   workload presents to the IdP.  It defines their cross-domain
+   This protocol assigns obligations to two roles in the trust domain a
+   chain continues from: a RAS that accepts an ID-JAG and binds the hop,
+   and a Continuation Assertion Issuer (CAI) that mints the assertion
+   the workload presents to the IdP.  It defines their cross-domain
    artifacts while leaving intra-domain assertion issuance and handle
    transport to the deployment (Section 6.1).
 
@@ -295,6 +295,10 @@ Table of Contents
       issue Identity Continuation Assertions for a tenant.  It never
       resolves the target audience's user subject.
 
+   Attestation:  A CAI's signed statement, in an Identity Continuation
+      Assertion, that a hop accepted by a RAS it is mapped to remains
+      continuable (Section 6.5).
+
    Current actor (presenting actor):  The workload presenting the
       assertion to the IdP, named by act and authenticated by
       actor_token.
@@ -316,6 +320,10 @@ Table of Contents
    Intra-domain carrier:  The server-derived, deployment-specific
       mechanism that surfaces an accepted hop's handle to authorized
       workloads within a trust domain (Section 6.6).
+
+   Authenticated context:  The authenticated credential or state that
+      selects exactly one RAS-bound authorization for a call
+      (Section 6.6).
 
    Continuation Handle (identity_continuation_handle):  An opaque,
       unguessable, IdP-generated reference to one hop of a continuation
@@ -528,7 +536,7 @@ Table of Contents
     | Identity Continuation         | CAI,          | here            |
     | Assertion                     | workload, IdP |                 |
     +-------------------------------+---------------+-----------------+
-    | identity_continuation_issuers | RAS, IdP      | here            |
+    | identity_continuation_issuers | RAS, IdP      | here, optional  |
     +-------------------------------+---------------+-----------------+
     | Assertion issuance request    | workload, CAI | intra-domain,   |
     |                               |               | out of scope    |
@@ -539,14 +547,18 @@ Table of Contents
 
                                   Table 1
 
-   Roles do not imply distinct parties.  The accepting RAS is implicitly
-   mapped as a CAI for the hops it accepts; deployment choices are
-   described in Section 8.1.
+   Roles do not imply distinct parties.  The IdP accepts an assertion
+   for a hop only from a CAI mapped to the hop's accepting RAS
+   (Section 6.3.4, rule 3), and the RAS itself is always mapped.  When
+   the accepting RAS holds the CAI role the deployment is collapsed;
+   when a separately mapped CAI holds it, the deployment is delegated
+   (Section 8.1).
 
    A continuation reuses the Token Exchange loop once per boundary: the
    root exchange mints the first ID-JAG, and each later boundary mints
    the next from an Identity Continuation Assertion.  Handles H0 and H1
-   below name the successive hops (Section 4).
+   below name the successive hops (Section 4); the diagram shows the
+   collapsed topology.
 
      Client      Workload       IdP       RAS/CAI
      |           |              |            |
@@ -877,10 +889,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  aud exactly matches the IdP's issuer identifier;
 
-   3.  *Issuer trust.* The assertion iss is trusted for the tenant, is
-       the RAS audience recorded for the hop or a CAI mapped to that
-       RAS, and is authorized to pair with the actor_token issuer for
-       that tenant;
+   3.  *Issuer trust.* The assertion iss exactly matches the ID-JAG aud
+       recorded for the hop or an issuer identifier mapped to that RAS,
+       is trusted for the tenant, and is authorized to pair with the
+       actor_token issuer for that tenant;
 
    4.  *Chain state.*
 
@@ -889,8 +901,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  no ancestor subtree is revoked; and
 
-       *  the actor lineage that results from collapsing consecutive
-          same-actor entries, as the onward act will (Section 6.3.7), is
+       *  the actor lineage that results from merging consecutive same-
+          actor entries, as the onward act will (Section 6.3.7), is
           within its depth bound, which counts lineage entries, not
           hops;
 
@@ -1020,7 +1032,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    authentication.  The IdP constructs act by placing the authenticated
    current actor atop the presented hop's lineage; it never copies
    lineage from the assertion, and siblings do not contribute.
-   Consecutive identical actors collapse to one entry, though the hop
+   Consecutive identical actors merge into one entry, though the hop
    record remains; policy MAY limit disclosed depth, narrowing what a
    target sees without changing the depth bound the IdP enforces
    (Section 6.3.4, rule 4).  Because policy may narrow the disclosed
@@ -1163,7 +1175,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 6.6.  Intra-Domain Handle Propagation
 
-   When the CAI also holds the accepting RAS role, it reads the handle
+   When the accepting RAS holds the CAI role, it reads the handle
    directly from its authorization state and needs no carrier.
    Otherwise, a carrier derived from the RAS binding conveys the handle
    within the trust domain (Section 6.4) and is accepted only within
@@ -1189,15 +1201,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       resolved to the task authorization for which that actor is
       designated (Section 9.2).
 
-   Before issuing an assertion, the CAI verifies the handle against
-   authoritative RAS state and confirms that continuation remains
-   permitted (Section 6.2).  This recheck covers staleness for every
-   carrier.
+   The CAI's recheck against RAS state (Section 6.2) covers staleness
+   for every carrier.
 
-   The handle conveys no authority.  A Resource Server has no
-   obligations under this specification, so a carrier SHOULD NOT expose
-   the handle to a party with no role in continuation.  Deployments also
-   keep it out of logs, traces, and responses.
+   A Resource Server has no obligations under this specification, so a
+   carrier SHOULD NOT expose the handle to a party with no role in
+   continuation.  Deployments also keep it out of logs, traces, and
+   responses.
 
 7.  Authorization Server Metadata
 
@@ -1249,17 +1259,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    identity_continuation_issuers:  OPTIONAL.  A JSON array of additional
       CAI issuer identifiers, each a StringOrURI [RFC7519], that this
       Resource Authorization Server authorizes to attest hops it
-      accepts; an empty array authorizes no additional CAIs and does not
-      disable the RAS's implicit self-mapping.  Values are compared with
-      the assertion iss as exact, case-sensitive strings, and duplicates
-      are ignored.  The advertisement is a nomination only: the IdP MUST
-      establish each issuer's identity and signing keys independently,
-      and the advertisement alone MUST NOT establish key trust or
-      override the IdP's tenant issuer-pairing policy.  Because the IdP
-      evaluates issuer trust and keys against its current trusted issuer
-      and key state, removing an issuer or revoking its keys de-
-      authorizes it for existing chains.  Acceptance remains the IdP's
-      decision.
+      accepts; an empty array authorizes no additional CAIs.  Values are
+      compared with the assertion iss as exact, case-sensitive strings,
+      and duplicates are ignored.  The advertisement is a nomination
+      only: the IdP MUST establish each issuer's identity and signing
+      keys independently, and the advertisement alone MUST NOT establish
+      key trust or override the IdP's tenant issuer-pairing policy.
+      Because the IdP evaluates issuer trust and keys against its
+      current trusted issuer and key state, removing an issuer or
+      revoking its keys de-authorizes it for existing chains.
+      Acceptance remains the IdP's decision.
 
    When a CAI's issuer identifier is that of an OAuth authorization
    server, the IdP obtains its signing keys from the jwks_uri in that
@@ -1326,8 +1335,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    transaction, or with a compensating action that revokes a token whose
    binding did not commit.
 
-   Because the actor-chain depth bound counts collapsed lineage entries,
-   an actor that repeatedly continues as itself never trips it; the fan-
+   Because the actor-chain depth bound counts merged lineage entries, an
+   actor that repeatedly continues as itself never trips it; the fan-
    out, rate, and hop-count limits of Section 6.3.2 bound such retry-
    driven growth instead, and the IdP prunes expired or revoked hop
    state.  A deployment configures those limits and enforces them per

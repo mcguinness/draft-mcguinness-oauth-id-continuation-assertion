@@ -1468,9 +1468,10 @@ IdP to name the user and scope authority; at each hop the IdP resolves
 identity and re-checks the requested authority against the root-chain
 envelope. Continuation therefore stays a fresh policy decision at every
 boundary, never a bearer of standing authority.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">This protocol assigns obligations to two roles in the source trust domain: a
-RAS that accepts an ID-JAG and binds the hop, and a Continuation Assertion
-Issuer (CAI) that mints the assertion the workload presents to the IdP. It
+<p id="section-1-4">This protocol assigns obligations to two roles in the trust domain a chain
+continues from: a RAS that accepts an ID-JAG and binds the hop, and a
+Continuation Assertion Issuer (CAI) that mints the assertion the workload
+presents to the IdP. It
 defines their cross-domain artifacts while leaving intra-domain assertion
 issuance and handle transport to the deployment (<a href="#overview" class="auto internal xref">Section 6.1</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
 <p id="section-1-5">The profile stays deliberately narrow: it defines no new access-token format,
@@ -1592,80 +1593,92 @@ the IdP as a Token Exchange <code>subject_token</code> to obtain an onward ID-JA
 tenant. It never resolves the target audience's user subject.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.17">Current actor (presenting actor):</dt>
+<dt id="section-2-3.17">Attestation:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.18">
-          <p id="section-2-3.18.1">The workload presenting the assertion to the IdP, named by <code>act</code> and
-authenticated by <code>actor_token</code>.<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.18.1">A CAI's signed statement, in an Identity Continuation Assertion, that a hop
+accepted by a RAS it is mapped to remains continuable (<a href="#hop-activation" class="auto internal xref">Section 6.5</a>).<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.19">Root actor:</dt>
+<dt id="section-2-3.19">Current actor (presenting actor):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.20">
-          <p id="section-2-3.20.1">The actor at the root of a chain: the authenticated OAuth client that
+          <p id="section-2-3.20.1">The workload presenting the assertion to the IdP, named by <code>act</code> and
+authenticated by <code>actor_token</code>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.21">Root actor:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.22">
+          <p id="section-2-3.22.1">The actor at the root of a chain: the authenticated OAuth client that
 obtains the first ID-JAG (<a href="#client-identity" class="auto internal xref">Section 6.3.3</a>); this is the Client of
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> at the root exchange.
-Unlike a current actor, it need not present an <code>actor_token</code>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+Unlike a current actor, it need not present an <code>actor_token</code>.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.21">Tenant:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.22">
-          <p id="section-2-3.22.1">The administrative boundary within which the chain and CAI trust are
-configured; its determination is deployment-defined
-(<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>).<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.23">Trust domain:</dt>
+<dt id="section-2-3.23">Tenant:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">An administrative and authentication boundary within which workloads can
-be directly authenticated, comparable to WIMSE
-<span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is deployment-defined.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.24.1">The administrative boundary within which the chain and CAI trust are
+configured; its determination is deployment-defined
+(<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>).<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.25">Intra-domain carrier:</dt>
+<dt id="section-2-3.25">Trust domain:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.26">
-          <p id="section-2-3.26.1">The server-derived, deployment-specific mechanism that surfaces an accepted
-hop's handle to authorized workloads within a trust domain
-(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.26.1">An administrative and authentication boundary within which workloads can
+be directly authenticated, comparable to WIMSE
+<span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is deployment-defined.<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.27">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
+<dt id="section-2-3.27">Intra-domain carrier:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.28">
-          <p id="section-2-3.28.1">An opaque, unguessable, IdP-generated reference to one hop of a continuation
-chain; see <a href="#chain-id" class="auto internal xref">Section 4</a>.<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.28.1">The server-derived, deployment-specific mechanism that surfaces an accepted
+hop's handle to authorized workloads within a trust domain
+(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.29">Hop:</dt>
+<dt id="section-2-3.29">Authenticated context:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.30">
-          <p id="section-2-3.30.1">A root or continuation record; a continuation record carries an immutable
-parent reference and a root record has none. Its lineage is its path to the
-root.<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.30.1">The authenticated credential or state that selects exactly one RAS-bound
+authorization for a call (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.31">Governing authorization:</dt>
+<dt id="section-2-3.31">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.32">
-          <p id="section-2-3.32.1">The server-side consent and policy record, resolved from the root subject
-token, that anchors a chain and bounds every continuation under it
-(<a href="#lifecycle" class="auto internal xref">Section 5</a>).<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.32.1">An opaque, unguessable, IdP-generated reference to one hop of a continuation
+chain; see <a href="#chain-id" class="auto internal xref">Section 4</a>.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.33">Root-chain envelope:</dt>
+<dt id="section-2-3.33">Hop:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.34">
-          <p id="section-2-3.34.1">The state the IdP records at establishment and evaluates every continuation
-against, anchored to the chain's governing authorization (<a href="#lifecycle" class="auto internal xref">Section 5</a>); its
-dimensions and bounds are defined in <a href="#root-establishment" class="auto internal xref">Section 6.3.2</a>.<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.34.1">A root or continuation record; a continuation record carries an immutable
+parent reference and a root record has none. Its lineage is its path to the
+root.<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.35">Audience-local (pairwise) subject:</dt>
+<dt id="section-2-3.35">Governing authorization:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.36">
-          <p id="section-2-3.36.1">The subject identifier under which a particular RAS names the user. Distinct
-Resource Authorization Servers may name the same user with different
-identifiers; only the IdP holds the map between them.<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.36.1">The server-side consent and policy record, resolved from the root subject
+token, that anchors a chain and bounds every continuation under it
+(<a href="#lifecycle" class="auto internal xref">Section 5</a>).<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.37">Offline attenuation:</dt>
+<dt id="section-2-3.37">Root-chain envelope:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.38">
-          <p id="section-2-3.38.1">Client-side attenuated delegation, in which a party narrows and forwards a
+          <p id="section-2-3.38.1">The state the IdP records at establishment and evaluates every continuation
+against, anchored to the chain's governing authorization (<a href="#lifecycle" class="auto internal xref">Section 5</a>); its
+dimensions and bounds are defined in <a href="#root-establishment" class="auto internal xref">Section 6.3.2</a>.<a href="#section-2-3.38.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.39">Audience-local (pairwise) subject:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.40">
+          <p id="section-2-3.40.1">The subject identifier under which a particular RAS names the user. Distinct
+Resource Authorization Servers may name the same user with different
+identifiers; only the IdP holds the map between them.<a href="#section-2-3.40.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.41">Offline attenuation:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.42">
+          <p id="section-2-3.42.1">Client-side attenuated delegation, in which a party narrows and forwards a
 credential without contacting the IdP; contrast the IdP-minted continuation
-this profile defines (<a href="#decision-rule" class="auto internal xref">Section 1.1</a>).<a href="#section-2-3.38.1" class="pilcrow">¶</a></p>
+this profile defines (<a href="#decision-rule" class="auto internal xref">Section 1.1</a>).<a href="#section-2-3.42.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
 </dl>
@@ -1926,7 +1939,7 @@ intra-domain ones to the deployment:<a href="#section-6.1-1" class="pilcrow">¶<
                 <code>identity_continuation_issuers</code>
 </td>
               <td class="text-left" rowspan="1" colspan="1">RAS, IdP</td>
-              <td class="text-left" rowspan="1" colspan="1">here</td>
+              <td class="text-left" rowspan="1" colspan="1">here, optional</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Assertion issuance request</td>
@@ -1941,13 +1954,15 @@ intra-domain ones to the deployment:<a href="#section-6.1-1" class="pilcrow">¶<
             </tr>
           </tbody>
         </table>
-<p id="section-6.1-3">Roles do not imply distinct parties. The accepting RAS is implicitly mapped as
-a CAI for the hops it accepts; deployment choices are described in
-<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
+<p id="section-6.1-3">Roles do not imply distinct parties. The IdP accepts an assertion for a hop
+only from a CAI mapped to the hop's accepting RAS (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 3), and
+the RAS itself is always mapped. When the accepting RAS holds the CAI role the
+deployment is collapsed; when a separately mapped CAI holds it, the deployment
+is delegated (<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>).<a href="#section-6.1-3" class="pilcrow">¶</a></p>
 <p id="section-6.1-4">A continuation reuses the Token Exchange loop once per boundary: the root
 exchange mints the first ID-JAG, and each later boundary mints the next from an
 Identity Continuation Assertion. Handles H0 and H1 below name the successive
-hops (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-6.1-4" class="pilcrow">¶</a></p>
+hops (<a href="#chain-id" class="auto internal xref">Section 4</a>); the diagram shows the collapsed topology.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-6.1-5">
 <pre>
   Client      Workload       IdP       RAS/CAI
@@ -2326,9 +2341,10 @@ confirmation method, and <code>iat</code> and <code>exp</code> are NumericDate n
               </ul>
 </li>
             <li id="section-6.3.4-2.3">
-              <p id="section-6.3.4-2.3.1"><strong>Issuer trust.</strong> The assertion <code>iss</code> is trusted for the tenant, is the RAS
-audience recorded for the hop or a CAI mapped to that RAS, and is authorized
-to pair with the <code>actor_token</code> issuer for that tenant;<a href="#section-6.3.4-2.3.1" class="pilcrow">¶</a></p>
+              <p id="section-6.3.4-2.3.1"><strong>Issuer trust.</strong> The assertion <code>iss</code> exactly matches the ID-JAG <code>aud</code>
+recorded for the hop or an issuer identifier mapped to that RAS, is trusted
+for the tenant, and is authorized to pair with the <code>actor_token</code> issuer for
+that tenant;<a href="#section-6.3.4-2.3.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-6.3.4-2.4">
               <p id="section-6.3.4-2.4.1"><strong>Chain state.</strong><a href="#section-6.3.4-2.4.1" class="pilcrow">¶</a></p>
@@ -2341,7 +2357,7 @@ active chain;<a href="#section-6.3.4-2.4.2.1.1" class="pilcrow">¶</a></p>
                   <p id="section-6.3.4-2.4.2.2.1">no ancestor subtree is revoked; and<a href="#section-6.3.4-2.4.2.2.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-6.3.4-2.4.2.3">
-                  <p id="section-6.3.4-2.4.2.3.1">the actor lineage that results from collapsing consecutive same-actor
+                  <p id="section-6.3.4-2.4.2.3.1">the actor lineage that results from merging consecutive same-actor
 entries, as the onward <code>act</code> will (<a href="#onward-id-jag" class="auto internal xref">Section 6.3.7</a>), is within its
 depth bound, which counts lineage entries, not hops;<a href="#section-6.3.4-2.4.2.3.1" class="pilcrow">¶</a></p>
 </li>
@@ -2488,7 +2504,7 @@ continuation <span class="bcp14">MUST NOT</span> extend or strengthen it, for ex
 adding <code>amr</code> beyond the user's root authentication. The IdP constructs <code>act</code>
 by placing the authenticated current actor atop the presented hop's lineage;
 it never copies lineage from the assertion, and siblings do not contribute.
-Consecutive identical actors collapse to one entry, though the hop record
+Consecutive identical actors merge into one entry, though the hop record
 remains; policy <span class="bcp14">MAY</span> limit disclosed depth, narrowing what a target sees without
 changing the depth bound the IdP enforces (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 4). Because
 policy may narrow the disclosed lineage, a Resource Authorization Server
@@ -2654,7 +2670,7 @@ neither narrows nor widens it.<a href="#section-6.5-5" class="pilcrow">¶</a></p
         <h3 id="name-intra-domain-handle-propaga">
 <a href="#section-6.6" class="section-number selfRef">6.6. </a><a href="#name-intra-domain-handle-propaga" class="section-name selfRef">Intra-Domain Handle Propagation</a>
         </h3>
-<p id="section-6.6-1">When the CAI also holds the accepting RAS role, it reads the handle directly
+<p id="section-6.6-1">When the accepting RAS holds the CAI role, it reads the handle directly
 from its authorization state and needs no carrier. Otherwise, a carrier derived
 from the RAS binding conveys the handle within the trust domain
 (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>) and is accepted only within that domain
@@ -2681,13 +2697,11 @@ the task authorization for which that actor is designated
 (<a href="#task-provenance" class="auto internal xref">Section 9.2</a>).<a href="#section-6.6-4.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-6.6-5">Before issuing an assertion, the CAI verifies the handle against authoritative
-RAS state and confirms that continuation remains permitted
-(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>). This recheck covers staleness for every carrier.<a href="#section-6.6-5" class="pilcrow">¶</a></p>
-<p id="section-6.6-6">The handle conveys no authority. A Resource Server has no obligations under
-this specification, so a carrier <span class="bcp14">SHOULD NOT</span> expose the handle to a party with
-no role in continuation. Deployments also keep it out of logs, traces, and
-responses.<a href="#section-6.6-6" class="pilcrow">¶</a></p>
+<p id="section-6.6-5">The CAI's recheck against RAS state (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>) covers staleness
+for every carrier.<a href="#section-6.6-5" class="pilcrow">¶</a></p>
+<p id="section-6.6-6">A Resource Server has no obligations under this specification, so a carrier
+<span class="bcp14">SHOULD NOT</span> expose the handle to a party with no role in continuation.
+Deployments also keep it out of logs, traces, and responses.<a href="#section-6.6-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2756,8 +2770,8 @@ than be configured out of band:<a href="#section-7.2-3" class="pilcrow">¶</a></
           <dd style="margin-left: 1.5em" id="section-7.2-4.2">
             <p id="section-7.2-4.2.1"><span class="bcp14">OPTIONAL</span>. A JSON array of additional CAI issuer identifiers, each a
 <code>StringOrURI</code> <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, that this Resource Authorization Server authorizes
-to attest hops it accepts; an empty array authorizes no additional CAIs and
-does not disable the RAS's implicit self-mapping. Values are compared with
+to attest hops it accepts; an empty array authorizes no additional CAIs.
+Values are compared with
 the assertion <code>iss</code> as exact, case-sensitive strings, and duplicates are
 ignored. The advertisement is a nomination only: the IdP <span class="bcp14">MUST</span> establish each
 issuer's identity and signing keys independently, and the advertisement
@@ -2849,7 +2863,7 @@ IdP retains and expires the reservation by the same clock it uses to evaluate
 <code>exp</code>. A RAS can make the handle binding and token issuance of
 <a href="#ras-processing" class="auto internal xref">Section 6.4</a> one outcome with a local transaction, or with a
 compensating action that revokes a token whose binding did not commit.<a href="#section-8.1-5" class="pilcrow">¶</a></p>
-<p id="section-8.1-6">Because the actor-chain depth bound counts collapsed lineage entries, an actor
+<p id="section-8.1-6">Because the actor-chain depth bound counts merged lineage entries, an actor
 that repeatedly continues as itself never trips it; the fan-out, rate, and
 hop-count limits of <a href="#root-establishment" class="auto internal xref">Section 6.3.2</a> bound such retry-driven growth
 instead, and the IdP prunes expired or revoked hop state. A deployment
