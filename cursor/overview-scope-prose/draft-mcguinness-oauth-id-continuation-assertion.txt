@@ -236,20 +236,8 @@ Table of Contents
 
    This document profiles Token Exchange [RFC8693], JWT [RFC7519], ID-
    JAG [I-D.ietf-oauth-identity-assertion-authz-grant], and OAuth
-   Identity Chaining [I-D.ietf-oauth-identity-chaining].  It adds:
-
-   *  the Identity Continuation Assertion subject-token type;
-
-   *  an identity_continuation_handle claim in continuation-capable ID-
-      JAGs;
-
-   *  RAS binding of that claim to accepted authorization state;
-
-   *  continuation-exchange validation rules;
-
-   *  intra-domain handle propagation; and
-
-   *  discovery metadata.
+   Identity Chaining [I-D.ietf-oauth-identity-chaining]; Section 6.1
+   lists what it adds.
 
 2.  Conventions and Definitions
 
@@ -530,6 +518,8 @@ Table of Contents
    *  the Identity Continuation Assertion and its use as a Token
       Exchange subject_token (Section 3, Section 6.3);
 
+   *  the IdP's validation of that exchange (Section 6.3.4);
+
    *  RAS binding of an accepted handle (Section 6.4); and
 
    *  optional Authorization Server metadata, including
@@ -537,7 +527,7 @@ Table of Contents
 
    How a workload obtains an assertion from a CAI, and how an accepted
    handle reaches that CAI inside the RAS's trust domain, are
-   deployment-specific (Section 6.6).
+   deployment-specific, subject to the provenance rule in Section 6.6.
 
    The RAS and CAI roles may be held by the same party (collapsed) or by
    distinct parties (delegated); see Section 8.1.  The IdP accepts an
@@ -2774,16 +2764,12 @@ Document History
 
    -02
 
-   *  Replaced the Overview interfaces table with an OAuth-style scope
-      list of what this document specifies versus what is deployment-
-      specific.
-
    *  Annotated the overview diagram with this profile's additions and
       the terminal hop.
 
    *  Implicitly mapped the accepting RAS as a CAI for its own hops;
-      metadata now lists only additional CAIs.  Added an interfaces
-      table to the Overview and a non-normative Deployment Topologies
+      metadata now lists only additional CAIs.  Added a scope statement
+      to the Overview and a non-normative Deployment Topologies
       subsection holding the carrier realizations, added a Topology and
       Trust security subsection, and switched the gateway example to the
       collapsed topology.
