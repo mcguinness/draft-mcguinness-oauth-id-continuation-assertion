@@ -1056,7 +1056,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">McGuinness</td>
-<td class="center">Expires 7 March 2027</td>
+<td class="center">Expires 8 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-03" class="published">3 September 2026</time>
+<time datetime="2026-09-04" class="published">4 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-07">7 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-08">8 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1131,7 +1131,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 7 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 8 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1308,7 +1308,10 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-json-web-token-claims-regis" class="internal xref">JSON Web Token Claims Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.5">
-                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-oauth-authorization-server-" class="internal xref">OAuth Authorization Server Metadata Registration</a></p>
+                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-oauth-token-introspection-r" class="internal xref">OAuth Token Introspection Response Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6">
+                <p id="section-toc.1-1.11.2.6.1"><a href="#section-11.6" class="auto internal xref">11.6</a>.  <a href="#name-oauth-authorization-server-" class="internal xref">OAuth Authorization Server Metadata Registration</a></p>
 </li>
             </ul>
 </li>
@@ -2608,11 +2611,13 @@ neither narrows nor widens it.<a href="#section-6.5-5" class="pilcrow">¶</a></p
 <p id="section-6.6-1">Within a trust domain, a workload learns the accepted hop's handle from a
 carrier that the domain derives from the RAS binding (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>).
 The handle surfaced for a call <span class="bcp14">MUST</span> be the one the RAS bound to the
-authorization behind the access token presented on that call, after its proof
-of possession is verified. It is never taken from requester-supplied input,
-and never derived from a session or subject, which could bind the wrong
-user's authorization state to the call. The CAI verifies the handle against
-RAS-bound state before issuing (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-6.6-1" class="pilcrow">¶</a></p>
+authorization that the credential verified on that call selects, with proof
+of possession of its key. At ingress that credential is the sender-constrained
+access token; downstream it may be a forwarded carrier or an active task
+authorization (<a href="#task-provenance" class="auto internal xref">Section 9.2</a>). The handle is never taken from
+requester-supplied input, and never derived from a session or subject, which
+could bind the wrong user's authorization state to the call. The CAI verifies
+the handle against RAS-bound state before issuing (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-6.6-1" class="pilcrow">¶</a></p>
 <p id="section-6.6-2">The carrier is deployment-specific and is accepted only within the domain
 (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>). Two realizations:<a href="#section-6.6-2" class="pilcrow">¶</a></p>
 <ul class="normal">
@@ -3239,23 +3244,24 @@ issues (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>
 </dl>
 </section>
 </div>
-<div id="oauth-authorization-server-metadata-registration">
+<div id="oauth-token-introspection-response-registration">
 <section id="section-11.5">
-        <h3 id="name-oauth-authorization-server-">
-<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-oauth-authorization-server-" class="section-name selfRef">OAuth Authorization Server Metadata Registration</a>
+        <h3 id="name-oauth-token-introspection-r">
+<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-oauth-token-introspection-r" class="section-name selfRef">OAuth Token Introspection Response Registration</a>
         </h3>
-<p id="section-11.5-1">IANA is requested to register the following values in the "OAuth Authorization
-Server Metadata" registry established by <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+<p id="section-11.5-1">IANA is requested to register the following value in the "OAuth Token
+Introspection Response" registry established by <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-11.5-2">
-          <dt id="section-11.5-2.1">Metadata Name:</dt>
+          <dt id="section-11.5-2.1">Name:</dt>
           <dd style="margin-left: 1.5em" id="section-11.5-2.2">
-            <p id="section-11.5-2.2.1">identity_continuation_supported<a href="#section-11.5-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-11.5-2.2.1">identity_continuation_handle<a href="#section-11.5-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.5-2.3">Metadata Description:</dt>
+<dt id="section-11.5-2.3">Description:</dt>
           <dd style="margin-left: 1.5em" id="section-11.5-2.4">
-            <p id="section-11.5-2.4.1">Boolean value indicating support for the Identity Continuation Assertion
-profile<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-11.5-2.4.1">The continuation handle bound to the introspected token's authorization,
+returned only to resources within the issuing server's trust domain
+(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>)<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.5-2.5">Change Controller:</dt>
@@ -3265,41 +3271,73 @@ profile<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
           <dd class="break"></dd>
 <dt id="section-11.5-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.5-2.8">
-            <p id="section-11.5-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.5-2.8.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.5-2.9">Metadata Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.10">
-            <p id="section-11.5-2.10.1">identity_continuation_issuers<a href="#section-11.5-2.10.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.5-2.11">Metadata Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.12">
-            <p id="section-11.5-2.12.1">Array of issuer identifiers for Continuation Assertion Issuers (CAIs) a
-Resource Authorization Server authorizes to attest hops it accepts (a
-nomination; the IdP establishes issuer key trust independently)<a href="#section-11.5-2.12.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.5-2.13">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.14">
-            <p id="section-11.5-2.14.1">IETF<a href="#section-11.5-2.14.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.5-2.15">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.16">
-            <p id="section-11.5-2.16.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.5-2.16.1" class="pilcrow">¶</a></p>
+            <p id="section-11.5-2.8.1">This document, <a href="#handle-propagation" class="auto internal xref">Section 6.6</a><a href="#section-11.5-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-11.5-3">Note: The token type URI <code>urn:ietf:params:oauth:token-type:id-jag</code> referenced by
+</section>
+</div>
+<div id="oauth-authorization-server-metadata-registration">
+<section id="section-11.6">
+        <h3 id="name-oauth-authorization-server-">
+<a href="#section-11.6" class="section-number selfRef">11.6. </a><a href="#name-oauth-authorization-server-" class="section-name selfRef">OAuth Authorization Server Metadata Registration</a>
+        </h3>
+<p id="section-11.6-1">IANA is requested to register the following values in the "OAuth Authorization
+Server Metadata" registry established by <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>.<a href="#section-11.6-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.6-2">
+          <dt id="section-11.6-2.1">Metadata Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.2">
+            <p id="section-11.6-2.2.1">identity_continuation_supported<a href="#section-11.6-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.3">Metadata Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.4">
+            <p id="section-11.6-2.4.1">Boolean value indicating support for the Identity Continuation Assertion
+profile<a href="#section-11.6-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.6">
+            <p id="section-11.6-2.6.1">IETF<a href="#section-11.6-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.7">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.8">
+            <p id="section-11.6-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.6-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.9">Metadata Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.10">
+            <p id="section-11.6-2.10.1">identity_continuation_issuers<a href="#section-11.6-2.10.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.11">Metadata Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.12">
+            <p id="section-11.6-2.12.1">Array of issuer identifiers for Continuation Assertion Issuers (CAIs) a
+Resource Authorization Server authorizes to attest hops it accepts (a
+nomination; the IdP establishes issuer key trust independently)<a href="#section-11.6-2.12.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.13">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.14">
+            <p id="section-11.6-2.14.1">IETF<a href="#section-11.6-2.14.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.6-2.15">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.16">
+            <p id="section-11.6-2.16.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.6-2.16.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-11.6-3">Note: The token type URI <code>urn:ietf:params:oauth:token-type:id-jag</code> referenced by
 this document is registered by
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and is not registered here.<a href="#section-11.5-3" class="pilcrow">¶</a></p>
-<p id="section-11.5-4">Note: The <code>authorization_grant_profiles_supported</code> metadata parameter and the
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and is not registered here.<a href="#section-11.6-3" class="pilcrow">¶</a></p>
+<p id="section-11.6-4">Note: The <code>authorization_grant_profiles_supported</code> metadata parameter and the
 base <code>urn:ietf:params:oauth:grant-profile:id-jag</code> value referenced by this
 document are defined and registered by
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and are not registered here;
 this document registers only the
-<code>urn:ietf:params:oauth:grant-profile:id-jag-continuation</code> value.<a href="#section-11.5-4" class="pilcrow">¶</a></p>
+<code>urn:ietf:params:oauth:grant-profile:id-jag-continuation</code> value.<a href="#section-11.6-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4325,7 +4363,9 @@ accept it):<a href="#appendix-B.3.1-3" class="pilcrow">¶</a></p>
   "client_id": "agent-app",
   "cnf": { "jkt": "base64url-agent-app-key-thumbprint" },
   "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
-  "exp": 1710000810
+  "iat": 1710000210,
+  "exp": 1710000810,
+  "jti": "at-gw-0001"
 }
 </pre><a href="#appendix-B.3.1-4" class="pilcrow">¶</a>
 </div>
@@ -4480,7 +4520,8 @@ with the carrier requirements that restated the CAI preconditions. One rule
 remains: the handle surfaced for a call is the one bound to the access token
 presented on it. The accepting RAS's own access token is now a permitted
 carrier, the CAI recheck names every carrier, and the gateway example uses
-that carrier.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+that carrier. The handle is also registered as an introspection response
+member.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
