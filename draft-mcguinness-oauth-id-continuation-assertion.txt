@@ -236,20 +236,8 @@ Table of Contents
 
    This document profiles Token Exchange [RFC8693], JWT [RFC7519], ID-
    JAG [I-D.ietf-oauth-identity-assertion-authz-grant], and OAuth
-   Identity Chaining [I-D.ietf-oauth-identity-chaining].  It adds:
-
-   *  the Identity Continuation Assertion subject-token type;
-
-   *  an identity_continuation_handle claim in continuation-capable ID-
-      JAGs;
-
-   *  RAS binding of that claim to accepted authorization state;
-
-   *  continuation-exchange validation rules;
-
-   *  intra-domain handle propagation; and
-
-   *  discovery metadata.
+   Identity Chaining [I-D.ietf-oauth-identity-chaining]; Section 6.1
+   lists what it adds.
 
 2.  Conventions and Definitions
 
@@ -522,35 +510,30 @@ Table of Contents
 
 6.1.  Overview
 
-   This profile defines three cross-domain interfaces and leaves two
-   intra-domain ones to the deployment:
+   This document specifies:
 
-    +===============================+===============+=================+
-    | Interface                     | Between       | Defined         |
-    +===============================+===============+=================+
-    | ID-JAG carrying the handle    | IdP, client,  | here, atop ID-  |
-    |                               | RAS           | JAG             |
-    +-------------------------------+---------------+-----------------+
-    | Identity Continuation         | CAI,          | here            |
-    | Assertion                     | workload, IdP |                 |
-    +-------------------------------+---------------+-----------------+
-    | identity_continuation_issuers | RAS, IdP      | here, optional  |
-    +-------------------------------+---------------+-----------------+
-    | Assertion issuance request    | workload, CAI | intra-domain,   |
-    |                               |               | out of scope    |
-    +-------------------------------+---------------+-----------------+
-    | Handle carrier                | RAS,          | intra-domain;   |
-    |                               | workload, CAI | see Section 6.6 |
-    +-------------------------------+---------------+-----------------+
+   *  the identity_continuation_handle claim on continuation-capable ID-
+      JAGs (Section 4);
 
-                                  Table 1
+   *  the Identity Continuation Assertion and its use as a Token
+      Exchange subject_token (Section 3, Section 6.3);
 
-   Roles do not imply distinct parties.  The IdP accepts an assertion
-   for a hop only from a CAI mapped to the hop's accepting RAS
-   (Section 6.3.4, rule 3), and the RAS itself is always mapped.  When
-   the accepting RAS holds the CAI role the deployment is collapsed;
-   when a separately mapped CAI holds it, the deployment is delegated
-   (Section 8.1).
+   *  the IdP's validation of that exchange (Section 6.3.4);
+
+   *  RAS binding of the handle from an accepted ID-JAG (Section 6.4);
+      and
+
+   *  optional Authorization Server metadata, including
+      identity_continuation_issuers (Section 7).
+
+   How a workload obtains an assertion from a CAI, and how the bound
+   handle reaches that CAI inside the RAS's trust domain, are
+   deployment-specific, subject to the provenance rule in Section 6.6.
+
+   The RAS and CAI roles may be held by the same party (collapsed) or by
+   distinct parties (delegated); see Section 8.1.  The IdP accepts an
+   assertion for a hop only from a CAI mapped to the hop's accepting RAS
+   (Section 6.3.4, rule 3), and the RAS itself is always mapped.
 
    A continuation reuses the Token Exchange loop once per boundary: the
    root exchange mints the first ID-JAG, and each later boundary mints
@@ -851,7 +834,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      |                       | all three to this request             |
      +-----------------------+---------------------------------------+
 
-                                  Table 2
+                                  Table 1
 
 6.3.4.  Request Validation
 
@@ -1161,7 +1144,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
     |             | exchange          | the still-active binding      |
     +-------------+-------------------+-------------------------------+
 
-                                  Table 3
+                                  Table 2
 
    ACCEPTED is a state of the RAS's own authorization, not an IdP
    transition delivered by callback; the IdP learns of it only through a
@@ -1308,7 +1291,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      |           |            |              | audit need isolation |
      +-----------+------------+--------------+----------------------+
 
-                                 Table 4
+                                 Table 3
 
    Collapsed is the default: it adds no configured CAI mapping and no
    self-entry in identity_continuation_issuers.  The RAS still
@@ -2786,8 +2769,8 @@ Document History
       the terminal hop.
 
    *  Implicitly mapped the accepting RAS as a CAI for its own hops;
-      metadata now lists only additional CAIs.  Added an interfaces
-      table to the Overview and a non-normative Deployment Topologies
+      metadata now lists only additional CAIs.  Added a scope statement
+      to the Overview and a non-normative Deployment Topologies
       subsection holding the carrier realizations, added a Topology and
       Trust security subsection, and switched the gateway example to the
       collapsed topology.
