@@ -2610,12 +2610,13 @@ neither narrows nor widens it.<a href="#section-6.5-5" class="pilcrow">¶</a></p
         </h3>
 <p id="section-6.6-1">Within a trust domain, a workload learns the accepted hop's handle from a
 carrier that the domain derives from the RAS binding (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>).
-The handle surfaced for a call <span class="bcp14">MUST</span> originate from the RAS-bound state that
-the authenticated context of that call selects, whether read from that state
-or from a carrier derived from it. The requester cannot control or
-separately override the value, and the state is never selected by a session
-or subject alone, which could bind the wrong user's authorization state to
-the call. What selects the state depends on where the call lands:<a href="#section-6.6-1" class="pilcrow">¶</a></p>
+Each call that surfaces a handle has an authenticated context, and that
+context selects one RAS-bound authorization. The handle surfaced for the call
+<span class="bcp14">MUST</span> be the one the RAS bound to that authorization, read from RAS state or
+from a carrier derived from it. The requester cannot control the value or
+override it with separate input. A session or subject alone never selects the
+authorization, since that could attach another user's handle to the call.
+The selecting context depends on where the call lands:<a href="#section-6.6-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-6.6-2.1">
             <p id="section-6.6-2.1.1">at ingress, the sender-constrained access token whose proof of possession
@@ -4536,11 +4537,11 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <li class="normal" id="appendix-E-3.1">
           <p id="appendix-E-3.1.1">Removed the prohibition on carrying the handle in an access token, along
 with the carrier requirements that restated the CAI preconditions. One rule
-remains: the handle surfaced for a call originates from the RAS-bound state
-that the call's authenticated context selects, whether read from that state
-or from a carrier derived from it. The accepting RAS's own access token is
-now a permitted carrier, the CAI recheck names every carrier, and the
-gateway example uses that carrier. The handle is also registered as an
+remains: the handle surfaced for a call is the one the RAS bound to the
+authorization that the call's authenticated context selects, read from RAS
+state or from a carrier derived from it. The accepting RAS's own access
+token is now a permitted carrier, the CAI recheck names every carrier, and
+the gateway example uses that carrier. The handle is also registered as an
 introspection response member.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
