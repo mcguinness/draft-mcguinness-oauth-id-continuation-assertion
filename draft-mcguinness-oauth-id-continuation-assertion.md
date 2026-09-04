@@ -622,9 +622,23 @@ A successful response is a Token Exchange response ({{RFC8693}}, Section
 2.2.1) in which `access_token` carries the Identity Continuation Assertion,
 `issued_token_type` is
 `urn:ietf:params:oauth:token-type:identity-continuation`, `token_type` is
-`N_A`, and `expires_in` reflects the assertion's lifetime. The response
-MUST NOT include a `refresh_token`, which would let a client obtain further
-assertions without presenting a token or passing the live recheck.
+`N_A`, and `expires_in` reflects the assertion's lifetime. This profile adds
+one parameter:
+
+`audience`:
+: REQUIRED. The issuer identifier of the IdP to which the client presents the
+  assertion, equal to the assertion's `aud`. Because the request carries no
+  `audience`, this is how the client learns where the assertion goes. The
+  client obtains that IdP's `token_endpoint` from its authorization server
+  metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
+  well-known URI suffix under the issuer identifier, after confirming that the
+  returned `issuer` exactly matches `audience`; where the IdP publishes no
+  metadata, the client uses configuration bound to that issuer identifier
+  ({{metadata}}).
+
+The response MUST NOT include a `refresh_token`, which would let a client
+obtain further assertions without presenting a token or passing the live
+recheck.
 
 ~~~
 HTTP/1.1 200 OK
@@ -636,6 +650,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<Identity Continuation Assertion, compact JWS>",
   "token_type": "N_A",
+  "audience": "https://idp.example/",
   "expires_in": 120
 }
 ~~~
@@ -1482,6 +1497,26 @@ Change Controller:
 Specification Document(s):
 : This document, {{error-response}}
 
+## OAuth Parameters Registration
+
+IANA is requested to update the registration of the `audience` parameter in
+the "OAuth Parameters" registry established by {{RFC6749}}. {{RFC8693}}
+registered the parameter for the token request; this document adds the token
+response usage location and leaves the change controller unchanged, so that
+the entry reads as follows.
+
+Parameter name:
+: audience
+
+Parameter usage location:
+: token request, token response
+
+Change controller:
+: IESG
+
+Specification Document(s):
+: Section 2.1 of {{RFC8693}}; this document, {{assertion-response}}
+
 ## OAuth URI Registration
 
 IANA is requested to register the following value in the "OAuth URI" registry
@@ -1956,6 +1991,21 @@ operate; reads H0 from it and rechecks that the binding is still active;
 confirms that policy permits `tool-gateway` to continue; and issues the
 assertion bound to the proven key.
 
+On the wire (issuance response):
+
+~~~ json
+{
+  "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
+  "access_token": "<the assertion below, compact JWS>",
+  "token_type": "N_A",
+  "audience": "https://idp.example/",
+  "expires_in": 120
+}
+~~~
+
+The `audience` tells ToolGateway which IdP the assertion is for; it is where
+the request for the next ID-JAG goes.
+
 On the wire (decoded assertion):
 
 ~~~ json
@@ -1984,7 +2034,9 @@ can substitute another handle ({{handle-propagation}}).
 
 ### ToolGateway Continues to WikiRAS {#example-gateway-continue}
 
-ToolGateway presents the assertion to the IdP as the `subject_token` of a
+ToolGateway resolves the token endpoint of `https://idp.example/`, the
+`audience` it was given, from that IdP's metadata and presents the assertion
+there as the `subject_token` of a
 continuation exchange, with its actor credential and a DPoP proof of the same
 key, requesting an ID-JAG for WikiRAS. `tool-gateway` is a registered client
 of the IdP; its sender-constrained credential serves as both client assertion
@@ -2320,7 +2372,8 @@ carrier schema.
 
 ExpenseService obtains an assertion covering H0 by presenting its Transaction
 Token as the `subject_token` at Expense CAI's token endpoint
-({{assertion-token-exchange}}).
+({{assertion-token-exchange}}); the response's `audience`,
+`https://idp.example/`, tells it where to request the next ID-JAG.
 Before issuing, Expense CAI authenticates ExpenseService, verifies its key,
 confirms that H0 belongs to the transaction that ExpenseService is serving,
 and rechecks that ExpenseRAS's authorization remains active. The IdP's per-hop
@@ -2642,7 +2695,8 @@ designated actor, derives H0 into fresh intra-domain context
 selects H0.
 
 BriefingAgent exchanges that Transaction Token at Platform CAI's token
-endpoint ({{assertion-token-exchange}}). Before issuing, Platform CAI
+endpoint ({{assertion-token-exchange}}) and presents the assertion to the IdP
+the response's `audience` names. Before issuing, Platform CAI
 authenticates `briefing-agent`, verifies its key and transaction, and rechecks
 that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in
@@ -2769,6 +2823,9 @@ this profile builds.
 
 -02
 
+* Added the `audience` parameter to the assertion issuance response, so the
+  client learns which IdP to present the assertion to, and registered its
+  token response usage.
 * Rewrote the gateway example as the first, end-to-end example for gateway
   implementers: co-located RAS and CAI, handle carried in the access token,
   assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
