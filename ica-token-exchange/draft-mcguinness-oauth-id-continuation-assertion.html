@@ -1201,13 +1201,13 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.6.2.2.1"><a href="#section-6.2" class="auto internal xref">6.2</a>.  <a href="#name-issuing-the-assertion" class="internal xref">Issuing the Assertion</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3">
-                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="auto internal xref">6.3</a>.  <a href="#name-assertion-request-and-respo" class="internal xref">Assertion Request and Response</a></p>
+                <p id="section-toc.1-1.6.2.3.1"><a href="#section-6.3" class="auto internal xref">6.3</a>.  <a href="#name-assertion-issuance-at-a-tok" class="internal xref">Assertion Issuance at a Token Endpoint</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3.2.1">
-                    <p id="section-toc.1-1.6.2.3.2.1.1"><a href="#section-6.3.1" class="auto internal xref">6.3.1</a>.  <a href="#name-assertion-request" class="internal xref">Assertion Request</a></p>
+                    <p id="section-toc.1-1.6.2.3.2.1.1"><a href="#section-6.3.1" class="auto internal xref">6.3.1</a>.  <a href="#name-request" class="internal xref">Request</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3.2.2">
-                    <p id="section-toc.1-1.6.2.3.2.2.1"><a href="#section-6.3.2" class="auto internal xref">6.3.2</a>.  <a href="#name-assertion-response" class="internal xref">Assertion Response</a></p>
+                    <p id="section-toc.1-1.6.2.3.2.2.1"><a href="#section-6.3.2" class="auto internal xref">6.3.2</a>.  <a href="#name-successful-response" class="internal xref">Successful Response</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.3.2.3">
                     <p id="section-toc.1-1.6.2.3.2.3.1"><a href="#section-6.3.3" class="auto internal xref">6.3.3</a>.  <a href="#name-error-response" class="internal xref">Error Response</a></p>
@@ -1218,7 +1218,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.6.2.4.1"><a href="#section-6.4" class="auto internal xref">6.4</a>.  <a href="#name-token-exchange" class="internal xref">Token Exchange</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4.2.1">
-                    <p id="section-toc.1-1.6.2.4.2.1.1"><a href="#section-6.4.1" class="auto internal xref">6.4.1</a>.  <a href="#name-request" class="internal xref">Request</a></p>
+                    <p id="section-toc.1-1.6.2.4.2.1.1"><a href="#section-6.4.1" class="auto internal xref">6.4.1</a>.  <a href="#name-request-2" class="internal xref">Request</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4.2.2">
                     <p id="section-toc.1-1.6.2.4.2.2.1"><a href="#section-6.4.2" class="auto internal xref">6.4.2</a>.  <a href="#name-establishing-a-chain" class="internal xref">Establishing a Chain</a></p>
@@ -1233,7 +1233,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                     <p id="section-toc.1-1.6.2.4.2.5.1"><a href="#section-6.4.5" class="auto internal xref">6.4.5</a>.  <a href="#name-replay-reservation-and-retr" class="internal xref">Replay Reservation and Retry</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4.2.6">
-                    <p id="section-toc.1-1.6.2.4.2.6.1"><a href="#section-6.4.6" class="auto internal xref">6.4.6</a>.  <a href="#name-successful-response" class="internal xref">Successful Response</a></p>
+                    <p id="section-toc.1-1.6.2.4.2.6.1"><a href="#section-6.4.6" class="auto internal xref">6.4.6</a>.  <a href="#name-successful-response-2" class="internal xref">Successful Response</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.6.2.4.2.7">
                     <p id="section-toc.1-1.6.2.4.2.7.1"><a href="#section-6.4.7" class="auto internal xref">6.4.7</a>.  <a href="#name-onward-id-jag-construction" class="internal xref">Onward ID-JAG Construction</a></p>
@@ -1485,9 +1485,9 @@ boundary, never a bearer of standing authority.<a href="#section-1-3" class="pil
 <p id="section-1-4">This protocol assigns obligations to two roles in the trust domain a chain
 continues from: a RAS that accepts an ID-JAG and binds the hop, and a
 Continuation Assertion Issuer (CAI) that mints the assertion the workload
-presents to the IdP. It defines their cross-domain artifacts while leaving
-intra-domain assertion issuance and handle transport to the deployment
-(<a href="#overview" class="auto internal xref">Section 6.1</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
+presents to the IdP. It defines their cross-domain artifacts and one request
+for obtaining the assertion at a CAI token endpoint, leaving intra-domain
+handle transport to the deployment (<a href="#overview" class="auto internal xref">Section 6.1</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
 <p id="section-1-5">The profile stays deliberately narrow: it defines no new access-token format,
 a Resource Server never consumes the Identity Continuation Assertion directly,
 and a CAI never names the user for the target audience.<a href="#section-1-5" class="pilcrow">¶</a></p>
@@ -1913,14 +1913,14 @@ management for that purpose.<a href="#section-5-10" class="pilcrow">¶</a></p>
 <code>subject_token</code> (<a href="#assertion" class="auto internal xref">Section 3</a>, <a href="#token-exchange" class="auto internal xref">Section 6.4</a>);<a href="#section-6.1-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-6.1-2.3">
-            <p id="section-6.1-2.3.1">the IdP's validation of that exchange (<a href="#validation" class="auto internal xref">Section 6.4.4</a>);<a href="#section-6.1-2.3.1" class="pilcrow">¶</a></p>
+            <p id="section-6.1-2.3.1">Token Exchange issuance of the assertion by a CAI that is an authorization
+server (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>);<a href="#section-6.1-2.3.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-6.1-2.4">
-            <p id="section-6.1-2.4.1">RAS binding of the handle from an accepted ID-JAG (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>);<a href="#section-6.1-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-6.1-2.4.1">the IdP's validation of the continuation exchange (<a href="#validation" class="auto internal xref">Section 6.4.4</a>);<a href="#section-6.1-2.4.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-6.1-2.5">
-            <p id="section-6.1-2.5.1">Token Exchange issuance of the assertion by a CAI that is an authorization
-server (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>); and<a href="#section-6.1-2.5.1" class="pilcrow">¶</a></p>
+            <p id="section-6.1-2.5.1">RAS binding of the handle from an accepted ID-JAG (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>); and<a href="#section-6.1-2.5.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-6.1-2.6">
             <p id="section-6.1-2.6.1">optional Authorization Server metadata, including
@@ -1955,7 +1955,7 @@ base protocol resuming at a RAS that does not implement this extension
   | access token  [new: RAS binds H0]     |              |
   |&lt;--------------------------------------|              |
   |           |              |            |              |
-  |           | request assertion [intra-domain]         |
+  |           | request assertion [new: token exchange]  |
   |           |--------------------------&gt;|              |
   |           | assertion [new: resolve H0, attest]      |
   |           |&lt;--------------------------|              |
@@ -1977,7 +1977,8 @@ continues is a later party, not the original client that established the chain.<
 <p id="section-6.1-8">Each role validates only within its authority, and no artifact or role alone
 authorizes continuation (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). The sections that follow
 trace artifact production and processing: the CAI issues the assertion
-(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>), the IdP validates the exchange and issues the next
+(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>, <a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>), the IdP validates the
+exchange and issues the next
 ID-JAG (<a href="#token-exchange" class="auto internal xref">Section 6.4</a>), the accepting RAS binds and processes it
 (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>), and the domain surfaces the handle to later continuers
 (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#section-6.1-8" class="pilcrow">¶</a></p>
@@ -1990,8 +1991,9 @@ ID-JAG (<a href="#token-exchange" class="auto internal xref">Section 6.4</a>), t
         </h3>
 <p id="section-6.2-1">The CAI mints the Identity Continuation Assertion a workload presents to
 continue a chain across a boundary. It <span class="bcp14">MUST</span> issue only for an actor in the
-attested RAS's trust domain; actor authentication and the issuance protocol
-are deployment-specific. The CAI <span class="bcp14">MUST</span> set the assertion's <code>aud</code> to the IdP
+attested RAS's trust domain; actor authentication is deployment-specific, and
+<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a> profiles one issuance request. The CAI <span class="bcp14">MUST</span> set
+the assertion's <code>aud</code> to the IdP
 recorded in the hop's RAS binding (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>); it <span class="bcp14">MUST NOT</span> accept an
 IdP audience supplied by the requester.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
 <p id="section-6.2-2">The current actor is a control-plane participant, not a bare-handle
@@ -2031,19 +2033,22 @@ decision, and propagated context <span class="bcp14">MUST NOT</span> override th
 </div>
 <div id="assertion-token-exchange">
 <section id="section-6.3">
-        <h3 id="name-assertion-request-and-respo">
-<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-assertion-request-and-respo" class="section-name selfRef">Assertion Request and Response</a>
+        <h3 id="name-assertion-issuance-at-a-tok">
+<a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-assertion-issuance-at-a-tok" class="section-name selfRef">Assertion Issuance at a Token Endpoint</a>
         </h3>
-<p id="section-6.3-1">A CAI that is an OAuth authorization server, including a RAS acting as its own
-CAI, <span class="bcp14">MAY</span> issue assertions from its token endpoint using Token Exchange
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> as profiled in this section. A RAS acting as its own CAI <span class="bcp14">SHOULD</span>
-support this profile, so that a Resource Server in its domain has one request
-to implement. Issuance by other means remains deployment-specific
+<p id="section-6.3-1">This section profiles one interoperable request that meets the requirements
+of <a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>. A CAI that is an OAuth authorization server,
+including a RAS acting as its own CAI, <span class="bcp14">MAY</span> issue assertions from its token
+endpoint using Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> as profiled here. A RAS acting as
+its own CAI <span class="bcp14">SHOULD</span> support this profile, so that a workload in its domain has
+one request to implement. Issuance by other means remains deployment-specific
 (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2">The requesting party is the current actor (<a href="#terms" class="auto internal xref">Section 2</a>), acting as an OAuth
+client of the CAI; this section calls it the client.<a href="#section-6.3-2" class="pilcrow">¶</a></p>
 <div id="assertion-request">
 <section id="section-6.3.1">
-          <h4 id="name-assertion-request">
-<a href="#section-6.3.1" class="section-number selfRef">6.3.1. </a><a href="#name-assertion-request" class="section-name selfRef">Assertion Request</a>
+          <h4 id="name-request">
+<a href="#section-6.3.1" class="section-number selfRef">6.3.1. </a><a href="#name-request" class="section-name selfRef">Request</a>
           </h4>
 <p id="section-6.3.1-1">The client makes a Token Exchange request to the CAI's token endpoint with the
 following parameters:<a href="#section-6.3.1-1" class="pilcrow">¶</a></p>
@@ -2088,7 +2093,7 @@ assertion to the proven key in <code>cnf</code>. For example:<a href="#section-6
 <div class="alignLeft art-text artwork" id="section-6.3.1-5">
 <pre>
 POST /token HTTP/1.1
-Host: ras.gateway.example
+Host: cai.example
 Content-Type: application/x-www-form-urlencoded
 DPoP: &lt;proof of possession of the key to be placed in cnf&gt;
 
@@ -2100,25 +2105,32 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;JWT&gt;
 </pre><a href="#section-6.3.1-5" class="pilcrow">¶</a>
 </div>
-<p id="section-6.3.1-6">The CAI <span class="bcp14">MUST</span> verify that the <code>subject_token</code> is either an access token issued
-by a RAS the CAI is mapped to, unexpired, and valid for a protected resource
-that the authenticated client operates, or a Transaction Token issued by the
-domain's Transaction Token Service, unexpired, and carrying the hop's handle
-as chain context (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). In the first case the client acts
-in the role that <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.3, describes for a resource server
-exchanging a token it received; a RAS acting as CAI resolves its own token,
-and a separate CAI resolves it through introspection <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. In the
-second case the Transaction Token is the carrier. Either way, the authorization
-behind the token is the one the preconditions of <a href="#assertion-issuance" class="auto internal xref">Section 6.2</a> test:
-its bound handle and live state satisfy preconditions 5 and 6, the
-authenticated client is the actor of preconditions 2 and 4, and the DPoP key is
-the key of precondition 3.<a href="#section-6.3.1-6" class="pilcrow">¶</a></p>
+<p id="section-6.3.1-6">The CAI <span class="bcp14">MUST</span> verify that the <code>subject_token</code> is one of the following:<a href="#section-6.3.1-6" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6.3.1-7.1">
+              <p id="section-6.3.1-7.1.1">an access token issued by a RAS the CAI is mapped to, unexpired, and valid
+for a protected resource that the authenticated client operates. The client
+is then a resource server exchanging a token it received, the scenario of
+the example in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.3. A RAS acting as CAI resolves its
+own token; a separate CAI resolves it through introspection <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>; or<a href="#section-6.3.1-7.1.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="section-6.3.1-7.2">
+              <p id="section-6.3.1-7.2.1">a Transaction Token issued by the domain's Transaction Token Service,
+unexpired, and carrying the hop's handle as chain context
+(<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). The Transaction Token is the carrier.<a href="#section-6.3.1-7.2.1" class="pilcrow">¶</a></p>
+</li>
+          </ul>
+<p id="section-6.3.1-8">Either way, the authorization behind the token is the one the preconditions of
+<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a> test: the token's integrity protection and the
+authenticated request satisfy precondition 1, the authenticated client is the
+actor of preconditions 2 and 4, the DPoP key is the key of precondition 3, and
+the bound handle and live state satisfy preconditions 5 and 6.<a href="#section-6.3.1-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="assertion-response">
 <section id="section-6.3.2">
-          <h4 id="name-assertion-response">
-<a href="#section-6.3.2" class="section-number selfRef">6.3.2. </a><a href="#name-assertion-response" class="section-name selfRef">Assertion Response</a>
+          <h4 id="name-successful-response">
+<a href="#section-6.3.2" class="section-number selfRef">6.3.2. </a><a href="#name-successful-response" class="section-name selfRef">Successful Response</a>
           </h4>
 <p id="section-6.3.2-1">A successful response is a Token Exchange response (<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section
 2.2.1) in which <code>access_token</code> carries the Identity Continuation Assertion,
@@ -2154,9 +2166,9 @@ Pragma: no-cache
 <ul class="normal">
 <li class="normal" id="section-6.3.3-2.1">
               <p id="section-6.3.3-2.1.1"><code>invalid_request</code> when the <code>subject_token</code> is invalid or unacceptable under
-policy, including when it is unknown, expired, revoked, not valid for the
-client's resource, has no bound handle, or names an authorization the client
-is not permitted to continue;<a href="#section-6.3.3-2.1.1" class="pilcrow">¶</a></p>
+policy, including when it is unknown, expired, revoked, not valid for a
+resource the client operates, has no bound handle, or names an authorization
+the client is not permitted to continue;<a href="#section-6.3.3-2.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-6.3.3-2.2">
               <p id="section-6.3.3-2.2.1"><code>unauthorized_client</code> when the client is not permitted to use this grant
@@ -2187,8 +2199,8 @@ target's RAS; the onward ID-JAG <code>client_id</code> is that identifier
 (<a href="#onward-id-jag" class="auto internal xref">Section 6.4.7</a>).<a href="#section-6.4-1" class="pilcrow">¶</a></p>
 <div id="request">
 <section id="section-6.4.1">
-          <h4 id="name-request">
-<a href="#section-6.4.1" class="section-number selfRef">6.4.1. </a><a href="#name-request" class="section-name selfRef">Request</a>
+          <h4 id="name-request-2">
+<a href="#section-6.4.1" class="section-number selfRef">6.4.1. </a><a href="#name-request-2" class="section-name selfRef">Request</a>
           </h4>
 <p id="section-6.4.1-1">The root exchange presents a normal subject token, such as an ID Token,
 refresh token, or SAML assertion:<a href="#section-6.4.1-1" class="pilcrow">¶</a></p>
@@ -2577,8 +2589,8 @@ idempotency remains out of scope. Realization guidance is in <a href="#implement
 </div>
 <div id="success-response">
 <section id="section-6.4.6">
-          <h4 id="name-successful-response">
-<a href="#section-6.4.6" class="section-number selfRef">6.4.6. </a><a href="#name-successful-response" class="section-name selfRef">Successful Response</a>
+          <h4 id="name-successful-response-2">
+<a href="#section-6.4.6" class="section-number selfRef">6.4.6. </a><a href="#name-successful-response-2" class="section-name selfRef">Successful Response</a>
           </h4>
 <p id="section-6.4.6-1">The Token Exchange response follows the base ID-JAG profile: the ID-JAG is
 returned in <code>access_token</code>, with <code>token_type</code> <code>N_A</code>.<a href="#section-6.4.6-1" class="pilcrow">¶</a></p>
@@ -2964,12 +2976,10 @@ in <code>identity_continuation_issuers</code>. The RAS still advertises the cont
 profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). Both topologies produce
 the same Identity Continuation Assertion and apply the same CAI requirements;
-they differ only in how the CAI reaches the accepted hop's state. A co-located
-RAS issues the assertion from its own token endpoint
-(<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>), so the workload presents the access token it
-received and needs neither the handle nor a carrier. A separate CAI that is an
-authorization server can offer the same exchange, taking the carrier
-Transaction Token as the <code>subject_token</code>.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
+they differ only in how the CAI reaches the accepted hop's state. Either CAI
+can issue the assertion from its token endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>):
+a co-located RAS takes the access token it issued as the <code>subject_token</code>, and a
+separate CAI takes the token that carries the handle.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
 <p id="section-8.1-3">With a separate CAI, a deployment can propagate the handle in several ways:<a href="#section-8.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-8.1-4.1">
@@ -3925,7 +3935,7 @@ grant before crossing the boundary:<a href="#appendix-B.1-11" class="pilcrow">¶
 <pre>
  ExpenseService  Expense CAI        IdP        TravelRAS TravelAPI/TTS
        |              |             |             |             |
-       |-request H0--&gt;|             |             |             |
+       |-exchange TT-&gt;|             |             |             |
        |&lt;-assertion---|             |             |             |
        |---------------------------&gt;|             |             |
        |     assertion + DPoP       |             |             |
@@ -4426,7 +4436,7 @@ state:<a href="#appendix-B.2.2-1" class="pilcrow">¶</a></p>
 <pre>
  BriefingAgent    Platform CAI       IdP         CalendarRAS
        |               |             |               |
-       |--request H0--&gt;|             |               |
+       |--exchange TT-&gt;|             |               |
        |&lt;-assertion----|             |               |
        |----------------------------&gt;|               |
        |      assertion + DPoP       |               |
@@ -4444,8 +4454,10 @@ the TTS, after confirming <code>task-123</code> is active and BriefingAgent is i
 designated actor, derives H0 into fresh intra-domain context
 (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). Neither the Scheduler nor BriefingAgent
 selects H0.<a href="#appendix-B.2.2-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.2.2-6">Before issuing, Platform CAI authenticates <code>briefing-agent</code>, verifies its key
-and transaction, and rechecks that PlatformRAS's H0 authorization remains
+<p id="appendix-B.2.2-6">BriefingAgent exchanges that Transaction Token at Platform CAI's token
+endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>). Before issuing, Platform CAI
+authenticates <code>briefing-agent</code>, verifies its key and transaction, and rechecks
+that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in
 <a href="#example-ica" class="auto internal xref">Appendix B.1.3</a> and <a href="#example-chained" class="auto internal xref">Appendix B.1.4</a>.<a href="#appendix-B.2.2-6" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.2-7">Each run presents H0 and receives a different child. CalendarRAS is terminal,
