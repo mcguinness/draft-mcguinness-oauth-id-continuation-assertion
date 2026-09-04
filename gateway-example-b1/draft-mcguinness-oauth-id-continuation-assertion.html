@@ -3892,8 +3892,10 @@ and the gateway holds no assertion of Alice's identity addressed to it. This
 example shows the gateway obtaining an audience-specific ID-JAG for the wiki
 without ever seeing Alice's credential. It is the simplest deployment of this
 profile and the one a gateway vendor implements.<a href="#appendix-B.1-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.1-2">Topology: co-located. GatewayRAS holds the CAI role and carries the handle in
-the access tokens it issues.<a href="#appendix-B.1-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.1-2">Topology: co-located. GatewayRAS is the Resource Authorization Server (RAS)
+that accepts the ID-JAG and also the Continuation Assertion Issuer (CAI) for
+the hops it accepts, so it needs no separate CAI mapping. It carries the
+handle in the access tokens it issues.<a href="#appendix-B.1-2" class="pilcrow">¶</a></p>
 <p id="appendix-B.1-3">All parties trust one enterprise IdP at <code>https://idp.example/</code>, tenant
 <code>tenant-123</code>. Alice has pairwise subjects at GatewayRAS and WikiRAS, which
 only the IdP can map.<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
@@ -3921,14 +3923,14 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
     |            |               |                |               |
     |-ID Token--&gt;|               |                |               |
     |&lt;-ID-JAG H0-|               |                |               |
-    |----jwt-bearer: ID-JAG-----&gt;| bind H0        |               |
+    |-jwt-bearer: ID-JAG + DPoP-&gt;| bind H0        |               |
     |&lt;--access token, H0 claim---|                |               |
     |----------tool call with AT + DPoP----------&gt;|               |
     |            |               |&lt;--exchange AT--|               |
     |            |               |-assertion H0--&gt;|               |
     |            |&lt;-assertion, actor token, DPoP--|               |
     |            |-----------ID-JAG H1-----------&gt;|               |
-    |            |               |                |----ID-JAG----&gt;|
+    |            |               |                |-ID-JAG, DPoP-&gt;|
     |            |               |                |   (no binding)|
     |            |               |                |&lt;---wiki AT----|
     |            |               |                |-call WikiAPI-&gt;|
@@ -3940,7 +3942,8 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
           <h4 id="name-root-exchange">
 <a href="#appendix-B.1.1" class="section-number selfRef">B.1.1. </a><a href="#name-root-exchange" class="section-name selfRef">Root Exchange</a>
           </h4>
-<p id="appendix-B.1.1-1">AgentApp exchanges Alice's ID Token for an ID-JAG addressed to GatewayRAS, the
+<p id="appendix-B.1.1-1">AgentApp exchanges Alice's ID Token, whose <code>sid</code> anchors the chain to her IdP
+session (<a href="#root-establishment" class="auto internal xref">Section 6.4.2</a>), for an ID-JAG addressed to GatewayRAS, the
 one audience it knows:<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1.1-2">
 <pre>
@@ -4002,12 +4005,26 @@ permits <code>tool-gateway</code> to continue it.<a href="#appendix-B.1.1-3" cla
 <a href="#appendix-B.1.2" class="section-number selfRef">B.1.2. </a><a href="#name-gatewayras-binds-h0-and-iss" class="section-name selfRef">GatewayRAS Binds H0 and Issues the Access Token</a>
           </h4>
 <p id="appendix-B.1.2-1">AgentApp redeems the ID-JAG at GatewayRAS with the jwt-bearer grant, exactly
-as for any ID-JAG. GatewayRAS also recognizes the continuation profile: in one
-outcome with token issuance, it binds H0, the issuing IdP, the tenant, and the
-confirmed key to the authorization state behind the access token
-(<a href="#ras-processing" class="auto internal xref">Section 6.5</a>).<a href="#appendix-B.1.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.2-2">Server-side state at GatewayRAS:<a href="#appendix-B.1.2-2" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.2-3">
+as for any ID-JAG, proving the same key the ID-JAG is bound to:<a href="#appendix-B.1.2-1" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.1.2-2">
+<pre>
+POST /token HTTP/1.1
+Host: ras.gateway.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof signed by the agent-app key&gt;
+
+grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
+&amp;assertion=&lt;the ID-JAG above&gt;
+&amp;client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&amp;client_assertion=&lt;agent-app JWT&gt;
+</pre><a href="#appendix-B.1.2-2" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1.2-3">GatewayRAS advertises the continuation grant profile (<a href="#metadata" class="auto internal xref">Section 7</a>) and so
+recognizes the handle. It binds H0, the issuing IdP, the tenant it associates
+with that IdP, and the confirmed key to the authorization state behind the
+access token, in the same outcome that issues the token (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>).<a href="#appendix-B.1.2-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.2-4">Server-side state at GatewayRAS:<a href="#appendix-B.1.2-4" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.2-5">
 <pre>
 {
   "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
@@ -4019,12 +4036,12 @@ confirmed key to the authorization state behind the access token
   "cnf_jkt": "base64url-agent-app-key-thumbprint",
   "bound_at": 1710000210
 }
-</pre><a href="#appendix-B.1.2-3" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.2-5" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.2-4">GatewayRAS issues the access token as a signed JWT that carries H0 as a claim,
-the access-token carrier of <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>.<a href="#appendix-B.1.2-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.2-5">On the wire (decoded access token):<a href="#appendix-B.1.2-5" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.2-6">
+<p id="appendix-B.1.2-6">GatewayRAS issues the access token as a signed JWT that carries H0 as a claim,
+the access-token carrier of <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>.<a href="#appendix-B.1.2-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.2-7">On the wire (decoded access token):<a href="#appendix-B.1.2-7" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.2-8">
 <pre>
 {
   "iss": "https://ras.gateway.example/",
@@ -4040,11 +4057,11 @@ the access-token carrier of <a href="#deployment-topologies" class="auto interna
   "exp": 1710000810,
   "jti": "at-gw-0001"
 }
-</pre><a href="#appendix-B.1.2-6" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.2-8" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.2-7">AgentApp calls the gateway with this token and a DPoP proof. It chooses which
+<p id="appendix-B.1.2-9">AgentApp calls the gateway with this token and a DPoP proof. It chooses which
 token to present, and with it which authorization, but cannot alter the handle
-inside the token or pair it with another token's key.<a href="#appendix-B.1.2-7" class="pilcrow">¶</a></p>
+inside the token or pair it with another token's key.<a href="#appendix-B.1.2-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-ica">
@@ -4073,12 +4090,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;tool-gateway JWT&gt;
 </pre><a href="#appendix-B.1.3-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.3-3">GatewayRAS confirms the token is its own, unexpired, and valid for the
-resource <code>tool-gateway</code> operates; reads H0 from it and rechecks that the
-binding is still active; confirms that policy permits <code>tool-gateway</code> to
-continue; and issues the assertion bound to the proven key.<a href="#appendix-B.1.3-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.3-4">On the wire (decoded assertion):<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.3-5">
+<p id="appendix-B.1.3-3">The access token is bound to the <code>agent-app</code> key; the DPoP proof on this
+request proves the <code>tool-gateway</code> key, which GatewayRAS places in the
+assertion's <code>cnf</code>, and is not matched against the token's own <code>cnf</code>. No
+<code>audience</code>, <code>resource</code>, or <code>scope</code> is sent: the upstream is chosen at the IdP
+exchange, not here (<a href="#assertion-request" class="auto internal xref">Section 6.3.1</a>).<a href="#appendix-B.1.3-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-4">GatewayRAS confirms the token is its own, unexpired, and addressed to
+<code>https://gateway.example/</code>, the resource <code>tool-gateway</code> is registered to
+operate; reads H0 from it and rechecks that the binding is still active;
+confirms that policy permits <code>tool-gateway</code> to continue; and issues the
+assertion bound to the proven key.<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-5">On the wire (decoded assertion):<a href="#appendix-B.1.3-5" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.3-6">
 <pre>
 {
   "iss": "https://ras.gateway.example/",
@@ -4096,12 +4119,12 @@ continue; and issues the assertion bound to the proven key.<a href="#appendix-B.
 
   "iat": 1710000230,
   "exp": 1710000350,
-  "jti": "Rf2vQ7nLp4Kx9sYw1CdB6h"
+  "jti": "ica-gw-0001"
 }
-</pre><a href="#appendix-B.1.3-5" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.3-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.3-6">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
-can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-7">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
+can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-continue">
@@ -4111,7 +4134,9 @@ can substitute another handle (<a href="#handle-propagation" class="auto interna
           </h4>
 <p id="appendix-B.1.4-1">ToolGateway presents the assertion to the IdP as the <code>subject_token</code> of a
 continuation exchange, with its actor credential and a DPoP proof of the same
-key, requesting an ID-JAG for WikiRAS:<a href="#appendix-B.1.4-1" class="pilcrow">¶</a></p>
+key, requesting an ID-JAG for WikiRAS. <code>tool-gateway</code> is a registered client
+of the IdP; its sender-constrained credential serves as both client assertion
+and <code>actor_token</code> under the dual-use rule of <a href="#client-identity" class="auto internal xref">Section 6.4.3</a>:<a href="#appendix-B.1.4-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1.4-2">
 <pre>
 POST /token HTTP/1.1
@@ -4136,8 +4161,10 @@ separate CAI mapping. H0 names an accepted hop on an active chain. The <code>act
 claim names <code>tool-gateway</code>, the authenticated client, and the DPoP proof
 matches <code>cnf</code>. The wiki target falls within the recorded basis, Alice's
 standing consent and tenant policy, which is how a target nobody enumerated
-at root time is admitted. The IdP resolves Alice's wiki subject and issues the
-ID-JAG with H1 and <code>tool-gateway</code> atop <code>agent-app</code> in the lineage.<a href="#appendix-B.1.4-3" class="pilcrow">¶</a></p>
+at root time is admitted; <code>wiki.read</code> is evaluated against that basis, not
+against the root <code>tools.invoke</code> scope. The IdP resolves Alice's wiki subject
+and issues the ID-JAG with H1 and <code>tool-gateway</code> atop <code>agent-app</code> in the
+lineage.<a href="#appendix-B.1.4-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.4-4">On the wire (decoded ID-JAG for WikiRAS):<a href="#appendix-B.1.4-4" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.4-5">
 <pre>
@@ -4175,8 +4202,9 @@ ID-JAG with H1 and <code>tool-gateway</code> atop <code>agent-app</code> in the 
 }
 </pre><a href="#appendix-B.1.4-5" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-6">A target outside the basis fails with <code>invalid_target</code>; <a href="#example-dynamic" class="auto internal xref">Appendix B.3.3</a>
-shows one.<a href="#appendix-B.1.4-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-6">A target outside the basis fails with <code>invalid_target</code>; the chain stays
+continuable and only that tool call fails (<a href="#error-response" class="auto internal xref">Section 6.4.8</a>).
+<a href="#example-dynamic" class="auto internal xref">Appendix B.3.3</a> shows one.<a href="#appendix-B.1.4-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-terminal">
@@ -4190,7 +4218,7 @@ validates the ID-JAG as the base profile requires, ignores the handle, and
 issues an access token without binding H1 (<a href="#ras-processing" class="auto internal xref">Section 6.5</a>). ToolGateway
 calls WikiAPI as Alice's wiki subject and returns the result to AgentApp. Each
 further tool call repeats the exchange of <a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.3</a> and creates
-a sibling hop under H0.<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
+a sibling hop under H0 (H2, and so on).<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-checklist">

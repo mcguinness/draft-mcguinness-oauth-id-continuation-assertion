@@ -2120,8 +2120,11 @@ B.1.  Gateway Example (Co-located RAS and CAI)
    credential.  It is the simplest deployment of this profile and the
    one a gateway vendor implements.
 
-   Topology: co-located.  GatewayRAS holds the CAI role and carries the
-   handle in the access tokens it issues.
+   Topology: co-located.  GatewayRAS is the Resource Authorization
+   Server (RAS) that accepts the ID-JAG and also the Continuation
+   Assertion Issuer (CAI) for the hops it accepts, so it needs no
+   separate CAI mapping.  It carries the handle in the access tokens it
+   issues.
 
    All parties trust one enterprise IdP at https://idp.example/, tenant
    tenant-123.  Alice has pairwise subjects at GatewayRAS and WikiRAS,
@@ -2146,14 +2149,14 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
     |            |               |                |               |
     |-ID Token-->|               |                |               |
     |<-ID-JAG H0-|               |                |               |
-    |----jwt-bearer: ID-JAG----->| bind H0        |               |
+    |-jwt-bearer: ID-JAG + DPoP->| bind H0        |               |
     |<--access token, H0 claim---|                |               |
     |----------tool call with AT + DPoP---------->|               |
     |            |               |<--exchange AT--|               |
     |            |               |-assertion H0-->|               |
     |            |<-assertion, actor token, DPoP--|               |
     |            |-----------ID-JAG H1----------->|               |
-    |            |               |                |----ID-JAG---->|
+    |            |               |                |-ID-JAG, DPoP->|
     |            |               |                |   (no binding)|
     |            |               |                |<---wiki AT----|
     |            |               |                |-call WikiAPI->|
@@ -2161,7 +2164,8 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 
 B.1.1.  Root Exchange
 
-   AgentApp exchanges Alice's ID Token for an ID-JAG addressed to
+   AgentApp exchanges Alice's ID Token, whose sid anchors the chain to
+   her IdP session (Section 6.4.2), for an ID-JAG addressed to
    GatewayRAS, the one audience it knows:
 
 POST /token HTTP/1.1
@@ -2215,10 +2219,24 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 B.1.2.  GatewayRAS Binds H0 and Issues the Access Token
 
    AgentApp redeems the ID-JAG at GatewayRAS with the jwt-bearer grant,
-   exactly as for any ID-JAG.  GatewayRAS also recognizes the
-   continuation profile: in one outcome with token issuance, it binds
-   H0, the issuing IdP, the tenant, and the confirmed key to the
-   authorization state behind the access token (Section 6.5).
+   exactly as for any ID-JAG, proving the same key the ID-JAG is bound
+   to:
+
+POST /token HTTP/1.1
+Host: ras.gateway.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the agent-app key>
+
+grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
+&assertion=<the ID-JAG above>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<agent-app JWT>
+
+   GatewayRAS advertises the continuation grant profile (Section 7) and
+   so recognizes the handle.  It binds H0, the issuing IdP, the tenant
+   it associates with that IdP, and the confirmed key to the
+   authorization state behind the access token, in the same outcome that
+   issues the token (Section 6.5).
 
    Server-side state at GatewayRAS:
 
@@ -2280,11 +2298,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<tool-gateway JWT>
 
-   GatewayRAS confirms the token is its own, unexpired, and valid for
-   the resource tool-gateway operates; reads H0 from it and rechecks
-   that the binding is still active; confirms that policy permits tool-
-   gateway to continue; and issues the assertion bound to the proven
-   key.
+   The access token is bound to the agent-app key; the DPoP proof on
+   this request proves the tool-gateway key, which GatewayRAS places in
+   the assertion's cnf, and is not matched against the token's own cnf.
+   No audience, resource, or scope is sent: the upstream is chosen at
+   the IdP exchange, not here (Section 6.3.1).
+
+   GatewayRAS confirms the token is its own, unexpired, and addressed to
+   https://gateway.example/, the resource tool-gateway is registered to
+   operate; reads H0 from it and rechecks that the binding is still
+   active; confirms that policy permits tool-gateway to continue; and
+   issues the assertion bound to the proven key.
 
    On the wire (decoded assertion):
 
@@ -2304,7 +2328,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
      "iat": 1710000230,
      "exp": 1710000350,
-     "jti": "Rf2vQ7nLp4Kx9sYw1CdB6h"
+     "jti": "ica-gw-0001"
    }
 
    Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so
@@ -2314,7 +2338,10 @@ B.1.4.  ToolGateway Continues to WikiRAS
 
    ToolGateway presents the assertion to the IdP as the subject_token of
    a continuation exchange, with its actor credential and a DPoP proof
-   of the same key, requesting an ID-JAG for WikiRAS:
+   of the same key, requesting an ID-JAG for WikiRAS. tool-gateway is a
+   registered client of the IdP; its sender-constrained credential
+   serves as both client assertion and actor_token under the dual-use
+   rule of Section 6.4.3:
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -2337,9 +2364,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    an active chain.  The act claim names tool-gateway, the authenticated
    client, and the DPoP proof matches cnf.  The wiki target falls within
    the recorded basis, Alice's standing consent and tenant policy, which
-   is how a target nobody enumerated at root time is admitted.  The IdP
-   resolves Alice's wiki subject and issues the ID-JAG with H1 and tool-
-   gateway atop agent-app in the lineage.
+   is how a target nobody enumerated at root time is admitted; wiki.read
+   is evaluated against that basis, not against the root tools.invoke
+   scope.  The IdP resolves Alice's wiki subject and issues the ID-JAG
+   with H1 and tool-gateway atop agent-app in the lineage.
 
    On the wire (decoded ID-JAG for WikiRAS):
 
@@ -2376,8 +2404,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      "jti": "idjag-wiki-01"
    }
 
-   A target outside the basis fails with invalid_target; Appendix B.3.3
-   shows one.
+   A target outside the basis fails with invalid_target; the chain stays
+   continuable and only that tool call fails (Section 6.4.8).
+   Appendix B.3.3 shows one.
 
 B.1.5.  WikiRAS Redeems an Ordinary ID-JAG
 
@@ -2387,7 +2416,8 @@ B.1.5.  WikiRAS Redeems an Ordinary ID-JAG
    ignores the handle, and issues an access token without binding H1
    (Section 6.5).  ToolGateway calls WikiAPI as Alice's wiki subject and
    returns the result to AgentApp.  Each further tool call repeats the
-   exchange of Appendix B.1.3 and creates a sibling hop under H0.
+   exchange of Appendix B.1.3 and creates a sibling hop under H0 (H2,
+   and so on).
 
 B.1.6.  What a Gateway Implements
 
