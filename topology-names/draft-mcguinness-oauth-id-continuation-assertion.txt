@@ -530,10 +530,11 @@ Table of Contents
    handle reaches that CAI inside the RAS's trust domain, are
    deployment-specific, subject to the provenance rule in Section 6.6.
 
-   The RAS and CAI roles may be held by the same party (co-located) or
-   by a separate party (separate); see Section 8.1.  The IdP accepts an
-   assertion for a hop only from a CAI mapped to the hop's accepting RAS
-   (Section 6.3.4, rule 3), and the RAS itself is always mapped.
+   The accepting RAS may itself hold the CAI role (co-located), or a
+   separately mapped CAI may hold it (separate); see Section 8.1.  The
+   IdP accepts an assertion for a hop only from a CAI mapped to the
+   hop's accepting RAS (Section 6.3.4, rule 3), and the RAS itself is
+   always mapped.
 
    A continuation reuses the Token Exchange loop once per boundary: the
    root exchange mints the first ID-JAG, and each later boundary mints
