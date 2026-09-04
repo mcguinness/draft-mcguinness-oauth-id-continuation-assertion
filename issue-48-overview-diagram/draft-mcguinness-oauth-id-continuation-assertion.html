@@ -1644,8 +1644,8 @@ chain; see <a href="#chain-id" class="auto internal xref">Section 4</a>.<a href=
         <dd style="margin-left: 1.5em" id="section-2-3.32">
           <p id="section-2-3.32.1">A root or continuation record; a continuation record carries an immutable
 parent reference and a root record has none. Its lineage is its path to the
-root. A hop from which no workload continues is terminal, and its chain ends
-there.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
+root. A hop from which no workload continues is terminal; its branch ends
+there, while sibling branches may continue.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.33">Governing authorization:</dt>
@@ -1984,7 +1984,7 @@ base protocol resuming at a RAS that does not implement this extension
   |           |&lt;-------------|            |              |
   |           | jwt-bearer grant, ordinary ID-JAG        |
   |           |-----------------------------------------&gt;|
-  |           | access token, no binding (terminal)      |
+  |           | access token, no binding; branch ends    |
   |           |&lt;-----------------------------------------|
 </pre><a href="#section-6.1-5" class="pilcrow">¶</a>
 </div>
@@ -2590,10 +2590,9 @@ request.<a href="#section-6.3.8-3" class="pilcrow">¶</a></p>
         <h3 id="name-continuation-aware-ras-proc">
 <a href="#section-6.4" class="section-number selfRef">6.4. </a><a href="#name-continuation-aware-ras-proc" class="section-name selfRef">Continuation-Aware RAS Processing</a>
         </h3>
-<p id="section-6.4-1">Only a RAS from which continuation occurs implements this extension. A RAS
-that does not implement it processes an ordinary ID-JAG and ignores the handle.
-A chain's last hop is terminal whether or not its RAS bound the handle; an
-unbound hop simply cannot be continued.<a href="#section-6.4-1" class="pilcrow">¶</a></p>
+<p id="section-6.4-1">A RAS from which continuation may occur implements this extension. A RAS that
+does not implement it processes an ordinary ID-JAG and ignores the handle, so
+an ID-JAG it accepts cannot become a continuation source.<a href="#section-6.4-1" class="pilcrow">¶</a></p>
 <p id="section-6.4-2">A continuation-aware Resource Authorization Server, one that implements this
 extension and advertises the continuation grant profile (<a href="#metadata" class="auto internal xref">Section 7</a>), <span class="bcp14">MUST</span>,
 on accepting a continuation-capable ID-JAG:<a href="#section-6.4-2" class="pilcrow">¶</a></p>

@@ -328,7 +328,8 @@ Table of Contents
    Hop:  A root or continuation record; a continuation record carries an
       immutable parent reference and a root record has none.  Its
       lineage is its path to the root.  A hop from which no workload
-      continues is terminal, and its chain ends there.
+      continues is terminal; its branch ends there, while sibling
+      branches may continue.
 
    Governing authorization:  The server-side consent and policy record,
       resolved from the root subject token, that anchors a chain and
@@ -580,7 +581,7 @@ Table of Contents
      |           |<-------------|            |              |
      |           | jwt-bearer grant, ordinary ID-JAG        |
      |           |----------------------------------------->|
-     |           | access token, no binding (terminal)      |
+     |           | access token, no binding; branch ends    |
      |           |<-----------------------------------------|
 
    H1 then travels to the next boundary exactly as H0 did, and the loop
@@ -1107,10 +1108,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 6.4.  Continuation-Aware RAS Processing
 
-   Only a RAS from which continuation occurs implements this extension.
-   A RAS that does not implement it processes an ordinary ID-JAG and
-   ignores the handle.  A chain's last hop is terminal whether or not
-   its RAS bound the handle; an unbound hop simply cannot be continued.
+   A RAS from which continuation may occur implements this extension.  A
+   RAS that does not implement it processes an ordinary ID-JAG and
+   ignores the handle, so an ID-JAG it accepts cannot become a
+   continuation source.
 
    A continuation-aware Resource Authorization Server, one that
    implements this extension and advertises the continuation grant
