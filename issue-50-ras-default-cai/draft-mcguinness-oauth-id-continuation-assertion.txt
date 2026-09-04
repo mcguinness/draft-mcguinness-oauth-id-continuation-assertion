@@ -100,11 +100,12 @@ Table of Contents
        6.3.8.  Error Response and Recovery
      6.4.  Continuation-Aware RAS Processing
      6.5.  Hop Activation
-     6.6.  Intra-Domain Authorization Context and Handle Propagation
+     6.6.  Intra-Domain Handle Propagation
    7.  Authorization Server Metadata
      7.1.  IdP Authorization Server Metadata
      7.2.  Resource Authorization Server Metadata
    8.  Implementation Considerations
+     8.1.  Deployment Topologies
    9.  Security Considerations
      9.1.  Sender Constraint and Proof of Possession
      9.2.  Durable Task Authorization
@@ -113,6 +114,7 @@ Table of Contents
      9.5.  Envelope Enforcement and Offline Attenuation
      9.6.  Trust in Actor Token Issuers
      9.7.  Conjunctive Trust and Issuer Pairing
+       9.7.1.  Topology and Trust
      9.8.  Actor Chain Integrity
      9.9.  Token, Type, and Algorithm Confusion
      9.10. Metadata Disclosure
@@ -197,15 +199,12 @@ Table of Contents
    envelope.  Continuation therefore stays a fresh policy decision at
    every boundary, never a bearer of standing authority.
 
-   Each trust domain the chain continues from has two logical roles: a
-   RAS that accepts an ID-JAG and binds the hop, and a Continuation
-   Assertion Issuer (CAI) that mints the Identity Continuation Assertion
-   the workload presents to the IdP.  By default the accepting RAS also
-   performs the CAI role and resolves the handle directly from its
-   authorization state.  A deployment can instead use a separate CAI, in
-   which case a trusted intra-domain carrier surfaces the accepted hop's
-   handle to it (Section 6.6).  The carrier is a deployment choice, not
-   a role of its own (Section 9.7).
+   This protocol assigns obligations to two roles in the source trust
+   domain: a RAS that accepts an ID-JAG and binds the hop, and a
+   Continuation Assertion Issuer (CAI) that mints the assertion the
+   workload presents to the IdP.  It defines their cross-domain
+   artifacts while leaving intra-domain assertion issuance and handle
+   transport to the deployment (Section 6.1).
 
    The profile stays deliberately narrow: it defines no new access-token
    format, a Resource Server never consumes the Identity Continuation
@@ -248,8 +247,7 @@ Table of Contents
 
    *  continuation-exchange validation rules;
 
-   *  intra-domain authorization context and optional handle
-      propagation; and
+   *  intra-domain handle propagation; and
 
    *  discovery metadata.
 
@@ -294,10 +292,8 @@ Table of Contents
       (Section 5).
 
    Continuation Assertion Issuer (CAI):  The role trusted by the IdP to
-      issue Identity Continuation Assertions for a tenant.  The
-      accepting RAS performs this role by default; it may delegate the
-      role to a gateway or dedicated service.  A CAI never resolves the
-      target audience's user subject.
+      issue Identity Continuation Assertions for a tenant.  It never
+      resolves the target audience's user subject.
 
    Current actor (presenting actor):  The workload presenting the
       assertion to the IdP, named by act and authenticated by
@@ -451,8 +447,7 @@ Table of Contents
    3.  Across a trust boundary, the handle is accepted only inside an
        ID-JAG (by the RAS) or an Identity Continuation Assertion (by the
        IdP), never as a standalone value.  Inside the accepting RAS's
-       domain it remains in RAS state or travels only by a carrier
-       (Section 6.6).
+       domain it travels only by a carrier (Section 6.6).
 
    4.  A continuation-aware RAS binds the handle to the authorization
        state it establishes (Section 6.4); RASes, Resource Servers, and
@@ -525,6 +520,30 @@ Table of Contents
    the next from an Identity Continuation Assertion.  Handles H0 and H1
    below name the successive hops (Section 4).
 
+   +===============================+==================+===============+
+   | Interface                     | Between          | Status        |
+   +===============================+==================+===============+
+   | ID-JAG carrying the handle    | IdP, client, RAS | defined here, |
+   |                               |                  | atop ID-JAG   |
+   +-------------------------------+------------------+---------------+
+   | Identity Continuation         | CAI, workload,   | defined here  |
+   | Assertion                     | IdP              |               |
+   +-------------------------------+------------------+---------------+
+   | identity_continuation_issuers | RAS, IdP         | defined here  |
+   +-------------------------------+------------------+---------------+
+   | Assertion issuance request    | workload, CAI    | intra-domain, |
+   |                               |                  | out of scope  |
+   +-------------------------------+------------------+---------------+
+   | Handle carrier                | domain           | intra-domain  |
+   |                               | components       | requirements  |
+   +-------------------------------+------------------+---------------+
+
+                                 Table 1
+
+   Roles do not imply distinct parties.  The accepting RAS is implicitly
+   mapped as a CAI for the hops it accepts; deployment choices are
+   described in Section 8.1.
+
      Client      Workload       IdP       RAS/CAI
      |           |              |            |
      | base ID-JAG exchange     |            |
@@ -536,10 +555,9 @@ Table of Contents
      | issue access token, bind H0           |
      |<--------------------------------------|
      |           |              |            |
-     |           | request assertion using  |
-     |           | authenticated RAS context|
+     |           | request assertion         |
      |           |-------------------------->|
-     |           | attest hop, actor, key    |
+     |           |       resolve H0, attest  |
      |           |<--------------------------|
      |           | present assertion         |
      |           |------------->|            |
@@ -549,7 +567,7 @@ Table of Contents
    H1 then travels to the next boundary exactly as H0 did, and the loop
    repeats until a hop reaches a terminal RAS.  A hop is PENDING when
    the IdP issues its ID-JAG, ACCEPTED once the RAS binds it, and
-   CONTINUABLE while an authorized CAI attests the still-active binding
+   CONTINUABLE while a mapped CAI attests the still-active binding
    (Section 6.5).  The workload that continues is a later party, not the
    original client that established the chain.
 
@@ -557,39 +575,31 @@ Table of Contents
    role alone authorizes continuation (Section 9.7).  The sections that
    follow trace artifact production and processing: the CAI issues the
    assertion (Section 6.2), the IdP validates the exchange and issues
-   the next ID-JAG (Section 6.3), and the accepting RAS binds and
-   processes it (Section 6.4).  Where the CAI cannot read that binding
-   directly, the domain propagates the handle as described in
-   Section 6.6.
+   the next ID-JAG (Section 6.3), the accepting RAS binds and processes
+   it (Section 6.4), and the domain surfaces the handle to later
+   continuers (Section 6.6).
 
 6.2.  Issuing the Assertion
 
    The CAI mints the Identity Continuation Assertion a workload presents
-   to continue a chain across a boundary.  The accepting RAS performs
-   the CAI role by default.  A deployment MAY instead authorize one or
-   more separate CAIs for that RAS.  A CAI MUST issue only for an actor
-   in the attested RAS's trust domain; actor authentication and the
-   issuance protocol are deployment-specific.  The CAI MUST set the
+   to continue a chain across a boundary.  It MUST issue only for an
+   actor in the attested RAS's trust domain; actor authentication and
+   the issuance protocol are deployment-specific.  The CAI MUST set the
    assertion's aud to the IdP recorded in the hop's RAS binding
    (Section 6.4); it MUST NOT accept an IdP audience supplied by the
    requester.
 
    The current actor is a control-plane participant, not a bare-handle
-   transporter.  It presents authenticated authorization context, with
-   its key and any narrowing hints, to its CAI.  When the accepting RAS
-   is the CAI, it resolves the handle directly from the authorization
-   state selected by that context, and the handle need not leave the
-   server that bound it.  A separate CAI obtains the handle through an
-   intra-domain carrier (Section 6.6).  In either case, the selected
-   authorization and any propagated handle are advisory input until
-   verified against RAS-bound state (Section 6.5) by the checks below.
+   transporter: the CAI obtains the handle from authenticated state
+   associated with the actor's transaction and key.  The handle is
+   advisory input, re-verified against RAS-bound state (Section 6.5) by
+   the checks below before any assertion issues.
 
    The CAI MUST authenticate the actor and issue only after establishing
    that:
 
-   1.  the authorization was selected through authenticated,
-       confidential, integrity-protected RAS context, either directly or
-       through an intra-domain carrier;
+   1.  the handle came through an authenticated, confidential,
+       integrity-protected chain path or equivalent authenticated state;
 
    2.  the current actor is authorized under CAI policy to continue the
        chain;
@@ -600,8 +610,7 @@ Table of Contents
        actor, its delegation artifact is valid;
 
    5.  the actor is bound to the current transaction and the handle
-       placed in the assertion is the handle in that transaction's RAS-
-       bound state; and
+       matches that transaction's RAS-bound state; and
 
    6.  a recheck against authoritative RAS state, whatever the carrier,
        confirms the authorization remains active and continuation
@@ -746,14 +755,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    applicable; the IdP records the root actor and key only after this
    validation.
 
-   For every root or child hop, the IdP records the target RAS,
-   including its canonical issuer identifier.  That RAS is implicitly
-   mapped as the CAI for its own accepted hops.  The IdP also records
-   any separate CAIs mapped to the RAS; those mappings may be static
-   tenant configuration.  Only the accepting RAS itself or a separately
-   mapped CAI may attest the hop.  An implicit self-mapping does not
-   establish signing-key or tenant trust; the IdP applies the issuer
-   policy in Section 6.3.4, rule 3, in either topology.
+   For every root or child hop, the IdP records the RAS audience placed
+   in the ID-JAG and any additional CAIs mapped to it; those mappings
+   may be static tenant configuration.
 
    Establishment is at-least-once: retrying a lost response MAY create a
    second chain.  Revocation of the governing authorization applies to
@@ -826,7 +830,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      |                       | all three to this request             |
      +-----------------------+---------------------------------------+
 
-                                  Table 1
+                                  Table 2
 
 6.3.4.  Request Validation
 
@@ -868,12 +872,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  aud exactly matches the IdP's issuer identifier;
 
-   3.  *Issuer trust.* The assertion iss either exactly matches the
-       canonical issuer identifier of the hop's accepting RAS or
-       identifies a CAI separately mapped to that RAS.  In either case,
-       the issuer is trusted to issue Identity Continuation Assertions
-       for the tenant and is authorized to pair with the actor_token
-       issuer for that tenant;
+   3.  *Issuer trust.* The assertion iss is trusted for the tenant, is
+       the RAS audience recorded for the hop or a CAI mapped to that
+       RAS, and is authorized to pair with the actor_token issuer for
+       that tenant;
 
    4.  *Chain state.*
 
@@ -986,13 +988,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    identity_continuation_handle claim (Section 4, rule 1), a claim
    inside access_token and not a separate Token Exchange response
    parameter; the accepting Resource Authorization Server binds it
-   (Section 6.4), and the domain makes that authorization available to
-   continuers as authenticated context.  The handle itself is propagated
-   only when the CAI cannot resolve it directly (Section 6.6).  There is
-   likewise no chain-expiry response parameter: chain lifetime is
-   authoritative at the IdP (Section 5), and a deployment needing
-   advance warning conveys it through task or authorization state, an
-   optional ID-JAG claim, or a management API.
+   (Section 6.4), and the domain then surfaces it to continuers as
+   intra-domain context (Section 6.6).  There is likewise no chain-
+   expiry response parameter: chain lifetime is authoritative at the IdP
+   (Section 5), and a deployment needing advance warning conveys it
+   through task or authorization state, an optional ID-JAG claim, or a
+   management API.
 
    On success, the IdP records a PENDING child (Section 6.5) of the
    presented hop and issues an ID-JAG containing the resolved target sub
@@ -1116,12 +1117,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    A hop moves through three states, spanning the IdP, RAS, and CAI.
    These are conceptual states, not values carried on the wire.  The IdP
-   creates it PENDING.  Successful RAS binding makes it ACCEPTED.  An
-   authorized CAI attests a hop only once it is ACCEPTED, so a PENDING
-   hop yields no assertion and reaches no continuation exchange.  A
-   fresh assertion from the authorized CAI lets the IdP evaluate the hop
-   as CONTINUABLE for one request; CONTINUABLE is not stored but holds
-   only while rules 3, 4, and 5 of Section 6.3.4 hold for that request.
+   creates it PENDING.  Successful RAS binding makes it ACCEPTED.  A
+   mapped CAI attests a hop only once it is ACCEPTED, so a PENDING hop
+   yields no assertion and reaches no continuation exchange.  A fresh
+   assertion from the mapped CAI lets the IdP evaluate the hop as
+   CONTINUABLE for one request; CONTINUABLE is not stored but holds only
+   while rules 3, 4, and 5 of Section 6.3.4 hold for that request.
 
     +=============+===================+===============================+
     | State       | Where it lives    | Meaning                       |
@@ -1133,51 +1134,44 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
     |             | state             | authorized it, and bound the  |
     |             |                   | handle                        |
     +-------------+-------------------+-------------------------------+
-    | CONTINUABLE | IdP, for one      | an authorized CAI freshly     |
-    |             | exchange          | attested the still-active     |
-    |             |                   | binding                       |
+    | CONTINUABLE | IdP, for one      | a mapped CAI freshly attested |
+    |             | exchange          | the still-active binding      |
     +-------------+-------------------+-------------------------------+
 
-                                  Table 2
+                                  Table 3
 
    ACCEPTED is a state of the RAS's own authorization, not an IdP
    transition delivered by callback; the IdP learns of it only through a
    CAI attestation.
 
-   When the RAS acts as its own CAI, the assertion is the state owner's
-   first-party attestation that it accepted the hop.  When the CAI is
-   separate, the IdP relies on it having rechecked authoritative RAS
-   state before attesting (Section 6.2).  In both cases the signature
-   authenticates the attestation but does not give the IdP an
-   independent channel to inspect RAS state (Appendix A.4).  Absent CAI
-   compromise (Section 9.7), an issued-but-rejected ID-JAG cannot be
-   continued because no authorized CAI may attest it.  An authorized CAI
-   is mandatory; its absence fails closed.
+   The CAI assertion is trusted evidence of acceptance, not IdP-
+   verifiable proof.  A RAS mapped to its own hop attests that state
+   first-hand; any other mapped CAI rechecks authoritative RAS state
+   before attesting (Section 6.2).  Absent CAI compromise (Section 9.7),
+   an issued-but-rejected ID-JAG cannot be continued because no mapped
+   CAI may attest it.  A mapped CAI is mandatory; its absence fails
+   closed.
 
    Acceptance gates continuation but does not bound downstream
    authority: the IdP evaluates later targets against the root envelope,
    and local RAS authorization neither narrows nor widens it.
 
-6.6.  Intra-Domain Authorization Context and Handle Propagation
+6.6.  Intra-Domain Handle Propagation
 
-   Within a trust domain, a workload obtains authenticated authorization
-   context that selects the RAS authorization from which it is
-   continuing.  When the RAS acts as its own CAI, it can resolve the
-   accepted hop's handle directly from that authorization state; the
-   workload need not receive or present the handle.  When a separate CAI
-   needs the handle, it obtains it through a deployment-specific carrier
-   derived from the RAS binding (Section 6.4).  The carrier is accepted
-   only within that domain (Section 6.2).
+   When the CAI also holds the accepting RAS role, it reads the handle
+   directly from its authorization state and needs no carrier.
+   Otherwise, a carrier derived from the RAS binding conveys the handle
+   within the trust domain (Section 6.4) and is accepted only within
+   that domain.
 
-   One rule applies to both direct resolution and every carrier.  Each
-   call has an authenticated context that selects one RAS-bound
-   authorization.  The handle placed in an assertion MUST be the handle
-   bound to that authorization, whether read directly by the RAS acting
-   as CAI or obtained from a carrier derived from RAS state.  A
-   requester can choose which credential to present, but cannot supply
-   or override its handle separately.  A session or subject alone is not
-   enough to select the authorization, because doing so could attach
-   another user's handle to the call.
+   One rule applies to direct reads and every carrier.  Each call has an
+   authenticated context that selects one RAS-bound authorization.  The
+   handle used for that call MUST be the handle bound to that
+   authorization, whether read directly from RAS state or from a carrier
+   derived from it.  A requester can choose which credential to present,
+   but cannot supply or override its handle separately.  A session or
+   subject alone is not enough to select the authorization, because
+   doing so could attach another user's handle to the call.
 
    The authenticated context selects the authorization as follows:
 
@@ -1190,25 +1184,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       resolved to the task authorization for which that actor is
       designated (Section 9.2).
 
-   A deployment that propagates the handle can realize the carrier in
-   several ways:
-
-   *  A Transaction Token [I-D.ietf-oauth-transaction-tokens] can carry
-      the handle as request context (Appendix A.2).
-
-   *  A signed JWT access token [RFC9068] issued by the accepting RAS
-      can carry the handle as a claim.  The claim records issuance-time
-      state and therefore cannot reflect a later revocation.
-
-   *  For an opaque access token issued by the accepting RAS, its
-      introspection response [RFC7662] can carry the handle as a member,
-      generated when introspection occurs and present only when active
-      is true.
-
-   Before issuing an assertion, the CAI derives or verifies the handle
-   against authoritative RAS state and confirms that continuation
-   remains permitted (Section 6.2).  A separate CAI's recheck covers
-   staleness for every carrier.
+   Before issuing an assertion, the CAI verifies the handle against
+   authoritative RAS state and confirms that continuation remains
+   permitted (Section 6.2).  This recheck covers staleness for every
+   carrier.
 
    The handle conveys no authority.  A Resource Server has no
    obligations under this specification, so a carrier SHOULD NOT expose
@@ -1256,12 +1235,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    urn:ietf:params:oauth:grant-type:jwt-bearer grant type on which ID-
    JAG depends ([I-D.ietf-oauth-identity-assertion-authz-grant]).
 
-   A Resource Authorization Server's own canonical issuer identifier is
-   implicitly mapped to the hops it accepts and is not listed in
-   additional metadata.  A Resource Authorization Server MAY advertise
-   additional Continuation Assertion Issuers it authorizes to attest
-   those hops, so the IdP can discover delegated issuers rather than be
-   configured out of band (Section 9.7):
+   A Resource Authorization Server's own issuer identifier, used as its
+   ID-JAG audience, is not listed in additional metadata.  A Resource
+   Authorization Server MAY advertise additional Continuation Assertion
+   Issuers it authorizes to attest its hops, so the IdP can discover
+   delegated issuers rather than be configured out of band
+   (Section 9.7):
 
    identity_continuation_issuers:  OPTIONAL.  A JSON array of additional
       CAI issuer identifiers, each a StringOrURI [RFC7519], that this
@@ -1279,20 +1258,53 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       decision.
 
    When a CAI's issuer identifier is that of an OAuth authorization
-   server, including a RAS acting as its own CAI, the IdP obtains its
-   signing keys from the jwks_uri in that server's metadata ([RFC8414]);
-   a CAI without such a jwks_uri, like any other CAI, uses authenticated
-   configuration.  An implicit self-mapping or a RAS nomination MUST NOT
-   by itself trigger that retrieval or authorize the issuer; the IdP
-   applies its own issuer policy first.  The IdP MUST refresh remotely
-   obtained keys under a bounded cache policy, so a key removed from the
-   JWK Set stops validating once the refresh takes effect.
+   server, the IdP obtains its signing keys from the jwks_uri in that
+   server's metadata ([RFC8414]); a CAI without such a jwks_uri, like
+   any other CAI, uses authenticated configuration.  A RAS nomination
+   MUST NOT by itself trigger that retrieval or authorize the issuer;
+   the IdP applies its own issuer policy first.  The IdP MUST refresh
+   remotely obtained keys under a bounded cache policy, so a key removed
+   from the JWK Set stops validating once the refresh takes effect.
 
 8.  Implementation Considerations
 
    This section is non-normative.  It describes ways an IdP can realize
    this document's requirements; conformance depends only on the
    normative sections.
+
+8.1.  Deployment Topologies
+
+   +===========+==================+==============+====================+
+   | Topology  | CAI role held by | Pre-issuance | Fits when          |
+   |           |                  | handle path  |                    |
+   +===========+==================+==============+====================+
+   | Collapsed | RAS              | direct state | simplest           |
+   |           |                  | read         |                    |
+   +-----------+------------------+--------------+--------------------+
+   | Delegated | mapped CAI       | carrier      | SaaS RAS; RS-only  |
+   |           |                  |              | gateway; isolation |
+   +-----------+------------------+--------------+--------------------+
+
+                                 Table 4
+
+   The collapsed topology is the default.  Both topologies produce the
+   same Identity Continuation Assertion and apply the same CAI
+   requirements; they differ only in how the CAI reaches the accepted
+   hop's state.
+
+   A delegated topology can propagate the handle in several ways:
+
+   *  A Transaction Token [I-D.ietf-oauth-transaction-tokens] can carry
+      the handle as request context (Appendix A.2).
+
+   *  A signed JWT access token [RFC9068] issued by the accepting RAS
+      can carry the handle as a claim.  The claim records issuance-time
+      state and therefore cannot reflect a later revocation.
+
+   *  For an opaque access token issued by the accepting RAS, its
+      introspection response [RFC7662] can carry the handle as a member,
+      generated when introspection occurs and present only when active
+      is true.
 
    The replay reservation (Section 6.3.5) is typically held in strongly
    consistent state: only one concurrent request reaches ISSUED, a
@@ -1346,9 +1358,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    *  a malicious Resource Server or audience attempting cross-domain
       correlation (Section 10); and
 
-   *  faulty authorization-context selection, whether resolved directly
-      by the RAS acting as CAI or propagated through an intra-domain
-      carrier (Section 9.5, Section 9.7).
+   *  a faulty intra-domain carrier (Section 9.5) or a co-located one
+      (Section 9.7).
 
 9.1.  Sender Constraint and Proof of Possession
 
@@ -1398,10 +1409,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    actor may select any target within that ceiling.
 
    Wrong-handle association can continue the wrong user's bounded chain.
-   The CAI establishes the authoritative association between the request
-   and the handle by deriving it directly from RAS-bound state or
-   verifying a carrier derived from that state (Section 6.6).  A handle
-   a workload supplies is not authoritative, and the CAI rejects
+   The RAS-bound state establishes the authoritative association between
+   the request and the handle, whether the CAI reads it directly or
+   through a carrier derived from that state (Section 6.6).  A handle a
+   workload supplies is not authoritative, and the CAI rejects
    substitution.
 
    Keeping CAI issuance in-domain (Section 6.2) prevents a handle-
@@ -1425,9 +1436,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A continuation requires all of these, and no one of them suffices
    alone:
 
-   *  an authorized CAI, either the accepting RAS itself or a CAI
-      separately mapped to it, which attests the chain-to-actor
-      transition (Section 6.3.4, rule 3);
+   *  the CAI mapped to the presented hop's accepting Resource
+      Authorization Server, which attests the chain-to-actor transition
+      (Section 6.3.4, rule 3);
 
    *  the workload identity issuer trusted for the current actor's trust
       domain, which authenticates the actor through the actor_token
@@ -1443,38 +1454,26 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    tenant; separate trust in each is insufficient.  Tenant determination
    MUST derive from authenticated material, not requester-supplied
    input.  The IdP MUST scope CAI trust by issuer, keys, tenant, and
-   accepting RAS.  The accepting RAS's canonical issuer identifier is
-   implicitly mapped to its own hops, but that mapping does not
-   establish issuer or key trust.  Tenant policy still authorizes the
-   RAS, acting as CAI, and actor-token-issuer combination.  For a
-   separate CAI, the IdP MAY learn the candidate mapping from the RAS's
+   mapped RAS.  The IdP MAY learn additional mappings from the RAS's
    advertised identity_continuation_issuers (Section 7).  That
    advertisement is a nomination only: it scopes each RAS to naming
-   additional issuers for its own hops but does not itself establish
-   issuer or key trust.  The IdP independently authenticates each CAI
-   issuer and its signing keys (Section 7), and tenant policy authorizes
-   the resulting RAS, CAI, and actor-token-issuer combination.  Absent
-   the advertisement, a separate mapping is configured out of band.
+   issuers for its own hops but does not establish issuer or key trust.
+   The IdP independently authenticates each CAI issuer and its signing
+   keys (Section 7), and tenant policy authorizes the resulting RAS,
+   CAI, and actor-token-issuer combination.  Absent the advertisement,
+   additional mappings are configured out of band.
 
-   The default topology has the RAS also perform the CAI role.  The IdP
-   receives a single signed CAI attestation in either topology, so
-   separating the CAI does not create a protocol-level two-party quorum
-   for acceptance.  Separation can still isolate signing keys and
-   components and support independent auditing; co-location concentrates
-   those operational controls.  If the IdP is also co-located, even the
-   envelope backstop becomes organizational rather than protocol-
-   separated.
+9.7.1.  Topology and Trust
 
-   A compromised RAS acting as its own CAI can alter acceptance state
-   and attest it.  A compromised separate CAI can attest a hop that the
-   RAS refused or for which it denied continuation.  The envelope still
-   bounds the result, but the accept-and-continue gate (Section 6.5) is
-   only as trustworthy as its CAI.  Because the IdP has no channel to
-   recheck RAS state itself, a separate CAI attesting from a cached read
-   could attest a hop the RAS has since revoked; the authoritative
-   recheck required at issuance (Section 6.2) narrows this window but
-   does not close it.  In both topologies, revocation after issuance can
-   still land within the assertion's lifetime.
+   The accepting RAS's implicit CAI mapping establishes no issuer, key,
+   tenant, or issuer-pairing trust.  The IdP sees one signed attestation
+   in either topology, so separating the CAI isolates keys and
+   components but does not create a protocol-level quorum.  A
+   compromised RAS holding the CAI role can forge acceptance directly; a
+   compromised delegated CAI can attest a hop the RAS refused.  A
+   delegated CAI's recheck window includes the assertion lifetime plus
+   any delay in RAS state reaching it.  The root envelope still bounds
+   the result.
 
 9.8.  Actor Chain Integrity
 
@@ -1515,12 +1514,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 10.  Privacy Considerations
 
    A hop's identity_continuation_handle is visible to its ID-JAG client,
-   the accepting Resource Authorization Server, and the IdP.  When the
-   RAS acts as its own CAI and resolves the handle directly, it need not
-   disclose the handle to the workload.  A deployment that propagates
-   the handle additionally exposes it within the accepting domain to the
-   carrier, separate CAI, authorized workloads, and any audience of an
-   access token that carries it (Section 6.6).
+   the accepting Resource Authorization Server, the IdP, and, where a
+   deployment propagates it, the carrier, separate CAI, authorized
+   workloads, and any audience of an access token that carries it
+   (Section 6.6).
 
    Handles are opaque, high-entropy, and hop-specific (Section 4), so
    they do not provide a common cross-RAS identifier for a user.
@@ -1923,18 +1920,15 @@ A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
 
    The signed assertion lets the CAI attest the authenticated actor,
    key, accepted hop, and any intra-domain policy checks that the IdP
-   cannot observe.  By default the accepting Resource Authorization
-   Server (the audience the ID-JAG names) performs the CAI role, so its
-   attestation is first-party and the handle need not leave its
-   authorization state.  A deployment can instead map a separate CAI
-   when shared infrastructure, key isolation, or independent auditing
-   warrants it.  In both topologies the CAI abstracts the actors, keys,
-   and continuation policy within its trust domain, so the IdP
-   authorizes the CAI rather than the individual actors behind it.  The
-   assertion does not authorize target or scope.  Where that domain-
-   local attestation is unnecessary, a recipient-bound direct grant
-   remains a possible simplification, but it forces the IdP to
-   authenticate every actor and hold per-actor policy directly, which
+   cannot observe.  It also keeps the IdP's trust coarse: the IdP trusts
+   a CAI mapped to the accepting Resource Authorization Server (the
+   audience the ID-JAG names), scoped per tenant.  That CAI abstracts
+   the actors, keys, and continuation policy within its trust domain, so
+   the IdP authorizes mapped CAIs rather than the individual actors
+   behind them.  The assertion does not authorize target or scope.
+   Where that domain-local attestation is unnecessary, a recipient-bound
+   direct grant remains a possible simplification, but it forces the IdP
+   to authenticate every actor and hold per-actor policy directly, which
    does not scale across domains.
 
 A.6.  Why Asymmetric Signing Only
@@ -1961,10 +1955,8 @@ Appendix B.  Examples
    they cross a trust boundary, "Intra-domain context" when they travel
    only within one trust domain, and "Server-side state" when they are
    never transmitted.  Continuation handles are written H0, H1, and so
-   on, one per hop.  The first two examples use a Transaction Token as
-   the carrier; the gateway example keeps the handle in RAS state.  Both
-   are illustrations, and the profile requires neither a particular
-   carrier nor handle propagation (Section 6.6).
+   on, one per hop.  Each example identifies its deployment topology
+   before describing the flow.
 
 B.1.  Three-Hop Interactive Example
 
@@ -1975,6 +1967,8 @@ B.1.  Three-Hop Interactive Example
    turn calls BookingAPI to complete the itinerary.  All parties trust
    one enterprise IdP at https://idp.example/.
 
+   Topology: delegated CAI with a Transaction Token carrier.
+
    The authorization path, the sequence of accepting RASes, differs from
    that API-call path:
 
@@ -1983,16 +1977,10 @@ B.1.  Three-Hop Interactive Example
    Proof of possession uses DPoP.  JWTs are shown as decoded payloads;
    JOSE headers, signatures, and client authentication are omitted.
    Across a trust boundary the handle is accepted only inside an ID-JAG
-   or Identity Continuation Assertion.  This example uses separate CAIs,
-   so within a domain the handle travels only as derived chain context.
-   Appendix B.3 shows the default topology in which the accepting RAS
-   acts as CAI and keeps the handle internal.
+   or Identity Continuation Assertion; within a domain it travels only
+   as derived chain context.
 
-   Participants are grouped by trust domain; all trust the IdP at
-   https://idp.example/. This example delegates the CAI role to a
-   separate service in each domain and uses a trusted intra-domain
-   carrier, realized as a Transaction Token Service (TTS), to derive its
-   chain context.
+   Participants are grouped by trust domain:
 
    *  Expense domain (expenses.example): client expense-app, workload
       expense-service, and ExpenseRAS / Expense TTS / Expense CAI, in
@@ -2252,8 +2240,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    requested TravelRAS, TravelAPI, and trips.read values match the
    Travel target entry in the root-chain envelope.  The IdP does not
    call ExpenseRAS to confirm acceptance.  Instead, the assertion from
-   ExpenseSaaS's separately mapped CAI, https://cai.expenses.example/,
-   is the evidence that H0 reached ACCEPTED state and is CONTINUABLE
+   ExpenseSaaS's mapped CAI, https://cai.expenses.example/, is the
+   evidence that H0 reached ACCEPTED state and is CONTINUABLE
    (Section 6.5).
 
    The IdP resolves the user's TravelRAS pairwise subject and creates H1
@@ -2405,6 +2393,8 @@ B.2.  Background Agent Example (User-Scheduled Continuation)
    platform-owned task authorization.  The Scheduler stores only an
    opaque task identifier; each run derives fresh context from the
    active authorization (Section 9.2).
+
+   Topology: delegated CAI with a Transaction Token carrier.
 
    *  Platform domain (platform.example): workload briefing-agent, and
       PlatformRAS (the platform's own TaskRAS) / Platform TTS / Platform
@@ -2586,18 +2576,17 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
    specific grant without weakening the original assertion's audience
    check.
 
+   Topology: collapsed; GatewayRAS also holds the CAI role.
+
    *  AgentPlatform domain (agent.example): client agent-app only, the
       confidential runtime that hosts Alice's session and roots the
       chain; it has no Resource Authorization Server of its own in this
       example.
 
    *  Gateway domain (gateway.example): workload tool-gateway and
-      GatewayRAS, which also performs the CAI role, in front of the
-      gateway's own tool-invocation surface
+      GatewayRAS, in front of the gateway's own tool-invocation surface
       (resource=https://gateway.example/), scoped under tenant tenant-
-      gw-01.  GatewayRAS resolves the handle from its authorization
-      record when ToolGateway requests an assertion, so the handle does
-      not leave GatewayRAS.
+      gw-01.
 
    *  Wiki domain (wiki.example): WikiRAS only, in front of WikiAPI.  It
       is terminal in this chain.
@@ -2649,34 +2638,19 @@ B.3.1.  Root Exchange: The Runtime Roots the Chain
    DPoP binding, then uses authenticated internal context for that
    request when asking GatewayRAS for an assertion.  GatewayRAS resolves
    that context to the authorization record where it bound H0.  Neither
-   AgentApp nor ToolGateway receives or supplies H0, so neither can
-   substitute another handle (Section 6.6).
-
-   On the wire (decoded gateway access token; only gateway.example
-   resources accept it):
-
-   {
-     "iss": "https://ras.gateway.example/",
-     "aud": "https://gateway.example/",
-     "sub": "gateway-pairwise-subject",
-     "client_id": "agent-app",
-     "cnf": { "jkt": "base64url-agent-app-key-thumbprint" },
-     "iat": 1710000210,
-     "exp": 1710000810,
-     "jti": "at-gw-0001"
-   }
+   AgentApp nor ToolGateway selects or supplies H0 as issuance input, so
+   neither can substitute another handle (Section 6.6).
 
 B.3.2.  Continuation Exchange: The Gateway Continues
 
    Resolving the tool call, the gateway selects Wiki as the upstream, a
    target no one enumerated when AgentApp rooted the chain.  ToolGateway
-   requests an assertion from GatewayRAS acting as CAI, using the
-   authenticated context of the gateway call.  GatewayRAS resolves H0
-   directly from its binding and issues with
-   iss=https://ras.gateway.example/ (Section 6.2).  ToolGateway then
-   presents the assertion to the IdP with a DPoP proof of the
-   assertion's cnf key, as in Appendix B.1.4, now requesting
-   audience=https://ras.wiki.example/,
+   requests an assertion from GatewayRAS using the authenticated context
+   of the gateway call.  GatewayRAS resolves H0 directly from its
+   binding and issues with iss=https://ras.gateway.example/
+   (Section 6.2).  ToolGateway then presents the assertion to the IdP
+   with a DPoP proof of the assertion's cnf key, as in Appendix B.1.4,
+   now requesting audience=https://ras.wiki.example/,
    resource=https://api.wiki.example/, and scope=wiki.read.
 
    Because the envelope enumerates no targets, the IdP evaluates this
@@ -2699,9 +2673,9 @@ B.3.3.  Points Worth Noticing
    *  AgentApp alone presents Alice's root credential (the ID Token);
       the gateway never holds or presents it.
 
-   *  GatewayRAS is both the accepting RAS and the CAI.  It derives H0
-      from the authenticated authorization context and attests its own
-      live binding; the handle never leaves GatewayRAS.
+   *  GatewayRAS derives H0 from the authenticated context and attests
+      its own live binding; no handle carrier is needed before assertion
+      issuance.
 
    *  The IdP evaluates every dynamically selected target against the
       root envelope and constructs the gateway's actor lineage.
@@ -2732,19 +2706,15 @@ Appendix C.  Open Items for Working Group Discussion
       POST /identity-continuation-assertion HTTP/1.1
       DPoP: <proof>
 
-      Authorization: <credential selecting the RAS authorization>
+      identity_continuation_handle=<handle>
 
-       In the default topology, the authenticated workload and
-       authorization context would let the RAS acting as CAI derive the
-       handle while the proof key determines cnf.  A separate CAI would
-       additionally consume protected carrier context.  In either
-       topology the workload identity determines act, and the IdP
-       audience derives from the hop's binding rather than being
-       supplied.  The profile could also define errors, discovery,
-       retry, and optional target/resource constraints enforced by the
-       IdP as ceilings.  The CAI's signing-key discovery is already
-       specified (Section 7), so this item concerns only the issuance
-       request and response.
+       The authenticated workload and proof key would determine act and
+       cnf, and the IdP audience would derive from the hop's binding
+       rather than be supplied.  The profile could also define errors,
+       discovery, retry, and optional target/resource constraints
+       enforced by the IdP as ceilings.  The CAI's signing-key discovery
+       is already specified (Section 7), so this item concerns only the
+       issuance request and response.
 
    5.  *Authorization-basis representation.* Should the envelope expose
        a testable representation of the authorization ceiling, for
@@ -2781,14 +2751,9 @@ Document History
 
    -02
 
-   *  Made the accepting RAS the default CAI while retaining separate,
-      delegated CAIs as a deployment choice.  A RAS is implicitly mapped
-      to its own hops but remains subject to IdP issuer, key, tenant,
-      and issuer-pairing policy; identity_continuation_issuers now
-      advertises only additional CAIs.  The default path resolves the
-      handle directly from RAS authorization state, and carrier
-      requirements apply when the handle is propagated.  The gateway
-      example now illustrates the default collapsed topology.
+   *  Implicitly mapped the accepting RAS as a CAI for its own hops;
+      metadata now lists only additional CAIs, and the gateway example
+      illustrates the collapsed topology.
 
    *  Removed the prohibition on carrying the handle in an access token,
       along with the carrier requirements that restated the CAI
