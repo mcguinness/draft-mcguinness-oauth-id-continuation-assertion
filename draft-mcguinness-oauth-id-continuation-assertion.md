@@ -45,6 +45,7 @@ normative:
   RFC9396:
   RFC9449:
   I-D.ietf-oauth-identity-assertion-authz-grant:
+  I-D.ietf-oauth-transaction-tokens:
   OIDC.FrontChannelLogout:
     title: "OpenID Connect Front-Channel Logout 1.0"
     target: "https://openid.net/specs/openid-connect-frontchannel-1_0.html"
@@ -59,7 +60,6 @@ normative:
       - org: "OASIS"
 
 informative:
-  I-D.ietf-oauth-transaction-tokens:
   RFC6755:
   RFC6838:
   RFC8417:
@@ -130,9 +130,9 @@ boundary, never a bearer of standing authority.
 This protocol assigns obligations to two roles in the trust domain a chain
 continues from: a RAS that accepts an ID-JAG and binds the hop, and a
 Continuation Assertion Issuer (CAI) that mints the assertion the workload
-presents to the IdP. It defines their cross-domain artifacts while leaving
-intra-domain assertion issuance and handle transport to the deployment
-({{overview}}).
+presents to the IdP. It defines their cross-domain artifacts and one request
+for obtaining the assertion at a CAI token endpoint, leaving intra-domain
+handle transport to the deployment ({{overview}}).
 
 The profile stays deliberately narrow: it defines no new access-token format,
 a Resource Server never consumes the Identity Continuation Assertion directly,
@@ -436,13 +436,15 @@ This document specifies:
   ({{chain-id}});
 * the Identity Continuation Assertion and its use as a Token Exchange
   `subject_token` ({{assertion}}, {{token-exchange}});
-* the IdP's validation of that exchange ({{validation}});
+* Token Exchange issuance of the assertion by a CAI that is an authorization
+  server ({{assertion-token-exchange}});
+* the IdP's validation of the continuation exchange ({{validation}});
 * RAS binding of the handle from an accepted ID-JAG ({{ras-processing}}); and
 * optional Authorization Server metadata, including
   `identity_continuation_issuers` ({{metadata}}).
 
-How a workload obtains an assertion from a CAI, and how the bound handle
-reaches that CAI inside the RAS's trust domain, are deployment-specific,
+How a workload obtains an assertion by other means, and how the bound handle
+reaches a separate CAI inside the RAS's trust domain, are deployment-specific,
 subject to the provenance rule in {{handle-propagation}}.
 
 The accepting RAS may itself hold the CAI role (co-located), or a separately
@@ -471,7 +473,7 @@ base protocol resuming at a RAS that does not implement this extension
   | access token  [new: RAS binds H0]     |              |
   |<--------------------------------------|              |
   |           |              |            |              |
-  |           | request assertion [intra-domain]         |
+  |           | request assertion [new: token exchange]  |
   |           |-------------------------->|              |
   |           | assertion [new: resolve H0, attest]      |
   |           |<--------------------------|              |
@@ -494,7 +496,8 @@ continues is a later party, not the original client that established the chain.
 Each role validates only within its authority, and no artifact or role alone
 authorizes continuation ({{security-trust-model}}). The sections that follow
 trace artifact production and processing: the CAI issues the assertion
-({{assertion-issuance}}), the IdP validates the exchange and issues the next
+({{assertion-issuance}}, {{assertion-token-exchange}}), the IdP validates the
+exchange and issues the next
 ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
 ({{ras-processing}}), and the domain surfaces the handle to later continuers
 ({{handle-propagation}}).
@@ -503,8 +506,9 @@ ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
 
 The CAI mints the Identity Continuation Assertion a workload presents to
 continue a chain across a boundary. It MUST issue only for an actor in the
-attested RAS's trust domain; actor authentication and the issuance protocol
-are deployment-specific. The CAI MUST set the assertion's `aud` to the IdP
+attested RAS's trust domain; actor authentication is deployment-specific, and
+{{assertion-token-exchange}} profiles one issuance request. The CAI MUST set
+the assertion's `aud` to the IdP
 recorded in the hop's RAS binding ({{ras-processing}}); it MUST NOT accept an
 IdP audience supplied by the requester.
 
@@ -535,6 +539,119 @@ The CAI MUST authenticate the actor and issue only after establishing that:
 Possession of a handle or carrier token alone is insufficient. Target or
 purpose hints can narrow CAI issuance but MUST NOT control the IdP's target
 decision, and propagated context MUST NOT override the root-chain envelope.
+
+## Assertion Issuance at a Token Endpoint {#assertion-token-exchange}
+
+This section profiles one interoperable request that meets the requirements
+of {{assertion-issuance}}. A CAI that is an OAuth authorization server,
+including a RAS acting as its own CAI, MAY issue assertions from its token
+endpoint using Token Exchange {{RFC8693}} as profiled here. A RAS acting as
+its own CAI SHOULD support this profile, so that a workload in its domain has
+one request to implement. Issuance by other means remains deployment-specific
+({{handle-propagation}}).
+
+The requesting party is the current actor ({{terms}}), acting as an OAuth
+client of the CAI; this section calls it the client.
+
+### Request {#assertion-request}
+
+The client makes a Token Exchange request to the CAI's token endpoint with the
+following parameters:
+
+`grant_type`:
+: REQUIRED. The value `urn:ietf:params:oauth:grant-type:token-exchange`.
+
+`requested_token_type`:
+: REQUIRED. The value
+  `urn:ietf:params:oauth:token-type:identity-continuation`.
+
+`subject_token`:
+: REQUIRED. Either the access token the client received on the call it is
+  continuing, or the Transaction Token that carries the hop's handle for that
+  call.
+
+`subject_token_type`:
+: REQUIRED. `urn:ietf:params:oauth:token-type:access_token` or
+  `urn:ietf:params:oauth:token-type:txn_token`
+  {{I-D.ietf-oauth-transaction-tokens}}, matching the `subject_token`.
+
+The `audience`, `resource`, `scope`, `actor_token`, and `actor_token_type`
+parameters MUST NOT be included. The assertion carries no target or scope,
+which are chosen at the IdP exchange; its `aud` is the IdP recorded in the
+hop's binding; and the authenticated client is the actor named in `act`.
+
+The client MUST authenticate to the token endpoint ({{RFC6749}}, Section 2.3),
+and the request MUST include a DPoP proof {{RFC9449}}; the CAI binds the
+assertion to the proven key in `cnf`. For example:
+
+~~~
+POST /token HTTP/1.1
+Host: cai.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the key to be placed in cnf>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&subject_token=<access token presented to the client>
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT>
+~~~
+
+The CAI MUST verify that the `subject_token` is one of the following:
+
+* an access token issued by a RAS the CAI is mapped to, unexpired, and valid
+  for a protected resource that the authenticated client operates. The client
+  is then a resource server exchanging a token it received, the scenario of
+  the example in {{RFC8693}}, Section 2.3. A RAS acting as CAI resolves its
+  own token; a separate CAI resolves it through introspection {{RFC7662}}; or
+* a Transaction Token valid under Section 12.2 of
+  {{I-D.ietf-oauth-transaction-tokens}} for the CAI's trust domain and
+  carrying the hop's handle as chain context ({{handle-propagation}}). The
+  Transaction Token is the carrier.
+
+Either way, the authorization behind the token is the one the preconditions of
+{{assertion-issuance}} test: the token's integrity protection and the
+authenticated request satisfy precondition 1, the authenticated client is the
+actor of preconditions 2 and 4, the DPoP key is the key of precondition 3, and
+the bound handle and live state satisfy preconditions 5 and 6.
+
+### Successful Response {#assertion-response}
+
+A successful response is a Token Exchange response ({{RFC8693}}, Section
+2.2.1) in which `access_token` carries the Identity Continuation Assertion,
+`issued_token_type` is
+`urn:ietf:params:oauth:token-type:identity-continuation`, `token_type` is
+`N_A`, and `expires_in` reflects the assertion's lifetime. The response
+MUST NOT include a `refresh_token`, which would let a client obtain further
+assertions without presenting a token or passing the live recheck.
+
+~~~
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+Pragma: no-cache
+
+{
+  "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
+  "access_token": "<Identity Continuation Assertion, compact JWS>",
+  "token_type": "N_A",
+  "expires_in": 120
+}
+~~~
+
+### Error Response {#assertion-error-response}
+
+On failure, the CAI returns an OAuth error ({{RFC6749}}, Section 5.2;
+{{RFC8693}}, Section 2.2.2):
+
+* `invalid_request` when the `subject_token` is invalid or unacceptable under
+  policy, including when it is unknown, expired, revoked, not valid for a
+  resource the client operates, has no bound handle, or names an authorization
+  the client is not permitted to continue;
+* `unauthorized_client` when the client is not permitted to use this grant
+  type; and
+* `invalid_dpop_proof` ({{RFC9449}}) for a failed proof.
 
 ## Token Exchange {#token-exchange}
 
@@ -1117,7 +1234,10 @@ in `identity_continuation_issuers`. The RAS still advertises the continuation
 profile ({{metadata}}), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust ({{security-trust-model}}). Both topologies produce
 the same Identity Continuation Assertion and apply the same CAI requirements;
-they differ only in how the CAI reaches the accepted hop's state.
+they differ only in how the CAI reaches the accepted hop's state. Either CAI
+can issue the assertion from its token endpoint ({{assertion-token-exchange}}):
+a co-located RAS takes the access token it issued as the `subject_token`, and a
+separate CAI takes the token that carries the handle.
 
 With a separate CAI, a deployment can propagate the handle in several ways:
 
@@ -1270,7 +1390,11 @@ are configured out of band.
 The accepting RAS's implicit CAI mapping establishes no issuer, key, tenant, or
 issuer-pairing trust. The IdP sees one signed attestation in either topology,
 so separating the CAI isolates keys and components but does not create a
-protocol-level quorum. A compromised RAS can fabricate acceptance state in
+protocol-level quorum. A workload that obtains the assertion by exchanging the
+access token or Transaction Token it holds for the call
+({{assertion-token-exchange}}) presents nothing
+it did not already hold; what it gains is the CAI's attestation, gated by
+policy and the live recheck. A compromised RAS can fabricate acceptance state in
 either topology, since a separate CAI reads that state as authoritative; a
 compromised separate CAI can additionally attest a hop the RAS refused. In
 both topologies, RAS-local authorization revocation after issuance, which the
@@ -1684,7 +1808,7 @@ grant before crossing the boundary:
 ~~~
  ExpenseService  Expense CAI        IdP        TravelRAS TravelAPI/TTS
        |              |             |             |             |
-       |-request H0-->|             |             |             |
+       |-exchange TT->|             |             |             |
        |<-assertion---|             |             |             |
        |--------------------------->|             |             |
        |     assertion + DPoP       |             |             |
@@ -1856,7 +1980,9 @@ carrier schema.
 
 ### Obtaining the Identity Continuation Assertion {#example-ica}
 
-ExpenseService asks its own CAI for an assertion covering H0.
+ExpenseService obtains an assertion covering H0 by presenting its Transaction
+Token as the `subject_token` at Expense CAI's token endpoint
+({{assertion-token-exchange}}).
 Before issuing, Expense CAI authenticates ExpenseService, verifies its key,
 confirms that H0 belongs to the transaction that ExpenseService is serving,
 and rechecks that ExpenseRAS's authorization remains active. The IdP's per-hop
@@ -2158,7 +2284,7 @@ BriefingAgent then performs a fresh continuation to terminal CalendarRAS:
 ~~~
  BriefingAgent    Platform CAI       IdP         CalendarRAS
        |               |             |               |
-       |--request H0-->|             |               |
+       |--exchange TT->|             |               |
        |<-assertion----|             |               |
        |---------------------------->|               |
        |      assertion + DPoP       |               |
@@ -2177,8 +2303,10 @@ designated actor, derives H0 into fresh intra-domain context
 ({{handle-propagation}}). Neither the Scheduler nor BriefingAgent
 selects H0.
 
-Before issuing, Platform CAI authenticates `briefing-agent`, verifies its key
-and transaction, and rechecks that PlatformRAS's H0 authorization remains
+BriefingAgent exchanges that Transaction Token at Platform CAI's token
+endpoint ({{assertion-token-exchange}}). Before issuing, Platform CAI
+authenticates `briefing-agent`, verifies its key and transaction, and rechecks
+that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in
 {{example-ica}} and {{example-chained}}.
 
@@ -2283,8 +2411,8 @@ To reach Wiki, the gateway continues the chain:
 ~~~
  ToolGateway      GatewayRAS/CAI       IdP          WikiRAS/API
       |                 |               |                 |
-      |--authenticated-->|               |                 |
-      |  RAS context     | resolve H0    |                 |
+      |--token exchange->|               |                 |
+      |  (gateway AT)    | resolve H0    |                 |
       |<-assertion-------|               |                 |
       |-------------------------------->|                 |
       |         assertion + DPoP         |                 |
@@ -2309,22 +2437,42 @@ ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
 
 AgentApp then invokes the gateway with its access token and no continuation
 input. AgentApp chooses which token to present, and with it which
-authorization. ToolGateway validates the token and its DPoP binding, then uses
-authenticated internal context for that request when asking GatewayRAS for an
-assertion. GatewayRAS resolves that context to the authorization record where
-it bound H0. Neither AgentApp nor ToolGateway selects or supplies H0 as
+authorization. ToolGateway validates the token and its DPoP binding, then
+presents that same token to GatewayRAS's token endpoint when it needs an
+assertion ({{assertion-token-exchange}}). GatewayRAS resolves the token to the
+authorization record where it bound H0. Neither AgentApp nor ToolGateway
+selects or supplies H0 as
 issuance input, so neither can substitute another handle
 ({{handle-propagation}}).
 
 ### Continuation Exchange: The Gateway Continues
 
 Resolving the tool call, the gateway selects Wiki as the upstream, a target no
-one enumerated when AgentApp rooted the chain. ToolGateway requests an
-assertion from GatewayRAS using the authenticated context of the gateway call.
-GatewayRAS resolves H0 directly from its binding and issues with
-`iss=https://ras.gateway.example/` ({{assertion-issuance}}). ToolGateway then
-presents the assertion to the IdP with a DPoP proof of the assertion's `cnf`
-key, as in {{example-chained}}, now requesting
+one enumerated when AgentApp rooted the chain. ToolGateway exchanges the
+access token AgentApp presented for an assertion at GatewayRAS's token
+endpoint, authenticating as `tool-gateway` with a DPoP proof
+({{assertion-token-exchange}}):
+
+~~~
+POST /token HTTP/1.1
+Host: ras.gateway.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of tool-gateway's key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&subject_token=<the gateway access token>
+&subject_token_type=urn:ietf:params:oauth:token-type:access_token
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<tool-gateway JWT>
+~~~
+
+GatewayRAS confirms the token is its own, unexpired, and valid for the
+tool-invocation resource `tool-gateway` operates, resolves H0 from the
+authorization it bound, and returns an
+assertion with `iss=https://ras.gateway.example/`, `act` naming `tool-gateway`,
+and `cnf` holding the DPoP key. ToolGateway then presents the assertion to the
+IdP with a DPoP proof of that key, as in {{example-chained}}, now requesting
 `audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`, and
 `scope=wiki.read`.
 
@@ -2346,8 +2494,9 @@ target outside the basis fails with `invalid_target` as in {{example-dynamic}}.
 
 * AgentApp alone presents Alice's root credential (the ID Token); the gateway
   never holds or presents it.
-* GatewayRAS derives H0 from the authenticated context and attests its own live
-  binding; no handle carrier is needed before assertion issuance.
+* ToolGateway obtains the assertion by exchanging the access token it
+  received; GatewayRAS resolves H0 from its own binding, so no handle carrier
+  is needed.
 * The IdP evaluates every dynamically selected target against the root
   envelope and constructs the gateway's actor lineage.
 
@@ -2371,27 +2520,7 @@ This non-normative appendix lists unresolved design questions.
    or suppress chain establishment, or negotiate lifetime, depth, or
    permitted continuers ({{root-establishment}})?
 
-4. **CAI issuance.** Should the document define an interoperable
-   token-endpoint-style issuance request ({{assertion-issuance}})?
-
-   ~~~
-   POST /identity-continuation-assertion HTTP/1.1
-   DPoP: <proof>
-
-   identity_continuation_handle=<handle>
-   ~~~
-
-   The sketch shows the separate-CAI topology, where the workload holds the
-   handle; in the co-located topology the request would instead carry the
-   authenticated context that selects the authorization. The authenticated
-   workload and proof key would determine `act` and `cnf`, and the IdP
-   audience would derive from the hop's binding rather than be supplied.
-   The profile could also define errors, discovery, retry, and optional
-   target/resource constraints enforced by the IdP as ceilings. The CAI's
-   signing-key discovery is already specified ({{metadata}}), so this item
-   concerns only the issuance request and response.
-
-5. **Authorization-basis representation.** Should the envelope expose a
+4. **Authorization-basis representation.** Should the envelope expose a
    testable representation of the authorization ceiling, for example:
 
    ~~~ json
@@ -2428,6 +2557,10 @@ this profile builds.
 
 -02
 
+* Defined Token Exchange issuance of the assertion at the token endpoint of a
+  CAI that is an authorization server, with the access token or Transaction
+  Token the workload holds as the subject token, resolving the CAI-issuance
+  open item; the gateway example uses it.
 * Made the retry-limit and replay-concurrency requirements self-contained
   rather than pointing into Implementation Considerations, defined
   CONTINUABLE and continuation-capable without circularity, and moved the
