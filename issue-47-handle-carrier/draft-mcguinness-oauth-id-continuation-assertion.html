@@ -2610,32 +2610,45 @@ neither narrows nor widens it.<a href="#section-6.5-5" class="pilcrow">¶</a></p
         </h3>
 <p id="section-6.6-1">Within a trust domain, a workload learns the accepted hop's handle from a
 carrier that the domain derives from the RAS binding (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>).
-The handle surfaced for a call <span class="bcp14">MUST</span> be the one the RAS bound to the
-authorization that the credential verified on that call selects, with proof
-of possession of its key. At ingress that credential is the sender-constrained
-access token; downstream it may be a forwarded carrier or an active task
-authorization (<a href="#task-provenance" class="auto internal xref">Section 9.2</a>). The handle is never taken from
-requester-supplied input, and never derived from a session or subject, which
-could bind the wrong user's authorization state to the call. The CAI verifies
-the handle against RAS-bound state before issuing (<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-6.6-1" class="pilcrow">¶</a></p>
-<p id="section-6.6-2">The carrier is deployment-specific and is accepted only within the domain
-(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>). Two realizations:<a href="#section-6.6-2" class="pilcrow">¶</a></p>
+The handle surfaced for a call <span class="bcp14">MUST</span> be read from active RAS-bound state that
+the authenticated context of that call selects. The value is never taken from
+requester-supplied input, and the state is never selected by a session or
+subject alone, which could bind the wrong user's authorization state to the
+call. What selects the state depends on where the call lands:<a href="#section-6.6-1" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-6.6-3.1">
-            <p id="section-6.6-3.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> that carries the
-handle as request context (<a href="#rationale-txn" class="auto internal xref">Appendix A.2</a>).<a href="#section-6.6-3.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-6.6-2.1">
+            <p id="section-6.6-2.1.1">at ingress, the sender-constrained access token whose proof of possession
+the resource verified;<a href="#section-6.6-2.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-6.6-3.2">
-            <p id="section-6.6-3.2.1">A claim in the sender-constrained access token the accepting RAS issues,
-read from the signed JWT <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> or from its introspection response
-<span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. The RAS writes the claim at issuance, so it cannot reflect a
-later revocation; the CAI recheck covers that for every carrier.<a href="#section-6.6-3.2.1" class="pilcrow">¶</a></p>
+          <li class="normal" id="section-6.6-2.2">
+            <p id="section-6.6-2.2.1">downstream, a carrier forwarded from that ingress;<a href="#section-6.6-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.6-2.3">
+            <p id="section-6.6-2.3.1">for a scheduled run, the task an authenticated actor names, resolved to the
+task authorization for which that actor is designated
+(<a href="#task-provenance" class="auto internal xref">Section 9.2</a>).<a href="#section-6.6-2.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-6.6-4">The handle conveys no authority. A Resource Server has no obligations under
+<p id="section-6.6-3">The CAI verifies the handle against RAS-bound state before issuing
+(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-6.6-3" class="pilcrow">¶</a></p>
+<p id="section-6.6-4">The carrier is deployment-specific and is accepted only within the domain
+(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>). Two realizations:<a href="#section-6.6-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-6.6-5.1">
+            <p id="section-6.6-5.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> that carries the
+handle as request context (<a href="#rationale-txn" class="auto internal xref">Appendix A.2</a>).<a href="#section-6.6-5.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-6.6-5.2">
+            <p id="section-6.6-5.2.1">A claim in the sender-constrained access token the accepting RAS issues,
+read from the signed JWT <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> or from its introspection response
+<span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>. The RAS writes the claim at issuance, so it cannot reflect a
+later revocation; the CAI recheck covers that for every carrier.<a href="#section-6.6-5.2.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-6.6-6">The handle conveys no authority. A Resource Server has no obligations under
 this specification, so a carrier <span class="bcp14">SHOULD NOT</span> expose the handle to a party with
 no role in continuation. Deployments also keep it out of logs, traces, and
-responses.<a href="#section-6.6-4" class="pilcrow">¶</a></p>
+responses.<a href="#section-6.6-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3266,7 +3279,7 @@ returned only to resources within the issuing server's trust domain
           <dd class="break"></dd>
 <dt id="section-11.5-2.5">Change Controller:</dt>
           <dd style="margin-left: 1.5em" id="section-11.5-2.6">
-            <p id="section-11.5-2.6.1">IETF<a href="#section-11.5-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-11.5-2.6.1">IESG<a href="#section-11.5-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.5-2.7">Specification Document(s):</dt>

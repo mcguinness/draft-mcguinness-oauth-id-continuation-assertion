@@ -1138,15 +1138,24 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Within a trust domain, a workload learns the accepted hop's handle
    from a carrier that the domain derives from the RAS binding
-   (Section 6.4).  The handle surfaced for a call MUST be the one the
-   RAS bound to the authorization that the credential verified on that
-   call selects, with proof of possession of its key.  At ingress that
-   credential is the sender-constrained access token; downstream it may
-   be a forwarded carrier or an active task authorization (Section 9.2).
-   The handle is never taken from requester-supplied input, and never
-   derived from a session or subject, which could bind the wrong user's
-   authorization state to the call.  The CAI verifies the handle against
-   RAS-bound state before issuing (Section 6.2).
+   (Section 6.4).  The handle surfaced for a call MUST be read from
+   active RAS-bound state that the authenticated context of that call
+   selects.  The value is never taken from requester-supplied input, and
+   the state is never selected by a session or subject alone, which
+   could bind the wrong user's authorization state to the call.  What
+   selects the state depends on where the call lands:
+
+   *  at ingress, the sender-constrained access token whose proof of
+      possession the resource verified;
+
+   *  downstream, a carrier forwarded from that ingress;
+
+   *  for a scheduled run, the task an authenticated actor names,
+      resolved to the task authorization for which that actor is
+      designated (Section 9.2).
+
+   The CAI verifies the handle against RAS-bound state before issuing
+   (Section 6.2).
 
    The carrier is deployment-specific and is accepted only within the
    domain (Section 6.2).  Two realizations:
@@ -1600,7 +1609,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       token's authorization, returned only to resources within the
       issuing server's trust domain (Section 6.6)
 
-   Change Controller:  IETF
+   Change Controller:  IESG
 
    Specification Document(s):  This document, Section 6.6
 
