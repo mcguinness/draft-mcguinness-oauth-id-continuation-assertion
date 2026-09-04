@@ -726,9 +726,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    audience:  REQUIRED.  The issuer identifier of the IdP to which the
       client presents the assertion, equal to the assertion's aud.
       Because the request carries no audience, this is how the client
-      learns where the assertion goes; it resolves that IdP's token
-      endpoint from the IdP's authorization server metadata ([RFC8414],
-      Section 7).
+      learns where the assertion goes.  The client obtains that IdP's
+      token_endpoint from its authorization server metadata ([RFC8414]),
+      retrieved with the oauth-authorization-server well-known URI
+      suffix under the issuer identifier, after confirming that the
+      returned issuer exactly matches audience; where the IdP publishes
+      no metadata, the client uses configuration bound to that issuer
+      identifier (Section 7).
 
    The response MUST NOT include a refresh_token, which would let a
    client obtain further assertions without presenting a token or
@@ -1713,16 +1717,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    IANA is requested to update the registration of the audience
    parameter in the "OAuth Parameters" registry established by
-   [RFC6749], which [RFC8693] registered for the token request, to add
-   the following usage location.
+   [RFC6749].  [RFC8693] registered the parameter for the token request;
+   this document adds the token response usage location and leaves the
+   change controller unchanged, so that the entry reads as follows.
 
    Parameter name:  audience
 
-   Parameter usage location:  token response
+   Parameter usage location:  token request, token response
 
-   Change controller:  IETF
+   Change controller:  IESG
 
-   Specification Document(s):  This document, Section 6.3.2
+   Specification Document(s):  Section 2.1 of [RFC8693]; this document,
+      Section 6.3.2
 
 11.3.  OAuth URI Registration
 

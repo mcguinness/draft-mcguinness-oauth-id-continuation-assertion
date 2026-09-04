@@ -2157,9 +2157,13 @@ one parameter:<a href="#section-6.3.2-1" class="pilcrow">¶</a></p>
             <dd style="margin-left: 1.5em" id="section-6.3.2-2.2">
               <p id="section-6.3.2-2.2.1"><span class="bcp14">REQUIRED</span>. The issuer identifier of the IdP to which the client presents the
 assertion, equal to the assertion's <code>aud</code>. Because the request carries no
-<code>audience</code>, this is how the client learns where the assertion goes; it
-resolves that IdP's token endpoint from the IdP's authorization server
-metadata (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>, <a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-6.3.2-2.2.1" class="pilcrow">¶</a></p>
+<code>audience</code>, this is how the client learns where the assertion goes. The
+client obtains that IdP's <code>token_endpoint</code> from its authorization server
+metadata (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>), retrieved with the <code>oauth-authorization-server</code>
+well-known URI suffix under the issuer identifier, after confirming that the
+returned <code>issuer</code> exactly matches <code>audience</code>; where the IdP publishes no
+metadata, the client uses configuration bound to that issuer identifier
+(<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-6.3.2-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
@@ -3349,8 +3353,10 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
 <a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-oauth-parameters-registrati" class="section-name selfRef">OAuth Parameters Registration</a>
         </h3>
 <p id="section-11.2-1">IANA is requested to update the registration of the <code>audience</code> parameter in
-the "OAuth Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, which <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>
-registered for the token request, to add the following usage location.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+the "OAuth Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>
+registered the parameter for the token request; this document adds the token
+response usage location and leaves the change controller unchanged, so that
+the entry reads as follows.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-11.2-2">
           <dt id="section-11.2-2.1">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.2">
@@ -3359,17 +3365,17 @@ registered for the token request, to add the following usage location.<a href="#
           <dd class="break"></dd>
 <dt id="section-11.2-2.3">Parameter usage location:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.4">
-            <p id="section-11.2-2.4.1">token response<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.4.1">token request, token response<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.2-2.5">Change controller:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.6">
-            <p id="section-11.2-2.6.1">IETF<a href="#section-11.2-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.6.1">IESG<a href="#section-11.2-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.2-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.8">
-            <p id="section-11.2-2.8.1">This document, <a href="#assertion-response" class="auto internal xref">Section 6.3.2</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.8.1">Section 2.1 of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>; this document, <a href="#assertion-response" class="auto internal xref">Section 6.3.2</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
