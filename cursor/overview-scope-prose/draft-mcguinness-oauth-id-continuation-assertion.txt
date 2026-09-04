@@ -520,12 +520,13 @@ Table of Contents
 
    *  the IdP's validation of that exchange (Section 6.3.4);
 
-   *  RAS binding of an accepted handle (Section 6.4); and
+   *  RAS binding of the handle from an accepted ID-JAG (Section 6.4);
+      and
 
    *  optional Authorization Server metadata, including
       identity_continuation_issuers (Section 7).
 
-   How a workload obtains an assertion from a CAI, and how an accepted
+   How a workload obtains an assertion from a CAI, and how the bound
    handle reaches that CAI inside the RAS's trust domain, are
    deployment-specific, subject to the provenance rule in Section 6.6.
 
