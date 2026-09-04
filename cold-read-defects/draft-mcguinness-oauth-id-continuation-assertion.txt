@@ -770,9 +770,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Establishment is at-least-once: retrying a lost response MAY create a
    second chain.  Revocation of the governing authorization applies to
    every chain rooted in it, and the actor-chain depth bound is enforced
-   per branch.  Any fan-out, rate, or hop-count limits a deployment
-   configures apply per governing authorization, so sibling chains share
-   one budget, and a retried establishment MUST NOT evade them.
+   per branch.  Fan-out, rate, or hop-count limits configured for a
+   governing authorization apply across every chain rooted in it, so
+   sibling chains share one budget; a retried establishment MUST NOT
+   evade them.
 
 6.3.3.  Presenter Authentication
 
@@ -916,7 +917,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  the IdP can resolve, for the requested audience, both the
           audience-local subject and the actor's client identifier
-          (Section 6.3.3);
+          (Section 6.3.7);
 
    6.  *Freshness and replay.*
 

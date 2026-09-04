@@ -2167,10 +2167,10 @@ ID-JAG and any additional CAIs mapped to it; those mappings may be static
 tenant configuration.<a href="#section-6.3.2-12" class="pilcrow">¶</a></p>
 <p id="section-6.3.2-13">Establishment is at-least-once: retrying a lost response <span class="bcp14">MAY</span> create a second
 chain. Revocation of the governing authorization applies to every chain rooted
-in it, and the actor-chain depth bound is enforced per branch. Any fan-out,
-rate, or hop-count limits a deployment configures apply per governing
-authorization, so sibling chains share one budget, and a retried establishment
-<span class="bcp14">MUST NOT</span> evade them.<a href="#section-6.3.2-13" class="pilcrow">¶</a></p>
+in it, and the actor-chain depth bound is enforced per branch. Fan-out, rate,
+or hop-count limits configured for a governing authorization apply across
+every chain rooted in it, so sibling chains share one budget; a retried
+establishment <span class="bcp14">MUST NOT</span> evade them.<a href="#section-6.3.2-13" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="client-identity">
@@ -2353,7 +2353,7 @@ proof (<a href="#client-identity" class="auto internal xref">Section 6.3.3</a>, 
                 <li class="normal" id="section-6.3.4-2.5.2.5">
                   <p id="section-6.3.4-2.5.2.5.1">the IdP can resolve, for the requested <code>audience</code>, both the
 audience-local subject and the actor's client identifier
-(<a href="#client-identity" class="auto internal xref">Section 6.3.3</a>);<a href="#section-6.3.4-2.5.2.5.1" class="pilcrow">¶</a></p>
+(<a href="#onward-id-jag" class="auto internal xref">Section 6.3.7</a>);<a href="#section-6.3.4-2.5.2.5.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
