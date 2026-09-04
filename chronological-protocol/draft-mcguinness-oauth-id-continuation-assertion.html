@@ -1547,7 +1547,7 @@ trust domain, continuation where a boundary re-mints the subject.<a href="#secti
         </h3>
 <p id="section-1.3-1">Four roles take part. The IdP issues ID-JAGs and resolves each audience-local
 subject. A Resource Authorization Server (RAS) redeems an ID-JAG for an access
-token and, when the ID-JAG carries a continuation handle, binds that handle to
+token; a continuation-aware RAS also binds the handle the ID-JAG carries to
 the authorization it issues. A Continuation Assertion Issuer (CAI) in the
 RAS's trust domain, by default the RAS itself, attests that a bound hop is
 still active and that a given workload may continue it, by issuing an Identity
@@ -1567,8 +1567,10 @@ the base protocol resuming at a RAS that does not implement this extension.<a hr
   |--------------------------------------&gt;|              |
   | access token  [new: RAS binds H0]     |              |
   |&lt;--------------------------------------|              |
+  | call workload: access token + DPoP    |              |
+  |----------&gt;|              |            |              |
   |           |              |            |              |
-  |           | request assertion [new: token exchange]  |
+  |           | exchange access token: assertion [new]   |
   |           |--------------------------&gt;|              |
   |           | assertion [new: resolve H0, attest]      |
   |           |&lt;--------------------------|              |
@@ -1587,8 +1589,9 @@ handle. The RAS that redeems it binds the handle to the authorization it
 issues. A later workload obtains an assertion for that hop from the domain's
 CAI and presents it to the IdP, which checks the request against the envelope
 fixed when the chain was established, resolves the user's subject at the next
-audience, and issues the next ID-JAG. The loop repeats until a hop reaches a
-RAS that does not implement this profile. A hop is PENDING when the IdP issues
+audience, and issues the next ID-JAG. The loop repeats as needed; a RAS
+without this extension cannot become a continuation source. A hop is PENDING
+when the IdP issues
 its ID-JAG, ACCEPTED once the RAS binds it, and CONTINUABLE while a mapped CAI
 attests the still-active binding (<a href="#hop-activation" class="auto internal xref">Section 5.4</a>).<a href="#section-1.3-3" class="pilcrow">¶</a></p>
 <p id="section-1.3-4">Two facts shape the trust model. ACCEPTED is a state of the RAS's own

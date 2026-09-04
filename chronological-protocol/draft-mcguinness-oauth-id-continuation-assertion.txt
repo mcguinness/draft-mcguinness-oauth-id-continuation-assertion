@@ -252,16 +252,16 @@ Table of Contents
 
    Four roles take part.  The IdP issues ID-JAGs and resolves each
    audience-local subject.  A Resource Authorization Server (RAS)
-   redeems an ID-JAG for an access token and, when the ID-JAG carries a
-   continuation handle, binds that handle to the authorization it
-   issues.  A Continuation Assertion Issuer (CAI) in the RAS's trust
-   domain, by default the RAS itself, attests that a bound hop is still
-   active and that a given workload may continue it, by issuing an
-   Identity Continuation Assertion.  A workload presents that assertion
-   to the IdP to obtain the next ID-JAG.  Handles H0 and H1 name the
-   successive hops; steps marked new are this profile's additions to ID-
-   JAG, and the last exchange shows the base protocol resuming at a RAS
-   that does not implement this extension.
+   redeems an ID-JAG for an access token; a continuation-aware RAS also
+   binds the handle the ID-JAG carries to the authorization it issues.
+   A Continuation Assertion Issuer (CAI) in the RAS's trust domain, by
+   default the RAS itself, attests that a bound hop is still active and
+   that a given workload may continue it, by issuing an Identity
+   Continuation Assertion.  A workload presents that assertion to the
+   IdP to obtain the next ID-JAG.  Handles H0 and H1 name the successive
+   hops; steps marked new are this profile's additions to ID-JAG, and
+   the last exchange shows the base protocol resuming at a RAS that does
+   not implement this extension.
 
      Client      Workload       IdP       RAS/CAI      Next RAS
      |           |              |            |              |
@@ -273,8 +273,10 @@ Table of Contents
      |-------------------------------------->|              |
      | access token  [new: RAS binds H0]     |              |
      |<--------------------------------------|              |
+     | call workload: access token + DPoP    |              |
+     |---------->|              |            |              |
      |           |              |            |              |
-     |           | request assertion [new: token exchange]  |
+     |           | exchange access token: assertion [new]   |
      |           |-------------------------->|              |
      |           | assertion [new: resolve H0, attest]      |
      |           |<--------------------------|              |
@@ -293,10 +295,11 @@ Table of Contents
    that hop from the domain's CAI and presents it to the IdP, which
    checks the request against the envelope fixed when the chain was
    established, resolves the user's subject at the next audience, and
-   issues the next ID-JAG.  The loop repeats until a hop reaches a RAS
-   that does not implement this profile.  A hop is PENDING when the IdP
-   issues its ID-JAG, ACCEPTED once the RAS binds it, and CONTINUABLE
-   while a mapped CAI attests the still-active binding (Section 5.4).
+   issues the next ID-JAG.  The loop repeats as needed; a RAS without
+   this extension cannot become a continuation source.  A hop is PENDING
+   when the IdP issues its ID-JAG, ACCEPTED once the RAS binds it, and
+   CONTINUABLE while a mapped CAI attests the still-active binding
+   (Section 5.4).
 
    Two facts shape the trust model.  ACCEPTED is a state of the RAS's
    own authorization, not an IdP transition delivered by callback; the
