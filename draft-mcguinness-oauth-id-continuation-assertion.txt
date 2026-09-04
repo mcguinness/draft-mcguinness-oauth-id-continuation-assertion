@@ -531,16 +531,17 @@ Table of Contents
    handle reaches that CAI inside the RAS's trust domain, are
    deployment-specific, subject to the provenance rule in Section 6.6.
 
-   The RAS and CAI roles may be held by the same party (collapsed) or by
-   distinct parties (delegated); see Section 8.1.  The IdP accepts an
-   assertion for a hop only from a CAI mapped to the hop's accepting RAS
-   (Section 6.3.4, rule 3), and the RAS itself is always mapped.
+   The accepting RAS may itself hold the CAI role (co-located), or a
+   separately mapped CAI may hold it (separate); see Section 8.1.  The
+   IdP accepts an assertion for a hop only from a CAI mapped to the
+   hop's accepting RAS (Section 6.3.4, rule 3), and the RAS itself is
+   always mapped.
 
    A continuation reuses the Token Exchange loop once per boundary: the
    root exchange mints the first ID-JAG, and each later boundary mints
    the next from an Identity Continuation Assertion.  Handles H0 and H1
    below name the successive hops (Section 4).  The diagram shows the
-   collapsed topology; steps marked new are this profile's additions to
+   co-located topology; steps marked new are this profile's additions to
    ID-JAG, and the last exchange shows the base protocol resuming at a
    RAS that does not implement this extension (Section 6.4).
 
@@ -1280,24 +1281,24 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 8.1.  Deployment Topologies
 
-     +===========+============+==============+======================+
-     | Topology  | CAI role   | CAI handle   | Fits when            |
-     |           | held by    | source       |                      |
-     +===========+============+==============+======================+
-     | Collapsed | the        | read from    | one operator runs    |
-     |           | accepting  | RAS state    | the domain           |
-     |           | RAS        |              |                      |
-     +-----------+------------+--------------+----------------------+
-     | Delegated | a          | intra-domain | the RAS is shared    |
-     |           | separately | carrier      | infrastructure, the  |
-     |           | mapped CAI |              | gateway is only an   |
-     |           |            |              | RS, or keys and      |
-     |           |            |              | audit need isolation |
-     +-----------+------------+--------------+----------------------+
+     +============+============+==============+======================+
+     | Topology   | CAI role   | CAI handle   | Fits when            |
+     |            | held by    | source       |                      |
+     +============+============+==============+======================+
+     | Co-located | the        | read from    | one operator runs    |
+     |            | accepting  | RAS state    | the domain           |
+     |            | RAS        |              |                      |
+     +------------+------------+--------------+----------------------+
+     | Separate   | a          | intra-domain | the RAS is shared    |
+     |            | separately | carrier      | infrastructure, the  |
+     |            | mapped CAI |              | gateway is only an   |
+     |            |            |              | RS, or keys and      |
+     |            |            |              | audit need isolation |
+     +------------+------------+--------------+----------------------+
 
-                                 Table 3
+                                  Table 3
 
-   Collapsed is the default: it adds no configured CAI mapping and no
+   Co-located is the default: it adds no configured CAI mapping and no
    self-entry in identity_continuation_issuers.  The RAS still
    advertises the continuation profile (Section 7), and the IdP still
    holds the RAS's issuer, key, tenant, and issuer-pairing trust
@@ -1305,7 +1306,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Continuation Assertion and apply the same CAI requirements; they
    differ only in how the CAI reaches the accepted hop's state.
 
-   A delegated topology can propagate the handle in several ways:
+   With a separate CAI, a deployment can propagate the handle in several
+   ways:
 
    *  A Transaction Token [I-D.ietf-oauth-transaction-tokens] can carry
       the handle as request context (Appendix A.2).
@@ -1481,12 +1483,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    in either topology, so separating the CAI isolates keys and
    components but does not create a protocol-level quorum.  A
    compromised RAS can fabricate acceptance state in either topology,
-   since a delegated CAI reads that state as authoritative; a
-   compromised delegated CAI can additionally attest a hop the RAS
-   refused.  In both topologies, RAS-local authorization revocation
-   after issuance, which the IdP cannot observe, leaves the assertion
-   valid for its remaining lifetime; delegation adds any delay in RAS
-   state reaching the CAI.  The root envelope still bounds the result.
+   since a separate CAI reads that state as authoritative; a compromised
+   separate CAI can additionally attest a hop the RAS refused.  In both
+   topologies, RAS-local authorization revocation after issuance, which
+   the IdP cannot observe, leaves the assertion valid for its remaining
+   lifetime; a separate CAI adds any delay in RAS state reaching it.
+   The root envelope still bounds the result.
 
 9.9.  Actor Chain Integrity
 
@@ -1980,7 +1982,7 @@ B.1.  Three-Hop Interactive Example
    turn calls BookingAPI to complete the itinerary.  All parties trust
    one enterprise IdP at https://idp.example/.
 
-   Topology: delegated CAI with a Transaction Token carrier.
+   Topology: separate CAI with a Transaction Token carrier.
 
    The authorization path, the sequence of accepting RASes, differs from
    that API-call path:
@@ -2407,7 +2409,7 @@ B.2.  Background Agent Example (User-Scheduled Continuation)
    opaque task identifier; each run derives fresh context from the
    active authorization (Section 9.2).
 
-   Topology: delegated CAI with a Transaction Token carrier.
+   Topology: separate CAI with a Transaction Token carrier.
 
    *  Platform domain (platform.example): workload briefing-agent, and
       PlatformRAS (the platform's own TaskRAS) / Platform TTS / Platform
@@ -2589,7 +2591,7 @@ B.3.  Gateway Example (Dynamic Upstream Audiences)
    specific grant without weakening the original assertion's audience
    check.
 
-   Topology: collapsed; GatewayRAS also holds the CAI role.
+   Topology: co-located; GatewayRAS also holds the CAI role.
 
    *  AgentPlatform domain (agent.example): client agent-app only, the
       confidential runtime that hosts Alice's session and roots the
@@ -2721,16 +2723,16 @@ Appendix C.  Open Items for Working Group Discussion
 
       identity_continuation_handle=<handle>
 
-       The sketch shows the delegated topology, where the workload holds
-       the handle; in the collapsed topology the request would instead
-       carry the authenticated context that selects the authorization.
-       The authenticated workload and proof key would determine act and
-       cnf, and the IdP audience would derive from the hop's binding
-       rather than be supplied.  The profile could also define errors,
-       discovery, retry, and optional target/resource constraints
-       enforced by the IdP as ceilings.  The CAI's signing-key discovery
-       is already specified (Section 7), so this item concerns only the
-       issuance request and response.
+       The sketch shows the separate-CAI topology, where the workload
+       holds the handle; in the co-located topology the request would
+       instead carry the authenticated context that selects the
+       authorization.  The authenticated workload and proof key would
+       determine act and cnf, and the IdP audience would derive from the
+       hop's binding rather than be supplied.  The profile could also
+       define errors, discovery, retry, and optional target/resource
+       constraints enforced by the IdP as ceilings.  The CAI's signing-
+       key discovery is already specified (Section 7), so this item
+       concerns only the issuance request and response.
 
    5.  *Authorization-basis representation.* Should the envelope expose
        a testable representation of the authorization ceiling, for
@@ -2781,7 +2783,7 @@ Document History
       to the Overview and a non-normative Deployment Topologies
       subsection holding the carrier realizations, added a Topology and
       Trust security subsection, and switched the gateway example to the
-      collapsed topology.
+      co-located topology.
 
    *  Removed the prohibition on carrying the handle in an access token,
       along with the carrier requirements that restated the CAI

@@ -1912,15 +1912,15 @@ management for that purpose.<a href="#section-5-10" class="pilcrow">¶</a></p>
 <p id="section-6.1-3">How a workload obtains an assertion from a CAI, and how the bound handle
 reaches that CAI inside the RAS's trust domain, are deployment-specific,
 subject to the provenance rule in <a href="#handle-propagation" class="auto internal xref">Section 6.6</a>.<a href="#section-6.1-3" class="pilcrow">¶</a></p>
-<p id="section-6.1-4">The RAS and CAI roles may be held by the same party (collapsed) or by
-distinct parties (delegated); see <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. The IdP
+<p id="section-6.1-4">The accepting RAS may itself hold the CAI role (co-located), or a separately
+mapped CAI may hold it (separate); see <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. The IdP
 accepts an assertion for a hop only from a CAI mapped to the hop's
 accepting RAS (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rule 3), and the RAS itself is always
 mapped.<a href="#section-6.1-4" class="pilcrow">¶</a></p>
 <p id="section-6.1-5">A continuation reuses the Token Exchange loop once per boundary: the root
 exchange mints the first ID-JAG, and each later boundary mints the next from an
 Identity Continuation Assertion. Handles H0 and H1 below name the successive
-hops (<a href="#chain-id" class="auto internal xref">Section 4</a>). The diagram shows the collapsed topology; steps marked
+hops (<a href="#chain-id" class="auto internal xref">Section 4</a>). The diagram shows the co-located topology; steps marked
 new are this profile's additions to ID-JAG, and the last exchange shows the
 base protocol resuming at a RAS that does not implement this extension
 (<a href="#ras-processing" class="auto internal xref">Section 6.4</a>).<a href="#section-6.1-5" class="pilcrow">¶</a></p>
@@ -2787,26 +2787,26 @@ document's requirements; conformance depends only on the normative sections.<a h
           </thead>
           <tbody>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Collapsed</td>
+              <td class="text-left" rowspan="1" colspan="1">Co-located</td>
               <td class="text-left" rowspan="1" colspan="1">the accepting RAS</td>
               <td class="text-left" rowspan="1" colspan="1">read from RAS state</td>
               <td class="text-left" rowspan="1" colspan="1">one operator runs the domain</td>
             </tr>
             <tr>
-              <td class="text-left" rowspan="1" colspan="1">Delegated</td>
+              <td class="text-left" rowspan="1" colspan="1">Separate</td>
               <td class="text-left" rowspan="1" colspan="1">a separately mapped CAI</td>
               <td class="text-left" rowspan="1" colspan="1">intra-domain carrier</td>
               <td class="text-left" rowspan="1" colspan="1">the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation</td>
             </tr>
           </tbody>
         </table>
-<p id="section-8.1-2">Collapsed is the default: it adds no configured CAI mapping and no self-entry
+<p id="section-8.1-2">Co-located is the default: it adds no configured CAI mapping and no self-entry
 in <code>identity_continuation_issuers</code>. The RAS still advertises the continuation
 profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). Both topologies produce
 the same Identity Continuation Assertion and apply the same CAI requirements;
 they differ only in how the CAI reaches the accepted hop's state.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
-<p id="section-8.1-3">A delegated topology can propagate the handle in several ways:<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.1-3">With a separate CAI, a deployment can propagate the handle in several ways:<a href="#section-8.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-8.1-4.1">
             <p id="section-8.1-4.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> can carry the
@@ -3015,11 +3015,11 @@ are configured out of band.<a href="#section-9.7-3" class="pilcrow">¶</a></p>
 issuer-pairing trust. The IdP sees one signed attestation in either topology,
 so separating the CAI isolates keys and components but does not create a
 protocol-level quorum. A compromised RAS can fabricate acceptance state in
-either topology, since a delegated CAI reads that state as authoritative; a
-compromised delegated CAI can additionally attest a hop the RAS refused. In
+either topology, since a separate CAI reads that state as authoritative; a
+compromised separate CAI can additionally attest a hop the RAS refused. In
 both topologies, RAS-local authorization revocation after issuance, which the
 IdP cannot observe, leaves the assertion valid for its remaining lifetime;
-delegation adds any delay in RAS state reaching the CAI.
+a separate CAI adds any delay in RAS state reaching it.
 The root envelope still bounds the result.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3699,7 +3699,7 @@ that request, calls TravelAPI to reach TravelSaaS; and TravelService, the
 TravelSaaS workload that handles that call, in turn calls BookingAPI to
 complete the itinerary. All parties trust one enterprise IdP at
 <code>https://idp.example/</code>.<a href="#appendix-B.1-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.1-2">Topology: delegated CAI with a Transaction Token carrier.<a href="#appendix-B.1-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.1-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.1-2" class="pilcrow">¶</a></p>
 <p id="appendix-B.1-3">The authorization path, the sequence of accepting RASes, differs from that
 API-call path:<a href="#appendix-B.1-3" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1-4">
@@ -4159,7 +4159,7 @@ the interactive example, the root hop is bound to durable, platform-owned
 task authorization. The Scheduler stores only an opaque task identifier;
 each run derives fresh context from the active authorization
 (<a href="#task-provenance" class="auto internal xref">Section 9.2</a>).<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-2">Topology: delegated CAI with a Transaction Token carrier.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.2-3.1">
             <p id="appendix-B.2-3.1.1">Platform domain (<code>platform.example</code>): workload <code>briefing-agent</code>, and
@@ -4366,7 +4366,7 @@ IdP, which is out of scope for this document.<a href="#appendix-B.2.4-2" class="
 gateway knows the upstream but holds no end-user assertion addressed to it.
 This flow lets the gateway obtain an audience-specific grant without
 weakening the original assertion's audience check.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.3-2">Topology: collapsed; GatewayRAS also holds the CAI role.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-2">Topology: co-located; GatewayRAS also holds the CAI role.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.3-3.1">
             <p id="appendix-B.3-3.1.1">AgentPlatform domain (<code>agent.example</code>): client <code>agent-app</code> only, the
@@ -4527,8 +4527,8 @@ identity_continuation_handle=&lt;handle&gt;
 </pre><a href="#appendix-C-3.4.2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-C-3.4.3">
-The sketch shows the delegated topology, where the workload holds the
-handle; in the collapsed topology the request would instead carry the
+The sketch shows the separate-CAI topology, where the workload holds the
+handle; in the co-located topology the request would instead carry the
 authenticated context that selects the authorization. The authenticated
 workload and proof key would determine <code>act</code> and <code>cnf</code>, and the IdP
 audience would derive from the hop's binding rather than be supplied.
@@ -4598,7 +4598,7 @@ terminal hop.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 lists only additional CAIs. Added a scope statement to the Overview and a
 non-normative Deployment Topologies subsection holding the carrier
 realizations, added a Topology and Trust security subsection, and switched
-the gateway example to the collapsed topology.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+the gateway example to the co-located topology.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.4">
           <p id="appendix-E-3.4.1">Removed the prohibition on carrying the handle in an access token, along
