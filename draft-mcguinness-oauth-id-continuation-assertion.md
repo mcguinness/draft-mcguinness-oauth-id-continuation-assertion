@@ -64,6 +64,7 @@ informative:
   RFC6838:
   RFC8417:
   RFC8705:
+  RFC9068:
   RFC9700:
   I-D.fletcher-transaction-token-chaining-profile:
   I-D.ietf-oauth-identity-chaining:
@@ -130,7 +131,7 @@ Each trust domain the chain continues from has two roles: a RAS that
 accepts an ID-JAG and binds the hop, and a Continuation Assertion Issuer (CAI)
 that mints the Identity Continuation Assertion the workload presents to the
 IdP. A trusted intra-domain carrier surfaces the accepted hop's handle to
-workloads inside the domain ({{transaction-token-context}}); the carrier is a
+workloads inside the domain ({{handle-propagation}}); the carrier is a
 deployment choice, not a role of its own, and one party may run all of these
 within a domain ({{security-trust-model}}).
 
@@ -228,7 +229,7 @@ Trust domain:
 Intra-domain carrier:
 : The server-derived, deployment-specific mechanism that surfaces an accepted
   hop's handle to authorized workloads within a trust domain
-  ({{transaction-token-context}}).
+  ({{handle-propagation}}).
 
 Continuation Handle (`identity_continuation_handle`):
 : An opaque, unguessable, IdP-generated reference to one hop of a continuation
@@ -364,11 +365,10 @@ The following rules apply:
    256 characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`,
    `0`-`9`, `-`, `_`).
 
-3. The handle crosses a trust boundary only inside an ID-JAG (to the RAS) or
-   an Identity Continuation Assertion (to the IdP), never standalone, and
-   MUST NOT appear in an access token or external Resource Server
-   authorization claim. Authorized workloads MAY observe it only as
-   intra-domain context ({{transaction-token-context}}).
+3. Across a trust boundary, the handle is accepted only inside an ID-JAG (by
+   the RAS) or an Identity Continuation Assertion (by the IdP), never as a
+   standalone value. Inside the accepting RAS's domain it travels only by a
+   carrier ({{handle-propagation}}).
 
 4. A continuation-aware RAS binds the handle to the authorization state it
    establishes ({{ras-processing}}); RASes, Resource Servers, and CAIs MUST NOT
@@ -473,7 +473,7 @@ trace artifact production and processing: the CAI issues the assertion
 ({{assertion-issuance}}), the IdP validates the exchange and issues the next
 ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
 ({{ras-processing}}), and the domain surfaces the handle to later continuers
-({{transaction-token-context}}).
+({{handle-propagation}}).
 
 ## Issuing the Assertion {#assertion-issuance}
 
@@ -505,8 +505,8 @@ The CAI MUST authenticate the actor and issue only after establishing that:
 5. the actor is bound to the current transaction and the handle matches that
    transaction's RAS-bound state; and
 
-6. a recheck against authoritative RAS state confirms the authorization
-   remains active and continuation remains permitted.
+6. a recheck against authoritative RAS state, whatever the carrier, confirms
+   the authorization remains active and continuation remains permitted.
 
 Possession of a handle or carrier token alone is insufficient. Target or
 purpose hints can narrow CAI issuance but MUST NOT control the IdP's target
@@ -825,7 +825,7 @@ The hop reference is delivered as the ID-JAG's `identity_continuation_handle`
 claim ({{chain-id}}, rule 1), a claim inside `access_token` and not a separate
 Token Exchange response parameter; the accepting Resource Authorization Server
 binds it ({{ras-processing}}), and the domain then surfaces it to continuers as
-intra-domain context ({{transaction-token-context}}). There is likewise no
+intra-domain context ({{handle-propagation}}). There is likewise no
 chain-expiry response parameter: chain lifetime is authoritative at the IdP
 ({{lifecycle}}), and a deployment needing advance warning conveys it through
 task or authorization state, an optional ID-JAG claim, or a management API.
@@ -936,10 +936,8 @@ on accepting a continuation-capable ID-JAG:
 The RAS MUST bind the handle and issue the access token as one outcome: no
 access token without its binding, and no binding without a token. Repeated
 redemption of one ID-JAG MUST bind to the same hop authorization record, so a
-retry cannot create multiple records for one grant. The RAS MUST NOT place the
-handle in an access token, external authorization claim, or protected-API
-authorization input. It exposes the binding only privately within its trust
-domain.
+retry cannot create multiple records for one grant. The RAS exposes the binding
+only within its trust domain ({{handle-propagation}}).
 
 ## Hop Activation {#hop-activation}
 
@@ -974,30 +972,49 @@ Acceptance gates continuation but does not bound downstream authority: the IdP
 evaluates later targets against the root envelope, and local RAS authorization
 neither narrows nor widens it.
 
-## Intra-Domain Handle Propagation {#transaction-token-context}
+## Intra-Domain Handle Propagation {#handle-propagation}
 
-Within a trust domain, an authorized workload learns the accepted hop's handle
-from a trusted intra-domain carrier. The carrier:
+Within a trust domain, a workload obtains the accepted hop's handle through a
+deployment-specific carrier derived from the RAS binding
+({{ras-processing}}). The carrier is accepted only within that domain
+({{assertion-issuance}}).
 
-* MUST be server-derived and MUST bind the handle, its originating IdP and
-  tenant, and the current credential and key to the RAS authorization;
-* MUST NOT be supplied or overridden by the requester;
-* MUST NOT be accepted outside the trust domain; and
-* MUST be re-derived when replaced.
+One rule applies to every carrier. Each call has an authenticated context
+that selects one RAS-bound authorization. The handle surfaced for that call
+MUST be the handle bound to that authorization, whether read directly from RAS
+state or from a carrier derived from it. A requester can choose which
+credential to present, but cannot supply or override its handle separately. A
+session or subject alone is not enough to select the authorization, because
+doing so could attach another user's handle to the call.
 
-The specific carrier is deployment-specific: a Transaction Token
-{{I-D.ietf-oauth-transaction-tokens}} is one realization ({{rationale-txn}}).
+The authenticated context selects the authorization as follows:
 
-Before deriving, the protected endpoint or carrier MUST validate live proof of
-possession of the confirmed key presented on the current call, and MUST derive
-the handle from the authorization record bound to that verified credential,
-key, and RAS state, never from a session or subject, which could otherwise
-bind the wrong user's authorization state to this call.
+* For an ingress call, the sender-constrained access token after the resource
+  verifies its proof of possession.
+* For a downstream call, a carrier forwarded from that ingress.
+* For a scheduled run, the task named by an authenticated actor, resolved to
+  the task authorization for which that actor is designated
+  ({{task-provenance}}).
 
-Authorized intra-domain workloads MAY read the handle. They MUST NOT place it
-in access tokens, external authorization claims, responses, webhooks, errors,
-or calls to non-participants; deployments also keep it out of logs and
-traces. The handle conveys no authority.
+A deployment can realize the carrier in several ways:
+
+* A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} can carry the
+  handle as request context ({{rationale-txn}}).
+* A signed JWT access token {{RFC9068}} issued by the accepting RAS can carry
+  the handle as a claim. The claim records issuance-time state and therefore
+  cannot reflect a later revocation.
+* For an opaque access token issued by the accepting RAS, its introspection
+  response {{RFC7662}} can carry the handle as a member, generated when
+  introspection occurs and present only when `active` is `true`.
+
+Before issuing an assertion, the CAI verifies the handle against authoritative
+RAS state and confirms that continuation remains permitted
+({{assertion-issuance}}). This recheck covers staleness for every carrier.
+
+The handle conveys no authority. A Resource Server has no obligations under
+this specification, so a carrier SHOULD NOT expose the handle to a party with
+no role in continuation. Deployments also keep it out of logs, traces, and
+responses.
 
 # Authorization Server Metadata {#metadata}
 
@@ -1165,7 +1182,7 @@ target within that ceiling.
 Wrong-handle association can continue the wrong user's bounded chain. The
 intra-domain carrier establishes the authoritative association between the
 request and the handle by deriving it from the current credential's RAS-bound
-state ({{transaction-token-context}}); a handle a workload supplies is not
+state ({{handle-propagation}}); a handle a workload supplies is not
 authoritative, and the CAI rejects substitution.
 
 Keeping CAI issuance in-domain ({{assertion-issuance}})
@@ -1264,12 +1281,10 @@ access-controlled discovery.
 
 # Privacy Considerations {#privacy}
 
-A hop's `identity_continuation_handle` is visible only to its ID-JAG client,
-the accepting Resource Authorization Server, the IdP, and the domain's
-carrier, CAI, and authorized workloads. It never enters an access token,
-external authorization claims, or protected-API authorization input
-({{chain-id}}, rule 3). A workload receiving it as intra-domain context is a
-control-plane participant.
+A hop's `identity_continuation_handle` is visible to its ID-JAG client, the
+accepting Resource Authorization Server, the IdP, and, within the accepting
+domain, the carrier, CAI, authorized workloads, and any audience of an access
+token that carries it ({{handle-propagation}}).
 
 Handles are opaque, high-entropy, and hop-specific ({{chain-id}}), so they do
 not provide a common cross-RAS identifier for a user.
@@ -1417,15 +1432,34 @@ Claim Description:
   continuation chain, used to correlate a continuation to its chain
   and parent hop and to resolve the per-audience subject. This claim
   appears in an Identity Continuation Assertion and in a continuation-capable
-  ID-JAG, and its value may also travel in intra-domain chain context; it is
-  not placed in an access token or a Resource Server's external
-  authorization claims ({{chain-id}}, rule 3).
+  ID-JAG, and its value may also travel in intra-domain chain context,
+  including an access token the accepting Resource Authorization Server
+  issues ({{handle-propagation}}).
 
 Change Controller:
 : IETF
 
 Specification Document(s):
 : This document, {{chain-id}}
+
+## OAuth Token Introspection Response Registration
+
+IANA is requested to register the following value in the "OAuth Token
+Introspection Response" registry established by {{RFC7662}}.
+
+Name:
+: identity_continuation_handle
+
+Description:
+: The continuation handle bound to the introspected token's authorization,
+  present only when `active` is `true` and returned only to resources within
+  the issuing server's trust domain ({{handle-propagation}})
+
+Change Controller:
+: IESG
+
+Specification Document(s):
+: This document, {{handle-propagation}}
 
 ## OAuth Authorization Server Metadata Registration
 
@@ -1550,9 +1584,10 @@ payload and state blocks below them are tagged "On the wire" when they cross a
 trust boundary,
 "Intra-domain context" when they travel only within one trust domain, and
 "Server-side state" when they are never transmitted. Continuation handles
-are written H0, H1, and so on, one per hop. The examples use Transaction
-Tokens as the intra-domain carrier for illustration only; the profile does not
-require them ({{transaction-token-context}}).
+are written H0, H1, and so on, one per hop. The first two examples use a
+Transaction Token as the carrier; the gateway example uses a claim in the
+access token. Both are illustrations, and the profile requires neither
+({{handle-propagation}}).
 
 ## Three-Hop Interactive Example {#example}
 
@@ -1571,9 +1606,9 @@ ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
 ~~~
 
 Proof of possession uses DPoP. JWTs are shown as decoded payloads; JOSE
-headers, signatures, and client authentication are omitted. The handle
-crosses a trust boundary only inside an ID-JAG or Identity Continuation
-Assertion and travels within a domain only as derived chain context.
+headers, signatures, and client authentication are omitted. Across a trust
+boundary the handle is accepted only inside an ID-JAG or Identity Continuation
+Assertion; within a domain it travels only as derived chain context.
 
 Participants are grouped by trust domain; all trust the IdP at
 `https://idp.example/`. Each domain from which continuation occurs has two
@@ -1735,9 +1770,9 @@ hop that never reaches ACCEPTED, for example one copied from an ID-JAG
 that ExpenseRAS rejected, is not usable: no CAI attests a hop
 that its Resource Authorization Server never accepted.
 
-ExpenseRAS keeps this association in a private internal record. It is never
-serialized into AT1, an external authorization claim, or anything that
-ExpenseAPI's callers observe.
+ExpenseRAS keeps this association in a private internal record. This
+deployment does not put it in AT1; the gateway example ({{example-gateway}})
+shows that carrier.
 
 Server-side state:
 
@@ -1783,10 +1818,9 @@ Intra-domain context (decoded Transaction Token):
 ~~~
 
 The Expense TTS derives this context from AT1's authorization record; neither
-ExpenseApp nor ExpenseService supplies H0. The Transaction Token remains
-inside `expenses.example` and is normally forwarded unchanged within that
-domain. A replacement token requires the TTS to re-derive the member
-({{transaction-token-context}}). The `tctx.identity_continuation` encoding
+ExpenseApp nor ExpenseService supplies H0 ({{handle-propagation}}). The
+Transaction Token remains inside `expenses.example` and is normally forwarded
+unchanged within that domain. The `tctx.identity_continuation` encoding
 shown is illustrative and deployment-defined; this document standardizes no
 carrier schema.
 
@@ -1979,7 +2013,7 @@ the binding extension. TravelService then calls BookingAPI with AT3.
 
 TravelService itself is the current-domain actor that obtains the next
 ID-JAG; it does not pass the handle to a sibling workload
-({{transaction-token-context}}).
+({{handle-propagation}}).
 
 ### Reaching a Target Outside the Trust Circle {#example-federation-edge}
 
@@ -2108,7 +2142,7 @@ Scheduler's trigger authenticates and carries only `task-123`; BriefingAgent
 then authenticates to the Platform TTS and proves possession of its key, and
 the TTS, after confirming `task-123` is active and BriefingAgent is its
 designated actor, derives H0 into fresh intra-domain context
-({{transaction-token-context}}). Neither the Scheduler nor BriefingAgent
+({{handle-propagation}}). Neither the Scheduler nor BriefingAgent
 selects H0.
 
 Before issuing, Platform CAI authenticates `briefing-agent`, verifies its key
@@ -2191,9 +2225,11 @@ weakening the original assertion's audience check.
   confidential runtime that hosts Alice's session and roots the chain; it
   has no Resource Authorization Server of its own in this example.
 * Gateway domain (`gateway.example`): workload `tool-gateway`, and
-  GatewayRAS / Gateway TTS / Gateway CAI, in front of the gateway's
-  own tool-invocation surface (`resource=https://gateway.example/`),
-  scoped under tenant `tenant-gw-01`.
+  GatewayRAS / Gateway CAI, in front of the gateway's own tool-invocation
+  surface (`resource=https://gateway.example/`), scoped under tenant
+  `tenant-gw-01`. Instead of a Transaction Token Service, GatewayRAS carries
+  the handle as a claim in its signed, DPoP-bound JWT access tokens
+  ({{handle-propagation}}).
 * Wiki domain (`wiki.example`): WikiRAS only, in front of WikiAPI. It is
   terminal in this chain.
 
@@ -2208,7 +2244,7 @@ The runtime roots the chain at the gateway:
      |--ID Token---->|               |
      |<--ID-JAG(H0)--|               |
      |----------------ID-JAG-------->| bind H0
-     |<-------------gateway AT-------|
+     |<---gateway AT, H0 as claim----|
 ~~~
 
 To reach Wiki, the gateway continues the chain:
@@ -2240,18 +2276,39 @@ no enumerated targets; enterprise policy permits `tool-gateway` to continue it
 ID-JAG and binds H0 exactly as ExpenseRAS bound H0 in {{example-context}}.
 
 AgentApp then invokes the gateway with its access token and no continuation
-input. AgentApp can read H0 in its ID-JAG, but it cannot supply or select the
-handle used for this call. Gateway TTS derives H0 from the authorization
-that GatewayRAS bound to the presented access token
-({{transaction-token-context}}).
+input. AgentApp chooses which token to present, and with it which
+authorization, but cannot alter the handle inside or pair it with another
+token's subject and key: GatewayRAS copied H0 from the binding for the
+redeemed ID-JAG at issuance, and the signature seals it. ToolGateway
+validates the token and its DPoP binding, then reads H0 from the claim. It
+accepts no handle from any other input AgentApp controls
+({{handle-propagation}}).
+
+On the wire (decoded gateway access token; only `gateway.example` resources
+accept it):
+
+~~~ json
+{
+  "iss": "https://ras.gateway.example/",
+  "aud": "https://gateway.example/",
+  "sub": "gateway-pairwise-subject",
+  "client_id": "agent-app",
+  "cnf": { "jkt": "base64url-agent-app-key-thumbprint" },
+  "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
+  "iat": 1710000210,
+  "exp": 1710000810,
+  "jti": "at-gw-0001"
+}
+~~~
 
 ### Continuation Exchange: The Gateway Continues
 
 Resolving the tool call, the gateway selects Wiki as the upstream, a target no
-one enumerated when AgentApp rooted the chain. ToolGateway reads H0 from its
-transaction context, obtains an assertion from Gateway CAI, and presents it to
-the IdP with a DPoP proof of the `cnf` key, as in {{example-chained}}, now
-requesting
+one enumerated when AgentApp rooted the chain. ToolGateway requests an
+assertion for H0 from Gateway CAI, which rechecks GatewayRAS's binding before
+issuing ({{assertion-issuance}}). ToolGateway then presents the assertion to
+the IdP with a DPoP proof of the assertion's `cnf` key, as in
+{{example-chained}}, now requesting
 `audience=https://ras.wiki.example/`, `resource=https://api.wiki.example/`, and
 `scope=wiki.read`.
 
@@ -2273,7 +2330,9 @@ target outside the basis fails with `invalid_target` as in {{example-dynamic}}.
 
 * AgentApp alone presents Alice's root credential (the ID Token); the gateway
   never holds or presents it.
-* Gateway TTS, not AgentApp, selects H0 from GatewayRAS-bound state.
+* The access token carries H0 as a claim GatewayRAS copied from the binding
+  for the redeemed ID-JAG and sealed with its signature; AgentApp cannot
+  substitute another handle, and Gateway CAI still rechecks the live binding.
 * The IdP evaluates every dynamically selected target against the root
   envelope and constructs the gateway's actor lineage.
 
@@ -2333,8 +2392,7 @@ Further questions are tracked in the project's issue list rather than expanded
 here: nested own-domain `act` segments and offline-actor audit
 ({{I-D.mcguinness-oauth-actor-receipts}},
 {{I-D.mcguinness-oauth-actor-proofs}}); a pull topology with target-side
-resolution ({{rationale-pull}}); an alternative chain-context carrier that
-derives the handle from RAS-bound state; IdP discovery metadata for accepted
+resolution ({{rationale-pull}}); IdP discovery metadata for accepted
 actor-token types, issuers, and proof methods ({{metadata}}); a non-user root
 profile ({{decision-rule}}); and RAS-derived narrowing with a signed
 intersection model ({{hop-activation}}).
@@ -2350,6 +2408,17 @@ this profile builds.
 {:numbered="false"}
 
 \[\[ To be removed before publication as an RFC ]]
+
+-02
+
+* Removed the prohibition on carrying the handle in an access token, along
+  with the carrier requirements that restated the CAI preconditions. One rule
+  remains: the handle surfaced for a call is the one the RAS bound to the
+  authorization that the call's authenticated context selects, read from RAS
+  state or from a carrier derived from it. The accepting RAS's own access
+  token is now a permitted carrier, the CAI recheck names every carrier, and
+  the gateway example uses that carrier. The handle is also registered as an
+  introspection response member.
 
 -01
 
