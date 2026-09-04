@@ -2727,8 +2727,9 @@ Document History
    *  Removed the prohibition on carrying the handle in an access token,
       along with the carrier requirements that restated the CAI
       preconditions.  One rule remains: the handle surfaced for a call
-      is read from the RAS-bound state that the call's authenticated
-      context selects.  The accepting RAS's own access token is now a
+      originates from the RAS-bound state that the call's authenticated
+      context selects, whether read from that state or from a carrier
+      derived from it.  The accepting RAS's own access token is now a
       permitted carrier, the CAI recheck names every carrier, and the
       gateway example uses that carrier.  The handle is also registered
       as an introspection response member.
