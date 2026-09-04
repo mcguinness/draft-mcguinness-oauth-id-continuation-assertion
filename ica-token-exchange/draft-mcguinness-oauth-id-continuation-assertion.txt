@@ -655,23 +655,32 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<JWT>
 
-   The request MUST carry a DPoP proof [RFC9449], and the CAI binds the
-   assertion to that key in cnf.  The request MUST NOT carry audience:
-   the assertion's aud is the IdP recorded in the hop's binding.
-   actor_token is OPTIONAL and names the acting identity when it differs
-   from the authenticated client; otherwise act names the authenticated
-   client.
+   The request MUST use requested_token_type
+   urn:ietf:params:oauth:token-type:identity-continuation and
+   subject_token_type urn:ietf:params:oauth:token-type:access_token, and
+   MUST carry a DPoP proof [RFC9449]; the CAI binds the assertion to
+   that key in cnf.  The request MUST NOT include audience, resource,
+   actor_token, or actor_token_type: the assertion's aud is the IdP
+   recorded in the hop's binding, targets are chosen at the IdP
+   exchange, and the authenticated client is the actor named in act.  A
+   scope value, if present, is a hint to which the rule on hints above
+   applies.
 
    The subject_token MUST be an access token issued by a RAS the CAI is
-   mapped to, unexpired, and addressed to the authenticated client.  A
-   RAS acting as CAI resolves its own token; a separate CAI resolves it
-   through introspection [RFC7662] or a carrier (Section 6.6).  The
-   authorization behind that token is the one the preconditions above
-   test: its bound handle and live state satisfy preconditions 5 and 6,
-   the authenticated client is the actor of preconditions 2 and 4, and
-   the DPoP key is the key of precondition 3.
+   mapped to, unexpired, and valid for a protected resource that the
+   authenticated client operates; the client acts here in the client
+   role that [RFC8693] describes for a resource server exchanging a
+   token it received.  A RAS acting as CAI resolves its own token; a
+   separate CAI resolves it through introspection [RFC7662] or a carrier
+   (Section 6.6).  The authorization behind that token is the one the
+   preconditions above test: its bound handle and live state satisfy
+   preconditions 5 and 6, the authenticated client is the actor of
+   preconditions 2 and 4, and the DPoP key is the key of precondition 3.
 
-   The response follows [RFC8693], with the assertion in access_token:
+   The response follows [RFC8693], with the assertion in access_token
+   and token_type N_A.  It MUST NOT include a refresh_token, which would
+   let a workload obtain further assertions without presenting an access
+   token or passing the live recheck:
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -685,11 +694,12 @@ Pragma: no-cache
   "expires_in": 120
 }
 
-   Errors use the codes of [RFC6749] and [RFC9449]: invalid_grant when
-   the subject_token is unknown, expired, revoked, not addressed to the
-   client, or has no bound handle; unauthorized_client when policy does
-   not permit the client to continue that authorization; and
-   invalid_dpop_proof for a failed proof.
+   Errors follow [RFC8693]: invalid_request when the subject_token is
+   invalid or unacceptable under policy, including when it is unknown,
+   expired, revoked, not valid for the client's resource, has no bound
+   handle, or names an authorization the client is not permitted to
+   continue; unauthorized_client when the client is not permitted to use
+   this grant type; and invalid_dpop_proof [RFC9449] for a failed proof.
 
 6.3.  Token Exchange
 
@@ -1549,16 +1559,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    tenant, or issuer-pairing trust.  The IdP sees one signed attestation
    in either topology, so separating the CAI isolates keys and
    components but does not create a protocol-level quorum.  A workload
-   that obtains the assertion by exchanging an access token addressed to
-   it (Section 6.2.1) presents nothing it did not already hold; what it
-   gains is the CAI's attestation, gated by policy and the live recheck.
-   A compromised RAS can fabricate acceptance state in either topology,
-   since a separate CAI reads that state as authoritative; a compromised
-   separate CAI can additionally attest a hop the RAS refused.  In both
-   topologies, RAS-local authorization revocation after issuance, which
-   the IdP cannot observe, leaves the assertion valid for its remaining
-   lifetime; a separate CAI adds any delay in RAS state reaching it.
-   The root envelope still bounds the result.
+   that obtains the assertion by exchanging an access token for the
+   resource it operates (Section 6.2.1) presents nothing it did not
+   already hold; what it gains is the CAI's attestation, gated by policy
+   and the live recheck.  A compromised RAS can fabricate acceptance
+   state in either topology, since a separate CAI reads that state as
+   authoritative; a compromised separate CAI can additionally attest a
+   hop the RAS refused.  In both topologies, RAS-local authorization
+   revocation after issuance, which the IdP cannot observe, leaves the
+   assertion valid for its remaining lifetime; a separate CAI adds any
+   delay in RAS state reaching it.  The root envelope still bounds the
+   result.
 
 9.9.  Actor Chain Integrity
 
@@ -2746,12 +2757,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<tool-gateway JWT>
 
-   GatewayRAS confirms the token is its own, unexpired, and addressed to
-   tool-gateway, resolves H0 from the authorization it bound, and
-   returns an assertion with iss=https://ras.gateway.example/, act
-   naming tool-gateway, and cnf holding the DPoP key.  ToolGateway then
-   presents the assertion to the IdP with a DPoP proof of that key, as
-   in Appendix B.1.4, now requesting audience=https://ras.wiki.example/,
+   GatewayRAS confirms the token is its own, unexpired, and valid for
+   the tool-invocation resource tool-gateway operates, resolves H0 from
+   the authorization it bound, and returns an assertion with
+   iss=https://ras.gateway.example/, act naming tool-gateway, and cnf
+   holding the DPoP key.  ToolGateway then presents the assertion to the
+   IdP with a DPoP proof of that key, as in Appendix B.1.4, now
+   requesting audience=https://ras.wiki.example/,
    resource=https://api.wiki.example/, and scope=wiki.read.
 
    Because the envelope enumerates no targets, the IdP evaluates this
