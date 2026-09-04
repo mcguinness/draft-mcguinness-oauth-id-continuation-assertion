@@ -890,11 +890,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  aud exactly matches the IdP's issuer identifier;
 
-   3.  *Issuer trust.* The assertion iss is the RAS issuer identifier
-       that the recorded ID-JAG aud names, whether that claim was a
-       string or a one-element array, or an issuer identifier mapped to
-       that RAS; it is trusted for the tenant and authorized to pair
-       with the actor_token issuer for that tenant;
+   3.  *Issuer trust.* The assertion iss is either the RAS issuer
+       identifier the recorded ID-JAG aud names, as a string or one-
+       element array, or an issuer identifier mapped to that RAS; it is
+       trusted for the tenant and authorized to pair with the
+       actor_token issuer for that tenant;
 
    4.  *Chain state.*
 
@@ -2779,8 +2779,11 @@ Document History
    -02
 
    *  Implicitly mapped the accepting RAS as a CAI for its own hops;
-      metadata now lists only additional CAIs, and the gateway example
-      illustrates the collapsed topology.
+      metadata now lists only additional CAIs.  Added an interfaces
+      table to the Overview and a non-normative Deployment Topologies
+      subsection holding the carrier realizations, added a Topology and
+      Trust security subsection, and switched the gateway example to the
+      collapsed topology.
 
    *  Removed the prohibition on carrying the handle in an access token,
       along with the carrier requirements that restated the CAI
