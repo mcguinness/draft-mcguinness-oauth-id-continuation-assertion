@@ -1544,7 +1544,8 @@ trust domain, continuation where a boundary re-mints the subject.<a href="#secti
 <p id="section-1.2-1">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, and ID-JAG
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>, and complements OAuth
 Identity Chaining <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.1</a>);
-<a href="#overview" class="auto internal xref">Section 5.1</a> lists what it adds, by role.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
+<a href="#protocol-overview" class="auto internal xref">Section 1.3</a> walks through what it adds, and <a href="#overview" class="auto internal xref">Section 5.1</a> maps each
+step to the sections that specify it.<a href="#section-1.2-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="protocol-overview">
@@ -1989,53 +1990,74 @@ subject, and policy, never as authority.<a href="#section-4-3.4.1" class="pilcro
         <h3 id="name-overview">
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-overview" class="section-name selfRef">Overview</a>
         </h3>
-<p id="section-5.1-1">This document specifies, by role:<a href="#section-5.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-5.1-2.1">
-            <p id="section-5.1-2.1.1">The IdP embeds an <code>identity_continuation_handle</code> claim in each
-continuation-capable ID-JAG (<a href="#chain-id" class="auto internal xref">Section 4</a>), establishes and bounds the chain
-(<a href="#root-establishment" class="auto internal xref">Section 5.2</a>), and validates the continuation exchange
-(<a href="#validation" class="auto internal xref">Section 5.7.3</a>).<a href="#section-5.1-2.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.1-2.2">
-            <p id="section-5.1-2.2.1">A continuation-aware RAS binds the handle from an accepted ID-JAG to the
-authorization it issues (<a href="#ras-processing" class="auto internal xref">Section 5.3</a>) and, where it is also the CAI,
-reads it back from that state (<a href="#handle-propagation" class="auto internal xref">Section 5.5</a>).<a href="#section-5.1-2.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.1-2.3">
-            <p id="section-5.1-2.3.1">A CAI issues the Identity Continuation Assertion (<a href="#assertion" class="auto internal xref">Section 3</a>,
-<a href="#assertion-issuance" class="auto internal xref">Section 5.6</a>), from its token endpoint by Token Exchange when it
-is an authorization server (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.6.1</a>).<a href="#section-5.1-2.3.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.1-2.4">
-            <p id="section-5.1-2.4.1">A workload obtains the assertion and presents it as a Token Exchange
-<code>subject_token</code> with its actor credential and a DPoP proof
-(<a href="#token-exchange" class="auto internal xref">Section 5.7</a>).<a href="#section-5.1-2.4.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="section-5.1-2.5">
-            <p id="section-5.1-2.5.1">Authorization Server metadata advertises support: a continuation-aware RAS
-advertises the grant profile, and the IdP may signal its capability
-(<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.1-2.5.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
-<p id="section-5.1-3">How a workload obtains an assertion by other means, and how the bound handle
-reaches a separate CAI inside the RAS's trust domain, are deployment-specific,
-subject to the provenance rule in <a href="#handle-propagation" class="auto internal xref">Section 5.5</a>.<a href="#section-5.1-3" class="pilcrow">¶</a></p>
-<p id="section-5.1-4">The accepting RAS may itself hold the CAI role (co-located), or a separate CAI
-may hold it (separate); see <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. The IdP accepts an
-assertion for a hop only from the hop's accepting RAS or from a CAI it trusts
-for that RAS (the issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.7.3</a>).<a href="#section-5.1-4" class="pilcrow">¶</a></p>
-<p id="section-5.1-5"><a href="#protocol-overview" class="auto internal xref">Section 1.3</a> shows the sequence for the co-located topology. The
-sections that follow trace a chain in order: the IdP establishes it at the
-root exchange (<a href="#root-establishment" class="auto internal xref">Section 5.2</a>); the accepting RAS binds the handle
-(<a href="#ras-processing" class="auto internal xref">Section 5.3</a>) and the hop becomes ACCEPTED (<a href="#hop-activation" class="auto internal xref">Section 5.4</a>); the
-domain surfaces the handle to the continuing workload
-(<a href="#handle-propagation" class="auto internal xref">Section 5.5</a>); the CAI issues the assertion
-(<a href="#assertion-issuance" class="auto internal xref">Section 5.6</a>); and the IdP validates the continuation exchange and
-issues the next ID-JAG (<a href="#token-exchange" class="auto internal xref">Section 5.7</a>), guarding each assertion against
-replay (<a href="#validation-replay" class="auto internal xref">Section 5.8</a>). Each role validates only within its
-authority, and no artifact or role alone authorizes continuation
-(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-5.1-5" class="pilcrow">¶</a></p>
+<p id="section-5.1-1"><a href="#protocol-overview" class="auto internal xref">Section 1.3</a> walks through one continuation in six steps. The table
+maps those steps to the sections that specify them, and the sections that
+follow trace a chain in the same order.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+<table class="center" id="table-1">
+          <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<thead>
+            <tr>
+              <th class="text-left" rowspan="1" colspan="1">Step</th>
+              <th class="text-left" rowspan="1" colspan="1">Obligation</th>
+              <th class="text-left" rowspan="1" colspan="1">Specified in</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">1</td>
+              <td class="text-left" rowspan="1" colspan="1">The IdP embeds an <code>identity_continuation_handle</code> claim in each continuation-capable ID-JAG, and establishes and bounds the chain</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <a href="#chain-id" class="auto internal xref">Section 4</a>, <a href="#root-establishment" class="auto internal xref">Section 5.2</a>
+</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">2</td>
+              <td class="text-left" rowspan="1" colspan="1">A continuation-aware RAS binds the handle from an accepted ID-JAG to the authorization it issues, and the hop becomes ACCEPTED</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <a href="#ras-processing" class="auto internal xref">Section 5.3</a>, <a href="#hop-activation" class="auto internal xref">Section 5.4</a>
+</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">3</td>
+              <td class="text-left" rowspan="1" colspan="1">The domain surfaces the bound handle to its CAI; a co-located RAS reads it back from its own state</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <a href="#handle-propagation" class="auto internal xref">Section 5.5</a>
+</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">4</td>
+              <td class="text-left" rowspan="1" colspan="1">The CAI issues the Identity Continuation Assertion, from its token endpoint by Token Exchange when it is an authorization server</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <a href="#assertion" class="auto internal xref">Section 3</a>, <a href="#assertion-issuance" class="auto internal xref">Section 5.6</a>
+</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">5</td>
+              <td class="text-left" rowspan="1" colspan="1">The workload presents the assertion as a Token Exchange <code>subject_token</code> with its actor credential and a DPoP proof; the IdP validates the exchange, guards it against replay, and issues the next ID-JAG</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <a href="#token-exchange" class="auto internal xref">Section 5.7</a>, <a href="#validation-replay" class="auto internal xref">Section 5.8</a>
+</td>
+            </tr>
+            <tr>
+              <td class="text-left" rowspan="1" colspan="1">6</td>
+              <td class="text-left" rowspan="1" colspan="1">The next RAS redeems an ordinary ID-JAG under the base profile; if it is continuation-aware, step 2 applies to it in turn</td>
+              <td class="text-left" rowspan="1" colspan="1">
+                <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>
+</td>
+            </tr>
+          </tbody>
+        </table>
+<p id="section-5.1-3">Across all steps, the governing authorization bounds the chain's lifetime
+(<a href="#lifecycle" class="auto internal xref">Section 6</a>), and Authorization Server metadata advertises support: a
+continuation-aware RAS advertises the grant profile, and the IdP may signal
+its capability (<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.1-4">How a workload obtains an assertion other than by the exchange of step 4, and
+how the bound handle reaches a separate CAI inside the RAS's trust domain, are
+deployment-specific, subject to the provenance rule in <a href="#handle-propagation" class="auto internal xref">Section 5.5</a>.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
+<p id="section-5.1-5">The accepting RAS may itself hold the CAI role (co-located), as in
+<a href="#protocol-overview" class="auto internal xref">Section 1.3</a>, or a separate CAI may hold it (separate); see
+<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>. Each role validates only within its authority, and
+no artifact or role alone authorizes continuation (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-5.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="root-establishment">
@@ -2094,8 +2116,8 @@ non-user-rooted authority is out of scope. <code>sid</code> and <code>SessionInd
 only for resolution and <span class="bcp14">MUST NOT</span> enter assertions or chain context.<a href="#section-5.2-7" class="pilcrow">¶</a></p>
 <p id="section-5.2-8">Server-side consent and policy determine whether the governing authorization
 permits continuation and, if so, populate the root-chain envelope:<a href="#section-5.2-8" class="pilcrow">¶</a></p>
-<table class="center" id="table-1">
-          <caption><a href="#table-1" class="selfRef">Table 1</a></caption>
+<table class="center" id="table-2">
+          <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Envelope dimension</th>
@@ -2194,8 +2216,8 @@ trusted for the accepting RAS has freshly attested it as ACCEPTED and still
 active, no ancestor is revoked, and the current actor is the one the
 attestation names; the issuer-trust, chain-state, current-actor, and freshness
 rules of <a href="#validation" class="auto internal xref">Section 5.7.3</a> establish those facts.<a href="#section-5.4-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-2">
-          <caption><a href="#table-2" class="selfRef">Table 2</a></caption>
+<table class="center" id="table-3">
+          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">State</th>
@@ -3055,8 +3077,8 @@ document's requirements; conformance depends only on the normative sections.<a h
         <h3 id="name-deployment-topologies">
 <a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-deployment-topologies" class="section-name selfRef">Deployment Topologies</a>
         </h3>
-<table class="center" id="table-3">
-          <caption><a href="#table-3" class="selfRef">Table 3</a></caption>
+<table class="center" id="table-4">
+          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Topology</th>
@@ -5100,7 +5122,8 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
           <p id="appendix-E-3.1.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
-deployment, with the figure keyed to the steps.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+deployment, with the figure keyed to the steps, and reduced the Multi-Hop
+Overview to a map from those steps to the sections that specify them.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
           <p id="appendix-E-3.2.1">Stated the design goal in the Introduction: an opt-in extension that
