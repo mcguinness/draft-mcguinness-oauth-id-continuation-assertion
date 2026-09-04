@@ -494,10 +494,12 @@ Table of Contents
    The assertion is a subject token whose subject the IdP resolves from
    the referenced hop, not an [RFC7523] JWT-profile assertion.  It MUST
    NOT contain a top-level sub, auth_time, acr, amr, or sid claim (these
-   come from the root-chain envelope), nor the Token Exchange request
-   parameters audience, resource, scope, authorization_details, or
-   requested_token_type (these are supplied by the request).  The
-   assertion's aud identifies the IdP, not the requested target.
+   come from the root-chain envelope), nor a top-level nbf claim, whose
+   [RFC7519] semantics would add a validity condition this profile does
+   not define, nor the Token Exchange request parameters audience,
+   resource, scope, authorization_details, or requested_token_type
+   (these are supplied by the request).  The assertion's aud identifies
+   the IdP, not the requested target.
 
    Other top-level claims MAY appear but MUST be ignored for validation,
    authorization, and issuance.
@@ -1168,18 +1170,27 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
           ISSUED jti under a different fingerprint, or a FAILED jti, is
           rejected;
 
-   7.  *Envelope containment.* The requested audience, resource, scopes,
-       and authorization details are within the root-chain envelope as
-       recorded at establishment and within current IdP actor policy;
-       authorization-details containment uses the comparison rules
-       defined for each authorization-detail type, since [RFC9396]
-       defines no generic comparison, and a detail type whose rules the
-       IdP does not implement is rejected.
+   7.  *Envelope containment.* The effective authorization the IdP would
+       grant, after applying any default scope and policy to the
+       requested audience, resource, scopes, and authorization details,
+       is within the root-chain envelope as recorded at establishment
+       and within current IdP actor policy, and the issued ID-JAG
+       carries the scope, resource, and authorization_details values
+       that express it; a request whose effective authority cannot be
+       established within the envelope is rejected.  Authorization-
+       details containment uses the comparison rules defined for each
+       authorization-detail type, since [RFC9396] defines no generic
+       comparison, and a detail type whose rules the IdP does not
+       implement is rejected.
 
 5.7.4.  Successful Response
 
    The Token Exchange response follows the base ID-JAG profile: the ID-
-   JAG is returned in access_token, with token_type N_A.
+   JAG is returned in access_token, with token_type N_A.  The response
+   MUST NOT include a refresh_token: a renewable credential would let
+   the workload obtain further grants without fresh CAI attestation, or
+   root a new chain through the refresh-token anchor, outside the hop's
+   revocation dependencies.
 
    HTTP/1.1 200 OK
    Content-Type: application/json
@@ -1218,11 +1229,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    the target audience, and aud_sub remains available under the base
    profile where the target's native subject namespace differs.
 
-   The IdP MUST copy the root authentication context (auth_time, acr,
-   amr) unchanged where [I-D.ietf-oauth-identity-assertion-authz-grant]
-   requires those claims; continuation MUST NOT extend or strengthen it,
-   for example by raising acr or adding amr beyond the user's root
-   authentication.
+   Where the root-chain envelope records auth_time, acr, or amr, the IdP
+   MUST include them in the onward ID-JAG unchanged; continuation MUST
+   NOT extend or strengthen the authentication context, for example by
+   raising acr or adding amr beyond the user's root authentication.
 
    The IdP constructs act by placing the authenticated current actor
    atop the presented hop's lineage; it never copies lineage from the
@@ -1338,8 +1348,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A chain is continuable only while active at the IdP.  Each cross-
    boundary hop is a fresh policy check.  Revoking a hop stops its
    subtree at the next continuation, fail-closed, but does not
-   invalidate already-issued ID-JAGs or access tokens; the revocation
-   window is therefore bounded by their respective lifetimes.
+   invalidate already-issued ID-JAGs or access tokens.  The revocation
+   window is therefore the ID-JAG's remaining redemption window plus the
+   lifetime of the access token a late redemption obtains; any refresh
+   token the RAS issues, which the base profile recommends against,
+   extends it further.
 
    This is the deliberate difference from an offline-attenuated token,
    whose minted child stays usable for its lifetime without contacting
@@ -2151,16 +2164,16 @@ A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
 
    The signed assertion lets the CAI attest the authenticated actor,
    key, accepted hop, and any intra-domain policy checks that the IdP
-   cannot observe.  It also keeps the IdP's trust coarse: the IdP trusts
-   a CAI mapped to the accepting Resource Authorization Server (the
-   audience the ID-JAG names), scoped per tenant.  That CAI abstracts
-   the actors, keys, and continuation policy within its trust domain, so
-   the IdP authorizes mapped CAIs rather than the individual actors
-   behind them.  The assertion does not authorize target or scope.
-   Where that domain-local attestation is unnecessary, a recipient-bound
-   direct grant remains a possible simplification, but it forces the IdP
-   to authenticate every actor and hold per-actor policy directly, which
-   does not scale across domains.
+   cannot observe: acceptance is a state of the RAS, and the transaction
+   binding is domain-local, so the assertion is the IdP's only evidence
+   of either.  The IdP still authenticates each presenting actor and
+   checks its authorization (Section 5.7.2, Section 5.7.3); what the
+   assertion removes is not that step but any need for the IdP to reach
+   into another domain's state.  The assertion does not authorize target
+   or scope.  Where domain-local attestation is unnecessary, a
+   recipient-bound direct grant remains a possible simplification, at
+   the cost of the acceptance evidence and transaction checks that only
+   a party in that domain can provide.
 
 A.6.  Why Asymmetric Signing Only
 
@@ -3152,6 +3165,12 @@ Document History
       rules, defined "mapped CAI", noted the policy-basis envelope's
       confused-deputy surface, and showed client authentication in every
       example request.
+
+   *  Prohibited a refresh token in the continuation response, required
+      envelope containment of the effective authorization after
+      defaults, forbade a top-level nbf in the assertion, made
+      authentication-context preservation unconditional, and corrected
+      the signed-assertion rationale.
 
    *  Ordered the protocol section chronologically: establishing a
       chain, RAS binding and hop activation, handle propagation,
