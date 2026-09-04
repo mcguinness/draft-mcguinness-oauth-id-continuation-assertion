@@ -1321,19 +1321,22 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.11.2.1.1"><a href="#section-11.1" class="auto internal xref">11.1</a>.  <a href="#name-oauth-extensions-error-regi" class="internal xref">OAuth Extensions Error Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.2">
-                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-oauth-uri-registration" class="internal xref">OAuth URI Registration</a></p>
+                <p id="section-toc.1-1.11.2.2.1"><a href="#section-11.2" class="auto internal xref">11.2</a>.  <a href="#name-oauth-parameters-registrati" class="internal xref">OAuth Parameters Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.3">
-                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-media-type-registration" class="internal xref">Media Type Registration</a></p>
+                <p id="section-toc.1-1.11.2.3.1"><a href="#section-11.3" class="auto internal xref">11.3</a>.  <a href="#name-oauth-uri-registration" class="internal xref">OAuth URI Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.4">
-                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-json-web-token-claims-regis" class="internal xref">JSON Web Token Claims Registration</a></p>
+                <p id="section-toc.1-1.11.2.4.1"><a href="#section-11.4" class="auto internal xref">11.4</a>.  <a href="#name-media-type-registration" class="internal xref">Media Type Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.5">
-                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-oauth-token-introspection-r" class="internal xref">OAuth Token Introspection Response Registration</a></p>
+                <p id="section-toc.1-1.11.2.5.1"><a href="#section-11.5" class="auto internal xref">11.5</a>.  <a href="#name-json-web-token-claims-regis" class="internal xref">JSON Web Token Claims Registration</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.6">
-                <p id="section-toc.1-1.11.2.6.1"><a href="#section-11.6" class="auto internal xref">11.6</a>.  <a href="#name-oauth-authorization-server-" class="internal xref">OAuth Authorization Server Metadata Registration</a></p>
+                <p id="section-toc.1-1.11.2.6.1"><a href="#section-11.6" class="auto internal xref">11.6</a>.  <a href="#name-oauth-token-introspection-r" class="internal xref">OAuth Token Introspection Response Registration</a></p>
+</li>
+              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.11.2.7">
+                <p id="section-toc.1-1.11.2.7.1"><a href="#section-11.7" class="auto internal xref">11.7</a>.  <a href="#name-oauth-authorization-server-" class="internal xref">OAuth Authorization Server Metadata Registration</a></p>
 </li>
             </ul>
 </li>
@@ -2146,10 +2149,28 @@ the bound handle and live state satisfy preconditions 5 and 6.<a href="#section-
 2.2.1) in which <code>access_token</code> carries the Identity Continuation Assertion,
 <code>issued_token_type</code> is
 <code>urn:ietf:params:oauth:token-type:identity-continuation</code>, <code>token_type</code> is
-<code>N_A</code>, and <code>expires_in</code> reflects the assertion's lifetime. The response
-<span class="bcp14">MUST NOT</span> include a <code>refresh_token</code>, which would let a client obtain further
-assertions without presenting a token or passing the live recheck.<a href="#section-6.3.2-1" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-6.3.2-2">
+<code>N_A</code>, and <code>expires_in</code> reflects the assertion's lifetime. This profile adds
+one parameter:<a href="#section-6.3.2-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-6.3.2-2">
+            <dt id="section-6.3.2-2.1">
+<code>audience</code>:</dt>
+            <dd style="margin-left: 1.5em" id="section-6.3.2-2.2">
+              <p id="section-6.3.2-2.2.1"><span class="bcp14">REQUIRED</span>. The issuer identifier of the IdP to which the client presents the
+assertion, equal to the assertion's <code>aud</code>. Because the request carries no
+<code>audience</code>, this is how the client learns where the assertion goes. The
+client obtains that IdP's <code>token_endpoint</code> from its authorization server
+metadata (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>), retrieved with the <code>oauth-authorization-server</code>
+well-known URI suffix under the issuer identifier, after confirming that the
+returned <code>issuer</code> exactly matches <code>audience</code>; where the IdP publishes no
+metadata, the client uses configuration bound to that issuer identifier
+(<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-6.3.2-2.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+</dl>
+<p id="section-6.3.2-3">The response <span class="bcp14">MUST NOT</span> include a <code>refresh_token</code>, which would let a client
+obtain further assertions without presenting a token or passing the live
+recheck.<a href="#section-6.3.2-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-6.3.2-4">
 <pre>
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -2160,9 +2181,10 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "&lt;Identity Continuation Assertion, compact JWS&gt;",
   "token_type": "N_A",
+  "audience": "https://idp.example/",
   "expires_in": 120
 }
-</pre><a href="#section-6.3.2-2" class="pilcrow">¶</a>
+</pre><a href="#section-6.3.2-4" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -3325,294 +3347,328 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
 </dl>
 </section>
 </div>
-<div id="oauth-uri-registration">
+<div id="oauth-parameters-registration">
 <section id="section-11.2">
-        <h3 id="name-oauth-uri-registration">
-<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-oauth-uri-registration" class="section-name selfRef">OAuth URI Registration</a>
+        <h3 id="name-oauth-parameters-registrati">
+<a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-oauth-parameters-registrati" class="section-name selfRef">OAuth Parameters Registration</a>
         </h3>
-<p id="section-11.2-1">IANA is requested to register the following value in the "OAuth URI" registry
-established by <span>[<a href="#RFC6755" class="cite xref">RFC6755</a>]</span> and used for token type identifiers by <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+<p id="section-11.2-1">IANA is requested to update the registration of the <code>audience</code> parameter in
+the "OAuth Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>
+registered the parameter for the token request; this document adds the token
+response usage location and leaves the change controller unchanged, so that
+the entry reads as follows.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-11.2-2">
-          <dt id="section-11.2-2.1">URN:</dt>
+          <dt id="section-11.2-2.1">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.2">
-            <p id="section-11.2-2.2.1">urn:ietf:params:oauth:token-type:identity-continuation<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.2.1">audience<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-2.3">Common Name:</dt>
+<dt id="section-11.2-2.3">Parameter usage location:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.4">
-            <p id="section-11.2-2.4.1">Token type URI for the Identity Continuation Assertion<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.4.1">token request, token response<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-2.5">Change Controller:</dt>
+<dt id="section-11.2-2.5">Change controller:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.6">
-            <p id="section-11.2-2.6.1">IETF<a href="#section-11.2-2.6.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.6.1">IESG<a href="#section-11.2-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-2.7">Specification Document:</dt>
+<dt id="section-11.2-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.8">
-            <p id="section-11.2-2.8.1">This document, <a href="#names" class="auto internal xref">Section 3.1</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.8.1">Section 2.1 of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>; this document, <a href="#assertion-response" class="auto internal xref">Section 6.3.2</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-11.2-3">IANA is also requested to register the following grant-profile value in the
-same registry.<a href="#section-11.2-3" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-11.2-4">
-          <dt id="section-11.2-4.1">URN:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.2-4.2">
-            <p id="section-11.2-4.2.1">urn:ietf:params:oauth:grant-profile:id-jag-continuation<a href="#section-11.2-4.2.1" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="oauth-uri-registration">
+<section id="section-11.3">
+        <h3 id="name-oauth-uri-registration">
+<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-oauth-uri-registration" class="section-name selfRef">OAuth URI Registration</a>
+        </h3>
+<p id="section-11.3-1">IANA is requested to register the following value in the "OAuth URI" registry
+established by <span>[<a href="#RFC6755" class="cite xref">RFC6755</a>]</span> and used for token type identifiers by <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.3-2">
+          <dt id="section-11.3-2.1">URN:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-2.2">
+            <p id="section-11.3-2.2.1">urn:ietf:params:oauth:token-type:identity-continuation<a href="#section-11.3-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-4.3">Common Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.2-4.4">
-            <p id="section-11.2-4.4.1">Grant profile identifier for a continuation-capable ID-JAG, whose accepting
+<dt id="section-11.3-2.3">Common Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-2.4">
+            <p id="section-11.3-2.4.1">Token type URI for the Identity Continuation Assertion<a href="#section-11.3-2.4.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.3-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-2.6">
+            <p id="section-11.3-2.6.1">IETF<a href="#section-11.3-2.6.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.3-2.7">Specification Document:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-2.8">
+            <p id="section-11.3-2.8.1">This document, <a href="#names" class="auto internal xref">Section 3.1</a><a href="#section-11.3-2.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+</dl>
+<p id="section-11.3-3">IANA is also requested to register the following grant-profile value in the
+same registry.<a href="#section-11.3-3" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.3-4">
+          <dt id="section-11.3-4.1">URN:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-4.2">
+            <p id="section-11.3-4.2.1">urn:ietf:params:oauth:grant-profile:id-jag-continuation<a href="#section-11.3-4.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-11.3-4.3">Common Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-4.4">
+            <p id="section-11.3-4.4.1">Grant profile identifier for a continuation-capable ID-JAG, whose accepting
 Resource Authorization Server binds the <code>identity_continuation_handle</code> claim
-to authorization state<a href="#section-11.2-4.4.1" class="pilcrow">¶</a></p>
+to authorization state<a href="#section-11.3-4.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-4.5">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.2-4.6">
-            <p id="section-11.2-4.6.1">IETF<a href="#section-11.2-4.6.1" class="pilcrow">¶</a></p>
+<dt id="section-11.3-4.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-4.6">
+            <p id="section-11.3-4.6.1">IETF<a href="#section-11.3-4.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.2-4.7">Specification Document:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.2-4.8">
-            <p id="section-11.2-4.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a>, <a href="#ras-processing" class="auto internal xref">Section 6.5</a><a href="#section-11.2-4.8.1" class="pilcrow">¶</a></p>
+<dt id="section-11.3-4.7">Specification Document:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.3-4.8">
+            <p id="section-11.3-4.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a>, <a href="#ras-processing" class="auto internal xref">Section 6.5</a><a href="#section-11.3-4.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
 </section>
 </div>
 <div id="media-type-registration">
-<section id="section-11.3">
+<section id="section-11.4">
         <h3 id="name-media-type-registration">
-<a href="#section-11.3" class="section-number selfRef">11.3. </a><a href="#name-media-type-registration" class="section-name selfRef">Media Type Registration</a>
+<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-media-type-registration" class="section-name selfRef">Media Type Registration</a>
         </h3>
-<p id="section-11.3-1">IANA is requested to register the following media type in the "Media Types"
+<p id="section-11.4-1">IANA is requested to register the following media type in the "Media Types"
 registry, in the manner described in <span>[<a href="#RFC6838" class="cite xref">RFC6838</a>]</span>, corresponding to the JOSE
-<code>typ</code> header value <code>oauth-identity-continuation+jwt</code>.<a href="#section-11.3-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-11.3-2">
-          <dt id="section-11.3-2.1">Type name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.2">
-            <p id="section-11.3-2.2.1">application<a href="#section-11.3-2.2.1" class="pilcrow">¶</a></p>
+<code>typ</code> header value <code>oauth-identity-continuation+jwt</code>.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.4-2">
+          <dt id="section-11.4-2.1">Type name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.2">
+            <p id="section-11.4-2.2.1">application<a href="#section-11.4-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.3">Subtype name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.4">
-            <p id="section-11.3-2.4.1">oauth-identity-continuation+jwt<a href="#section-11.3-2.4.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.3">Subtype name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.4">
+            <p id="section-11.4-2.4.1">oauth-identity-continuation+jwt<a href="#section-11.4-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.5">Required parameters:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.6">
-            <p id="section-11.3-2.6.1">N/A<a href="#section-11.3-2.6.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.5">Required parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.6">
+            <p id="section-11.4-2.6.1">N/A<a href="#section-11.4-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.7">Optional parameters:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.8">
-            <p id="section-11.3-2.8.1">N/A<a href="#section-11.3-2.8.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.7">Optional parameters:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.8">
+            <p id="section-11.4-2.8.1">N/A<a href="#section-11.4-2.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.9">Encoding considerations:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.10">
-            <p id="section-11.3-2.10.1">binary; the <code>+jwt</code> structured syntax suffix <span>[<a href="#RFC8417" class="cite xref">RFC8417</a>]</span> registers this
+<dt id="section-11.4-2.9">Encoding considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.10">
+            <p id="section-11.4-2.10.1">binary; the <code>+jwt</code> structured syntax suffix <span>[<a href="#RFC8417" class="cite xref">RFC8417</a>]</span> registers this
 encoding. An Identity Continuation Assertion is a JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, a series of
 base64url-encoded values (some of which may be empty) separated by period
-('.') characters.<a href="#section-11.3-2.10.1" class="pilcrow">¶</a></p>
+('.') characters.<a href="#section-11.4-2.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.11">Security considerations:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.12">
-            <p id="section-11.3-2.12.1">See <a href="#security" class="auto internal xref">Section 9</a> of this document.<a href="#section-11.3-2.12.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.11">Security considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.12">
+            <p id="section-11.4-2.12.1">See <a href="#security" class="auto internal xref">Section 9</a> of this document.<a href="#section-11.4-2.12.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.13">Interoperability considerations:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.14">
-            <p id="section-11.3-2.14.1">N/A<a href="#section-11.3-2.14.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.13">Interoperability considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.14">
+            <p id="section-11.4-2.14.1">N/A<a href="#section-11.4-2.14.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.15">Published specification:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.16">
-            <p id="section-11.3-2.16.1">This document, <a href="#names" class="auto internal xref">Section 3.1</a><a href="#section-11.3-2.16.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.15">Published specification:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.16">
+            <p id="section-11.4-2.16.1">This document, <a href="#names" class="auto internal xref">Section 3.1</a><a href="#section-11.4-2.16.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.17">Applications that use this media type:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.18">
-            <p id="section-11.3-2.18.1">Applications using OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> to perform identity
-continuation across SaaS boundaries.<a href="#section-11.3-2.18.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.17">Applications that use this media type:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.18">
+            <p id="section-11.4-2.18.1">Applications using OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> to perform identity
+continuation across SaaS boundaries.<a href="#section-11.4-2.18.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.19">Fragment identifier considerations:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.20">
-            <p id="section-11.3-2.20.1">N/A<a href="#section-11.3-2.20.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.19">Fragment identifier considerations:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.20">
+            <p id="section-11.4-2.20.1">N/A<a href="#section-11.4-2.20.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.21">Additional information:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.22">
-            <p id="section-11.3-2.22.1"><br>
+<dt id="section-11.4-2.21">Additional information:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.22">
+            <p id="section-11.4-2.22.1"><br>
 Deprecated alias names for this type: N/A<br>
 Magic number(s): N/A<br>
 File extension(s): N/A<br>
-Macintosh file type code(s): N/A<a href="#section-11.3-2.22.1" class="pilcrow">¶</a></p>
+Macintosh file type code(s): N/A<a href="#section-11.4-2.22.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.23">Person &amp; email address to contact for further information:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.24">
-            <p id="section-11.3-2.24.1">Karl McGuinness (public@karlmcguinness.com)<a href="#section-11.3-2.24.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.23">Person &amp; email address to contact for further information:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.24">
+            <p id="section-11.4-2.24.1">Karl McGuinness (public@karlmcguinness.com)<a href="#section-11.4-2.24.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.25">Intended usage:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.26">
-            <p id="section-11.3-2.26.1">COMMON<a href="#section-11.3-2.26.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.25">Intended usage:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.26">
+            <p id="section-11.4-2.26.1">COMMON<a href="#section-11.4-2.26.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.27">Restrictions on usage:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.28">
-            <p id="section-11.3-2.28.1">N/A<a href="#section-11.3-2.28.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.27">Restrictions on usage:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.28">
+            <p id="section-11.4-2.28.1">N/A<a href="#section-11.4-2.28.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.29">Author:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.30">
-            <p id="section-11.3-2.30.1">Karl McGuinness<a href="#section-11.3-2.30.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.29">Author:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.30">
+            <p id="section-11.4-2.30.1">Karl McGuinness<a href="#section-11.4-2.30.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.3-2.31">Change controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.3-2.32">
-            <p id="section-11.3-2.32.1">IETF<a href="#section-11.3-2.32.1" class="pilcrow">¶</a></p>
+<dt id="section-11.4-2.31">Change controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.4-2.32">
+            <p id="section-11.4-2.32.1">IETF<a href="#section-11.4-2.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
 </section>
 </div>
 <div id="json-web-token-claims-registration">
-<section id="section-11.4">
+<section id="section-11.5">
         <h3 id="name-json-web-token-claims-regis">
-<a href="#section-11.4" class="section-number selfRef">11.4. </a><a href="#name-json-web-token-claims-regis" class="section-name selfRef">JSON Web Token Claims Registration</a>
+<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-json-web-token-claims-regis" class="section-name selfRef">JSON Web Token Claims Registration</a>
         </h3>
-<p id="section-11.4-1">IANA is requested to register the following claim in the "JSON Web Token Claims"
-registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>.<a href="#section-11.4-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-11.4-2">
-          <dt id="section-11.4-2.1">Claim Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.4-2.2">
-            <p id="section-11.4-2.2.1">identity_continuation_handle<a href="#section-11.4-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-11.5-1">IANA is requested to register the following claim in the "JSON Web Token Claims"
+registry established by <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.5-2">
+          <dt id="section-11.5-2.1">Claim Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.5-2.2">
+            <p id="section-11.5-2.2.1">identity_continuation_handle<a href="#section-11.5-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.4-2.3">Claim Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.4-2.4">
-            <p id="section-11.4-2.4.1">An opaque, IdP-generated reference to one hop of a
+<dt id="section-11.5-2.3">Claim Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.5-2.4">
+            <p id="section-11.5-2.4.1">An opaque, IdP-generated reference to one hop of a
 continuation chain, used to correlate a continuation to its chain
 and parent hop and to resolve the per-audience subject. This claim
 appears in an Identity Continuation Assertion and in a continuation-capable
 ID-JAG, and its value may also travel in intra-domain chain context,
 including an access token the accepting Resource Authorization Server
-issues (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#section-11.4-2.4.1" class="pilcrow">¶</a></p>
+issues (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.4-2.5">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.4-2.6">
-            <p id="section-11.4-2.6.1">IETF<a href="#section-11.4-2.6.1" class="pilcrow">¶</a></p>
+<dt id="section-11.5-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.5-2.6">
+            <p id="section-11.5-2.6.1">IETF<a href="#section-11.5-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.4-2.7">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.4-2.8">
-            <p id="section-11.4-2.8.1">This document, <a href="#chain-id" class="auto internal xref">Section 4</a><a href="#section-11.4-2.8.1" class="pilcrow">¶</a></p>
+<dt id="section-11.5-2.7">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.5-2.8">
+            <p id="section-11.5-2.8.1">This document, <a href="#chain-id" class="auto internal xref">Section 4</a><a href="#section-11.5-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
 </section>
 </div>
 <div id="oauth-token-introspection-response-registration">
-<section id="section-11.5">
+<section id="section-11.6">
         <h3 id="name-oauth-token-introspection-r">
-<a href="#section-11.5" class="section-number selfRef">11.5. </a><a href="#name-oauth-token-introspection-r" class="section-name selfRef">OAuth Token Introspection Response Registration</a>
+<a href="#section-11.6" class="section-number selfRef">11.6. </a><a href="#name-oauth-token-introspection-r" class="section-name selfRef">OAuth Token Introspection Response Registration</a>
         </h3>
-<p id="section-11.5-1">IANA is requested to register the following value in the "OAuth Token
-Introspection Response" registry established by <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>.<a href="#section-11.5-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-11.5-2">
-          <dt id="section-11.5-2.1">Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.2">
-            <p id="section-11.5-2.2.1">identity_continuation_handle<a href="#section-11.5-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-11.6-1">IANA is requested to register the following value in the "OAuth Token
+Introspection Response" registry established by <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>.<a href="#section-11.6-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.6-2">
+          <dt id="section-11.6-2.1">Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.2">
+            <p id="section-11.6-2.2.1">identity_continuation_handle<a href="#section-11.6-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.5-2.3">Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.4">
-            <p id="section-11.5-2.4.1">The continuation handle bound to the introspected token's authorization,
+<dt id="section-11.6-2.3">Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.4">
+            <p id="section-11.6-2.4.1">The continuation handle bound to the introspected token's authorization,
 present only when <code>active</code> is <code>true</code> and returned only to resources within
-the issuing server's trust domain (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>)<a href="#section-11.5-2.4.1" class="pilcrow">¶</a></p>
+the issuing server's trust domain (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>)<a href="#section-11.6-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.5-2.5">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.6">
-            <p id="section-11.5-2.6.1">IESG<a href="#section-11.5-2.6.1" class="pilcrow">¶</a></p>
+<dt id="section-11.6-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.6">
+            <p id="section-11.6-2.6.1">IESG<a href="#section-11.6-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.5-2.7">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.5-2.8">
-            <p id="section-11.5-2.8.1">This document, <a href="#handle-propagation" class="auto internal xref">Section 6.7</a><a href="#section-11.5-2.8.1" class="pilcrow">¶</a></p>
+<dt id="section-11.6-2.7">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.6-2.8">
+            <p id="section-11.6-2.8.1">This document, <a href="#handle-propagation" class="auto internal xref">Section 6.7</a><a href="#section-11.6-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
 </section>
 </div>
 <div id="oauth-authorization-server-metadata-registration">
-<section id="section-11.6">
+<section id="section-11.7">
         <h3 id="name-oauth-authorization-server-">
-<a href="#section-11.6" class="section-number selfRef">11.6. </a><a href="#name-oauth-authorization-server-" class="section-name selfRef">OAuth Authorization Server Metadata Registration</a>
+<a href="#section-11.7" class="section-number selfRef">11.7. </a><a href="#name-oauth-authorization-server-" class="section-name selfRef">OAuth Authorization Server Metadata Registration</a>
         </h3>
-<p id="section-11.6-1">IANA is requested to register the following values in the "OAuth Authorization
-Server Metadata" registry established by <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>.<a href="#section-11.6-1" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-11.6-2">
-          <dt id="section-11.6-2.1">Metadata Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.2">
-            <p id="section-11.6-2.2.1">identity_continuation_supported<a href="#section-11.6-2.2.1" class="pilcrow">¶</a></p>
+<p id="section-11.7-1">IANA is requested to register the following values in the "OAuth Authorization
+Server Metadata" registry established by <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>.<a href="#section-11.7-1" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-11.7-2">
+          <dt id="section-11.7-2.1">Metadata Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.2">
+            <p id="section-11.7-2.2.1">identity_continuation_supported<a href="#section-11.7-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.3">Metadata Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.4">
-            <p id="section-11.6-2.4.1">Boolean value indicating support for the Identity Continuation Assertion
-profile<a href="#section-11.6-2.4.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.3">Metadata Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.4">
+            <p id="section-11.7-2.4.1">Boolean value indicating support for the Identity Continuation Assertion
+profile<a href="#section-11.7-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.5">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.6">
-            <p id="section-11.6-2.6.1">IETF<a href="#section-11.6-2.6.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.5">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.6">
+            <p id="section-11.7-2.6.1">IETF<a href="#section-11.7-2.6.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.7">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.8">
-            <p id="section-11.6-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.6-2.8.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.7">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.8">
+            <p id="section-11.7-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.7-2.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.9">Metadata Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.10">
-            <p id="section-11.6-2.10.1">identity_continuation_issuers<a href="#section-11.6-2.10.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.9">Metadata Name:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.10">
+            <p id="section-11.7-2.10.1">identity_continuation_issuers<a href="#section-11.7-2.10.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.11">Metadata Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.12">
-            <p id="section-11.6-2.12.1">Array of issuer identifiers for additional Continuation Assertion Issuers
+<dt id="section-11.7-2.11">Metadata Description:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.12">
+            <p id="section-11.7-2.12.1">Array of issuer identifiers for additional Continuation Assertion Issuers
 (CAIs) a Resource Authorization Server authorizes to attest hops it accepts
-(a nomination; the IdP establishes issuer key trust independently)<a href="#section-11.6-2.12.1" class="pilcrow">¶</a></p>
+(a nomination; the IdP establishes issuer key trust independently)<a href="#section-11.7-2.12.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.13">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.14">
-            <p id="section-11.6-2.14.1">IETF<a href="#section-11.6-2.14.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.13">Change Controller:</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.14">
+            <p id="section-11.7-2.14.1">IETF<a href="#section-11.7-2.14.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
-<dt id="section-11.6-2.15">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.6-2.16">
-            <p id="section-11.6-2.16.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.6-2.16.1" class="pilcrow">¶</a></p>
+<dt id="section-11.7-2.15">Specification Document(s):</dt>
+          <dd style="margin-left: 1.5em" id="section-11.7-2.16">
+            <p id="section-11.7-2.16.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.7-2.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
-<p id="section-11.6-3">Note: The token type URI <code>urn:ietf:params:oauth:token-type:id-jag</code> referenced by
+<p id="section-11.7-3">Note: The token type URI <code>urn:ietf:params:oauth:token-type:id-jag</code> referenced by
 this document is registered by
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and is not registered here.<a href="#section-11.6-3" class="pilcrow">¶</a></p>
-<p id="section-11.6-4">Note: The <code>authorization_grant_profiles_supported</code> metadata parameter and the
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and is not registered here.<a href="#section-11.7-3" class="pilcrow">¶</a></p>
+<p id="section-11.7-4">Note: The <code>authorization_grant_profiles_supported</code> metadata parameter and the
 base <code>urn:ietf:params:oauth:grant-profile:id-jag</code> value referenced by this
 document are defined and registered by
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> and are not registered here;
 this document registers only the
-<code>urn:ietf:params:oauth:grant-profile:id-jag-continuation</code> value.<a href="#section-11.6-4" class="pilcrow">¶</a></p>
+<code>urn:ietf:params:oauth:grant-profile:id-jag-continuation</code> value.<a href="#section-11.7-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4100,8 +4156,22 @@ exchange, not here (<a href="#assertion-request" class="auto internal xref">Sect
 operate; reads H0 from it and rechecks that the binding is still active;
 confirms that policy permits <code>tool-gateway</code> to continue; and issues the
 assertion bound to the proven key.<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.3-5">On the wire (decoded assertion):<a href="#appendix-B.1.3-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-5">On the wire (issuance response):<a href="#appendix-B.1.3-5" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.3-6">
+<pre>
+{
+  "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
+  "access_token": "&lt;the assertion below, compact JWS&gt;",
+  "token_type": "N_A",
+  "audience": "https://idp.example/",
+  "expires_in": 120
+}
+</pre><a href="#appendix-B.1.3-6" class="pilcrow">¶</a>
+</div>
+<p id="appendix-B.1.3-7">The <code>audience</code> tells ToolGateway which IdP the assertion is for; it is where
+the request for the next ID-JAG goes.<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-8">On the wire (decoded assertion):<a href="#appendix-B.1.3-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.3-9">
 <pre>
 {
   "iss": "https://ras.gateway.example/",
@@ -4121,10 +4191,10 @@ assertion bound to the proven key.<a href="#appendix-B.1.3-4" class="pilcrow">¶
   "exp": 1710000350,
   "jti": "ica-gw-0001"
 }
-</pre><a href="#appendix-B.1.3-6" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.3-9" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.3-7">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
-can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.3-10">Neither AgentApp nor ToolGateway supplies H0 as input to issuance, so neither
+can substitute another handle (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>).<a href="#appendix-B.1.3-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-continue">
@@ -4132,7 +4202,9 @@ can substitute another handle (<a href="#handle-propagation" class="auto interna
           <h4 id="name-toolgateway-continues-to-wi">
 <a href="#appendix-B.1.4" class="section-number selfRef">B.1.4. </a><a href="#name-toolgateway-continues-to-wi" class="section-name selfRef">ToolGateway Continues to WikiRAS</a>
           </h4>
-<p id="appendix-B.1.4-1">ToolGateway presents the assertion to the IdP as the <code>subject_token</code> of a
+<p id="appendix-B.1.4-1">ToolGateway resolves the token endpoint of <code>https://idp.example/</code>, the
+<code>audience</code> it was given, from that IdP's metadata and presents the assertion
+there as the <code>subject_token</code> of a
 continuation exchange, with its actor credential and a DPoP proof of the same
 key, requesting an ID-JAG for WikiRAS. <code>tool-gateway</code> is a registered client
 of the IdP; its sender-constrained credential serves as both client assertion
@@ -4492,7 +4564,8 @@ carrier schema.<a href="#appendix-B.2.2-8" class="pilcrow">¶</a></p>
           </h4>
 <p id="appendix-B.2.3-1">ExpenseService obtains an assertion covering H0 by presenting its Transaction
 Token as the <code>subject_token</code> at Expense CAI's token endpoint
-(<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>).
+(<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>); the response's <code>audience</code>,
+<code>https://idp.example/</code>, tells it where to request the next ID-JAG.
 Before issuing, Expense CAI authenticates ExpenseService, verifies its key,
 confirms that H0 belongs to the transaction that ExpenseService is serving,
 and rechecks that ExpenseRAS's authorization remains active. The IdP's per-hop
@@ -4835,7 +4908,8 @@ designated actor, derives H0 into fresh intra-domain context
 (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). Neither the Scheduler nor BriefingAgent
 selects H0.<a href="#appendix-B.3.2-5" class="pilcrow">¶</a></p>
 <p id="appendix-B.3.2-6">BriefingAgent exchanges that Transaction Token at Platform CAI's token
-endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>). Before issuing, Platform CAI
+endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 6.3</a>) and presents the assertion to the IdP
+the response's <code>audience</code> names. Before issuing, Platform CAI
 authenticates <code>briefing-agent</code>, verifies its key and transaction, and rechecks
 that PlatformRAS's H0 authorization remains
 active. The assertion and onward ID-JAG have the shapes shown in
@@ -4992,43 +5066,48 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Rewrote the gateway example as the first, end-to-end example for gateway
-implementers: co-located RAS and CAI, handle carried in the access token,
-assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
-the terminal RAS.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Added the <code>audience</code> parameter to the assertion issuance response, so the
+client learns which IdP to present the assertion to, and registered its
+token response usage.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
-          <p id="appendix-E-3.2.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
-CAI that is an authorization server, with the access token or Transaction
-Token the workload holds as the subject token, resolving the CAI-issuance
-open item; the gateway example uses it.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.2.1">Rewrote the gateway example as the first, end-to-end example for gateway
+implementers: co-located RAS and CAI, handle carried in the access token,
+assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
+the terminal RAS.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.3">
-          <p id="appendix-E-3.3.1">Made the retry-limit and replay-concurrency requirements self-contained
+          <p id="appendix-E-3.3.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
+CAI that is an authorization server, with the access token or Transaction
+Token the workload holds as the subject token, resolving the CAI-issuance
+open item; the gateway example uses it.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.4">
+          <p id="appendix-E-3.4.1">Made the retry-limit and replay-concurrency requirements self-contained
 rather than pointing into Implementation Considerations, defined
 CONTINUABLE and continuation-capable without circularity, and moved the
 per-target client registration prerequisite to the Token Exchange
-introduction.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.4">
-          <p id="appendix-E-3.4.1">Annotated the overview diagram with this profile's additions and the
-terminal hop.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
+introduction.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.5">
-          <p id="appendix-E-3.5.1">Implicitly mapped the accepting RAS as a CAI for its own hops; metadata now
+          <p id="appendix-E-3.5.1">Annotated the overview diagram with this profile's additions and the
+terminal hop.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.6">
+          <p id="appendix-E-3.6.1">Implicitly mapped the accepting RAS as a CAI for its own hops; metadata now
 lists only additional CAIs. Added a scope statement to the Overview and a
 non-normative Deployment Topologies subsection holding the carrier
 realizations, added a Topology and Trust security subsection, and switched
-the gateway example to the co-located topology.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+the gateway example to the co-located topology.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.6">
-          <p id="appendix-E-3.6.1">Removed the prohibition on carrying the handle in an access token, along
+        <li class="normal" id="appendix-E-3.7">
+          <p id="appendix-E-3.7.1">Removed the prohibition on carrying the handle in an access token, along
 with the carrier requirements that restated the CAI preconditions. One rule
 remains: the handle surfaced for a call is the one the RAS bound to the
 authorization that the call's authenticated context selects, read from RAS
 state or from a carrier derived from it. The accepting RAS's own access
 token is now a permitted carrier, and the handle is also registered as an
-introspection response member.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+introspection response member.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
