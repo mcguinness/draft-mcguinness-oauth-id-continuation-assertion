@@ -496,27 +496,27 @@ continues is a later party, not the original client that established the chain.
 Each role validates only within its authority, and no artifact or role alone
 authorizes continuation ({{security-trust-model}}). The sections that follow
 trace artifact production and processing: the CAI issues the assertion
-({{assertion-issuance}}, {{assertion-token-exchange}}), the IdP validates the
-exchange and issues the next
+({{assertion-issuance}}), the IdP validates the exchange and issues the next
 ID-JAG ({{token-exchange}}), the accepting RAS binds and processes it
 ({{ras-processing}}), and the domain surfaces the handle to later continuers
 ({{handle-propagation}}).
 
-## Issuing the Assertion {#assertion-issuance}
+## Assertion Issuance {#assertion-issuance}
 
 The CAI mints the Identity Continuation Assertion a workload presents to
 continue a chain across a boundary. It MUST issue only for an actor in the
-attested RAS's trust domain; actor authentication is deployment-specific, and
-{{assertion-token-exchange}} profiles one issuance request. The CAI MUST set
-the assertion's `aud` to the IdP
-recorded in the hop's RAS binding ({{ras-processing}}); it MUST NOT accept an
-IdP audience supplied by the requester.
+attested RAS's trust domain; actor authentication is deployment-specific. The
+CAI MUST set the assertion's `aud` to the IdP recorded in the hop's RAS binding
+({{ras-processing}}); it MUST NOT accept an IdP audience supplied by the
+requester.
 
 The current actor is a control-plane participant, not a bare-handle
 transporter: the CAI obtains the handle from authenticated state associated
 with the actor's transaction, and the actor separately proves the key placed in
 `cnf`. The handle is advisory input, re-verified against RAS-bound state
-({{hop-activation}}) by the checks below before any assertion issues.
+({{hop-activation}}) by the preconditions below before any assertion issues.
+
+### Preconditions {#assertion-preconditions}
 
 The CAI MUST authenticate the actor and issue only after establishing that:
 
@@ -540,20 +540,16 @@ Possession of a handle or carrier token alone is insufficient. Target or
 purpose hints can narrow CAI issuance but MUST NOT control the IdP's target
 decision, and propagated context MUST NOT override the root-chain envelope.
 
-## Assertion Issuance at a Token Endpoint {#assertion-token-exchange}
+### Request {#assertion-token-exchange}
 
-This section profiles one interoperable request that meets the requirements
-of {{assertion-issuance}}. A CAI that is an OAuth authorization server,
-including a RAS acting as its own CAI, MAY issue assertions from its token
-endpoint using Token Exchange {{RFC8693}} as profiled here. A RAS acting as
+A CAI that is an OAuth authorization server, including a RAS acting as its own
+CAI, MAY issue assertions from its token endpoint using Token Exchange
+{{RFC8693}} as profiled in this and the following subsections. A RAS acting as
 its own CAI SHOULD support this profile, so that a workload in its domain has
 one request to implement. Issuance by other means remains deployment-specific
-({{handle-propagation}}).
-
-The requesting party is the current actor ({{terms}}), acting as an OAuth
-client of the CAI; this section calls it the client.
-
-### Request {#assertion-request}
+({{handle-propagation}}). The requesting party is the current actor
+({{terms}}), acting as an OAuth client of the CAI; this profile calls it the
+client.
 
 The client makes a Token Exchange request to the CAI's token endpoint with the
 following parameters:
@@ -610,8 +606,8 @@ The CAI MUST verify that the `subject_token` is one of the following:
   carrying the hop's handle as chain context ({{handle-propagation}}). The
   Transaction Token is the carrier.
 
-Either way, the authorization behind the token is the one the preconditions of
-{{assertion-issuance}} test: the token's integrity protection and the
+Either way, the authorization behind the token is the one the preconditions
+({{assertion-preconditions}}) test: the token's integrity protection and the
 authenticated request satisfy precondition 1, the authenticated client is the
 actor of preconditions 2 and 4, the DPoP key is the key of precondition 3, and
 the bound handle and live state satisfy preconditions 5 and 6.
@@ -1983,7 +1979,7 @@ The access token is bound to the `agent-app` key; the DPoP proof on this
 request proves the `tool-gateway` key, which GatewayRAS places in the
 assertion's `cnf`, and is not matched against the token's own `cnf`. No
 `audience`, `resource`, or `scope` is sent: the upstream is chosen at the IdP
-exchange, not here ({{assertion-request}}).
+exchange, not here ({{assertion-token-exchange}}).
 
 GatewayRAS confirms the token is its own, unexpired, and addressed to
 `https://gateway.example/`, the resource `tool-gateway` is registered to
