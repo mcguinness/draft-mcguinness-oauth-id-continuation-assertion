@@ -471,13 +471,196 @@ accepts an assertion for a hop only from a CAI mapped to the hop's accepting
 RAS ({{validation}}, rule 3), and the RAS itself is always mapped.
 
 {{protocol-overview}} shows the sequence for the co-located topology. The
-sections that follow trace artifact production and processing: the CAI issues
-the assertion ({{assertion-issuance}}), the IdP validates the exchange and
-issues the next ID-JAG ({{token-exchange}}), the accepting RAS binds and
-processes it ({{ras-processing}}), and the domain surfaces the handle to later
-continuers ({{handle-propagation}}). Each role validates only within its
+sections that follow trace a chain in order: the IdP establishes it at the
+root exchange ({{root-establishment}}); the accepting RAS binds the handle
+({{ras-processing}}) and the hop becomes ACCEPTED ({{hop-activation}}); the
+domain surfaces the handle to the continuing workload
+({{handle-propagation}}); the CAI issues the assertion
+({{assertion-issuance}}); and the IdP validates the continuation exchange and
+issues the next ID-JAG ({{token-exchange}}), guarding each assertion against
+replay ({{validation-replay}}). Each role validates only within its
 authority, and no artifact or role alone authorizes continuation
 ({{security-trust-model}}).
+
+## Establishing a Chain {#root-establishment}
+
+The root exchange presents a normal subject token, such as an ID Token,
+refresh token, or SAML assertion:
+
+~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<id_token | refresh_token | SAML assertion>
+&subject_token_type=<normal-subject-token-type>
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<JWT>
+~~~
+
+On the root exchange, `actor_token` is OPTIONAL. The
+root exchange and its ID-JAG conform to the base ID-JAG profile
+({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
+extends it for continuation-capable issuance.
+
+The IdP, not the client, establishes a chain, and MUST do so when the
+governing authorization for a root exchange is continuation-capable;
+advertised support ({{metadata}}) signals capability, not authority. To
+establish, the IdP MUST include the root handle in the ID-JAG. The root
+exchange MUST include a valid DPoP proof {{RFC9449}}, which the IdP MUST bind
+to the ID-JAG in `cnf`. Absent the continuation authorization or a valid
+proof, the IdP MUST NOT establish a chain or include an
+`identity_continuation_handle`.
+
+The root subject token MUST resolve to one of these lifecycle anchors:
+
+* a refresh token's OAuth grant;
+* an ID Token `sid` {{OIDC.FrontChannelLogout}} resolving to an active IdP
+  session for that user and client; or
+* a SAML `SessionIndex` {{SAML2.Core}} resolving to an active IdP session
+  for that user and client.
+
+The IdP MUST NOT root a chain from an unresolved anchor or an access token;
+non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
+only for resolution and MUST NOT enter assertions or chain context.
+
+Server-side consent and policy make the governing authorization
+continuation-capable and populate the root-chain envelope from authentication,
+consent, and tenant policy:
+
+* the authenticated user and authentication context (`auth_time`, `acr`,
+  `amr`);
+* the authorization basis for onward targets;
+* the continuation authorization: the actors or trust domains permitted to
+  continue the chain, and the basis on which that permission was established;
+* any maximum actor-chain depth set by policy; and
+* the governing authorization ({{lifecycle}}) and the chain's expiry.
+
+Token claims cannot supply these values. Every dimension is an
+establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
+broaden; broadening requires a new chain, and consent granted afterward does
+not widen the envelope.
+
+The root actor is the authenticated OAuth client; its identity rests entirely
+on the mapping in {{client-identity}}. Base ID-JAG's recommendation to use a
+confidential client therefore applies to a continuation-capable root. An
+optional `actor_token` MUST be valid, accepted for continuation, and
+sender-constrained to the confirmed key, and MUST
+identify that client and designate the IdP where applicable; the IdP records
+the root actor and key only after this validation.
+
+For every root or child hop, the IdP records the RAS audience placed in the
+ID-JAG and any additional CAIs mapped to it; those mappings may be static
+tenant configuration.
+
+The envelope takes one of two forms:
+
+* an enumerated-target envelope, listing the permitted audiences and, where
+  used, their resources, scopes, and authorization details {{RFC9396}}; or
+* a policy-basis envelope, a stable authorization basis against which the IdP
+  evaluates each requested target at request time.
+
+Either form is fixed at establishment, not whatever the user could later
+authorize.
+
+Establishment is at-least-once: retrying a lost response MAY create a second
+chain. Revocation of the governing authorization applies to every chain rooted
+in it, and the actor-chain depth bound is enforced per branch. Fan-out, rate,
+or hop-count limits configured for a governing authorization apply across
+every chain rooted in it, so sibling chains share one budget; a retried
+establishment MUST NOT evade them.
+
+## Continuation-Aware RAS Processing {#ras-processing}
+
+A RAS from which continuation may occur implements this extension. A RAS that
+does not implement it processes an ordinary ID-JAG and ignores the handle, so
+an ID-JAG it accepts cannot become a continuation source.
+
+A continuation-aware Resource Authorization Server, one that implements this
+extension and advertises the continuation grant profile ({{metadata}}), MUST,
+on accepting a continuation-capable ID-JAG:
+
+1. accept the ID-JAG per {{I-D.ietf-oauth-identity-assertion-authz-grant}},
+   which includes validating the grant, authenticating the presenting client,
+   verifying the sender constraint, applying local authorization policy, and
+   issuing an access token sender-constrained to the confirmed key; and
+2. bind `identity_continuation_handle`, the ID-JAG's issuer and tenant, and
+   the confirmed key to the authorization state it establishes, recording
+   whether continuation is permitted.
+
+The RAS MUST bind the handle and issue the access token as one outcome: no
+access token without its binding, and no binding without a token. Repeated
+redemption of one ID-JAG MUST bind to the same hop authorization record, so a
+retry cannot create multiple records for one grant. The RAS exposes the binding
+only within its trust domain ({{handle-propagation}}).
+
+## Hop Activation {#hop-activation}
+
+A hop moves through three states, spanning the IdP, RAS, and CAI. These are
+conceptual states, not values carried on the wire. The IdP creates it PENDING.
+Successful RAS binding makes it ACCEPTED. A mapped CAI attests a hop only once
+it is ACCEPTED, so a PENDING hop yields no assertion and reaches no
+continuation exchange. A fresh assertion from the mapped CAI lets the IdP
+evaluate the hop as CONTINUABLE for one request. CONTINUABLE is not stored: it
+means a trusted mapped CAI has freshly attested the hop as ACCEPTED and still
+active, no ancestor is revoked, and the presenting actor is the one the
+attestation names; rules 3 through 5 of {{validation}} establish those facts.
+
+| State | Where it lives | Meaning |
+|---|---|---|
+| PENDING | IdP | the IdP issued the ID-JAG but has no acceptance evidence |
+| ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
+| CONTINUABLE | IdP, for one exchange | a mapped CAI freshly attested the still-active binding |
+
+Because the IdP learns of acceptance only through attestation
+({{protocol-overview}}), a RAS mapped to its own hop attests that state
+first-hand and any other mapped CAI
+rechecks authoritative RAS state before attesting ({{assertion-issuance}}).
+Absent CAI compromise ({{security-trust-model}}), an issued-but-rejected ID-JAG
+cannot be continued because no mapped CAI may attest it. A mapped CAI is
+mandatory; its absence fails closed.
+
+Acceptance gates continuation but does not bound downstream authority: the IdP
+evaluates later targets against the root envelope, and local RAS authorization
+neither narrows nor widens it.
+
+## Intra-Domain Handle Propagation {#handle-propagation}
+
+When the accepting RAS holds the CAI role, it reads the handle directly
+from its authorization state and needs no carrier. Otherwise, a carrier derived
+from the RAS binding conveys the handle within the trust domain
+({{ras-processing}}) and is accepted only within that domain
+({{assertion-issuance}}).
+
+One rule applies to direct reads and every carrier. Each call has an
+authenticated context that selects one RAS-bound authorization. The handle
+used for that call MUST be the handle bound to that authorization, whether read
+directly from RAS state or from a carrier derived from it. A requester can
+choose which credential to present, but cannot supply or override its handle
+separately. A session or subject alone is not enough to select the
+authorization, because doing so could attach another user's handle to the call.
+
+The authenticated context selects the authorization as follows:
+
+* For an ingress call, the sender-constrained access token after the resource
+  verifies its proof of possession.
+* For a downstream call, a carrier forwarded from that ingress.
+* For a scheduled run, the task named by an authenticated actor, resolved to
+  the task authorization for which that actor is designated
+  ({{task-provenance}}).
+
+The CAI's recheck against RAS state ({{assertion-issuance}}) covers staleness
+for every carrier.
+
+A Resource Server has no obligations under this specification, so a carrier
+SHOULD NOT expose the handle to a party with no role in continuation.
+Deployments also keep it out of logs, traces, and responses.
 
 ## Assertion Issuance {#assertion-issuance}
 
@@ -658,33 +841,9 @@ target's RAS; the onward ID-JAG `client_id` is that identifier
 
 ### Request {#request}
 
-The root exchange presents a normal subject token, such as an ID Token,
-refresh token, or SAML assertion:
-
-~~~
-POST /token HTTP/1.1
-Host: idp.example
-Content-Type: application/x-www-form-urlencoded
-DPoP: <proof of possession of the cnf key>
-
-grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-&audience=https://ras.travel.example/
-&resource=https://api.travel.example/
-&scope=trips.read
-&subject_token=<id_token | refresh_token | SAML assertion>
-&subject_token_type=<normal-subject-token-type>
-&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<JWT>
-~~~
-
-On the root exchange, `actor_token` is OPTIONAL ({{root-establishment}}). The
-root exchange and its ID-JAG conform to the base ID-JAG profile
-({{I-D.ietf-oauth-identity-assertion-authz-grant}}) except where this document
-extends it for continuation-capable issuance.
-
-A continuation exchange presents an Identity Continuation Assertion and adds
-the `actor_token` and a DPoP proof of the `cnf` key:
+The root exchange is shown in {{root-establishment}}. A continuation exchange
+presents an Identity Continuation Assertion and adds the `actor_token` and a
+DPoP proof of the `cnf` key:
 
 ~~~
 POST /token HTTP/1.1
@@ -712,75 +871,6 @@ multiple `resource` indicators {{RFC8707}}, which the IdP treats as an
 order-independent set; the envelope-containment check ({{validation}}, rule 7)
 applies to `authorization_details` and to scope alike. Client authentication
 is required on every exchange ({{client-identity}}).
-
-### Establishing a Chain {#root-establishment}
-
-The IdP, not the client, establishes a chain, and MUST do so when the
-governing authorization for a root exchange is continuation-capable;
-advertised support ({{metadata}}) signals capability, not authority. To
-establish, the IdP MUST include the root handle in the ID-JAG. The root
-exchange MUST include a valid DPoP proof {{RFC9449}}, which the IdP MUST bind
-to the ID-JAG in `cnf`. Absent the continuation authorization or a valid
-proof, the IdP MUST NOT establish a chain or include an
-`identity_continuation_handle`.
-
-The root subject token MUST resolve to one of these lifecycle anchors:
-
-* a refresh token's OAuth grant;
-* an ID Token `sid` {{OIDC.FrontChannelLogout}} resolving to an active IdP
-  session for that user and client; or
-* a SAML `SessionIndex` {{SAML2.Core}} resolving to an active IdP session
-  for that user and client.
-
-The IdP MUST NOT root a chain from an unresolved anchor or an access token;
-non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
-only for resolution and MUST NOT enter assertions or chain context.
-
-Server-side consent and policy make the governing authorization
-continuation-capable and populate the root-chain envelope from authentication,
-consent, and tenant policy:
-
-* the authenticated user and authentication context (`auth_time`, `acr`,
-  `amr`);
-* the authorization basis for onward targets;
-* the continuation authorization: the actors or trust domains permitted to
-  continue the chain, and the basis on which that permission was established;
-* any maximum actor-chain depth set by policy; and
-* the governing authorization ({{lifecycle}}) and the chain's expiry.
-
-Token claims cannot supply these values. Every dimension is an
-establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
-broaden; broadening requires a new chain, and consent granted afterward does
-not widen the envelope.
-
-The root actor is the authenticated OAuth client; its identity rests entirely
-on the mapping in {{client-identity}}. Base ID-JAG's recommendation to use a
-confidential client therefore applies to a continuation-capable root. An
-optional `actor_token` MUST be valid, accepted for continuation, and
-sender-constrained to the confirmed key, and MUST
-identify that client and designate the IdP where applicable; the IdP records
-the root actor and key only after this validation.
-
-For every root or child hop, the IdP records the RAS audience placed in the
-ID-JAG and any additional CAIs mapped to it; those mappings may be static
-tenant configuration.
-
-The envelope takes one of two forms:
-
-* an enumerated-target envelope, listing the permitted audiences and, where
-  used, their resources, scopes, and authorization details {{RFC9396}}; or
-* a policy-basis envelope, a stable authorization basis against which the IdP
-  evaluates each requested target at request time.
-
-Either form is fixed at establishment, not whatever the user could later
-authorize.
-
-Establishment is at-least-once: retrying a lost response MAY create a second
-chain. Revocation of the governing authorization applies to every chain rooted
-in it, and the actor-chain depth bound is enforced per branch. Fan-out, rate,
-or hop-count limits configured for a governing authorization apply across
-every chain rooted in it, so sibling chains share one budget; a retried
-establishment MUST NOT evade them.
 
 ### Presenter Authentication {#client-identity}
 
@@ -1021,92 +1111,6 @@ still-valid grant without the user, and a handle disabled by withdrawn
 continuation authorization cannot re-root at all. The other errors
 leave the chain still continuable, so a client abandons only the current
 request.
-
-## Continuation-Aware RAS Processing {#ras-processing}
-
-A RAS from which continuation may occur implements this extension. A RAS that
-does not implement it processes an ordinary ID-JAG and ignores the handle, so
-an ID-JAG it accepts cannot become a continuation source.
-
-A continuation-aware Resource Authorization Server, one that implements this
-extension and advertises the continuation grant profile ({{metadata}}), MUST,
-on accepting a continuation-capable ID-JAG:
-
-1. accept the ID-JAG per {{I-D.ietf-oauth-identity-assertion-authz-grant}},
-   which includes validating the grant, authenticating the presenting client,
-   verifying the sender constraint, applying local authorization policy, and
-   issuing an access token sender-constrained to the confirmed key; and
-2. bind `identity_continuation_handle`, the ID-JAG's issuer and tenant, and
-   the confirmed key to the authorization state it establishes, recording
-   whether continuation is permitted.
-
-The RAS MUST bind the handle and issue the access token as one outcome: no
-access token without its binding, and no binding without a token. Repeated
-redemption of one ID-JAG MUST bind to the same hop authorization record, so a
-retry cannot create multiple records for one grant. The RAS exposes the binding
-only within its trust domain ({{handle-propagation}}).
-
-## Hop Activation {#hop-activation}
-
-A hop moves through three states, spanning the IdP, RAS, and CAI. These are
-conceptual states, not values carried on the wire. The IdP creates it PENDING.
-Successful RAS binding makes it ACCEPTED. A mapped CAI attests a hop only once
-it is ACCEPTED, so a PENDING hop yields no assertion and reaches no
-continuation exchange. A fresh assertion from the mapped CAI lets the IdP
-evaluate the hop as CONTINUABLE for one request. CONTINUABLE is not stored: it
-means a trusted mapped CAI has freshly attested the hop as ACCEPTED and still
-active, no ancestor is revoked, and the presenting actor is the one the
-attestation names; rules 3 through 5 of {{validation}} establish those facts.
-
-| State | Where it lives | Meaning |
-|---|---|---|
-| PENDING | IdP | the IdP issued the ID-JAG but has no acceptance evidence |
-| ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
-| CONTINUABLE | IdP, for one exchange | a mapped CAI freshly attested the still-active binding |
-
-Because the IdP learns of acceptance only through attestation
-({{protocol-overview}}), a RAS mapped to its own hop attests that state
-first-hand and any other mapped CAI
-rechecks authoritative RAS state before attesting ({{assertion-issuance}}).
-Absent CAI compromise ({{security-trust-model}}), an issued-but-rejected ID-JAG
-cannot be continued because no mapped CAI may attest it. A mapped CAI is
-mandatory; its absence fails closed.
-
-Acceptance gates continuation but does not bound downstream authority: the IdP
-evaluates later targets against the root envelope, and local RAS authorization
-neither narrows nor widens it.
-
-## Intra-Domain Handle Propagation {#handle-propagation}
-
-When the accepting RAS holds the CAI role, it reads the handle directly
-from its authorization state and needs no carrier. Otherwise, a carrier derived
-from the RAS binding conveys the handle within the trust domain
-({{ras-processing}}) and is accepted only within that domain
-({{assertion-issuance}}).
-
-One rule applies to direct reads and every carrier. Each call has an
-authenticated context that selects one RAS-bound authorization. The handle
-used for that call MUST be the handle bound to that authorization, whether read
-directly from RAS state or from a carrier derived from it. A requester can
-choose which credential to present, but cannot supply or override its handle
-separately. A session or subject alone is not enough to select the
-authorization, because doing so could attach another user's handle to the call.
-
-The authenticated context selects the authorization as follows:
-
-* For an ingress call, the sender-constrained access token after the resource
-  verifies its proof of possession.
-* For a downstream call, a carrier forwarded from that ingress.
-* For a scheduled run, the task named by an authenticated actor, resolved to
-  the task authorization for which that actor is designated
-  ({{task-provenance}}).
-
-The CAI's recheck against RAS state ({{assertion-issuance}}) covers staleness
-for every carrier.
-
-A Resource Server has no obligations under this specification, so a carrier
-SHOULD NOT expose the handle to a party with no role in continuation.
-Deployments also keep it out of logs, traces, and responses.
 
 ## Replay Reservation and Retry {#validation-replay}
 
@@ -2785,6 +2789,9 @@ this profile builds.
 
 -02
 
+* Ordered the protocol section chronologically: establishing a chain, RAS
+  binding and hop activation, handle propagation, assertion issuance, the
+  continuation exchange, and replay reservation.
 * Added a Protocol Overview to the Introduction, regrouped the Overview by
   role, moved Chain Lifetime and Revocation after the protocol section, moved
   replay reservation to the end of that section, and ordered assertion
