@@ -447,7 +447,8 @@ Table of Contents
    3.  Across a trust boundary, the handle is accepted only inside an
        ID-JAG (by the RAS) or an Identity Continuation Assertion (by the
        IdP), never as a standalone value.  Inside the accepting RAS's
-       domain it travels only by a carrier (Section 6.6).
+       domain, the CAI obtains it from RAS state or a carrier
+       (Section 6.6); afterward it travels in the assertion.
 
    4.  A continuation-aware RAS binds the handle to the authorization
        state it establishes (Section 6.4); RASes, Resource Servers, and
@@ -532,8 +533,8 @@ Table of Contents
     | Assertion issuance request    | workload, CAI | intra-domain,   |
     |                               |               | out of scope    |
     +-------------------------------+---------------+-----------------+
-    | Handle carrier                | RAS, CAI      | intra-domain;   |
-    |                               |               | see Section 6.6 |
+    | Handle carrier                | RAS,          | intra-domain;   |
+    |                               | workload, CAI | see Section 6.6 |
     +-------------------------------+---------------+-----------------+
 
                                   Table 1
@@ -1482,9 +1483,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    compromised RAS can fabricate acceptance state in either topology,
    since a delegated CAI reads that state as authoritative; a
    compromised delegated CAI can additionally attest a hop the RAS
-   refused.  A delegated CAI's recheck window includes the assertion
-   lifetime plus any delay in RAS state reaching it.  The root envelope
-   still bounds the result.
+   refused.  In both topologies, revocation after issuance leaves the
+   assertion valid for its remaining lifetime; delegation adds any delay
+   in RAS state reaching the CAI.  The root envelope still bounds the
+   result.
 
 9.9.  Actor Chain Integrity
 
@@ -1525,10 +1527,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 10.  Privacy Considerations
 
    A hop's identity_continuation_handle is visible to its ID-JAG client,
-   the accepting Resource Authorization Server, the IdP, and, where a
-   deployment propagates it, the carrier, separate CAI, authorized
-   workloads, and any audience of an access token that carries it
-   (Section 6.6).
+   the accepting Resource Authorization Server, the CAI, the workload
+   that receives the assertion, and the IdP.  Where a deployment
+   propagates it, the carrier and its recipients, including any audience
+   of an access token that carries it, see it as well (Section 6.6).
 
    Handles are opaque, high-entropy, and hop-specific (Section 4), so
    they do not provide a common cross-RAS identifier for a user.

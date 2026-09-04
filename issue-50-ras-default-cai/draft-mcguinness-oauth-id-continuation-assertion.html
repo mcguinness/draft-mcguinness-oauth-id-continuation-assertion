@@ -1817,8 +1817,9 @@ An ID-JAG carrying this claim is continuation-capable.<a href="#section-4-3.1.1"
         <li id="section-4-3.3">
           <p id="section-4-3.3.1">Across a trust boundary, the handle is accepted only inside an ID-JAG (by
 the RAS) or an Identity Continuation Assertion (by the IdP), never as a
-standalone value. Inside the accepting RAS's domain it travels only by a
-carrier (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-4-3.3.1" class="pilcrow">¶</a></p>
+standalone value. Inside the accepting RAS's domain, the CAI obtains it
+from RAS state or a carrier (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>); afterward it travels
+in the assertion.<a href="#section-4-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-4-3.4">
           <p id="section-4-3.4.1">A continuation-aware RAS binds the handle to the authorization state it
@@ -1934,7 +1935,7 @@ intra-domain ones to the deployment:<a href="#section-6.1-1" class="pilcrow">¶<
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Handle carrier</td>
-              <td class="text-left" rowspan="1" colspan="1">RAS, CAI</td>
+              <td class="text-left" rowspan="1" colspan="1">RAS, workload, CAI</td>
               <td class="text-left" rowspan="1" colspan="1">intra-domain; see <a href="#handle-propagation" class="auto internal xref">Section 6.6</a>
 </td>
             </tr>
@@ -3036,9 +3037,10 @@ issuer-pairing trust. The IdP sees one signed attestation in either topology,
 so separating the CAI isolates keys and components but does not create a
 protocol-level quorum. A compromised RAS can fabricate acceptance state in
 either topology, since a delegated CAI reads that state as authoritative; a
-compromised delegated CAI can additionally attest a hop the RAS refused. A
-delegated CAI's recheck window includes the assertion lifetime plus
-any delay in RAS state reaching it. The root envelope still bounds the result.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
+compromised delegated CAI can additionally attest a hop the RAS refused. In
+both topologies, revocation after issuance leaves the assertion valid for its
+remaining lifetime; delegation adds any delay in RAS state reaching the CAI.
+The root envelope still bounds the result.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -3096,9 +3098,10 @@ access-controlled discovery.<a href="#section-9.11-1" class="pilcrow">¶</a></p>
 <a href="#section-10" class="section-number selfRef">10. </a><a href="#name-privacy-considerations" class="section-name selfRef">Privacy Considerations</a>
       </h2>
 <p id="section-10-1">A hop's <code>identity_continuation_handle</code> is visible to its ID-JAG client, the
-accepting Resource Authorization Server, the IdP, and, where a deployment
-propagates it, the carrier, separate CAI, authorized workloads, and any audience
-of an access token that carries it (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-10-1" class="pilcrow">¶</a></p>
+accepting Resource Authorization Server, the CAI, the workload that receives
+the assertion, and the IdP. Where a deployment propagates it, the carrier and
+its recipients, including any audience of an access token that carries it,
+see it as well (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-10-1" class="pilcrow">¶</a></p>
 <p id="section-10-2">Handles are opaque, high-entropy, and hop-specific (<a href="#chain-id" class="auto internal xref">Section 4</a>), so they do
 not provide a common cross-RAS identifier for a user.<a href="#section-10-2" class="pilcrow">¶</a></p>
 <p id="section-10-3">The chain is not unlinkable: the IdP correlates it, participants sharing a
