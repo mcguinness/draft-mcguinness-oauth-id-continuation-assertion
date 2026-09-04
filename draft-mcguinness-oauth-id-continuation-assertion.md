@@ -156,14 +156,7 @@ trust domain, continuation where a boundary re-mints the subject.
 
 This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, ID-JAG
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}, and OAuth Identity Chaining
-{{I-D.ietf-oauth-identity-chaining}}. It adds:
-
-* the Identity Continuation Assertion subject-token type;
-* an `identity_continuation_handle` claim in continuation-capable ID-JAGs;
-* RAS binding of that claim to accepted authorization state;
-* continuation-exchange validation rules;
-* intra-domain handle propagation; and
-* discovery metadata.
+{{I-D.ietf-oauth-identity-chaining}}; {{overview}} lists what it adds.
 
 # Conventions and Definitions {#terms}
 
@@ -436,22 +429,26 @@ management for that purpose.
 
 ## Overview {#overview}
 
-This profile defines three cross-domain interfaces and leaves two
-intra-domain ones to the deployment:
+This document specifies:
 
-| Interface | Between | Defined |
-|---|---|---|
-| ID-JAG carrying the handle | IdP, client, RAS | here, atop ID-JAG |
-| Identity Continuation Assertion | CAI, workload, IdP | here |
-| `identity_continuation_issuers` | RAS, IdP | here, optional |
-| Assertion issuance request | workload, CAI | intra-domain, out of scope |
-| Handle carrier | RAS, workload, CAI | intra-domain; see {{handle-propagation}} |
+* the `identity_continuation_handle` claim on continuation-capable ID-JAGs
+  ({{chain-id}});
+* the Identity Continuation Assertion and its use as a Token Exchange
+  `subject_token` ({{assertion}}, {{token-exchange}});
+* the IdP's validation of that exchange ({{validation}});
+* RAS binding of the handle from an accepted ID-JAG ({{ras-processing}}); and
+* optional Authorization Server metadata, including
+  `identity_continuation_issuers` ({{metadata}}).
 
-Roles do not imply distinct parties. The IdP accepts an assertion for a hop
-only from a CAI mapped to the hop's accepting RAS ({{validation}}, rule 3), and
-the RAS itself is always mapped. When the accepting RAS holds the CAI role the
-deployment is collapsed; when a separately mapped CAI holds it, the deployment
-is delegated ({{deployment-topologies}}).
+How a workload obtains an assertion from a CAI, and how the bound handle
+reaches that CAI inside the RAS's trust domain, are deployment-specific,
+subject to the provenance rule in {{handle-propagation}}.
+
+The RAS and CAI roles may be held by the same party (collapsed) or by
+distinct parties (delegated); see {{deployment-topologies}}. The IdP
+accepts an assertion for a hop only from a CAI mapped to the hop's
+accepting RAS ({{validation}}, rule 3), and the RAS itself is always
+mapped.
 
 A continuation reuses the Token Exchange loop once per boundary: the root
 exchange mints the first ID-JAG, and each later boundary mints the next from an
@@ -2432,7 +2429,7 @@ this profile builds.
 * Annotated the overview diagram with this profile's additions and the
   terminal hop.
 * Implicitly mapped the accepting RAS as a CAI for its own hops; metadata now
-  lists only additional CAIs. Added an interfaces table to the Overview and a
+  lists only additional CAIs. Added a scope statement to the Overview and a
   non-normative Deployment Topologies subsection holding the carrier
   realizations, added a Topology and Trust security subsection, and switched
   the gateway example to the collapsed topology.
