@@ -3878,8 +3878,8 @@ trust boundary,
 "Server-side state" when they are never transmitted. Continuation handles
 are written H0, H1, and so on, one per hop. Each example identifies its
 deployment topology before describing the flow. JWTs are shown as decoded
-payloads; JOSE headers, signatures, and client authentication are omitted.
-Proof of possession uses DPoP.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
+payloads; JOSE headers and signatures are omitted. Except where shown, client
+authentication is omitted. Proof of possession uses DPoP.<a href="#appendix-B-2" class="pilcrow">¶</a></p>
 <div id="example-gateway">
 <section id="appendix-B.1">
         <h3 id="name-gateway-example-co-located-">
@@ -3926,7 +3926,7 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
     |----------tool call with AT + DPoP----------&gt;|               |
     |            |               |&lt;--exchange AT--|               |
     |            |               |-assertion H0--&gt;|               |
-    |            |&lt;-------assertion + DPoP--------|               |
+    |            |&lt;-assertion, actor token, DPoP--|               |
     |            |-----------ID-JAG H1-----------&gt;|               |
     |            |               |                |----ID-JAG----&gt;|
     |            |               |                |   (no binding)|
