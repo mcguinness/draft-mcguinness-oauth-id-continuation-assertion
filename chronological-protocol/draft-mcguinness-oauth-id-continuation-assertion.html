@@ -1967,7 +1967,7 @@ RAS (<a href="#validation" class="auto internal xref">Section 5.7.3</a>, rule 3)
 <p id="section-5.1-5"><a href="#protocol-overview" class="auto internal xref">Section 1.3</a> shows the sequence for the co-located topology. The
 sections that follow trace a chain in order: the IdP establishes it at the
 root exchange (<a href="#root-establishment" class="auto internal xref">Section 5.2</a>); the accepting RAS binds the handle
-(<a href="#ras-processing" class="auto internal xref">Section 5.3</a>) and the hop becomes continuable (<a href="#hop-activation" class="auto internal xref">Section 5.4</a>); the
+(<a href="#ras-processing" class="auto internal xref">Section 5.3</a>) and the hop becomes ACCEPTED (<a href="#hop-activation" class="auto internal xref">Section 5.4</a>); the
 domain surfaces the handle to the continuing workload
 (<a href="#handle-propagation" class="auto internal xref">Section 5.5</a>); the CAI issues the assertion
 (<a href="#assertion-issuance" class="auto internal xref">Section 5.6</a>); and the IdP validates the continuation exchange and
@@ -2002,7 +2002,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;JWT&gt;
 </pre><a href="#section-5.2-2" class="pilcrow">¶</a>
 </div>
-<p id="section-5.2-3">On the root exchange, <code>actor_token</code> is <span class="bcp14">OPTIONAL</span> (<a href="#root-establishment" class="auto internal xref">Section 5.2</a>). The
+<p id="section-5.2-3">On the root exchange, <code>actor_token</code> is <span class="bcp14">OPTIONAL</span>. The
 root exchange and its ID-JAG conform to the base ID-JAG profile
 (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>) except where this document
 extends it for continuation-capable issuance.<a href="#section-5.2-3" class="pilcrow">¶</a></p>
