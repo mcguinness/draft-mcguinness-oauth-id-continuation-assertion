@@ -277,8 +277,9 @@ Continuation Handle (`identity_continuation_handle`):
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, holding an
   immutable reference to its parent hop unless it is the root. Its lineage is
-  its path to the root. A RAS that redeems the hop's ID-JAG binds the handle to
-  the authorization it issues ({{ras-processing}}); the hop is then ACCEPTED.
+  its path to the root. A continuation-aware RAS that redeems the hop's ID-JAG
+  binds the handle to the authorization it issues ({{ras-processing}}); the hop
+  is then ACCEPTED.
   A hop from which no workload continues is terminal; its branch ends there,
   while sibling branches may continue.
 
