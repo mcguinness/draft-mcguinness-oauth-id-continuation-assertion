@@ -3163,11 +3163,11 @@ every exchange requires live proof of possession of the <code>cnf</code> key via
 proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> (<a href="#client-identity" class="auto internal xref">Section 5.7.2</a>). A captured assertion is therefore
 useless without the private key, and because the onward ID-JAG is bound to the
 same key (<a href="#client-identity" class="auto internal xref">Section 5.7.2</a>), possession is demonstrated continuously across
-the chain, not once at issuance. The one exception is assertion issuance
-itself: a CAI accepts the access token or Transaction Token without proof of
-the key it is bound to (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.6.1</a>), relying instead on
-client authentication and on the token being valid for a resource that client
-operates.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+the chain, not once at issuance. At assertion issuance the client proves its
+own key, which the CAI binds to the new assertion; it need not prove possession
+of any key bound to the incoming subject token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.6.1</a>).
+The applicable subject-token validation and every issuance precondition still
+apply.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="task-provenance">

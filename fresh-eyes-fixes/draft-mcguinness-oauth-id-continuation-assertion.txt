@@ -1579,11 +1579,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    (Section 5.7.2).  A captured assertion is therefore useless without
    the private key, and because the onward ID-JAG is bound to the same
    key (Section 5.7.2), possession is demonstrated continuously across
-   the chain, not once at issuance.  The one exception is assertion
-   issuance itself: a CAI accepts the access token or Transaction Token
-   without proof of the key it is bound to (Section 5.6.1), relying
-   instead on client authentication and on the token being valid for a
-   resource that client operates.
+   the chain, not once at issuance.  At assertion issuance the client
+   proves its own key, which the CAI binds to the new assertion; it need
+   not prove possession of any key bound to the incoming subject token
+   (Section 5.6.1).  The applicable subject-token validation and every
+   issuance precondition still apply.
 
 9.2.  Durable Task Authorization
 
