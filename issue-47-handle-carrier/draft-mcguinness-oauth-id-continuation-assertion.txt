@@ -1474,12 +1474,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 10.  Privacy Considerations
 
    A hop's identity_continuation_handle is visible to its ID-JAG client,
-   the accepting Resource Authorization Server, the IdP, the domain's
-   carrier, CAI, and authorized workloads, and the audiences of an
-   access token that carries it (Section 6.6).  Such an audience learns
-   only that the hop is continuable and an opaque identifier for it, and
-   the client already holds the handle from its ID-JAG.  A workload
-   receiving it as intra-domain context is a control-plane participant.
+   the accepting Resource Authorization Server, the IdP, and, within the
+   accepting domain, the carrier, CAI, authorized workloads, and any
+   audience of an access token that carries it (Section 6.6).
 
    Handles are opaque, high-entropy, and hop-specific (Section 4), so
    they do not provide a common cross-RAS identifier for a user.
