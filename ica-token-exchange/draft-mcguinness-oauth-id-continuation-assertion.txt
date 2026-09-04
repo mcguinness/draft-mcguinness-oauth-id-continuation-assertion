@@ -662,11 +662,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    urn:ietf:params:oauth:token-type:txn_token
    [I-D.ietf-oauth-transaction-tokens], and MUST carry a DPoP proof
    [RFC9449]; the CAI binds the assertion to that key in cnf.  The
-   request MUST NOT include audience, resource, actor_token, or
-   actor_token_type: the assertion's aud is the IdP recorded in the
-   hop's binding, targets are chosen at the IdP exchange, and the
-   authenticated client is the actor named in act.  A scope value, if
-   present, is a hint to which the rule on hints above applies.
+   request MUST NOT include audience, resource, scope, actor_token, or
+   actor_token_type: the assertion carries no target or scope, those are
+   chosen at the IdP exchange, the assertion's aud is the IdP recorded
+   in the hop's binding, and the authenticated client is the actor named
+   in act.
 
    The subject_token MUST be either an access token issued by a RAS the
    CAI is mapped to, unexpired, and valid for a protected resource that

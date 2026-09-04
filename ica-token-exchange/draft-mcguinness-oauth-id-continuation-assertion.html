@@ -2053,11 +2053,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 <code>urn:ietf:params:oauth:token-type:txn_token</code>
             <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span>, and <span class="bcp14">MUST</span> carry a DPoP proof
 <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>; the CAI binds the assertion to that key in <code>cnf</code>. The request
-<span class="bcp14">MUST NOT</span> include <code>audience</code>, <code>resource</code>, <code>actor_token</code>, or <code>actor_token_type</code>:
-the assertion's <code>aud</code> is the IdP recorded in the hop's binding, targets are
-chosen at the IdP exchange, and the authenticated client is the actor named
-in <code>act</code>. A <code>scope</code> value, if present, is a hint to which the rule on hints
-above applies.<a href="#section-6.2.1-4" class="pilcrow">¶</a></p>
+<span class="bcp14">MUST NOT</span> include <code>audience</code>, <code>resource</code>, <code>scope</code>, <code>actor_token</code>, or
+<code>actor_token_type</code>: the assertion carries no target or scope, those are chosen
+at the IdP exchange, the assertion's <code>aud</code> is the IdP recorded in the hop's
+binding, and the authenticated client is the actor named in <code>act</code>.<a href="#section-6.2.1-4" class="pilcrow">¶</a></p>
 <p id="section-6.2.1-5">The <code>subject_token</code> <span class="bcp14">MUST</span> be either an access token issued by a RAS the CAI is
 mapped to, unexpired, and valid for a protected resource that the
 authenticated client operates, or a Transaction Token issued by the domain's
