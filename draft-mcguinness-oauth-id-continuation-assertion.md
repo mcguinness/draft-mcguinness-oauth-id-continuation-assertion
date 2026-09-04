@@ -444,8 +444,8 @@ How a workload obtains an assertion from a CAI, and how the bound handle
 reaches that CAI inside the RAS's trust domain, are deployment-specific,
 subject to the provenance rule in {{handle-propagation}}.
 
-The RAS and CAI roles may be held by the same party (collapsed) or by
-distinct parties (delegated); see {{deployment-topologies}}. The IdP
+The accepting RAS may itself hold the CAI role (co-located), or a separately
+mapped CAI may hold it (separate); see {{deployment-topologies}}. The IdP
 accepts an assertion for a hop only from a CAI mapped to the hop's
 accepting RAS ({{validation}}, rule 3), and the RAS itself is always
 mapped.
@@ -453,7 +453,7 @@ mapped.
 A continuation reuses the Token Exchange loop once per boundary: the root
 exchange mints the first ID-JAG, and each later boundary mints the next from an
 Identity Continuation Assertion. Handles H0 and H1 below name the successive
-hops ({{chain-id}}). The diagram shows the collapsed topology; steps marked
+hops ({{chain-id}}). The diagram shows the co-located topology; steps marked
 new are this profile's additions to ID-JAG, and the last exchange shows the
 base protocol resuming at a RAS that does not implement this extension
 ({{ras-processing}}).
@@ -1105,17 +1105,17 @@ document's requirements; conformance depends only on the normative sections.
 
 | Topology | CAI role held by | CAI handle source | Fits when |
 |---|---|---|---|
-| Collapsed | the accepting RAS | read from RAS state | one operator runs the domain |
-| Delegated | a separately mapped CAI | intra-domain carrier | the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation |
+| Co-located | the accepting RAS | read from RAS state | one operator runs the domain |
+| Separate | a separately mapped CAI | intra-domain carrier | the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation |
 
-Collapsed is the default: it adds no configured CAI mapping and no self-entry
+Co-located is the default: it adds no configured CAI mapping and no self-entry
 in `identity_continuation_issuers`. The RAS still advertises the continuation
 profile ({{metadata}}), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust ({{security-trust-model}}). Both topologies produce
 the same Identity Continuation Assertion and apply the same CAI requirements;
 they differ only in how the CAI reaches the accepted hop's state.
 
-A delegated topology can propagate the handle in several ways:
+With a separate CAI, a deployment can propagate the handle in several ways:
 
 * A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} can carry the
   handle as request context ({{rationale-txn}}).
@@ -1269,11 +1269,11 @@ The accepting RAS's implicit CAI mapping establishes no issuer, key, tenant, or
 issuer-pairing trust. The IdP sees one signed attestation in either topology,
 so separating the CAI isolates keys and components but does not create a
 protocol-level quorum. A compromised RAS can fabricate acceptance state in
-either topology, since a delegated CAI reads that state as authoritative; a
-compromised delegated CAI can additionally attest a hop the RAS refused. In
+either topology, since a separate CAI reads that state as authoritative; a
+compromised separate CAI can additionally attest a hop the RAS refused. In
 both topologies, RAS-local authorization revocation after issuance, which the
 IdP cannot observe, leaves the assertion valid for its remaining lifetime;
-delegation adds any delay in RAS state reaching the CAI.
+a separate CAI adds any delay in RAS state reaching it.
 The root envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
@@ -1629,7 +1629,7 @@ TravelSaaS workload that handles that call, in turn calls BookingAPI to
 complete the itinerary. All parties trust one enterprise IdP at
 `https://idp.example/`.
 
-Topology: delegated CAI with a Transaction Token carrier.
+Topology: separate CAI with a Transaction Token carrier.
 
 The authorization path, the sequence of accepting RASes, differs from that
 API-call path:
@@ -2068,7 +2068,7 @@ task authorization. The Scheduler stores only an opaque task identifier;
 each run derives fresh context from the active authorization
 ({{task-provenance}}).
 
-Topology: delegated CAI with a Transaction Token carrier.
+Topology: separate CAI with a Transaction Token carrier.
 
 * Platform domain (`platform.example`): workload `briefing-agent`, and
   PlatformRAS (the platform's own TaskRAS) / Platform TTS / Platform CAI,
@@ -2251,7 +2251,7 @@ gateway knows the upstream but holds no end-user assertion addressed to it.
 This flow lets the gateway obtain an audience-specific grant without
 weakening the original assertion's audience check.
 
-Topology: collapsed; GatewayRAS also holds the CAI role.
+Topology: co-located; GatewayRAS also holds the CAI role.
 
 * AgentPlatform domain (`agent.example`): client `agent-app` only, the
   confidential runtime that hosts Alice's session and roots the chain; it
@@ -2379,8 +2379,8 @@ This non-normative appendix lists unresolved design questions.
    identity_continuation_handle=<handle>
    ~~~
 
-   The sketch shows the delegated topology, where the workload holds the
-   handle; in the collapsed topology the request would instead carry the
+   The sketch shows the separate-CAI topology, where the workload holds the
+   handle; in the co-located topology the request would instead carry the
    authenticated context that selects the authorization. The authenticated
    workload and proof key would determine `act` and `cnf`, and the IdP
    audience would derive from the hop's binding rather than be supplied.
@@ -2432,7 +2432,7 @@ this profile builds.
   lists only additional CAIs. Added a scope statement to the Overview and a
   non-normative Deployment Topologies subsection holding the carrier
   realizations, added a Topology and Trust security subsection, and switched
-  the gateway example to the collapsed topology.
+  the gateway example to the co-located topology.
 * Removed the prohibition on carrying the handle in an access token, along
   with the carrier requirements that restated the CAI preconditions. One rule
   remains: the handle surfaced for a call is the one the RAS bound to the
