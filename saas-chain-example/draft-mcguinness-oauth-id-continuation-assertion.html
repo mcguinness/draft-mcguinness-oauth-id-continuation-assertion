@@ -3917,10 +3917,12 @@ interoperability choice between issuers and verifiers.<a href="#appendix-A.6-1" 
 <a href="#appendix-A.7" class="section-number selfRef">A.7. </a><a href="#name-boundary-of-the-profile" class="section-name selfRef">Boundary of the Profile</a>
         </h3>
 <p id="appendix-A.7-1">Continuation serves the Resource Authorization Servers that trust the common
-IdP. A target whose authorization server does not trust that IdP cannot be
-reached: the IdP holds no pairwise subject for it and no authorization basis
-covers it, so the exchange fails with <code>invalid_target</code> (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rules
-5 and 7). That is the profile's edge, not a deployment error. A separate
+IdP. A target outside that circle fails in one of two ways: where the IdP
+holds no pairwise subject for it or no authorization basis covers it, the
+exchange fails with <code>invalid_target</code> (<a href="#validation" class="auto internal xref">Section 6.3.4</a>, rules 5 and 7); where
+the IdP could issue an ID-JAG regardless, the target rejects it, since it does
+not trust the issuer. That is the profile's edge, not a deployment error. A
+separate
 identity-chaining profile can cross it under a bilateral agreement; for
 example, a workload can present its Transaction Token to its own domain's
 authorization server under <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>
@@ -4343,7 +4345,7 @@ has its own Resource Authorization Server, and all trust one enterprise IdP at
 <code>https://idp.example/</code>. Compared with the gateway example, this one shows a
 separate CAI in each continuing domain, a Transaction Token carrying the
 handle so the access token never does, a root-chain envelope that enumerates
-its targets, and a lineage two actors deep.<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
+its targets, and a lineage three entries deep.<a href="#appendix-B.2-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.2-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.2-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.2-3.1">
@@ -4549,10 +4551,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 <p id="appendix-B.2.3-3">Expense CAI verifies the Transaction Token for its domain, reads H0 from it,
 rechecks with ExpenseRAS that the binding is still active, confirms policy
 permits <code>expense-service</code> to continue, and issues the assertion. The IdP
-trusts Expense CAI for hops ExpenseRAS accepts through the mapping in
-<code>identity_continuation_issuers</code> or tenant configuration (<a href="#metadata" class="auto internal xref">Section 7</a>). The
-response's <code>audience</code>, <code>https://idp.example/</code>, tells <code>expense-service</code> where to
-present it.<a href="#appendix-B.2.3-3" class="pilcrow">¶</a></p>
+accepts Expense CAI's assertions for hops ExpenseRAS accepts because Expense
+CAI is explicitly mapped to ExpenseRAS, through <code>identity_continuation_issuers</code>
+or tenant configuration, and is independently trusted for its issuer, keys,
+tenant, and actor-token-issuer pairing (<a href="#metadata" class="auto internal xref">Section 7</a>,
+<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). The response's <code>audience</code>, <code>https://idp.example/</code>,
+tells <code>expense-service</code> where to present it.<a href="#appendix-B.2.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.3-4">On the wire (decoded assertion):<a href="#appendix-B.2.3-4" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.2.3-5">
 <pre>
@@ -4712,8 +4716,10 @@ way (<a href="#rationale-boundary" class="auto internal xref">Appendix A.7</a>).
           </h4>
 <ul class="normal">
 <li class="normal" id="appendix-B.2.6-1.1">
-              <p id="appendix-B.2.6-1.1.1">The CAI is a separate service in each continuing domain, trusted by the IdP
-through a mapping to that domain's RAS rather than implicitly.<a href="#appendix-B.2.6-1.1.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.2.6-1.1.1">The CAI is a separate service in each continuing domain, explicitly mapped
+to that domain's RAS where a co-located RAS is mapped implicitly; in either
+case the IdP trusts the issuer, its keys, tenant, and issuer pairing
+independently of the mapping.<a href="#appendix-B.2.6-1.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.2.6-1.2">
               <p id="appendix-B.2.6-1.2.1">The handle never enters an access token; a Transaction Token Service derives
@@ -4725,8 +4731,8 @@ token to obtain the assertion.<a href="#appendix-B.2.6-1.2.1" class="pilcrow">¶
 matched against an entry rather than evaluated against a policy basis.<a href="#appendix-B.2.6-1.3.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.2.6-1.4">
-              <p id="appendix-B.2.6-1.4.1">Two continuing domains produce a lineage two actors deep before the
-terminal hop.<a href="#appendix-B.2.6-1.4.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.2.6-1.4.1">Two continuing domains produce a lineage three entries deep, two
+continuation actors above the root actor, before the terminal hop.<a href="#appendix-B.2.6-1.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </section>

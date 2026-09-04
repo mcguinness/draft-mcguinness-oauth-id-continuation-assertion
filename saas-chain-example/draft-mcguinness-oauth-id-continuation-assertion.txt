@@ -2122,16 +2122,18 @@ A.6.  Why Asymmetric Signing Only
 A.7.  Boundary of the Profile
 
    Continuation serves the Resource Authorization Servers that trust the
-   common IdP.  A target whose authorization server does not trust that
-   IdP cannot be reached: the IdP holds no pairwise subject for it and
-   no authorization basis covers it, so the exchange fails with
-   invalid_target (Section 6.3.4, rules 5 and 7).  That is the profile's
-   edge, not a deployment error.  A separate identity-chaining profile
-   can cross it under a bilateral agreement; for example, a workload can
-   present its Transaction Token to its own domain's authorization
-   server under [I-D.fletcher-transaction-token-chaining-profile] for a
-   minimized grant to the partner.  The Transaction Token and the handle
-   stay in the domain.
+   common IdP.  A target outside that circle fails in one of two ways:
+   where the IdP holds no pairwise subject for it or no authorization
+   basis covers it, the exchange fails with invalid_target
+   (Section 6.3.4, rules 5 and 7); where the IdP could issue an ID-JAG
+   regardless, the target rejects it, since it does not trust the
+   issuer.  That is the profile's edge, not a deployment error.  A
+   separate identity-chaining profile can cross it under a bilateral
+   agreement; for example, a workload can present its Transaction Token
+   to its own domain's authorization server under
+   [I-D.fletcher-transaction-token-chaining-profile] for a minimized
+   grant to the partner.  The Transaction Token and the handle stay in
+   the domain.
 
 Appendix B.  Examples
 
@@ -2502,7 +2504,7 @@ B.2.  SaaS Chain Example (Separate CAI and Transaction Token Carrier)
    with the gateway example, this one shows a separate CAI in each
    continuing domain, a Transaction Token carrying the handle so the
    access token never does, a root-chain envelope that enumerates its
-   targets, and a lineage two actors deep.
+   targets, and a lineage three entries deep.
 
    Topology: separate CAI with a Transaction Token carrier.
 
@@ -2688,10 +2690,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Expense CAI verifies the Transaction Token for its domain, reads H0
    from it, rechecks with ExpenseRAS that the binding is still active,
    confirms policy permits expense-service to continue, and issues the
-   assertion.  The IdP trusts Expense CAI for hops ExpenseRAS accepts
-   through the mapping in identity_continuation_issuers or tenant
-   configuration (Section 7).  The response's audience,
-   https://idp.example/, tells expense-service where to present it.
+   assertion.  The IdP accepts Expense CAI's assertions for hops
+   ExpenseRAS accepts because Expense CAI is explicitly mapped to
+   ExpenseRAS, through identity_continuation_issuers or tenant
+   configuration, and is independently trusted for its issuer, keys,
+   tenant, and actor-token-issuer pairing (Section 7, Section 9.7).  The
+   response's audience, https://idp.example/, tells expense-service
+   where to present it.
 
    On the wire (decoded assertion):
 
@@ -2834,9 +2839,10 @@ B.2.5.  The Pattern Repeats to BookingRAS (H2)
 
 B.2.6.  What Differs from the Gateway Example
 
-   *  The CAI is a separate service in each continuing domain, trusted
-      by the IdP through a mapping to that domain's RAS rather than
-      implicitly.
+   *  The CAI is a separate service in each continuing domain,
+      explicitly mapped to that domain's RAS where a co-located RAS is
+      mapped implicitly; in either case the IdP trusts the issuer, its
+      keys, tenant, and issuer pairing independently of the mapping.
 
    *  The handle never enters an access token; a Transaction Token
       Service derives it from the RAS binding for each request, and the
@@ -2846,8 +2852,8 @@ B.2.6.  What Differs from the Gateway Example
       continuation is matched against an entry rather than evaluated
       against a policy basis.
 
-   *  Two continuing domains produce a lineage two actors deep before
-      the terminal hop.
+   *  Two continuing domains produce a lineage three entries deep, two
+      continuation actors above the root actor, before the terminal hop.
 
 B.3.  Background Agent Example (User-Scheduled Continuation)
 
