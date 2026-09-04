@@ -207,16 +207,17 @@ Table of Contents
    This profile is an opt-in extension to ID-JAG that requires no change
    to existing ID-JAG clients or Resource Authorization Servers.  A RAS
    implements it only where continuation may proceed from its domain; a
-   RAS from which no workload continues runs the base profile unmodified
-   and need not know that a chain exists (Section 5.3).  Chain state,
-   envelope enforcement, and replay protection sit at the IdP, which
-   already resolves the pairwise subject and holds the consent record,
-   so a continuation-aware RAS adds only the binding of its own hops and
-   the assertion that a workload may continue them.  An existing ID-JAG
-   ecosystem can therefore add multi-hop access where a request's path
-   is not known in advance, such as at a tool gateway for agents,
-   including Model Context Protocol (MCP) gateways, that selects its
-   upstream at request time (Appendix B.1).
+   RAS from which no workload continues runs unmodified ID-JAG, which
+   this document calls the base profile, and need not know that a chain
+   exists (Section 5.3).  Chain state, envelope enforcement, and replay
+   protection sit at the IdP, which already resolves the pairwise
+   subject and holds the consent record, so a continuation-aware RAS
+   adds only the binding of its own hops and the assertion that a
+   workload may continue them.  An existing ID-JAG ecosystem can
+   therefore add multi-hop access where a request's path is not known in
+   advance, such as at a tool gateway for agents, including Model
+   Context Protocol (MCP) gateways, that selects its upstream at request
+   time (Appendix B.1).
 
    This protocol assigns obligations to two roles in the trust domain a
    chain continues from: a RAS that accepts an ID-JAG and binds the hop,
@@ -292,18 +293,45 @@ Table of Contents
       component is needed.
 
    The steps are numbered as in the figure.  Steps marked "as in ID-JAG"
-   are unchanged from ID-JAG itself, which this document calls the base
-   profile; the parts marked "new" are what this profile adds.
+   are unchanged from the base profile; the parts marked "new" are what
+   this profile adds.
+
+AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
+  |           |             |             |                 |
+  | (1) exchange ID Token for ID-JAG      |                 |
+  |---------->|             |             |                 |
+  | ID-JAG with handle H0  [new claim]    |                 |
+  |<----------|             |             |                 |
+  | (2) present ID-JAG (jwt-bearer grant) |                 |
+  |------------------------>|             |                 |
+  | access token; RAS binds H0 to it  [new]                 |
+  |<------------------------|             |                 |
+  | (3) call: access token + DPoP         |                 |
+  |-------------------------------------->|                 |
+  |           |             |             |                 |
+  |           |             | (4) exchange access token: assertion [new]
+  |           |             |<------------|                 |
+  |           |             | assertion: H0 active, may continue [new]
+  |           |             |------------>|                 |
+  |           | (5) exchange assertion for next ID-JAG  [new]
+  |           |<--------------------------|                 |
+  |           | ID-JAG for wiki, handle H1 (child of H0)    |
+  |           |-------------------------->|                 |
+  |           |             |             | (6) present ID-JAG
+  |           |             |             |---------------->|
+  |           |             |             | access token; base profile
+  |           |             |             |<----------------|
 
    1.  As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for
        an ID-JAG addressed to the gateway's RAS.  New: the IdP records
        this grant as the first hop of a chain; each ID-JAG it issues in
        the chain is one hop, linked to the hop it continues from.  With
        the hop it records an envelope: the user, the targets that
-       Alice's consent and tenant policy permit, and the parties
-       permitted to continue.  It places a handle, an opaque reference
-       to that hop, in the ID-JAG as the identity_continuation_handle
-       claim.  The figure calls this hop H0.
+       Alice's consent and tenant policy permit, the parties permitted
+       to continue, and the chain's depth and lifetime limits.  It
+       places a handle, an opaque reference to that hop, in the ID-JAG
+       as the identity_continuation_handle claim.  The figure calls this
+       hop H0.
 
    2.  As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS
        and receives an access token.  New: the RAS keeps the handle
@@ -333,50 +361,26 @@ Table of Contents
    6.  As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS
        and receives an access token.  If the wiki's RAS does not
        implement this profile, it ignores the handle and the chain ends
-       there.  If it does, steps 4 and 5 can repeat from the wiki's
-       domain.
+       there.  If it does, it binds H1 as in step 2, and steps 4 and 5
+       can repeat from the wiki's domain.
 
-AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
-  |           |             |             |                 |
-  | (1) exchange ID Token for ID-JAG      |                 |
-  |---------->|             |             |                 |
-  | ID-JAG with handle H0  [new claim]    |                 |
-  |<----------|             |             |                 |
-  | (2) present ID-JAG (jwt-bearer grant) |                 |
-  |------------------------>|             |                 |
-  | access token; RAS binds H0 to it  [new]                 |
-  |<------------------------|             |                 |
-  | (3) call: access token + DPoP         |                 |
-  |-------------------------------------->|                 |
-  |           |             |             |                 |
-  |           |             | (4) exchange access token: assertion [new]
-  |           |             |<------------|                 |
-  |           |             | assertion: H0 active, may continue [new]
-  |           |             |------------>|                 |
-  |           | (5) exchange assertion for next ID-JAG  [new]
-  |           |<--------------------------|                 |
-  |           | ID-JAG for wiki, handle H1 (child of H0)    |
-  |           |-------------------------->|                 |
-  |           |             |             | (6) present ID-JAG
-  |           |             |             |---------------->|
-  |           |             |             | access token; chain ends
-  |           |             |             |<----------------|
-
-   Three things are new, and nothing else changes: a claim in the ID-JAG
-   (step 1), a binding kept at the RAS (step 2), and the assertion
-   together with the exchange that consumes it (steps 4 and 5).  Alice's
+   Three things are new in this flow: a claim in the ID-JAG (step 1), a
+   binding kept at the RAS (step 2), and the assertion together with the
+   exchange that consumes it (steps 4 and 5).  The base exchanges of
+   steps 1, 2, and 6 and the call of step 3 are unchanged.  Alice's
    credential never leaves AgentApp, and no party other than the IdP
    ever names Alice for the wiki.
 
-   Two states describe a hop.  It is PENDING from the moment the IdP
-   issues its ID-JAG, and ACCEPTED once a RAS has redeemed the grant and
-   bound the handle.  The IdP is not told when that happens: acceptance
-   is a fact held by the RAS, and the IdP learns of it only when the
-   assertion issued in step 4 reaches it in step 5.  The IdP therefore
-   accepts an assertion about a hop only from that hop's RAS, or from a
-   CAI it trusts to speak for that RAS (the issuer-trust rule of
-   Section 5.7.3), and a hop can be continued only while such an
-   assertion says it is still active (Section 5.4).
+   Two states describe a hop.  H0 is PENDING from step 1, when the IdP
+   issues its ID-JAG, and ACCEPTED from step 2, when the RAS redeems the
+   grant and binds the handle.  The IdP is not told when that happens:
+   acceptance is a fact held by the RAS, and the IdP learns of it only
+   when the assertion issued in step 4 reaches it in step 5.  The IdP
+   therefore accepts an assertion about a hop only from that hop's RAS
+   or, where the CAI is a separate component, from a CAI it trusts to
+   speak for that RAS (the issuer-trust rule of Section 5.7.3), and a
+   hop can be continued only while such an assertion says it is still
+   active (Section 5.4).
 
    Appendix B.1 shows these same steps with every artifact spelled out.
 
@@ -596,55 +600,46 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    maps those steps to the sections that specify them, and the sections
    that follow trace a chain in the same order.
 
-   +====+============================+===============================================+
-   |Step|Obligation                  |Specified in                                   |
-   +====+============================+===============================================+
-   |1   |The IdP embeds an           |Section 4, Section 5.2                         |
-   |    |identity_continuation_handle|                                               |
-   |    |claim in each continuation- |                                               |
-   |    |capable ID-JAG, and         |                                               |
-   |    |establishes and bounds the  |                                               |
-   |    |chain                       |                                               |
-   +----+----------------------------+-----------------------------------------------+
-   |2   |A continuation-aware RAS    |Section 5.3, Section 5.4                       |
-   |    |binds the handle from an    |                                               |
-   |    |accepted ID-JAG to the      |                                               |
-   |    |authorization it issues, and|                                               |
-   |    |the hop becomes ACCEPTED    |                                               |
-   +----+----------------------------+-----------------------------------------------+
-   |3   |The domain surfaces the     |Section 5.5                                    |
-   |    |bound handle to its CAI; a  |                                               |
-   |    |co-located RAS reads it back|                                               |
-   |    |from its own state          |                                               |
-   +----+----------------------------+-----------------------------------------------+
-   |4   |The CAI issues the Identity |Section 3, Section 5.6                         |
-   |    |Continuation Assertion, from|                                               |
-   |    |its token endpoint by Token |                                               |
-   |    |Exchange when it is an      |                                               |
-   |    |authorization server        |                                               |
-   +----+----------------------------+-----------------------------------------------+
-   |5   |The workload presents the   |Section 5.7, Section 5.8                       |
-   |    |assertion as a Token        |                                               |
-   |    |Exchange subject_token with |                                               |
-   |    |its actor credential and a  |                                               |
-   |    |DPoP proof; the IdP         |                                               |
-   |    |validates the exchange,     |                                               |
-   |    |guards it against replay,   |                                               |
-   |    |and issues the next ID-JAG  |                                               |
-   +----+----------------------------+-----------------------------------------------+
-   |6   |The next RAS redeems an     |[I-D.ietf-oauth-identity-assertion-authz-grant]|
-   |    |ordinary ID-JAG under the   |                                               |
-   |    |base profile; if it is      |                                               |
-   |    |continuation-aware, step 2  |                                               |
-   |    |applies to it in turn       |                                               |
-   +----+----------------------------+-----------------------------------------------+
+   +======+===============================================+============+
+   | Step | Obligation                                    | Specified  |
+   |      |                                               | in         |
+   +======+===============================================+============+
+   | 1    | The IdP embeds the handle claim in the ID-JAG | Section    |
+   |      | and establishes and bounds the chain          | 4,         |
+   |      |                                               | Section    |
+   |      |                                               | 5.2        |
+   +------+-----------------------------------------------+------------+
+   | 2    | A continuation-aware RAS binds the handle to  | Section    |
+   |      | the authorization it issues; the hop becomes  | 5.3,       |
+   |      | ACCEPTED                                      | Section    |
+   |      |                                               | 5.4        |
+   +------+-----------------------------------------------+------------+
+   | 3    | The call reaches the workload; within the     | Section    |
+   |      | domain, the bound handle reaches the CAI (a   | 5.5        |
+   |      | co-located RAS reads its own state)           |            |
+   +------+-----------------------------------------------+------------+
+   | 4    | The CAI issues the Identity Continuation      | Section    |
+   |      | Assertion, by Token Exchange when it is an    | 3,         |
+   |      | authorization server                          | Section    |
+   |      |                                               | 5.6        |
+   +------+-----------------------------------------------+------------+
+   | 5    | The workload presents the assertion with its  | Section    |
+   |      | actor credential and a DPoP proof; the IdP    | 5.7,       |
+   |      | validates the exchange, guards against        | Section    |
+   |      | replay, and issues the next ID-JAG            | 5.8        |
+   +------+-----------------------------------------------+------------+
+   | 6    | The next RAS redeems an ordinary ID-JAG under | Section    |
+   |      | the base profile; a continuation-aware one    | 5.3        |
+   |      | binds the handle as in step 2, after which    |            |
+   |      | steps 4 and 5 can recur from its domain       |            |
+   +------+-----------------------------------------------+------------+
 
                                   Table 1
 
    Across all steps, the governing authorization bounds the chain's
    lifetime (Section 6), and Authorization Server metadata advertises
    support: a continuation-aware RAS advertises the grant profile, and
-   the IdP may signal its capability (Section 7).
+   the IdP should signal its capability (Section 7).
 
    How a workload obtains an assertion other than by the exchange of
    step 4, and how the bound handle reaches a separate CAI inside the
