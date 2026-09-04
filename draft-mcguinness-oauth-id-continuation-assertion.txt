@@ -368,11 +368,11 @@ Table of Contents
 
    Hop:  One link of a chain: the IdP's record of an ID-JAG it issued,
       holding an immutable reference to its parent hop unless it is the
-      root.  Its lineage is its path to the root.  A RAS that redeems
-      the hop's ID-JAG binds the handle to the authorization it issues
-      (Section 5.3); the hop is then ACCEPTED.  A hop from which no
-      workload continues is terminal; its branch ends there, while
-      sibling branches may continue.
+      root.  Its lineage is its path to the root.  A continuation-aware
+      RAS that redeems the hop's ID-JAG binds the handle to the
+      authorization it issues (Section 5.3); the hop is then ACCEPTED.
+      A hop from which no workload continues is terminal; its branch
+      ends there, while sibling branches may continue.
 
    Chain:  An IdP-held tree of hops under one governing authorization;
       each hop's parent reference gives the tree its shape
