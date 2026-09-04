@@ -269,8 +269,9 @@ Table of Contents
 
    Continuation-capable:  Describes any of: an ID-JAG that carries the
       identity_continuation_handle claim (Section 4); a governing
-      authorization that permits continuation; or the root exchange such
-      an authorization governs (Section 6.3.2).
+      authorization under which server-side consent and tenant policy
+      permit continuation (Section 6.3.2); or the root exchange such an
+      authorization governs.
 
    Identity Continuation Assertion:  A short-lived, sender-constrained
       JWT from a CAI, presented to the IdP as a Token Exchange
@@ -634,6 +635,9 @@ Table of Contents
    for the root credential and additionally supplies the actor
    authentication and DPoP proof described below.  The IdP establishes
    the chain; no request parameter asks it to do so (Section 6.3.2).
+   Before it can continue to a target, the current actor needs a client
+   registration or resolvable client identity at that target's RAS; the
+   onward ID-JAG client_id is that identifier (Section 6.3.7).
 
 6.3.1.  Request
 
@@ -766,9 +770,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Establishment is at-least-once: retrying a lost response MAY create a
    second chain.  Revocation of the governing authorization applies to
    every chain rooted in it, and the actor-chain depth bound is enforced
-   per branch.  A retried establishment MUST NOT evade the fan-out,
-   rate, or hop-count limits configured for the governing authorization
-   (Section 8).
+   per branch.  Fan-out, rate, or hop-count limits configured for a
+   governing authorization apply across every chain rooted in it, so
+   sibling chains share one budget; a retried establishment MUST NOT
+   evade them.
 
 6.3.3.  Presenter Authentication
 
@@ -793,10 +798,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       [RFC7523] its sub is the client_id and the IdP MUST authorize its
       issuer for that client.  Otherwise the client authenticates
       separately.
-
-   *  _Target registration._ The onward ID-JAG client_id is the current
-      actor's identifier at the target RAS, so the actor needs a
-      registration or resolvable client identity at each target.
 
    The actor_token MUST NOT be bearer: for a JWT the IdP verifies
    cnf.jkt, and for an opaque token it obtains equivalent confirmation
@@ -916,7 +917,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  the IdP can resolve, for the requested audience, both the
           audience-local subject and the actor's client identifier
-          (Section 6.3.3);
+          (Section 6.3.7);
 
    6.  *Freshness and replay.*
 
@@ -954,12 +955,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    request), the actor's iss and sub, the confirmed key's cnf.jkt
    thumbprint, and a SHA-256 hash of the exact subject_token after form
    decoding, which binds the fingerprint to the specific assertion and
-   its handle.  Concurrent redemptions MUST NOT bypass this binding
-   (Section 8).  An identical retry MUST return the same previously
-   issued grant, not a new one, and a request that does not match that
-   fingerprint MUST be rejected.  Replay uniqueness MUST be keyed on
-   (iss, jti); partitioning by tenant alone would let two assertion
-   issuers in one tenant collide on a reused jti.
+   its handle.  Concurrent redemptions of one assertion MUST NOT produce
+   more than one grant.  An identical retry MUST return the same
+   previously issued grant, not a new one, and a request that does not
+   match that fingerprint MUST be rejected.  Replay uniqueness MUST be
+   keyed on (iss, jti); partitioning by tenant alone would let two
+   assertion issuers in one tenant collide on a reused jti.
 
    The IdP MUST retain the reservation through exp plus the maximum
    permitted clock skew, so an in-window retry is honored; a reservation
@@ -1127,8 +1128,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    mapped CAI attests a hop only once it is ACCEPTED, so a PENDING hop
    yields no assertion and reaches no continuation exchange.  A fresh
    assertion from the mapped CAI lets the IdP evaluate the hop as
-   CONTINUABLE for one request; CONTINUABLE is not stored but holds only
-   while rules 3, 4, and 5 of Section 6.3.4 hold for that request.
+   CONTINUABLE for one request.  CONTINUABLE is not stored: it means a
+   trusted mapped CAI has freshly attested the hop as ACCEPTED and still
+   active, no ancestor is revoked, and the presenting actor is the one
+   the attestation names; rules 3 through 5 of Section 6.3.4 establish
+   those facts.
 
     +=============+===================+===============================+
     | State       | Where it lives    | Meaning                       |
@@ -1328,9 +1332,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    actor that repeatedly continues as itself never trips it; the fan-
    out, rate, and hop-count limits of Section 6.3.2 bound such retry-
    driven growth instead, and the IdP prunes expired or revoked hop
-   state.  A deployment configures those limits and enforces them per
-   governing authorization, so sibling branches of one chain share one
-   budget and a retry cannot escape them.
+   state.
 
    The CAI accounts for retries separately from fan-out and keeps audit
    records of its issuance and limit enforcement.  The IdP performs end-
@@ -2764,6 +2766,12 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Made the retry-limit and replay-concurrency requirements self-
+      contained rather than pointing into Implementation Considerations,
+      defined CONTINUABLE and continuation-capable without circularity,
+      and moved the per-target client registration prerequisite to the
+      Token Exchange introduction.
 
    *  Annotated the overview diagram with this profile's additions and
       the terminal hop.
