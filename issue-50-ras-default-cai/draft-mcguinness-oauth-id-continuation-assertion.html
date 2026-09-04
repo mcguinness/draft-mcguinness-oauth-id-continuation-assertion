@@ -1593,94 +1593,86 @@ the IdP as a Token Exchange <code>subject_token</code> to obtain an onward ID-JA
 tenant. It never resolves the target audience's user subject.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.17">Attestation:</dt>
+<dt id="section-2-3.17">Current actor (presenting actor):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.18">
-          <p id="section-2-3.18.1">A CAI's signed statement, in an Identity Continuation Assertion, that binds
-the authenticated actor and key to a hop accepted by a RAS it is mapped to,
-whose local authorization remains active and permits continuation
-(<a href="#assertion-issuance" class="auto internal xref">Section 6.2</a>).<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.18.1">The workload presenting the assertion to the IdP, named by <code>act</code> and
+authenticated by <code>actor_token</code>.<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.19">Current actor (presenting actor):</dt>
+<dt id="section-2-3.19">Root actor:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.20">
-          <p id="section-2-3.20.1">The workload presenting the assertion to the IdP, named by <code>act</code> and
-authenticated by <code>actor_token</code>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.21">Root actor:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.22">
-          <p id="section-2-3.22.1">The actor at the root of a chain: the authenticated OAuth client that
+          <p id="section-2-3.20.1">The actor at the root of a chain: the authenticated OAuth client that
 obtains the first ID-JAG (<a href="#client-identity" class="auto internal xref">Section 6.3.3</a>); this is the Client of
 <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> at the root exchange.
-Unlike a current actor, it need not present an <code>actor_token</code>.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
+Unlike a current actor, it need not present an <code>actor_token</code>.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.23">Tenant:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">The administrative boundary within which the chain and CAI trust are
+<dt id="section-2-3.21">Tenant:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.22">
+          <p id="section-2-3.22.1">The administrative boundary within which the chain and CAI trust are
 configured; its determination is deployment-defined
-(<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>).<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+(<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>).<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.25">Trust domain:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.26">
-          <p id="section-2-3.26.1">An administrative and authentication boundary within which workloads can
+<dt id="section-2-3.23">Trust domain:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.24">
+          <p id="section-2-3.24.1">An administrative and authentication boundary within which workloads can
 be directly authenticated, comparable to WIMSE
-<span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is deployment-defined.<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
+<span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is deployment-defined.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.27">Intra-domain carrier:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.28">
-          <p id="section-2-3.28.1">The server-derived, deployment-specific mechanism that surfaces an accepted
+<dt id="section-2-3.25">Intra-domain carrier:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.26">
+          <p id="section-2-3.26.1">The server-derived, deployment-specific mechanism that surfaces an accepted
 hop's handle to authorized workloads within a trust domain
-(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
+(<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.29">Authenticated context:</dt>
+<dt id="section-2-3.27">Authenticated context:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.28">
+          <p id="section-2-3.28.1">The authenticated credential or state that selects exactly one RAS-bound
+authorization for a call (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.29">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.30">
-          <p id="section-2-3.30.1">The authenticated credential or state that selects exactly one RAS-bound
-authorization for a call (<a href="#handle-propagation" class="auto internal xref">Section 6.6</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.30.1">An opaque, unguessable, IdP-generated reference to one hop of a continuation
+chain; see <a href="#chain-id" class="auto internal xref">Section 4</a>.<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.31">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
+<dt id="section-2-3.31">Hop:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.32">
-          <p id="section-2-3.32.1">An opaque, unguessable, IdP-generated reference to one hop of a continuation
-chain; see <a href="#chain-id" class="auto internal xref">Section 4</a>.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.33">Hop:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.34">
-          <p id="section-2-3.34.1">A root or continuation record; a continuation record carries an immutable
+          <p id="section-2-3.32.1">A root or continuation record; a continuation record carries an immutable
 parent reference and a root record has none. Its lineage is its path to the
-root.<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
+root.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.35">Governing authorization:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.36">
-          <p id="section-2-3.36.1">The server-side consent and policy record, resolved from the root subject
+<dt id="section-2-3.33">Governing authorization:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.34">
+          <p id="section-2-3.34.1">The server-side consent and policy record, resolved from the root subject
 token, that anchors a chain and bounds every continuation under it
-(<a href="#lifecycle" class="auto internal xref">Section 5</a>).<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
+(<a href="#lifecycle" class="auto internal xref">Section 5</a>).<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.37">Root-chain envelope:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.38">
-          <p id="section-2-3.38.1">The state the IdP records at establishment and evaluates every continuation
+<dt id="section-2-3.35">Root-chain envelope:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.36">
+          <p id="section-2-3.36.1">The state the IdP records at establishment and evaluates every continuation
 against, anchored to the chain's governing authorization (<a href="#lifecycle" class="auto internal xref">Section 5</a>); its
-dimensions and bounds are defined in <a href="#root-establishment" class="auto internal xref">Section 6.3.2</a>.<a href="#section-2-3.38.1" class="pilcrow">¶</a></p>
+dimensions and bounds are defined in <a href="#root-establishment" class="auto internal xref">Section 6.3.2</a>.<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.39">Audience-local (pairwise) subject:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.40">
-          <p id="section-2-3.40.1">The subject identifier under which a particular RAS names the user. Distinct
+<dt id="section-2-3.37">Audience-local (pairwise) subject:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.38">
+          <p id="section-2-3.38.1">The subject identifier under which a particular RAS names the user. Distinct
 Resource Authorization Servers may name the same user with different
-identifiers; only the IdP holds the map between them.<a href="#section-2-3.40.1" class="pilcrow">¶</a></p>
+identifiers; only the IdP holds the map between them.<a href="#section-2-3.38.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.41">Offline attenuation:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.42">
-          <p id="section-2-3.42.1">Client-side attenuated delegation, in which a party narrows and forwards a
+<dt id="section-2-3.39">Offline attenuation:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.40">
+          <p id="section-2-3.40.1">Client-side attenuated delegation, in which a party narrows and forwards a
 credential without contacting the IdP; contrast the IdP-minted continuation
-this profile defines (<a href="#decision-rule" class="auto internal xref">Section 1.1</a>).<a href="#section-2-3.42.1" class="pilcrow">¶</a></p>
+this profile defines (<a href="#decision-rule" class="auto internal xref">Section 1.1</a>).<a href="#section-2-3.40.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
 </dl>

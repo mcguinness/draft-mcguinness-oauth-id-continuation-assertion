@@ -295,11 +295,6 @@ Table of Contents
       issue Identity Continuation Assertions for a tenant.  It never
       resolves the target audience's user subject.
 
-   Attestation:  A CAI's signed statement, in an Identity Continuation
-      Assertion, that binds the authenticated actor and key to a hop
-      accepted by a RAS it is mapped to, whose local authorization
-      remains active and permits continuation (Section 6.2).
-
    Current actor (presenting actor):  The workload presenting the
       assertion to the IdP, named by act and authenticated by
       actor_token.
