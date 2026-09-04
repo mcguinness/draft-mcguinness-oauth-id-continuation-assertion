@@ -204,6 +204,20 @@ Table of Contents
    envelope.  Continuation therefore stays a fresh policy decision at
    every boundary, never a bearer of standing authority.
 
+   This profile is an opt-in extension to ID-JAG that requires no change
+   to existing ID-JAG clients or Resource Authorization Servers.  A RAS
+   implements it only where continuation may proceed from its domain; a
+   RAS from which no workload continues runs the base profile unmodified
+   and need not know that a chain exists (Section 5.3).  Chain state,
+   envelope enforcement, and replay protection sit at the IdP, which
+   already resolves the pairwise subject and holds the consent record,
+   so a continuation-aware RAS adds only the binding of its own hops and
+   the assertion that a workload may continue them.  An existing ID-JAG
+   ecosystem can therefore add multi-hop access where a request's path
+   is not known in advance, such as at a tool gateway for agents,
+   including Model Context Protocol (MCP) gateways, that selects its
+   upstream at request time (Appendix B.1).
+
    This protocol assigns obligations to two roles in the trust domain a
    chain continues from: a RAS that accepts an ID-JAG and binds the hop,
    and a Continuation Assertion Issuer (CAI) that mints the assertion
@@ -3094,6 +3108,11 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Stated the design goal in the Introduction: an opt-in extension
+      that requires no change to existing ID-JAG clients or RASes, keeps
+      chain state at the IdP, and lets an ID-JAG ecosystem add multi-hop
+      access at gateways.
 
    *  Cited validation rules by name, tabulated the envelope, removed
       the duplicate signals table, merged three short Security
