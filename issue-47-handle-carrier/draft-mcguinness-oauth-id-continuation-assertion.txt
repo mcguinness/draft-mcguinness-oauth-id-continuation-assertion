@@ -1138,12 +1138,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Within a trust domain, a workload learns the accepted hop's handle
    from a carrier that the domain derives from the RAS binding
-   (Section 6.4).  The handle surfaced for a call MUST be read from RAS-
-   bound state that the authenticated context of that call selects.  The
-   requester cannot control or separately override the value, and the
-   state is never selected by a session or subject alone, which could
-   bind the wrong user's authorization state to the call.  What selects
-   the state depends on where the call lands:
+   (Section 6.4).  The handle surfaced for a call MUST originate from
+   the RAS-bound state that the authenticated context of that call
+   selects, whether read from that state or from a carrier derived from
+   it.  The requester cannot control or separately override the value,
+   and the state is never selected by a session or subject alone, which
+   could bind the wrong user's authorization state to the call.  What
+   selects the state depends on where the call lands:
 
    *  at ingress, the sender-constrained access token whose proof of
       possession the resource verified;
@@ -1158,16 +1159,20 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    (Section 6.2).
 
    The carrier is deployment-specific and is accepted only within the
-   domain (Section 6.2).  Two realizations:
+   domain (Section 6.2).  Three realizations:
 
    *  A Transaction Token [I-D.ietf-oauth-transaction-tokens] that
       carries the handle as request context (Appendix A.2).
 
-   *  A claim in the sender-constrained access token the accepting RAS
-      issues, read from the signed JWT [RFC9068] or from its
-      introspection response [RFC7662].  The RAS writes the claim at
-      issuance, so it cannot reflect a later revocation; the CAI recheck
-      covers that for every carrier.
+   *  A claim in the signed JWT access token [RFC9068] the accepting RAS
+      issues, written at issuance, so it cannot reflect a later
+      revocation.
+
+   *  A member of the introspection response [RFC7662] for an opaque
+      access token the accepting RAS issues, generated when
+      introspection occurs.
+
+   The CAI recheck (Section 6.2) covers staleness for every carrier.
 
    The handle conveys no authority.  A Resource Server has no
    obligations under this specification, so a carrier SHOULD NOT expose
@@ -2586,12 +2591,13 @@ B.3.1.  Root Exchange: The Runtime Roots the Chain
    bound H0 in Appendix B.1.2.
 
    AgentApp then invokes the gateway with its access token and no
-   continuation input.  AgentApp cannot alter or choose the handle in
-   the token: GatewayRAS wrote H0 into it at issuance, and the signature
-   seals H0 to the token's subject and confirmed key.  ToolGateway
-   validates the token and its DPoP binding, then reads H0 from the
-   claim.  It accepts no handle from any other input AgentApp controls
-   (Section 6.6).
+   continuation input.  AgentApp chooses which token to present, and
+   with it which authorization, but cannot alter the handle inside or
+   pair it with another token's subject and key: GatewayRAS copied H0
+   from the binding for the redeemed ID-JAG at issuance, and the
+   signature seals it.  ToolGateway validates the token and its DPoP
+   binding, then reads H0 from the claim.  It accepts no handle from any
+   other input AgentApp controls (Section 6.6).
 
    On the wire (decoded gateway access token; only gateway.example
    resources accept it):
@@ -2639,8 +2645,9 @@ B.3.3.  Points Worth Noticing
    *  AgentApp alone presents Alice's root credential (the ID Token);
       the gateway never holds or presents it.
 
-   *  GatewayRAS, not AgentApp, selects H0: the access token carries it
-      as a claim sealed by the issuer's signature, and Gateway CAI still
+   *  The access token carries H0 as a claim GatewayRAS copied from the
+      binding for the redeemed ID-JAG and sealed with its signature;
+      AgentApp cannot substitute another handle, and Gateway CAI still
       rechecks the live binding.
 
    *  The IdP evaluates every dynamically selected target against the
