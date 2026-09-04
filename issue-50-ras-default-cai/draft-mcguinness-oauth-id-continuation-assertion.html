@@ -1997,9 +1997,9 @@ recorded in the hop's RAS binding (<a href="#ras-processing" class="auto interna
 IdP audience supplied by the requester.<a href="#section-6.2-1" class="pilcrow">¶</a></p>
 <p id="section-6.2-2">The current actor is a control-plane participant, not a bare-handle
 transporter: the CAI obtains the handle from authenticated state associated
-with the actor's transaction and key. The handle is advisory input, re-verified
-against RAS-bound state (<a href="#hop-activation" class="auto internal xref">Section 6.5</a>) by the checks below before any
-assertion issues.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
+with the actor's transaction, and the actor separately proves the key placed in
+<code>cnf</code>. The handle is advisory input, re-verified against RAS-bound state
+(<a href="#hop-activation" class="auto internal xref">Section 6.5</a>) by the checks below before any assertion issues.<a href="#section-6.2-2" class="pilcrow">¶</a></p>
 <p id="section-6.2-3">The CAI <span class="bcp14">MUST</span> authenticate the actor and issue only after establishing that:<a href="#section-6.2-3" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-6.2-4">
 <li id="section-6.2-4.1">
@@ -2744,10 +2744,11 @@ Server that advertises
 the base <code>urn:ietf:params:oauth:grant-profile:id-jag</code> profile and the
 <code>urn:ietf:params:oauth:grant-type:jwt-bearer</code> grant type on which ID-JAG
 depends (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>).<a href="#section-7.2-2" class="pilcrow">¶</a></p>
-<p id="section-7.2-3">A Resource Authorization Server needs no advertisement to act as CAI for its
-own hops. It <span class="bcp14">MAY</span> advertise additional Continuation Assertion Issuers it
-authorizes to attest those hops, so the IdP can discover them rather than be
-configured out of band (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>):<a href="#section-7.2-3" class="pilcrow">¶</a></p>
+<p id="section-7.2-3">A Resource Authorization Server does not list itself as a CAI for its own
+hops; it is mapped implicitly and remains subject to the IdP's issuer trust
+(<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). It <span class="bcp14">MAY</span> advertise additional Continuation Assertion
+Issuers it authorizes to attest those hops, so the IdP can discover them rather
+than be configured out of band:<a href="#section-7.2-3" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-7.2-4">
           <dt id="section-7.2-4.1">
 <code>identity_continuation_issuers</code>:</dt>
@@ -2798,7 +2799,7 @@ document's requirements; conformance depends only on the normative sections.<a h
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Topology</th>
               <th class="text-left" rowspan="1" colspan="1">CAI role held by</th>
-              <th class="text-left" rowspan="1" colspan="1">Handle path</th>
+              <th class="text-left" rowspan="1" colspan="1">CAI handle source</th>
               <th class="text-left" rowspan="1" colspan="1">Fits when</th>
             </tr>
           </thead>
@@ -2817,10 +2818,12 @@ document's requirements; conformance depends only on the normative sections.<a h
             </tr>
           </tbody>
         </table>
-<p id="section-8.1-2">Collapsed is the default: it needs no configuration beyond the RAS's own
-issuer identifier. Both topologies produce the same Identity Continuation
-Assertion and apply the same CAI requirements; they differ only in how the
-CAI reaches the accepted hop's state.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
+<p id="section-8.1-2">Collapsed is the default: it adds no CAI mapping and no self-entry in
+<code>identity_continuation_issuers</code>. The RAS still advertises the continuation
+profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's issuer, key, tenant,
+and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.7</a>). Both topologies produce
+the same Identity Continuation Assertion and apply the same CAI requirements;
+they differ only in how the CAI reaches the accepted hop's state.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
 <p id="section-8.1-3">A delegated topology can propagate the handle in several ways:<a href="#section-8.1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-8.1-4.1">
@@ -3031,9 +3034,10 @@ are configured out of band.<a href="#section-9.7-3" class="pilcrow">¶</a></p>
 <p id="section-9.8-1">The accepting RAS's implicit CAI mapping establishes no issuer, key, tenant, or
 issuer-pairing trust. The IdP sees one signed attestation in either topology,
 so separating the CAI isolates keys and components but does not create a
-protocol-level quorum. A compromised RAS holding the CAI role can forge
-acceptance directly; a compromised delegated CAI can attest a hop the RAS
-refused. A delegated CAI's recheck window includes the assertion lifetime plus
+protocol-level quorum. A compromised RAS can fabricate acceptance state in
+either topology, since a delegated CAI reads that state as authoritative; a
+compromised delegated CAI can additionally attest a hop the RAS refused. A
+delegated CAI's recheck window includes the assertion lifetime plus
 any delay in RAS state reaching it. The root envelope still bounds the result.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>

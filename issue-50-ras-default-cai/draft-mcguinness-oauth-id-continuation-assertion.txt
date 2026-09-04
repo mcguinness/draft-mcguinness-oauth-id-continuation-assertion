@@ -594,9 +594,10 @@ Table of Contents
 
    The current actor is a control-plane participant, not a bare-handle
    transporter: the CAI obtains the handle from authenticated state
-   associated with the actor's transaction and key.  The handle is
-   advisory input, re-verified against RAS-bound state (Section 6.5) by
-   the checks below before any assertion issues.
+   associated with the actor's transaction, and the actor separately
+   proves the key placed in cnf.  The handle is advisory input, re-
+   verified against RAS-bound state (Section 6.5) by the checks below
+   before any assertion issues.
 
    The CAI MUST authenticate the actor and issue only after establishing
    that:
@@ -1238,10 +1239,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    urn:ietf:params:oauth:grant-type:jwt-bearer grant type on which ID-
    JAG depends ([I-D.ietf-oauth-identity-assertion-authz-grant]).
 
-   A Resource Authorization Server needs no advertisement to act as CAI
-   for its own hops.  It MAY advertise additional Continuation Assertion
-   Issuers it authorizes to attest those hops, so the IdP can discover
-   them rather than be configured out of band (Section 9.7):
+   A Resource Authorization Server does not list itself as a CAI for its
+   own hops; it is mapped implicitly and remains subject to the IdP's
+   issuer trust (Section 9.7).  It MAY advertise additional Continuation
+   Assertion Issuers it authorizes to attest those hops, so the IdP can
+   discover them rather than be configured out of band:
 
    identity_continuation_issuers:  OPTIONAL.  A JSON array of additional
       CAI issuer identifiers, each a StringOrURI [RFC7519], that this
@@ -1276,8 +1278,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 8.1.  Deployment Topologies
 
      +===========+============+==============+======================+
-     | Topology  | CAI role   | Handle path  | Fits when            |
-     |           | held by    |              |                      |
+     | Topology  | CAI role   | CAI handle   | Fits when            |
+     |           | held by    | source       |                      |
      +===========+============+==============+======================+
      | Collapsed | the        | read from    | one operator runs    |
      |           | accepting  | RAS state    | the domain           |
@@ -1292,10 +1294,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
                                  Table 4
 
-   Collapsed is the default: it needs no configuration beyond the RAS's
-   own issuer identifier.  Both topologies produce the same Identity
-   Continuation Assertion and apply the same CAI requirements; they
-   differ only in how the CAI reaches the accepted hop's state.
+   Collapsed is the default: it adds no CAI mapping and no self-entry in
+   identity_continuation_issuers.  The RAS still advertises the
+   continuation profile (Section 7), and the IdP still holds the RAS's
+   issuer, key, tenant, and issuer-pairing trust (Section 9.7).  Both
+   topologies produce the same Identity Continuation Assertion and apply
+   the same CAI requirements; they differ only in how the CAI reaches
+   the accepted hop's state.
 
    A delegated topology can propagate the handle in several ways:
 
@@ -1474,11 +1479,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    tenant, or issuer-pairing trust.  The IdP sees one signed attestation
    in either topology, so separating the CAI isolates keys and
    components but does not create a protocol-level quorum.  A
-   compromised RAS holding the CAI role can forge acceptance directly; a
-   compromised delegated CAI can attest a hop the RAS refused.  A
-   delegated CAI's recheck window includes the assertion lifetime plus
-   any delay in RAS state reaching it.  The root envelope still bounds
-   the result.
+   compromised RAS can fabricate acceptance state in either topology,
+   since a delegated CAI reads that state as authoritative; a
+   compromised delegated CAI can additionally attest a hop the RAS
+   refused.  A delegated CAI's recheck window includes the assertion
+   lifetime plus any delay in RAS state reaching it.  The root envelope
+   still bounds the result.
 
 9.9.  Actor Chain Integrity
 
