@@ -640,8 +640,9 @@ Table of Contents
    specific (Section 6.6).
 
    The workload authenticates as an OAuth client of the CAI and
-   presents, as the subject_token, the access token it received on the
-   call it is continuing:
+   presents, as the subject_token, either the access token it received
+   on the call it is continuing or the Transaction Token that carries
+   the hop's handle for that call:
 
 POST /token HTTP/1.1
 Host: ras.gateway.example
@@ -657,25 +658,30 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    The request MUST use requested_token_type
    urn:ietf:params:oauth:token-type:identity-continuation and
-   subject_token_type urn:ietf:params:oauth:token-type:access_token, and
-   MUST carry a DPoP proof [RFC9449]; the CAI binds the assertion to
-   that key in cnf.  The request MUST NOT include audience, resource,
-   actor_token, or actor_token_type: the assertion's aud is the IdP
-   recorded in the hop's binding, targets are chosen at the IdP
-   exchange, and the authenticated client is the actor named in act.  A
-   scope value, if present, is a hint to which the rule on hints above
-   applies.
+   subject_token_type urn:ietf:params:oauth:token-type:access_token or
+   urn:ietf:params:oauth:token-type:txn_token
+   [I-D.ietf-oauth-transaction-tokens], and MUST carry a DPoP proof
+   [RFC9449]; the CAI binds the assertion to that key in cnf.  The
+   request MUST NOT include audience, resource, actor_token, or
+   actor_token_type: the assertion's aud is the IdP recorded in the
+   hop's binding, targets are chosen at the IdP exchange, and the
+   authenticated client is the actor named in act.  A scope value, if
+   present, is a hint to which the rule on hints above applies.
 
-   The subject_token MUST be an access token issued by a RAS the CAI is
-   mapped to, unexpired, and valid for a protected resource that the
-   authenticated client operates; the client acts here in the client
-   role that [RFC8693] describes for a resource server exchanging a
-   token it received.  A RAS acting as CAI resolves its own token; a
-   separate CAI resolves it through introspection [RFC7662] or a carrier
-   (Section 6.6).  The authorization behind that token is the one the
-   preconditions above test: its bound handle and live state satisfy
-   preconditions 5 and 6, the authenticated client is the actor of
-   preconditions 2 and 4, and the DPoP key is the key of precondition 3.
+   The subject_token MUST be either an access token issued by a RAS the
+   CAI is mapped to, unexpired, and valid for a protected resource that
+   the authenticated client operates, or a Transaction Token issued by
+   the domain's Transaction Token Service, unexpired, and carrying the
+   hop's handle as chain context (Section 6.6).  In the first case the
+   client acts in the client role that [RFC8693] describes for a
+   resource server exchanging a token it received; a RAS acting as CAI
+   resolves its own token, and a separate CAI resolves it through
+   introspection [RFC7662].  In the second case the Transaction Token is
+   the carrier.  Either way, the authorization behind the token is the
+   one the preconditions above test: its bound handle and live state
+   satisfy preconditions 5 and 6, the authenticated client is the actor
+   of preconditions 2 and 4, and the DPoP key is the key of precondition
+   3.
 
    The response follows [RFC8693], with the assertion in access_token
    and token_type N_A.  It MUST NOT include a refresh_token, which would
@@ -1381,7 +1387,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    differ only in how the CAI reaches the accepted hop's state.  A co-
    located RAS issues the assertion from its own token endpoint
    (Section 6.2.1), so the workload presents the access token it
-   received and needs neither the handle nor a carrier.
+   received and needs neither the handle nor a carrier.  A separate CAI
+   that is an authorization server can offer the same exchange, taking
+   the carrier Transaction Token as the subject_token.
 
    With a separate CAI, a deployment can propagate the handle in several
    ways:
@@ -1559,17 +1567,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    tenant, or issuer-pairing trust.  The IdP sees one signed attestation
    in either topology, so separating the CAI isolates keys and
    components but does not create a protocol-level quorum.  A workload
-   that obtains the assertion by exchanging an access token for the
-   resource it operates (Section 6.2.1) presents nothing it did not
-   already hold; what it gains is the CAI's attestation, gated by policy
-   and the live recheck.  A compromised RAS can fabricate acceptance
-   state in either topology, since a separate CAI reads that state as
-   authoritative; a compromised separate CAI can additionally attest a
-   hop the RAS refused.  In both topologies, RAS-local authorization
-   revocation after issuance, which the IdP cannot observe, leaves the
-   assertion valid for its remaining lifetime; a separate CAI adds any
-   delay in RAS state reaching it.  The root envelope still bounds the
-   result.
+   that obtains the assertion by exchanging the access token or
+   Transaction Token it holds for the call (Section 6.2.1) presents
+   nothing it did not already hold; what it gains is the CAI's
+   attestation, gated by policy and the live recheck.  A compromised RAS
+   can fabricate acceptance state in either topology, since a separate
+   CAI reads that state as authoritative; a compromised separate CAI can
+   additionally attest a hop the RAS refused.  In both topologies, RAS-
+   local authorization revocation after issuance, which the IdP cannot
+   observe, leaves the assertion valid for its remaining lifetime; a
+   separate CAI adds any delay in RAS state reaching it.  The root
+   envelope still bounds the result.
 
 9.9.  Actor Chain Integrity
 
@@ -2280,12 +2288,14 @@ B.1.2.  ExpenseRAS Acceptance and the Expense-Domain Chain Context
 
 B.1.3.  Obtaining the Identity Continuation Assertion
 
-   ExpenseService asks its own CAI for an assertion covering H0.  Before
-   issuing, Expense CAI authenticates ExpenseService, verifies its key,
-   confirms that H0 belongs to the transaction that ExpenseService is
-   serving, and rechecks that ExpenseRAS's authorization remains active.
-   The IdP's per-hop map designates Expense CAI to attest hops accepted
-   by ExpenseRAS (Section 6.2, Section 6.3.2).
+   ExpenseService obtains an assertion covering H0 by presenting its
+   Transaction Token as the subject_token at Expense CAI's token
+   endpoint (Section 6.2.1).  Before issuing, Expense CAI authenticates
+   ExpenseService, verifies its key, confirms that H0 belongs to the
+   transaction that ExpenseService is serving, and rechecks that
+   ExpenseRAS's authorization remains active.  The IdP's per-hop map
+   designates Expense CAI to attest hops accepted by ExpenseRAS
+   (Section 6.2, Section 6.3.2).
 
    On the wire (decoded assertion):
 
@@ -2849,8 +2859,10 @@ Document History
    -02
 
    *  Defined Token Exchange issuance of the assertion at the token
-      endpoint of a CAI that is an authorization server, resolving the
-      CAI-issuance open item; the gateway example uses it.
+      endpoint of a CAI that is an authorization server, with the access
+      token or Transaction Token the workload holds as the subject
+      token, resolving the CAI-issuance open item; the gateway example
+      uses it.
 
    *  Made the retry-limit and replay-concurrency requirements self-
       contained rather than pointing into Implementation Considerations,
