@@ -1762,11 +1762,26 @@ key-confusion risk a symmetric key between the CAI and IdP would create
 encryption unnecessary; and a single compact signed form removes an
 interoperability choice between issuers and verifiers.
 
+## Boundary of the Profile {#rationale-boundary}
+
+Continuation serves the Resource Authorization Servers that trust the common
+IdP. A target outside that circle fails in one of two ways: where the IdP
+holds no pairwise subject for it or no authorization basis covers it, the
+exchange fails with `invalid_target` ({{validation}}, rules 5 and 7); where
+the IdP could issue an ID-JAG regardless, the target rejects it, since it does
+not trust the issuer. That is the profile's edge, not a deployment error. A
+separate
+identity-chaining profile can cross it under a bilateral agreement; for
+example, a workload can present its Transaction Token to its own domain's
+authorization server under {{I-D.fletcher-transaction-token-chaining-profile}}
+for a minimized grant to the partner. The Transaction Token and the handle
+stay in the domain.
+
 # Examples {#examples}
 
 This non-normative appendix illustrates three deployment shapes: a tool
 gateway that selects its upstream at request time ({{example-gateway}}),
-interactive application chaining across three domains ({{example}}), and an
+a SaaS chain across three domains with separate CAIs ({{example}}), and an
 unattended background agent ({{example-background}}). The gateway example
 comes first because it is the simplest deployment: one domain runs RAS and
 CAI together, and the handle travels in the access token.
@@ -2132,92 +2147,65 @@ Outside the domain nothing changes. AgentApp performs a base ID-JAG exchange
 and never shares Alice's credential, and WikiRAS runs the base profile
 unmodified.
 
-## Three-Hop Interactive Example {#example}
+## SaaS Chain Example (Separate CAI and Transaction Token Carrier) {#example}
 
-This section walks a three-domain flow with separate CAIs and a Transaction
-Token carrier end-to-end for a single user: ExpenseApp invokes ExpenseSaaS;
-ExpenseService, the workload handling
-that request, calls TravelAPI to reach TravelSaaS; and TravelService, the
-TravelSaaS workload that handles that call, in turn calls BookingAPI to
-complete the itinerary. All parties trust one enterprise IdP at
-`https://idp.example/`.
+A user's request crosses three SaaS domains: ExpenseApp calls ExpenseAPI,
+whose workload calls TravelAPI, whose workload calls BookingAPI. Each domain
+has its own Resource Authorization Server, and all trust one enterprise IdP at
+`https://idp.example/`. Compared with the gateway example, this one shows a
+separate CAI in each continuing domain, a Transaction Token carrying the
+handle so the access token never does, a root-chain envelope that enumerates
+its targets, and a lineage three entries deep.
 
 Topology: separate CAI with a Transaction Token carrier.
 
-The authorization path, the sequence of accepting RASes, differs from that
-API-call path:
+* Expense domain (`expenses.example`): client `expense-app`; ExpenseRAS,
+  Expense TTS, and Expense CAI at `ras.`, `tts.`, and `cai.expenses.example`;
+  and the workload `expense-service` behind ExpenseAPI.
+* Travel domain (`travel.example`): TravelRAS, Travel TTS, and Travel CAI,
+  and the workload `travel-service` behind TravelAPI.
+* Booking domain (`booking.example`): BookingRAS in front of BookingAPI. It
+  runs the base ID-JAG profile and is terminal in this chain.
+
+The user has a pairwise subject at each RAS, which only the IdP can map. H0 is
+bound at ExpenseRAS, H1 at TravelRAS; H2 reaches BookingRAS, which never binds
+it.
+
+Hop 0 roots the chain at ExpenseRAS and carries H0 to the workload:
 
 ~~~
-ExpenseApp -> ExpenseRAS -> TravelRAS -> BookingRAS
+ExpenseApp       IdP        ExpenseRAS      Expense TTS  ExpenseService
+     |            |              |               |              |
+     |-ID Token-->|              |               |              |
+     |<-ID-JAG H0-|              |               |              |
+     |-jwt-bearer: ID-JAG, DPoP->| bind H0       |              |
+     |<-----------AT1------------|               |              |
+     |---------------call ExpenseAPI: AT1 + DPoP--------------->|
+     |            |              |               |<-----AT1-----|
+     |            |              |<-resolve AT1--|              |
+     |            |              |---bound H0--->|              |
+     |            |              |               |-TT with H0-->|
 ~~~
 
-Across a trust boundary the handle is accepted only inside an ID-JAG or
-Identity Continuation Assertion; within a domain it travels only as derived
-chain context.
-
-Participants are grouped by trust domain:
-
-* Expense domain (`expenses.example`): client `expense-app`, workload
-  `expense-service`, and ExpenseRAS / Expense TTS / Expense CAI, in front of
-  ExpenseAPI.
-* Travel domain (`travel.example`): workload `travel-service`, and
-  TravelRAS / Travel TTS / Travel CAI, in front of TravelAPI.
-* Booking domain (`booking.example`): BookingRAS and BookingAPI only. It is
-  terminal in this chain, an ordinary ID-JAG Resource Authorization Server
-  that needs no continuation support ({{ras-processing}}).
-* Outside the trust circle: PartnerSaaS (`partner.example`), reached in
-  {{example-federation-edge}}.
-
-The user has a pairwise subject at each RAS, which only the IdP can map.
-Handles are H0 at ExpenseRAS, H1 at TravelRAS, and H2 in the ID-JAG addressed
-to terminal BookingRAS, which never binds it.
-
-The root hop establishes the chain and the Expense domain's accepted
-authorization:
+Hop 1 continues to TravelRAS; hop 2 repeats it from Travel to Booking:
 
 ~~~
- ExpenseApp        IdP          ExpenseRAS       ExpenseAPI/TTS
-     |               |               |                 |
-     |--ID Token---->|               |                 |
-     |<-ID-JAG(H0)---|               |                 |
-     |------------------ID-JAG------>|                 |
-     |<-------------------AT1--------| bind H0         |
-     |------------------request + AT1 + DPoP---------->|
-     |               |               |<-resolve AT1----|
-     |               |               |--bound H0------>|
-     |               |               |    derive H0 into tctx
+ExpenseService    Expense CAI     IdP       TravelRAS  Travel TTS/API
+       |               |           |            |             |
+       |-exchange TT-->|           |            |             |
+       |<--assertion---|           |            |             |
+       |--assertion, actor, DPoP-->|            |             |
+       |<--------ID-JAG H1---------|            |             |
+       |-------jwt-bearer: ID-JAG + DPoP------->| bind H1     |
+       |<------------------AT2------------------|             |
+       |-------------call TravelAPI: AT2 + DPoP-------------->|
+       |               |           |            | TT with H1 to workload
 ~~~
 
-Each continuation repeats one exchange. ExpenseService obtains the Travel
-grant before crossing the boundary:
+### Root Exchange (H0 at ExpenseRAS) {#example-first-hop}
 
-~~~
- ExpenseService  Expense CAI        IdP        TravelRAS TravelAPI/TTS
-       |              |             |             |             |
-       |-exchange TT->|             |             |             |
-       |<-assertion---|             |             |             |
-       |--------------------------->|             |             |
-       |     assertion + DPoP       |             |             |
-       |<---------------------------| ID-JAG(H1)  |             |
-       |----------------------------------------->|             |
-       |                 ID-JAG                   |             |
-       |<-----------------------------------------| AT2; bind H1|
-       |-----------------request + AT2 + DPoP------------------>|
-       |              |             |             |<-resolve AT2|
-       |              |             |             |--bound H1-->|
-       |              |             |             | derive into TT
-~~~
-
-{{example-third-hop}} repeats the pattern from TravelSaaS to terminal
-BookingRAS.
-
-### Root ID-JAG for ExpenseRAS {#example-first-hop}
-
-ExpenseApp holds an ID Token for the authenticated user and exchanges it at the
-IdP for an ID-JAG scoped to ExpenseRAS. The request is DPoP-bound to
-ExpenseApp's key.
-
-On the wire (request):
+ExpenseApp exchanges the user's ID Token, whose `sid` anchors the chain to the
+IdP session, for an ID-JAG addressed to ExpenseRAS:
 
 ~~~
 POST /token HTTP/1.1
@@ -2236,10 +2224,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
-The IdP resolves the ID Token's `sid` to the anchoring session and verifies
-ExpenseApp's actor credential and DPoP key. Existing consent and enterprise
-policy permit continuation to Expense, Travel, and Booking by the designated
-workloads, so the IdP records this root-chain envelope:
+Existing consent and enterprise policy permit continuation to Expense, Travel,
+and Booking by designated workloads, so the IdP records an envelope that
+enumerates the targets ({{root-establishment}}); the gateway example shows the
+other form, an authorization basis with no enumerated targets.
 
 Server-side state:
 
@@ -2254,19 +2242,7 @@ Server-side state:
     permitted scopes: stays.book
 ~~~
 
-The envelope also records the governing authorization, permitted continuers,
-and expiry. A deployment with unknown onward targets records an
-authorization-basis ceiling instead and evaluates each target at continuation
-time ({{validation}}, rule 7).
-
-The IdP creates a fresh root hop, H0, for this chain and embeds it as a
-claim of the ID-JAG it is about to issue ({{chain-id}}, rule 1); the hop is
-PENDING until a Resource Authorization Server accepts it ({{hop-activation}}).
-The Token Exchange response carries the ID-JAG and no continuation-specific
-response member; H0 travels inside the ID-JAG.
-
-The decoded ID-JAG for ExpenseRAS carries the user's ExpenseRAS-local
-subject and the root hop's handle.
+The IdP creates the root hop H0 and embeds it in the ID-JAG ({{chain-id}}).
 
 On the wire (decoded ID-JAG):
 
@@ -2296,25 +2272,14 @@ On the wire (decoded ID-JAG):
 }
 ~~~
 
-### ExpenseRAS Acceptance and the Expense-Domain Chain Context {#example-context}
+### ExpenseRAS Binds H0; Expense TTS Carries It {#example-context}
 
-ExpenseApp exchanges this ID-JAG at ExpenseRAS for an access token (AT1),
-exactly as for any ID-JAG {{I-D.ietf-oauth-identity-assertion-authz-grant}}
-(not shown), except that ExpenseRAS also recognizes the continuation grant
-profile and processes `identity_continuation_handle` ({{ras-processing}}).
-ExpenseRAS validates the ID-JAG, authenticates ExpenseApp, verifies the
-DPoP proof, and applies its local policy; only if every check and the
-access-token issuance itself succeed does it atomically bind H0 to the
-authorization state behind AT1, moving the hop from PENDING to ACCEPTED. A
-hop that never reaches ACCEPTED, for example one copied from an ID-JAG
-that ExpenseRAS rejected, is not usable: no CAI attests a hop
-that its Resource Authorization Server never accepted.
+ExpenseApp redeems the ID-JAG at ExpenseRAS for an access token, AT1, exactly
+as for any ID-JAG. ExpenseRAS recognizes the continuation profile and binds
+H0 to the authorization state behind AT1 in the same outcome that issues it
+({{ras-processing}}). The handle stays in this record; AT1 does not carry it.
 
-ExpenseRAS keeps this association in a private internal record. This
-deployment does not put it in AT1; the Expense TTS derives it from this record
-for the authenticated request.
-
-Server-side state:
+Server-side state at ExpenseRAS:
 
 ~~~ json
 {
@@ -2326,11 +2291,11 @@ Server-side state:
 }
 ~~~
 
-ExpenseApp calls ExpenseAPI with AT1. The Expense TTS, ExpenseSaaS's own
-Transaction Token Service, resolves AT1 against the record that ExpenseRAS
-just created over their shared, own-domain interface ({{ras-processing}}),
-derives H0 from it, and issues a local Transaction Token for
-ExpenseService, the workload that will complete the request.
+ExpenseApp calls ExpenseAPI with AT1. The Expense TTS resolves AT1 against that
+record over its own-domain interface with ExpenseRAS, derives H0, and issues a
+Transaction Token for `expense-service`, the workload that completes the
+request ({{handle-propagation}}). Neither ExpenseApp nor `expense-service`
+supplies H0.
 
 Intra-domain context (decoded Transaction Token):
 
@@ -2357,24 +2322,39 @@ Intra-domain context (decoded Transaction Token):
 }
 ~~~
 
-The Expense TTS derives this context from AT1's authorization record; neither
-ExpenseApp nor ExpenseService supplies H0 ({{handle-propagation}}). The
-Transaction Token remains inside `expenses.example` and is normally forwarded
-unchanged within that domain. The `tctx.identity_continuation` encoding
-shown is illustrative and deployment-defined; this document standardizes no
-carrier schema.
+The Transaction Token stays inside `expenses.example`. The
+`tctx.identity_continuation` encoding is illustrative; the profile standardizes
+no carrier schema.
 
-### Obtaining the Identity Continuation Assertion {#example-ica}
+### ExpenseService Obtains the Assertion {#example-ica}
 
-ExpenseService obtains an assertion covering H0 by presenting its Transaction
-Token as the `subject_token` at Expense CAI's token endpoint
-({{assertion-token-exchange}}); the response's `audience`,
-`https://idp.example/`, tells it where to request the next ID-JAG.
-Before issuing, Expense CAI authenticates ExpenseService, verifies its key,
-confirms that H0 belongs to the transaction that ExpenseService is serving,
-and rechecks that ExpenseRAS's authorization remains active. The IdP's per-hop
-map designates Expense CAI to attest hops accepted by ExpenseRAS
-({{assertion-issuance}}, {{root-establishment}}).
+`expense-service` presents the Transaction Token as the `subject_token` at
+Expense CAI's token endpoint, authenticating as a client and proving its own
+key ({{assertion-token-exchange}}):
+
+~~~
+POST /token HTTP/1.1
+Host: cai.expenses.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof signed by the expense-service key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&subject_token=<the Transaction Token above>
+&subject_token_type=urn:ietf:params:oauth:token-type:txn_token
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<expense-service JWT>
+~~~
+
+Expense CAI verifies the Transaction Token for its domain, reads H0 from it,
+rechecks with ExpenseRAS that the binding is still active, confirms policy
+permits `expense-service` to continue, and issues the assertion. The IdP
+accepts Expense CAI's assertions for hops ExpenseRAS accepts because Expense
+CAI is explicitly mapped to ExpenseRAS, through `identity_continuation_issuers`
+or tenant configuration, and is independently trusted for its issuer, keys,
+tenant, and actor-token-issuer pairing ({{metadata}},
+{{security-trust-model}}). The response's `audience`, `https://idp.example/`,
+tells `expense-service` where to present it.
 
 On the wire (decoded assertion):
 
@@ -2399,12 +2379,10 @@ On the wire (decoded assertion):
 }
 ~~~
 
-### Continuation Exchange for the TravelRAS ID-JAG {#example-chained}
+### Continuation to TravelRAS (H1) {#example-chained}
 
-ExpenseService presents the assertion to the IdP as the `subject_token`,
-DPoP-bound to its own key.
-
-On the wire (request):
+`expense-service` presents the assertion to the IdP with its actor credential
+and a DPoP proof of the same key, requesting an ID-JAG for TravelRAS:
 
 ~~~
 POST /token HTTP/1.1
@@ -2423,21 +2401,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &actor_token_type=urn:ietf:params:oauth:token-type:jwt
 ~~~
 
-The IdP runs the checks of {{validation}}: the DPoP key matches both the
-assertion's `cnf.jkt` and the actor token's key confirmation; `expense-service`
-is the
-actor named in `act`; H0 is CONTINUABLE; and the requested TravelRAS,
-TravelAPI, and `trips.read` values match the Travel target entry in the
-root-chain envelope. The IdP does not call ExpenseRAS to confirm acceptance.
-Instead, the assertion from ExpenseSaaS's mapped CAI,
-`https://cai.expenses.example/`, is the evidence that H0 reached ACCEPTED state
-and is CONTINUABLE ({{hop-activation}}).
-
-The IdP resolves the user's TravelRAS pairwise subject and creates H1 as a
-child of H0. The decoded ID-JAG carries H1 and the newly constructed
-`act` chain ({{onward-id-jag}}): `expense-service`, authenticated at this
-exchange, placed atop the root actor `expense-app`. `travel-service` has
-not yet performed an exchange, so it is not part of the lineage.
+The IdP validates the exchange ({{validation}}): Expense CAI is mapped to
+ExpenseRAS, the RAS recorded for H0; H0 names an accepted hop on an active
+chain; `act` names `expense-service`, the authenticated client, and the DPoP
+proof matches `cnf`; and TravelRAS, TravelAPI, and `trips.read` match the
+envelope's Travel entry. The IdP never calls ExpenseRAS; the assertion is its
+evidence of acceptance ({{hop-activation}}). It resolves the user's Travel
+subject, creates H1 as a child of H0, and places `expense-service` atop the
+root actor `expense-app` in the lineage ({{onward-id-jag}}).
 
 On the wire (decoded ID-JAG):
 
@@ -2476,19 +2447,11 @@ On the wire (decoded ID-JAG):
 }
 ~~~
 
-### TravelRAS Acceptance and the Travel-Domain Chain Context {#example-use}
+### The Pattern Repeats to BookingRAS (H2) {#example-third-hop}
 
-ExpenseService exchanges the TravelRAS ID-JAG at TravelRAS for an access
-token (AT2), presenting a fresh DPoP proof with the same expense-service
-key. TravelRAS recognizes the continuation grant profile just as
-ExpenseRAS did: it validates the ID-JAG, authenticates ExpenseService,
-and, on success, atomically binds H1 to the authorization state behind
-AT2, exactly as {{example-context}} describes for ExpenseRAS and H0.
-
-ExpenseService calls TravelAPI with AT2. The Travel TTS derives H1 from
-that bound state and issues a local Transaction Token for TravelService,
-the TravelSaaS workload that receives the request. Its chain-context member
-differs from the Expense token only in the hop handle:
+`expense-service` redeems the ID-JAG at TravelRAS for AT2, and TravelRAS binds
+H1 exactly as ExpenseRAS bound H0. The Travel TTS derives H1 into a Transaction
+Token for `travel-service`; only the handle differs from the Expense token:
 
 Intra-domain context (excerpt):
 
@@ -2502,25 +2465,10 @@ Intra-domain context (excerpt):
 }
 ~~~
 
-The token remains inside `travel.example`; H1 replaces H0 because TravelRAS,
-not ExpenseRAS, is now the accepted authorization from which continuation
-will occur.
-
-### TravelService Continues to BookingRAS {#example-third-hop}
-
-TravelService needs a reservation from BookingSaaS. Processing the request
-whose Transaction Token carries H1, it obtains the same assertion shape as
-{{example-ica}} from Travel CAI, now naming H1, `travel-service`, and
-TravelService's confirmed key.
-
-TravelService exchanges the assertion, DPoP-bound to its own key, for an
-ID-JAG with `audience=https://ras.booking.example/`,
-`resource=https://api.booking.example/`, and `scope=stays.book`, all
-within the envelope's Booking target entry. The IdP creates a fresh hop
-H2 whose immutable parent is H1 and constructs the onward `act` chain
-({{onward-id-jag}}): `travel-service`, authenticated at this exchange,
-placed atop the presented hop's lineage (`expense-service`, then
-`expense-app`).
+`travel-service` obtains an assertion for H1 from Travel CAI and exchanges it
+for an ID-JAG with `audience=https://ras.booking.example/`,
+`resource=https://api.booking.example/`, and `scope=stays.book`, all within the
+envelope's Booking entry. The IdP creates H2 under H1 and extends the lineage:
 
 On the wire (selected claims from the decoded ID-JAG):
 
@@ -2547,33 +2495,24 @@ On the wire (selected claims from the decoded ID-JAG):
 }
 ~~~
 
-TravelService redeems the ID-JAG at BookingRAS for an access token (AT3),
-presenting a fresh DPoP proof with the same key. Because Booking is terminal,
-BookingRAS follows the ordinary ID-JAG profile: it ignores H2, issues AT3, and
-does not bind the hop ({{ras-processing}}). Only ExpenseRAS and TravelRAS,
-the Resource Authorization Servers from which continuation occurs, implement
-the binding extension. TravelService then calls BookingAPI with AT3.
+BookingRAS is terminal: it redeems the ID-JAG under the base profile, ignores
+H2, issues AT3, and binds nothing ({{ras-processing}}). `travel-service` calls
+BookingAPI with AT3. A target outside the trust circle cannot be reached this
+way ({{rationale-boundary}}).
 
-TravelService itself is the current-domain actor that obtains the next
-ID-JAG; it does not pass the handle to a sibling workload
-({{handle-propagation}}).
+### What Differs from the Gateway Example {#example-differences}
 
-### Reaching a Target Outside the Trust Circle {#example-federation-edge}
-
-Suppose TravelSaaS must also call PartnerSaaS at `https://partner.example/`,
-whose Resource Authorization Server does not trust `idp.example`. The chain
-cannot continue there: the IdP holds no pairwise subject for that audience
-and no authorization basis covers it, so a continuation request for that
-target fails ({{validation}}, rules 5 and 7; `invalid_target`). This is
-the profile's boundary, not a deployment error: continuation serves the set
-of Resource Authorization Servers that trust the common IdP.
-
-A separate identity-chaining profile can cross that boundary under a
-bilateral trust agreement. For example, TravelService can present its
-Transaction Token to the Travel-domain authorization server under
-{{I-D.fletcher-transaction-token-chaining-profile}}, which issues a minimized
-grant for PartnerSaaS. The Transaction Token and continuation handle stay in
-the Travel domain; neither is sent to PartnerSaaS.
+* The CAI is a separate service in each continuing domain, explicitly mapped
+  to that domain's RAS where a co-located RAS is mapped implicitly; in either
+  case the IdP trusts the issuer, its keys, tenant, and issuer pairing
+  independently of the mapping.
+* The handle never enters an access token; a Transaction Token Service derives
+  it from the RAS binding for each request, and the workload presents that
+  token to obtain the assertion.
+* The root-chain envelope enumerates its targets, so each continuation is
+  matched against an entry rather than evaluated against a policy basis.
+* Two continuing domains produce a lineage three entries deep, two
+  continuation actors above the root actor, before the terminal hop.
 
 ## Background Agent Example (User-Scheduled Continuation) {#example-background}
 
@@ -2819,6 +2758,8 @@ this profile builds.
 
 -02
 
+* Reorganized the SaaS chain example by hop, trimmed restated specification
+  text from it, and moved the trust-boundary note to Design Rationale.
 * Added the `audience` parameter to the assertion issuance response, so the
   client learns which IdP to present the assertion to, and registered its
   token response usage.
