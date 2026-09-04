@@ -698,9 +698,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       Section 2.3.  A RAS acting as CAI resolves its own token; a
       separate CAI resolves it through introspection [RFC7662]; or
 
-   *  a Transaction Token issued by the domain's Transaction Token
-      Service, unexpired, and carrying the hop's handle as chain context
-      (Section 6.7).  The Transaction Token is the carrier.
+   *  a Transaction Token valid under Section 12.2 of
+      [I-D.ietf-oauth-transaction-tokens] for the CAI's trust domain and
+      carrying the hop's handle as chain context (Section 6.7).  The
+      Transaction Token is the carrier.
 
    Either way, the authorization behind the token is the one the
    preconditions of Section 6.2 test: the token's integrity protection
@@ -1853,6 +1854,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
               identity-assertion-authz-grant-04>.
 
+   [I-D.ietf-oauth-transaction-tokens]
+              Tulshibagwale, A., Fletcher, G., and P. Kasselman,
+              "Transaction Tokens", Work in Progress, Internet-Draft,
+              draft-ietf-oauth-transaction-tokens-11, 30 July 2026,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
+              transaction-tokens-11>.
+
    [OIDC.FrontChannelLogout]
               OpenID Foundation, "OpenID Connect Front-Channel Logout
               1.0", <https://openid.net/specs/openid-connect-
@@ -1949,13 +1957,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               Internet-Draft, draft-ietf-oauth-identity-chaining-17, 19
               July 2026, <https://datatracker.ietf.org/doc/html/draft-
               ietf-oauth-identity-chaining-17>.
-
-   [I-D.ietf-oauth-transaction-tokens]
-              Tulshibagwale, A., Fletcher, G., and P. Kasselman,
-              "Transaction Tokens", Work in Progress, Internet-Draft,
-              draft-ietf-oauth-transaction-tokens-11, 30 July 2026,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-oauth-
-              transaction-tokens-11>.
 
    [I-D.ietf-wimse-arch]
               Salowey, J. A., Rosomakho, Y., and H. Tschofenig,

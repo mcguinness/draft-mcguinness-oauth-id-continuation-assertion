@@ -2115,9 +2115,10 @@ the example in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, 
 own token; a separate CAI resolves it through introspection <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>; or<a href="#section-6.3.1-7.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-6.3.1-7.2">
-              <p id="section-6.3.1-7.2.1">a Transaction Token issued by the domain's Transaction Token Service,
-unexpired, and carrying the hop's handle as chain context
-(<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). The Transaction Token is the carrier.<a href="#section-6.3.1-7.2.1" class="pilcrow">¶</a></p>
+              <p id="section-6.3.1-7.2.1">a Transaction Token valid under Section 12.2 of
+<span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> for the CAI's trust domain and
+carrying the hop's handle as chain context (<a href="#handle-propagation" class="auto internal xref">Section 6.7</a>). The
+Transaction Token is the carrier.<a href="#section-6.3.1-7.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-6.3.1-8">Either way, the authorization behind the token is the one the preconditions of
@@ -3622,6 +3623,10 @@ this document registers only the
         <dd>
 <span class="refAuthor">Parecki, A.</span>, <span class="refAuthor">McGuinness, K.</span>, and <span class="refAuthor">B. Campbell</span>, <span class="refTitle">"Identity Assertion JWT Authorization Grant"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-assertion-authz-grant-04</span>, <time datetime="2026-05-21" class="refDate">21 May 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-assertion-authz-grant-04</a>&gt;</span>. </dd>
 <dd class="break"></dd>
+<dt id="I-D.ietf-oauth-transaction-tokens">[I-D.ietf-oauth-transaction-tokens]</dt>
+        <dd>
+<span class="refAuthor">Tulshibagwale, A.</span>, <span class="refAuthor">Fletcher, G.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"Transaction Tokens"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-transaction-tokens-11</span>, <time datetime="2026-07-30" class="refDate">30 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11</a>&gt;</span>. </dd>
+<dd class="break"></dd>
 <dt id="OIDC.FrontChannelLogout">[OIDC.FrontChannelLogout]</dt>
         <dd>
 <span class="refAuthor">OpenID Foundation</span>, <span class="refTitle">"OpenID Connect Front-Channel Logout 1.0"</span>, <span>&lt;<a href="https://openid.net/specs/openid-connect-frontchannel-1_0.html">https://openid.net/specs/openid-connect-frontchannel-1_0.html</a>&gt;</span>. </dd>
@@ -3706,10 +3711,6 @@ this document registers only the
 <dt id="I-D.ietf-oauth-identity-chaining">[I-D.ietf-oauth-identity-chaining]</dt>
         <dd>
 <span class="refAuthor">Schwenkschuster, A.</span>, <span class="refAuthor">Kasselman, P.</span>, <span class="refAuthor">Burgin, K.</span>, <span class="refAuthor">Jenkins, M. J.</span>, <span class="refAuthor">Campbell, B.</span>, and <span class="refAuthor">A. Parecki</span>, <span class="refTitle">"OAuth Identity and Authorization Chaining Across Domains"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-identity-chaining-17</span>, <time datetime="2026-07-19" class="refDate">19 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-17">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-identity-chaining-17</a>&gt;</span>. </dd>
-<dd class="break"></dd>
-<dt id="I-D.ietf-oauth-transaction-tokens">[I-D.ietf-oauth-transaction-tokens]</dt>
-        <dd>
-<span class="refAuthor">Tulshibagwale, A.</span>, <span class="refAuthor">Fletcher, G.</span>, and <span class="refAuthor">P. Kasselman</span>, <span class="refTitle">"Transaction Tokens"</span>, <span class="refContent">Work in Progress</span>, <span class="seriesInfo">Internet-Draft, draft-ietf-oauth-transaction-tokens-11</span>, <time datetime="2026-07-30" class="refDate">30 July 2026</time>, <span>&lt;<a href="https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11">https://datatracker.ietf.org/doc/html/draft-ietf-oauth-transaction-tokens-11</a>&gt;</span>. </dd>
 <dd class="break"></dd>
 <dt id="I-D.ietf-wimse-arch">[I-D.ietf-wimse-arch]</dt>
         <dd>
