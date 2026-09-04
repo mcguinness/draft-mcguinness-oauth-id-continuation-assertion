@@ -240,7 +240,8 @@ Continuation Handle (`identity_continuation_handle`):
 Hop:
 : A root or continuation record; a continuation record carries an immutable
   parent reference and a root record has none. Its lineage is its path to the
-  root.
+  root. A hop from which no workload continues is terminal; its branch ends
+  there, while sibling branches may continue.
 
 Governing authorization:
 : The server-side consent and policy record, resolved from the root subject
@@ -455,28 +456,35 @@ is delegated ({{deployment-topologies}}).
 A continuation reuses the Token Exchange loop once per boundary: the root
 exchange mints the first ID-JAG, and each later boundary mints the next from an
 Identity Continuation Assertion. Handles H0 and H1 below name the successive
-hops ({{chain-id}}); the diagram shows the collapsed topology.
+hops ({{chain-id}}). The diagram shows the collapsed topology; steps marked
+new are this profile's additions to ID-JAG, and the last exchange shows the
+base protocol resuming at a RAS that does not implement this extension
+({{ras-processing}}).
 
 ~~~
-  Client      Workload       IdP       RAS/CAI
-  |           |              |            |
-  | base ID-JAG exchange     |            |
-  |------------------------->|            |
-  | issue ID-JAG (H0)        |            |
-  |<-------------------------|            |
-  | present ID-JAG                        |
-  |-------------------------------------->|
-  | issue access token, bind H0           |
-  |<--------------------------------------|
-  |           |              |            |
-  |           | request assertion         |
-  |           |-------------------------->|
-  |           |       resolve H0, attest  |
-  |           |<--------------------------|
-  |           | present assertion         |
-  |           |------------->|            |
-  |           | issue ID-JAG (H1)         |
-  |           |<-------------|            |
+  Client      Workload       IdP       RAS/CAI      Next RAS
+  |           |              |            |              |
+  | ID-JAG exchange          |            |              |
+  |------------------------->|            |              |
+  | ID-JAG (H0)   [new: handle claim]     |              |
+  |<-------------------------|            |              |
+  | jwt-bearer grant with the ID-JAG      |              |
+  |-------------------------------------->|              |
+  | access token  [new: RAS binds H0]     |              |
+  |<--------------------------------------|              |
+  |           |              |            |              |
+  |           | request assertion [intra-domain]         |
+  |           |-------------------------->|              |
+  |           | assertion [new: resolve H0, attest]      |
+  |           |<--------------------------|              |
+  |           | continuation exchange [new]              |
+  |           |------------->|            |              |
+  |           | ID-JAG (H1)  |            |              |
+  |           |<-------------|            |              |
+  |           | jwt-bearer grant, ordinary ID-JAG        |
+  |           |----------------------------------------->|
+  |           | access token, no binding; branch ends    |
+  |           |<-----------------------------------------|
 ~~~
 
 H1 then travels to the next boundary exactly as H0 did, and the loop repeats
@@ -813,7 +821,7 @@ issuers in one tenant collide on a reused `jti`.
 
 The IdP MUST retain the reservation through `exp` plus the maximum permitted
 clock skew, so an in-window retry is honored; a reservation that does not reach
-ISSUED before `exp` becomes FAILED, which is terminal and requires a fresh
+ISSUED before `exp` becomes FAILED, which is final and requires a fresh
 assertion.
 
 After a lost response, a client MAY retry the same assertion to recover the
@@ -925,7 +933,8 @@ On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
   `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
   request outside the envelope.
 
-An `invalid_continuation` handle is terminal: retrying it cannot succeed.
+An `invalid_continuation` handle is permanently unusable: retrying it cannot
+succeed.
 Recovery requires establishing a new chain and succeeds only where the
 governing authorization is still continuation-capable: a session-anchored chain
 re-roots by re-authenticating the user, a grant-anchored chain from its
@@ -936,9 +945,9 @@ request.
 
 ## Continuation-Aware RAS Processing {#ras-processing}
 
-Only a RAS from which continuation occurs implements this extension. A
-terminal RAS processes an ordinary ID-JAG and ignores the handle; because no
-later continuation uses the terminal hop, the RAS need not bind its handle.
+A RAS from which continuation may occur implements this extension. A RAS that
+does not implement it processes an ordinary ID-JAG and ignores the handle, so
+an ID-JAG it accepts cannot become a continuation source.
 
 A continuation-aware Resource Authorization Server, one that implements this
 extension and advertises the continuation grant profile ({{metadata}}), MUST,
@@ -2420,6 +2429,8 @@ this profile builds.
 
 -02
 
+* Annotated the overview diagram with this profile's additions and the
+  terminal hop.
 * Implicitly mapped the accepting RAS as a CAI for its own hops; metadata now
   lists only additional CAIs. Added an interfaces table to the Overview and a
   non-normative Deployment Topologies subsection holding the carrier
