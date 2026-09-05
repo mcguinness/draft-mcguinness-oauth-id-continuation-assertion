@@ -2682,8 +2682,9 @@ Appendix B.  Examples
       signatures omitted; client authentication is omitted except where
       shown; proof of possession uses DPoP.  The gateway example shows
       the floor, with a root client that never proves a key; the SaaS
-      example shows a RAS that sender-constrains its access tokens, its
-      own policy rather than this profile's (Section 5.1).
+      example shows a root RAS that sender-constrains its access token
+      by its own policy (Section 5.1).  From the first continuation on,
+      every RAS binds its token to the proven key (Section 5.2).
 
 B.1.  Gateway Example (Co-located RAS and CAI)
 
@@ -2758,10 +2759,10 @@ B.1.1.  Provisioning
    |              | and its signing keys trusted for the  | Section   |
    |              | hops it accepts; GatewayRAS and       | 7.1       |
    |              | https://gateway.example/ authorized   |           |
-   |              | as a CAI and actor-token issuer pair  |           |
-   |              | for tenant-123, since trust in each   |           |
-   |              | alone is not enough; tenant policy    |           |
-   |              | granting agents read access to        |           |
+   |              | as a CAI and actor identity authority |           |
+   |              | pair for tenant-123, since trust in   |           |
+   |              | each alone is not enough; tenant      |           |
+   |              | policy granting agents read access to |           |
    |              | productivity tools and permitting     |           |
    |              | tool-gateway to continue;             |           |
    |              | identity_continuation_supported       |           |
@@ -2895,10 +2896,11 @@ grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 &client_assertion=<agent-app JWT>
 
    GatewayRAS advertises the continuation grant profile (Section 7.2)
-   and so recognizes the handle.  It binds H0, the issuing IdP, the
-   tenant it associates with that IdP, and the confirmed key to the
-   authorization state behind the access token, in the same outcome that
-   issues the token (Section 5.2).
+   and so recognizes the handle.  It binds H0, the issuing IdP, and the
+   tenant it associates with that IdP to the authorization state behind
+   the access token, in the same outcome that issues the token
+   (Section 5.2); the ID-JAG carried no cnf, so there is no key to
+   record.
 
    Server-side state at GatewayRAS:
 
@@ -3476,10 +3478,12 @@ B.2.6.  What Differs from the Gateway Example
    *  Two continuing domains produce a lineage three entries deep, two
       continuation actors above the root actor, before the terminal hop.
 
-   *  Each RAS sender-constrains its access tokens, so the root client
-      presents DPoP proofs at the RAS and on API calls.  That is RAS
-      policy under the base profile (Section 5.2); the gateway example
-      shows the floor without it.
+   *  ExpenseRAS chooses to sender-constrain the root access token, so
+      ExpenseApp presents DPoP proofs at the RAS and on its API call;
+      that is RAS policy under the base profile, and the gateway example
+      shows the floor without it.  The continuation-aware RASes
+      downstream bind their access tokens to the proven key because
+      their ID-JAGs carry cnf, which Section 5.2 requires.
 
 B.3.  Background Agent Example (Scheduled Continuation)
 

@@ -4488,9 +4488,10 @@ trust boundary, "Intra-domain context" stays within one trust domain, and
           <p id="appendix-B-3.3.1">JWTs are shown as decoded payloads with JOSE headers and signatures
 omitted; client authentication is omitted except where shown; proof of
 possession uses DPoP. The gateway example shows the floor, with a root
-client that never proves a key; the SaaS example shows a RAS that
-sender-constrains its access tokens, its own policy rather than this
-profile's (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B-3.3.1" class="pilcrow">¶</a></p>
+client that never proves a key; the SaaS example shows a root RAS that
+sender-constrains its access token by its own policy
+(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>). From the first continuation on, every RAS binds
+its token to the proven key (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>).<a href="#appendix-B-3.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <div id="example-gateway">
@@ -4572,7 +4573,7 @@ GatewayRAS's advertisement of the continuation profile.<a href="#appendix-B.1.1-
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">IdP</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; GatewayRAS and <code>https://gateway.example/</code> authorized as a CAI and actor-token issuer pair for <code>tenant-123</code>, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised</td>
+                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; GatewayRAS and <code>https://gateway.example/</code> authorized as a CAI and actor identity authority pair for <code>tenant-123</code>, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised</td>
                 <td class="text-left" rowspan="1" colspan="1">
                   <a href="#client-identity" class="auto internal xref">Section 5.6.2</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>
 </td>
@@ -4719,9 +4720,10 @@ grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 </pre><a href="#appendix-B.1.3-2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1.3-3">GatewayRAS advertises the continuation grant profile (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>) and so
-recognizes the handle. It binds H0, the issuing IdP, the tenant it associates
-with that IdP, and the confirmed key to the authorization state behind the
-access token, in the same outcome that issues the token (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>).<a href="#appendix-B.1.3-3" class="pilcrow">¶</a></p>
+recognizes the handle. It binds H0, the issuing IdP, and the tenant it
+associates with that IdP to the authorization state behind the access token,
+in the same outcome that issues the token (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>); the ID-JAG
+carried no <code>cnf</code>, so there is no key to record.<a href="#appendix-B.1.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.3-4">Server-side state at GatewayRAS:<a href="#appendix-B.1.3-4" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.3-5">
 <pre>
@@ -5375,10 +5377,12 @@ matched against an entry rather than evaluated against a policy basis.<a href="#
 continuation actors above the root actor, before the terminal hop.<a href="#appendix-B.2.6-1.4.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.2.6-1.5">
-              <p id="appendix-B.2.6-1.5.1">Each RAS sender-constrains its access tokens, so the root client presents
-DPoP proofs at the RAS and on API calls. That is RAS policy under the base
-profile (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>); the gateway example shows the floor without
-it.<a href="#appendix-B.2.6-1.5.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.2.6-1.5.1">ExpenseRAS chooses to sender-constrain the root access token, so ExpenseApp
+presents DPoP proofs at the RAS and on its API call; that is RAS policy
+under the base profile, and the gateway example shows the floor without it.
+The continuation-aware RASes downstream bind their access tokens to the
+proven key because their ID-JAGs carry <code>cnf</code>, which <a href="#ras-processing" class="auto internal xref">Section 5.2</a>
+requires.<a href="#appendix-B.2.6-1.5.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 </section>
