@@ -476,9 +476,12 @@ The claims have the following meanings and requirements:
   `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present.
 
 `cnf`:
-: REQUIRED. A confirmation claim {{RFC7800}} that binds the assertion to the
-  current actor's key. It MUST contain exactly one method: `jkt`, the JWK
-  SHA-256 thumbprint {{RFC7638}} of the DPoP key {{RFC9449}}.
+: REQUIRED. A confirmation claim {{RFC7800}} binding the assertion to a key the
+  current actor proves. The property this profile needs is that proof; the
+  method is how it is shown. In this profile, `cnf` MUST contain exactly one
+  confirmation method: `jkt`, the JWK SHA-256 thumbprint {{RFC7638}} of the
+  DPoP key {{RFC9449}}. A future profile may replace that restriction with
+  another method offering equivalent live proof ({{security-pop}}).
 
 `iat`, `exp`:
 : REQUIRED. `exp` MUST follow `iat`, and `exp - iat` MUST NOT exceed 300
@@ -998,12 +1001,13 @@ no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
 `act`, and the authenticated client, and identities in different tenants never
 compare equal.
 
-The actor MUST present a DPoP proof {{RFC9449}} for the key in `cnf.jkt`.
-DPoP is the single mandatory confirmation method, so the target validates
-confirmation identically to a directly issued ID-JAG, and this version defines
-no mutual-TLS variant {{RFC8705}} ({{open-items}}). The onward ID-JAG MUST use
-the same DPoP key; key rotation takes effect when the actor obtains a new
-assertion and actor token bound to the new key.
+The actor MUST prove possession of the key in `cnf`; for the `jkt` method this
+document defines, that proof is a DPoP proof {{RFC9449}}. DPoP is the single
+method this version defines, so the target validates confirmation identically
+to a directly issued ID-JAG; a mutual-TLS method {{RFC8705}} is an open
+question ({{open-items}}). The onward ID-JAG MUST use the same key; key
+rotation takes effect when the actor obtains a new assertion and actor token
+bound to the new key.
 
 The current-actor rule of {{validation}} then requires client authentication,
 the `actor_token`, the assertion's `act`, and the DPoP proof to agree on one
@@ -1494,8 +1498,9 @@ A continuation assertion names the actor the IdP will treat as the chain's
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
 that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
-every exchange requires live proof of possession of the `cnf` key via a DPoP
-proof {{RFC9449}} ({{client-identity}}). A captured assertion is therefore
+every exchange requires live proof of possession of the `cnf` key, a DPoP
+proof {{RFC9449}} for the method this document defines ({{client-identity}}).
+A captured assertion is therefore
 useless without the private key, and because the onward ID-JAG is bound to the
 same key ({{client-identity}}), possession is demonstrated continuously across
 the chain, not once at issuance. At assertion issuance the client proves its
@@ -1910,6 +1915,34 @@ no top-level `sub`. The resulting ID-JAG is the target Resource Authorization
 Server's grant and contains the IdP-resolved subject and, when applicable, a
 continuation handle. The artifacts therefore have different issuers,
 audiences, subjects, and consumers.
+
+## Actor Identity and Target `client_id` {#rationale-client-id}
+
+`act` and `client_id` answer different questions. `act` names the actor doing
+the work: the workload the IdP authenticated as its OAuth client on the
+continuation exchange, recorded in the lineage. `client_id` names the OAuth
+client that may redeem the grant at the target RAS. Both appear because the
+artifact this profile produces is an ID-JAG, which the base profile defines as
+a grant a registered client presents; a target RAS authenticates that client
+and applies its policy by `client_id`, and need not understand this
+continuation profile. So before
+continuing to a target, the current actor needs a client identity resolvable at
+that target's RAS ({{token-exchange}}), and the IdP places it in the onward
+ID-JAG. That is compatibility with ID-JAG, not the profile's model of
+delegation: a workload with a strong identity and key but no registration at a
+target cannot receive a grant for it because nothing there could redeem the
+grant, not because it is any less the actor. The two identifiers often
+coincide, as when a gateway registers everywhere under one name, but the
+profile keeps them distinct so that lineage records who acted while the grant
+records who may redeem.
+
+The `may_act` claim of {{RFC8693}} does not remove the need for this profile.
+It lets an issuer state, inside a token the target already trusts, which party
+may later act for the token's subject: an authorization to act, made in
+advance. Continuation needs the opposite: a party the previous token never
+named must obtain a new token for an audience whose pairwise subject only the
+IdP can produce. `may_act` could constrain who may continue; it cannot mint
+the subject, so the IdP exchange remains.
 
 ## Why Not a Transaction Token {#rationale-txn}
 
@@ -2967,8 +3000,9 @@ This non-normative appendix lists unresolved design questions.
    attestation and domain-local gate worth the added trust configuration
    ({{rationale-grant-type}})?
 
-2. **Mutual-TLS binding.** Should this profile and ID-JAG add mutual-TLS
-   binding together ({{client-identity}})?
+2. **Mutual-TLS confirmation.** Should this profile define a mutual-TLS
+   confirmation method (`x5t#S256`, {{RFC8705}}) alongside `jkt`, and should
+   it do so together with ID-JAG ({{client-identity}})?
 
 3. **A client establishment parameter.** Should a client be able to require
    or suppress chain establishment, or negotiate lifetime, depth, or
@@ -3009,6 +3043,10 @@ this profile builds.
 
 -02
 
+* Added a Design Rationale subsection separating actor identity (`act`)
+  from the target's `client_id` and explaining why `may_act` does not
+  suffice; restated the confirmation claim as a proof-of-possession property
+  with DPoP as the one method this document defines.
 * Narrowed the CAI contract to attested facts: the RAS accepted the hop,
   RAS state still shows it continuable, and the authenticated actor proving a
   key is the party handling that request; dropped the "authorized under CAI
