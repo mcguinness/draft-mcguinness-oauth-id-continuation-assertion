@@ -970,10 +970,11 @@ that authentication maps to an actor identity:
 
 * *Authoritative mapping.* The IdP MUST map the authenticated client to an
   actor identity, an (`iss`, `sub`) pair this document calls the canonical
-  actor identity; self-asserted mappings MUST NOT be accepted. For an
-  {{RFC7523}} client assertion the pair is the assertion's issuer and the
-  `client_id`; for a workload credential issued in another namespace, the
-  IdP's registration of the client supplies the pair.
+  actor identity, from its registration of that client; self-asserted
+  mappings MUST NOT be accepted. The client authentication method does not
+  determine the pair: a client that authenticates with an {{RFC7523}} client
+  assertion may have a workload identity in another namespace as its
+  canonical actor identity.
 * *Root versus continuation.* On a root exchange, client authentication alone
   identifies the root actor ({{root-establishment}}). On a continuation
   exchange, the IdP MUST also match the canonical actor identity to the
@@ -985,8 +986,10 @@ that authentication maps to an actor identity:
   {{RFC7662}}.
 * *Dual-use JWT.* A sender-constrained JWT MAY serve as both client assertion
   and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
-  is the `client_id` and the IdP MUST authorize its issuer for that client.
-  Otherwise the client authenticates separately.
+  is the `client_id`, the canonical actor identity is then the assertion's
+  issuer and that `client_id`, and the IdP MUST authorize its issuer for that
+  client. Otherwise the client authenticates separately.
+
 
 The comparison runs between actor identities, never between a raw OAuth
 client identifier and an `act` value:
