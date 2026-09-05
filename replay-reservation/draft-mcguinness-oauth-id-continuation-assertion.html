@@ -1829,10 +1829,10 @@ chain and bounds every continuation under it (<a href="#lifecycle" class="auto i
         <dd style="margin-left: 1.5em" id="section-2-3.30">
           <p id="section-2-3.30.1">What the IdP evaluates every continuation against. It has two parts: the
 chain identity, the facts of the root exchange, fixed at establishment; and
-the continuation authorization, the targets, continuers, and limits the IdP
-recorded at establishment, which later policy may narrow at any
-continuation but widens only through a recorded authorization basis
-(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+the continuation authorization, the onward targets, continuers, and limits
+the IdP recorded at establishment and evaluates under tenant policy as it
+stands, except that targets widen only through a recorded authorization
+basis (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.31">Authorization basis:</dt>
@@ -2160,14 +2160,15 @@ user authorizes each grant; how a change reaches a running chain depends on
 the form the IdP recorded.<a href="#section-5.1-8" class="pilcrow">¶</a></p>
 <p id="section-5.1-9">A policy change that narrows a chain, a target or continuer withdrawn or a
 limit tightened, takes effect at the next continuation whichever form the
-envelope takes (the envelope-containment rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>). A policy
-change widens a chain only through an authorization basis: an envelope that
+envelope takes (the envelope-containment rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>). Continuers
+and limits are tenant controls read as policy stands in either direction.
+Target authority widens only through an authorization basis: an envelope that
 enumerates its targets <span class="bcp14">MUST NOT</span> admit a target the tenant adds after
 establishment (<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>), while a basis-referenced envelope admits
-whatever the basis currently reads, such as a service's classification
-or a group's membership (<a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>). The effective authority at
-any continuation is therefore the recorded continuation authorization
-evaluated under current policy, never more.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
+whatever the basis currently reads, such as a service's classification or a
+group's membership (<a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>). The effective authority at any
+continuation is therefore the recorded continuation authorization evaluated
+under current policy, never more.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
 <p id="section-5.1-10">What the root request asked for is not a ceiling either: its audience and
 scope bound only the root ID-JAG.<a href="#section-5.1-10" class="pilcrow">¶</a></p>
 <p id="section-5.1-11">The root actor is the authenticated OAuth client; its identity rests entirely
@@ -2619,10 +2620,11 @@ that authentication maps to an actor identity:<a href="#section-5.6.2-2" class="
 <li class="normal" id="section-5.6.2-3.1">
               <p id="section-5.6.2-3.1.1"><em>Authoritative mapping.</em> The IdP <span class="bcp14">MUST</span> map the authenticated client to an
 actor identity, an (<code>iss</code>, <code>sub</code>) pair this document calls the canonical
-actor identity; self-asserted mappings <span class="bcp14">MUST NOT</span> be accepted. For an
-<span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client assertion the pair is the assertion's issuer and the
-<code>client_id</code>; for a workload credential issued in another namespace, the
-IdP's registration of the client supplies the pair.<a href="#section-5.6.2-3.1.1" class="pilcrow">¶</a></p>
+actor identity, from its registration of that client; self-asserted
+mappings <span class="bcp14">MUST NOT</span> be accepted. The client authentication method does not
+determine the pair: a client that authenticates with an <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client
+assertion may have a workload identity in another namespace as its
+canonical actor identity.<a href="#section-5.6.2-3.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.6.2-3.2">
               <p id="section-5.6.2-3.2.1"><em>Root versus continuation.</em> On a root exchange, client authentication alone
@@ -2640,8 +2642,9 @@ equivalent confirmation from authoritative metadata such as introspection
             <li class="normal" id="section-5.6.2-3.4">
               <p id="section-5.6.2-3.4.1"><em>Dual-use JWT.</em> A sender-constrained JWT <span class="bcp14">MAY</span> serve as both client assertion
 and <code>actor_token</code> when it satisfies both profiles; for <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> its <code>sub</code>
-is the <code>client_id</code> and the IdP <span class="bcp14">MUST</span> authorize its issuer for that client.
-Otherwise the client authenticates separately.<a href="#section-5.6.2-3.4.1" class="pilcrow">¶</a></p>
+is the <code>client_id</code>, the canonical actor identity is then the assertion's
+issuer and that <code>client_id</code>, and the IdP <span class="bcp14">MUST</span> authorize its issuer for that
+client. Otherwise the client authenticates separately.<a href="#section-5.6.2-3.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-5.6.2-4">The comparison runs between actor identities, never between a raw OAuth
@@ -2789,10 +2792,10 @@ seconds), <code>exp</code> follows <code>iat</code>, the assertion is unexpired,
 lifetime does not exceed 300 seconds; and<a href="#section-5.6.3-2.6.2.1.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.6.3-2.6.2.2">
-                  <p id="section-5.6.3-2.6.2.2.1"><code>jti</code> passes the replay check of <a href="#validation-replay" class="auto internal xref">Section 5.7</a>: not yet presented
-for the assertion issuer within the window or, where the IdP offers
-idempotent retry, RESERVED or ISSUED under a fingerprint matching this
-request; a <code>jti</code> under a different fingerprint, or FAILED, is rejected;<a href="#section-5.6.3-2.6.2.2.1" class="pilcrow">¶</a></p>
+                  <p id="section-5.6.3-2.6.2.2.1"><code>jti</code> is not yet reserved for the assertion issuer or, where the IdP
+offers idempotent retry (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>), is RESERVED or ISSUED
+under a fingerprint matching this request; any other reserved <code>jti</code> is
+rejected;<a href="#section-5.6.3-2.6.2.2.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2984,26 +2987,27 @@ the current request.<a href="#section-5.6.6-4" class="pilcrow">¶</a></p>
 <a href="#section-5.7" class="section-number selfRef">5.7. </a><a href="#name-replay-reservation-and-retr" class="section-name selfRef">Replay Reservation and Retry</a>
         </h3>
 <p id="section-5.7-1">An assertion is sender-constrained, so replaying it requires the actor's key
-(<a href="#security-pop" class="auto internal xref">Section 9.1</a>), and a fresh assertion can always create an equivalent
-sibling hop (<a href="#hop-activation" class="auto internal xref">Section 5.3</a>). Replay control therefore adds no authority
-protection; it prevents one captured assertion from being redirected to a
-different request within its window, and it can give a client idempotent
-recovery after a lost response. This document recommends the first and makes
-the second optional.<a href="#section-5.7-1" class="pilcrow">¶</a></p>
-<p id="section-5.7-2">The IdP <span class="bcp14">SHOULD</span> accept each assertion at most once, keyed on (<code>iss</code>, <code>jti</code>) for
-the assertion's validity window plus permitted clock skew, with concurrent
-presentations yielding at most one grant. Partitioning by tenant alone would
-let two assertion issuers in one tenant collide on a reused <code>jti</code>. An IdP that
-enforces no replay control accepts that a compromised actor key can mint
-equivalent sibling hops within the window, bounded by the chain's fan-out and
-rate limits (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-5.7-2" class="pilcrow">¶</a></p>
-<p id="section-5.7-3">An IdP <span class="bcp14">MAY</span> instead offer idempotent retry. Such an IdP reserves the
-assertion's (<code>iss</code>, <code>jti</code>) at grant issuance, bound to a fingerprint of the
-request it first authorizes, and records the reservation as RESERVED, ISSUED,
-or FAILED (distinct from the hop states of <a href="#hop-activation" class="auto internal xref">Section 5.3</a>). It <span class="bcp14">MUST</span> reject
-a presentation whose request does not match the fingerprint, <span class="bcp14">MUST</span> return the
-previously issued grant for one that matches, and <span class="bcp14">MUST NOT</span> produce more than
-one grant for concurrent presentations. The fingerprint <span class="bcp14">MUST</span> cover:<a href="#section-5.7-3" class="pilcrow">¶</a></p>
+(<a href="#security-pop" class="auto internal xref">Section 9.1</a>), but a consumed assertion is not equivalent to a fresh one.
+The CAI rechecks live RAS state before each issuance
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.5.2</a>), so an actor whose local authorization has
+lapsed cannot obtain a fresh assertion; without single-use it could keep
+presenting one it already used, for any target the envelope permits, until
+that assertion expired. Single-use closes that window for consumed
+assertions. Idempotent recovery after a lost response is a client convenience
+and is optional.<a href="#section-5.7-1" class="pilcrow">¶</a></p>
+<p id="section-5.7-2">The IdP <span class="bcp14">MUST</span> issue at most one grant per assertion, including under
+concurrent presentations: it reserves the assertion's (<code>iss</code>, <code>jti</code>) at grant
+issuance and <span class="bcp14">MUST</span> retain the reservation through <code>exp</code> plus the maximum
+permitted clock skew. Uniqueness is keyed on (<code>iss</code>, <code>jti</code>), since
+partitioning by tenant alone would let two assertion issuers in one tenant
+collide on a reused <code>jti</code>.<a href="#section-5.7-2" class="pilcrow">¶</a></p>
+<p id="section-5.7-3">A second presentation of a reserved assertion <span class="bcp14">MUST</span> be rejected unless the IdP
+offers idempotent retry. An IdP <span class="bcp14">MAY</span> offer it by binding the reservation to a
+fingerprint of the request first authorized and recording the reservation as
+RESERVED, ISSUED, or FAILED (distinct from the hop states of
+<a href="#hop-activation" class="auto internal xref">Section 5.3</a>). Such an IdP <span class="bcp14">MUST</span> return the previously issued grant for a
+presentation matching the fingerprint and <span class="bcp14">MUST</span> reject one that does not. The
+fingerprint <span class="bcp14">MUST</span> cover:<a href="#section-5.7-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.7-4.1">
             <p id="section-5.7-4.1.1"><code>audience</code> as an exact string;<a href="#section-5.7-4.1.1" class="pilcrow">¶</a></p>
@@ -3029,15 +3033,13 @@ serialization is a different request);<a href="#section-5.7-4.4.1" class="pilcro
 the fingerprint to the specific assertion and its handle.<a href="#section-5.7-4.7.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-5.7-5">Such an IdP <span class="bcp14">MUST</span> retain the reservation through <code>exp</code> plus the maximum
-permitted clock skew, so an in-window retry is honored; a reservation that does
-not reach ISSUED before <code>exp</code> becomes FAILED, which is final and requires a
-fresh assertion.<a href="#section-5.7-5" class="pilcrow">¶</a></p>
+<p id="section-5.7-5">A reservation that does not reach ISSUED before <code>exp</code> becomes FAILED, which is
+final and requires a fresh assertion.<a href="#section-5.7-5" class="pilcrow">¶</a></p>
 <p id="section-5.7-6">After a lost response, a client <span class="bcp14">MAY</span> retry the same assertion where the IdP
 offers retry, or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
 idempotency remains out of scope. Realization guidance is in
-<a href="#implementation" class="auto internal xref">Section 8</a>; whether replay control should be mandatory is an open
+<a href="#implementation" class="auto internal xref">Section 8</a>; whether idempotent retry should be mandatory is an open
 question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-5.7-6" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3269,11 +3271,11 @@ where the subject and the trusted issuer stay stable across the boundary;
 availability alone does not remove the need for the IdP to resolve the
 pairwise subject.<a href="#section-8-5" class="pilcrow">¶</a></p>
 <p id="section-8-6">The IdP retains hop records for the chain's lifetime and prunes expired or
-revoked hop state. A single-use IdP keeps a replay cache of (<code>iss</code>, <code>jti</code>) for
-the assertion validity window; one that offers idempotent retry keeps
-reservations for as long as an assertion could still be presented, in state
-consistent enough that concurrent requests yield one grant and a retry recovers
-it (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>).<a href="#section-8-6" class="pilcrow">¶</a></p>
+revoked hop state. It keeps each assertion's (<code>iss</code>, <code>jti</code>) reservation for as
+long as the assertion could still be presented, in state consistent enough
+that concurrent presentations yield one grant; an IdP that offers idempotent
+retry also keeps the fingerprint and result so that a retry recovers it
+(<a href="#validation-replay" class="auto internal xref">Section 5.7</a>).<a href="#section-8-6" class="pilcrow">¶</a></p>
 <p id="section-8-7">Because the actor-chain depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
 hop-count limits of <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a> bound that growth instead.<a href="#section-8-7" class="pilcrow">¶</a></p>
@@ -3365,12 +3367,13 @@ response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> can car
 introspection occurs and present only when <code>active</code> is <code>true</code>.<a href="#section-8.1-5.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-8.1-6">Where the IdP offers idempotent retry, the replay reservation
-(<a href="#validation-replay" class="auto internal xref">Section 5.7</a>) is typically held in strongly consistent state: only
-one concurrent request reaches ISSUED, a concurrent request under a matching
-fingerprint waits for or retries that result, and the IdP retains and expires
-the reservation by the same clock it uses to evaluate <code>exp</code>. A single-use IdP
-needs only a replay cache for the same window.<a href="#section-8.1-6" class="pilcrow">¶</a></p>
+<p id="section-8.1-6">The replay reservation (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>) needs an atomic first-writer
+decision so that only one concurrent request reaches ISSUED, and the IdP
+retains and expires it by the same clock it uses to evaluate <code>exp</code>. An IdP
+that offers idempotent retry also holds the fingerprint and result in state
+consistent enough that a concurrent request under a matching fingerprint waits
+for or retries that result; one that does not offer retry rejects the second
+presentation and needs no more than the reservation itself.<a href="#section-8.1-6" class="pilcrow">¶</a></p>
 <p id="section-8.1-7">A RAS can make the handle binding and token issuance of <a href="#ras-processing" class="auto internal xref">Section 5.2</a>
 one outcome with a local transaction, or with a compensating action that
 revokes a token whose binding did not commit.<a href="#section-8.1-7" class="pilcrow">¶</a></p>
@@ -3443,11 +3446,11 @@ is demonstrated continuously across the chain, not once at issuance.<a href="#se
 the new assertion; it need not prove possession of any key bound to the
 incoming subject token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.5.1</a>).<a href="#section-9.1-2" class="pilcrow">¶</a></p>
 <p id="section-9.1-3">Replay of a captured assertion is confined to the IdP continuation exchange
-and requires the actor's key. The freshness rule bounds the window; single-use
-or retry binding (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>) confines a resubmitted assertion to at
-most the request it first authorized, and an IdP that enforces neither accepts
-equivalent sibling hops within the window, bounded by the chain's fan-out and
-rate limits.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
+and requires the actor's key. The freshness rule bounds the window, and
+single-use (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>) confines a consumed assertion to the one
+grant it first obtained: without it, an actor whose RAS-local authorization had
+lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
+continuing from a consumed one until it expired.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-envelope">
@@ -3468,7 +3471,7 @@ continuation to any target the basis admits.<a href="#section-9.2-2" class="pilc
 <p id="section-9.2-3">The IdP's per-target evaluation, the tenant policy that forms the basis, and
 the per-authorization fan-out limits bound the damage; a deployment whose
 targets are known at establishment gains more protection by enumerating them,
-since an enumerated envelope never widens (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-9.2-3" class="pilcrow">¶</a></p>
+since an enumerated envelope never gains a target (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-9.2-3" class="pilcrow">¶</a></p>
 <p id="section-9.2-4">Reclassifying a service changes the authority of every open chain whose basis
 reads that classification (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>), so a basis should name a
 class the tenant manages for this purpose, such as services marked eligible
@@ -5399,7 +5402,8 @@ which requires <code>https://api.mail.example/</code> behind <code>https://ras.m
 a target nobody named when Alice created the task. The envelope enumerates the
 Platform and Calendar targets, so a run's continuation exchange presenting H0
 for that audience fails, and adding Mail to tenant policy afterward does not
-change that: an enumerated envelope never widens (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
+change that: an enumerated envelope never gains a target
+(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.3.4-2">
 <pre>
 HTTP/1.1 400 Bad Request
@@ -5523,14 +5527,12 @@ revocation list costs in subtree revocation and unlinkability
 (<a href="#privacy" class="auto internal xref">Section 10</a>).<a href="#appendix-C-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.7">
-          <p id="appendix-C-3.7.1"><strong>Mandatory replay control.</strong> <a href="#validation-replay" class="auto internal xref">Section 5.7</a> recommends single-use
-and makes idempotent retry optional. Should either be mandatory? The
-assertion is sender-constrained, so a replay needs the actor's key and can
-at most redirect one captured assertion to a different request within its
-300-second window, while a fresh assertion can always create an equivalent
-sibling hop; exactly-once issuance, by contrast, needs strongly consistent
-state on the issuance path (<a href="#implementation" class="auto internal xref">Section 8</a>). <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span>, Section 3
-leaves <code>jti</code> tracking to the authorization server's discretion.<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.7.1"><strong>Mandatory idempotent retry.</strong> <a href="#validation-replay" class="auto internal xref">Section 5.7</a> requires single-use
+and makes idempotent retry optional; an earlier draft required both. Should
+retry be mandatory, so that a client can rely on recovering a lost response
+at any IdP, at the cost of fingerprint state consistent enough to serve a
+concurrent retry, or is a rejected second presentation followed by a fresh
+assertion an acceptable recovery path (<a href="#implementation" class="auto internal xref">Section 8</a>)?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="appendix-C-4">Further questions are tracked in the project's issue list rather than expanded
@@ -5562,10 +5564,10 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Made single-use of an assertion recommended rather than required and
-idempotent retry optional, with the fingerprint and reservation rules
-applying to an IdP that offers retry; opened a question on mandatory replay
-control.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Kept single-use of an assertion required and made idempotent retry
+optional, with the fingerprint rules applying to an IdP that offers retry;
+explained why a consumed assertion is not equivalent to a fresh one; opened
+a question on mandatory retry.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
           <p id="appendix-E-3.2.1">Defined the canonical actor identity and made it the sole comparand for
@@ -5577,8 +5579,8 @@ correlation state.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
           <p id="appendix-E-3.3.1">Named the two parts of the root-chain envelope, chain identity and
 continuation authorization, defined the authorization basis as a policy
 reference, and specified that policy narrows a running chain in either
-form but widens it only through a recorded basis; stated in Hop Activation
-why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+form but widens its targets only through a recorded basis; stated in Hop
+Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.4">
           <p id="appendix-E-3.4.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
