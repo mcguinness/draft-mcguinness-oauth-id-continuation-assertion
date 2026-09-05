@@ -142,6 +142,7 @@ Table of Contents
      A.6.  Why a Signed Assertion Rather Than a Bare Grant Type
      A.7.  Why Asymmetric Signing Only
      A.8.  Boundary of the Profile
+     A.9.  The Test for a Requirement
    Appendix B.  Examples
      B.1.  Gateway Example (Co-located RAS and CAI)
        B.1.1.  Provisioning
@@ -216,8 +217,8 @@ Table of Contents
 
    The IdP establishes the first by minting every ID-JAG itself, and the
    RAS the second by binding the handle when it accepts a grant.  For
-   the third, a Continuation Assertion Issuer (CAI) in the RAS's trust
-   domain attests that the actor holds an accepted, still-active
+   the third, a Continuation Assertion Issuer (CAI) trusted for the
+   RAS's hops attests that the actor holds an accepted, still-active
    authorization, and the actor's own client authentication and proof of
    possession establish who is asking.  The IdP's envelope then decides
    whether that actor may continue.  The actor need not be the party the
@@ -584,8 +585,10 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       confirmation method: jkt, the JWK SHA-256 thumbprint [RFC7638] of
       the DPoP key [RFC9449] (Section 9.1).
 
-   iat, exp:  REQUIRED. exp MUST follow iat, and exp - iat MUST NOT
-      exceed 300 seconds.
+   iat, exp:  REQUIRED. exp MUST follow iat.  The assertion is short-
+      lived: exp - iat SHOULD NOT exceed 300 seconds, and the IdP
+      rejects a lifetime longer than the maximum it accepts
+      (Section 5.6.3).
 
    jti:  REQUIRED.  A replay-detection identifier that MUST be unique
       per iss during the assertion validity window and MUST contain at
@@ -869,10 +872,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Because the IdP learns of acceptance only through attestation
    (Section 1.2), the accepting RAS attests its own hops first-hand and
-   any other trusted CAI rechecks authoritative RAS state before
-   attesting (Section 5.5).  Absent CAI compromise (Section 9.4), an
-   issued-but-rejected ID-JAG cannot be continued: no trusted CAI
-   attests it, and without that attestation continuation fails closed.
+   any other trusted CAI confirms acceptance and activity by the RAS's
+   authorization semantics before attesting (Section 5.5).  Absent CAI
+   compromise (Section 9.4), an issued-but-rejected ID-JAG cannot be
+   continued: no trusted CAI attests it, and without that attestation
+   continuation fails closed.
 
    Acceptance gates continuation but does not bound downstream
    authority: the IdP evaluates later targets against the root envelope
@@ -912,8 +916,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       resolved to the task authorization for which that actor is
       designated (Section 9.2).
 
-   The CAI's recheck against RAS state (Section 5.5) covers staleness
-   for every carrier.
+   The CAI's acceptance check (Section 5.5.2) covers staleness for every
+   carrier.
 
    A Resource Server has no obligations under this document, so a
    carrier SHOULD NOT expose the handle to a party with no role in
@@ -924,20 +928,22 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    The CAI mints the Identity Continuation Assertion a workload presents
    to continue a chain across a boundary.  It MUST issue only for an
-   actor in the attested RAS's trust domain; actor authentication is
-   deployment-specific.  The CAI MUST set the assertion's aud to the IdP
-   recorded in the hop's RAS binding (Section 5.2); it MUST NOT accept
-   an IdP audience supplied by the requester.
+   actor it is authoritative to associate with the RAS-accepted
+   authorization, typically one in the RAS's trust domain; actor
+   authentication is deployment-specific.  The CAI MUST set the
+   assertion's aud to the IdP recorded in the hop's RAS binding
+   (Section 5.2); it MUST NOT accept an IdP audience supplied by the
+   requester.
 
    The CAI attests facts about its own domain: the RAS accepted the hop,
-   RAS state still shows the hop active and continuable, and the
-   authenticated actor proving a key is the party handling the request
-   that hop authorized.  Whether that actor may continue, and to what,
-   is the IdP's decision under the envelope (Section 5.1,
-   Section 5.6.3).  A CAI may decline to issue under its domain's
-   policy.  Issuance grants no target authority, but it attests the
-   facts without which the IdP cannot evaluate a continuation, so trust
-   in a CAI is consequential (Section 9.5).
+   the hop is still active and continuable by the RAS's own
+   authorization semantics, and the authenticated actor proving a key is
+   the party handling the request that hop authorized.  Whether that
+   actor may continue, and to what, is the IdP's decision under the
+   envelope (Section 5.1, Section 5.6.3).  A CAI may decline to issue
+   under its domain's policy.  Issuance grants no target authority, but
+   it attests the facts without which the IdP cannot evaluate a
+   continuation, so trust in a CAI is consequential (Section 9.5).
 
    The handle is advisory input, re-verified against RAS-bound state
    (Section 5.3) by the preconditions below (Section 5.5.2) before any
@@ -1008,16 +1014,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    With an access token, the client is a resource server exchanging a
    token it received, the scenario of the example in [RFC8693],
    Section 2.3.  A RAS acting as CAI resolves its own token; a separate
-   CAI resolves it through introspection [RFC7662].
+   CAI resolves it through introspection [RFC7662] or, for a self-
+   contained token, by validating it.
 
 5.5.2.  Preconditions
 
    Either subject_token type (Section 5.5.1) supplies the facts below:
    the token's integrity protection and the authenticated request
    establish fact 1; the DPoP proof, fact 2; the authenticated client,
-   fact 3; and the bound handle and live RAS state, facts 4 and 5.  The
-   CAI MUST authenticate the actor and issue only after establishing
-   these facts:
+   fact 3; and the bound handle and the RAS's acceptance evidence, facts
+   4 and 5.  The CAI MUST authenticate the actor and issue only after
+   establishing these facts:
 
    1.  the handle came through an authenticated, confidential,
        integrity-protected chain path or equivalent authenticated state;
@@ -1031,9 +1038,21 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    4.  the actor is bound to the current transaction and the handle
        matches that transaction's RAS-bound state; and
 
-   5.  a recheck against authoritative RAS state, whatever the carrier,
-       confirms the authorization remains active and its binding still
-       records continuation as permitted.
+   5.  evidence that is authoritative by the RAS's own authorization
+       semantics, whatever the carrier, confirms that the authorization
+       remains active and that its binding still records continuation as
+       permitted: a recheck of RAS authorization state, or, where the
+       RAS's authorization is a self-contained short-lived token, that
+       token's validity.
+
+   A live recheck SHOULD be used where the tenant requires withdrawal of
+   a hop's authorization to stop fresh assertions before the RAS's token
+   would expire.  With self-contained evidence, the token's expiry is
+   when the CAI stops issuing, as for any OAuth access token; an
+   assertion already issued remains usable until its own exp, so the
+   withdrawal tail is the token's remaining lifetime plus the assertion
+   lifetime (Section 9.5).  A CAI that caps the assertion's exp at the
+   evidence's expiry removes the second term.
 
    A domain may add its own conditions for issuing, for example limiting
    which of its workloads may obtain assertions, but such conditions
@@ -1064,7 +1083,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    The response MUST NOT include a refresh_token, which would let a
    client obtain further assertions without presenting a token or
-   passing the live recheck.
+   passing the acceptance check.
 
 HTTP/1.1 200 OK
 Content-Type: application/json
@@ -1329,7 +1348,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  iat is within permitted future clock skew (which SHOULD NOT
           exceed 60 seconds), exp follows iat, the assertion is
-          unexpired, and its lifetime does not exceed 300 seconds; and
+          unexpired, and its lifetime does not exceed the maximum the
+          IdP accepts (Section 3.2); and
 
        *  jti is not yet reserved for the assertion issuer or, where the
           IdP offers idempotent retry (Section 5.7), is RESERVED or
@@ -1497,20 +1517,23 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    An assertion is sender-constrained, so replaying it requires the
    actor's key (Section 9.1), but a consumed assertion is not equivalent
-   to a fresh one.  The CAI rechecks live RAS state before each issuance
-   (Section 5.5.2), so an actor whose local authorization has lapsed
-   cannot obtain a fresh assertion; without single-use it could keep
-   presenting one it already used, for any target the envelope permits,
-   until that assertion expired.  Single-use closes that window for
-   consumed assertions.  Idempotent recovery after a lost response is a
-   client convenience and is optional.
+   to a fresh one.  The CAI confirms before each issuance that the hop
+   is still active (Section 5.5.2), so an actor whose local
+   authorization has
+
+   lapsed cannot obtain a fresh assertion; without single-use it could
+   keep presenting one it already used, for any target the envelope
+   permits, until that assertion expired.  Single-use closes that window
+   for consumed assertions.  Idempotent recovery after a lost response
+   is a client convenience and is optional.
 
    The IdP MUST issue at most one grant per assertion, including under
    concurrent presentations: it reserves the assertion's (iss, jti) at
    grant issuance and MUST retain the reservation through exp plus the
    maximum permitted clock skew.  Uniqueness is keyed on (iss, jti),
    since partitioning by tenant alone would let two assertion issuers in
-   one tenant collide on a reused jti.
+   one tenant collide on a reused jti.  Without idempotent retry this
+   needs only the set of (iss, jti) values presented within that window.
 
    A second presentation of a reserved assertion MUST be rejected unless
    the IdP offers idempotent retry.  An IdP MAY offer it by binding the
@@ -1607,10 +1630,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    *  tenant policy withdraws permission to continue it.
 
-   A session-anchored chain MUST NOT outlive its session; only grant-
-   anchored chains may outlive logout.  Ending a chain this way bounds
-   only new continuations; an ID-JAG already issued remains redeemable
-   for its own lifetime, since redemption is not a continuation.
+   A chain MUST NOT outlive its anchor (Section 6.1): a session-anchored
+   chain ends with the session, and only a grant-anchored chain may
+   outlive logout.  An authorization that a session produced but that
+   has its own lifecycle, such as a refresh token's grant, is a grant
+   anchor, so logout ends a chain only when the session itself is the
+   anchor.  Ending a chain this way bounds only new continuations; an
+   ID-JAG already issued remains redeemable for its own lifetime, since
+   redemption is not a continuation.
 
    The IdP ends a chain when it observes the withdrawal, whether through
    a policy event or at the next continuation attempt, and an ended
@@ -1733,8 +1760,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    another.
 
    The online model has an operational price.  Every continuation
-   depends on the IdP being reachable, and a separate CAI depends on
-   authoritative RAS state as well.  A call path that cannot tolerate
+   depends on the IdP being reachable, and a separate CAI depends on the
+   RAS's acceptance evidence as well.  A call path that cannot tolerate
    either dependency is a case for offline attenuation only where
    Section 1.1 already allows it, that is, where the subject and the
    trusted issuer stay stable across the boundary; availability alone
@@ -1820,7 +1847,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    *  A signed JWT access token [RFC9068] issued by the accepting RAS
       can carry the handle as a claim.  The claim records issuance-time
       state and therefore cannot reflect a later revocation; the CAI's
-      liveness recheck (Section 5.5.2) covers that.
+      acceptance check (Section 5.5.2) covers that.
 
    *  For an opaque access token issued by the accepting RAS, its
       introspection response [RFC7662] can carry the handle as a member,
@@ -1887,10 +1914,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    live proof of possession of the cnf key, a DPoP proof [RFC9449] for
    the method this document defines (Section 5.6.2).  A captured
    assertion is therefore useless without the private key, and because
-   the onward ID-JAG is bound to the same key (Section 5.6.2) and the
-   next RAS binds its access token to that key (Section 5.2), possession
-   is demonstrated continuously from the first continuation on, not once
-   at issuance.
+   the onward ID-JAG is bound to the same proven key (Section 5.6.2) and
+   the next RAS binds its access token to that key (Section 5.2),
+   possession is demonstrated continuously from the first continuation
+   on, not once at issuance.
 
    The root hop is different.  The root ID-JAG carries no cnf, and its
    RAS sender-constrains the access token by its own policy, so a root
@@ -2022,15 +2049,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A workload that obtains the assertion by exchanging the access token
    or Transaction Token it holds for the call (Section 5.5.1) presents
    nothing it did not already hold; what it gains is the CAI's
-   attestation, gated by policy and the live recheck.
+   attestation, gated by policy and the acceptance check.
 
    A compromised RAS can fabricate acceptance state in either topology,
    since a separate CAI reads that state as authoritative; a compromised
    separate CAI can additionally attest a hop the RAS refused.  In both
    topologies, RAS-local authorization revocation after issuance, which
    the IdP cannot observe, leaves the assertion valid for its remaining
-   lifetime; a separate CAI adds any delay in RAS state reaching it.
-   The root envelope still bounds the result.
+   lifetime; a separate CAI adds any delay in RAS state reaching it, and
+   where the RAS's acceptance evidence is a self-contained token
+   (Section 5.5.2) fresh issuance continues for that token's remaining
+   lifetime, on top of the assertion's own lifetime, so a tenant that
+   needs faster withdrawal configures a live recheck.  The root envelope
+   still bounds the result.
 
 9.6.  Actor Chain Integrity
 
@@ -2595,6 +2626,37 @@ A.8.  Boundary of the Profile
    details as its inputs; nothing in the chain itself carries purpose,
    and an implementation that reads the envelope as a complete agent
    authorization model has read too much into it.
+
+A.9.  The Test for a Requirement
+
+   What must be true for the IdP to issue the next ID-JAG safely is a
+   short list, and a requirement that serves none of its items is
+   deployment hardening rather than part of the profile:
+
+   1.  the hop being continued was legitimately accepted;
+
+   2.  a party trusted for that hop says the current actor now holds it;
+
+   3.  the IdP can authenticate that actor;
+
+   4.  the actor proves possession of the key bound to this
+       continuation;
+
+   5.  the IdP independently authorizes the actor, the target, and the
+       requested authority; and
+
+   6.  the chain is within its governing authorization and lifecycle.
+
+   The profile's requirements follow from these.  Acceptance evidence by
+   the RAS's own semantics serves item 1 and the CAI's attestation item
+   2; the canonical actor identity serves item 3; sender constraint of
+   the assertion and the onward ID-JAG serves item 4; the envelope under
+   current policy serves item 5; and the anchor serves item 6.  Single-
+   use of an assertion serves item 1 across time, since a consumed
+   assertion must not outlive the RAS's withdrawal of acceptance
+   (Section 5.7).  Where this document offers a choice, such as the form
+   of acceptance evidence or a separate actor token, the choice is
+   between mechanisms that satisfy the same item.
 
 Appendix B.  Examples
 
@@ -3665,6 +3727,19 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Replaced trust-domain membership with CAI authority over the
+      actor-to-hop association; made the 300-second assertion lifetime a
+      recommended upper bound with the IdP's own maximum governing; tied
+      chain lifetime to the anchor rather than to the session as such;
+      stated the cost of single-use without retry; added the six-item
+      test for a requirement to Design Rationale.
+
+   *  Defined the CAI's acceptance evidence by the RAS's own
+      authorization semantics, so a RAS whose authorization is a self-
+      contained short-lived token satisfies the issuance precondition by
+      that token's validity; a live recheck is recommended where fresh
+      issuance must stop before the token expires.
 
    *  Made the actor_token optional on a continuation exchange: the
       actor authenticates as an OAuth client with a credential that
