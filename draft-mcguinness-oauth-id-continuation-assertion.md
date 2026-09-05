@@ -724,33 +724,30 @@ CAI MUST set the assertion's `aud` to the IdP recorded in the hop's RAS binding
 ({{ras-processing}}); it MUST NOT accept an IdP audience supplied by the
 requester.
 
-The CAI attests facts about its own domain: that the RAS accepted the hop,
-that RAS state still shows the hop active and continuable, and that the
-authenticated actor proving a key is the party handling the request that hop
-authorized. Whether that actor may continue, and to what, is the IdP's
-decision under the envelope ({{root-establishment}}, {{validation}}). A CAI
-may decline to issue under its domain's policy, but its issuing never
-authorizes anything; it only makes the IdP's decision possible.
+The CAI attests facts about its own domain: the RAS accepted the hop, RAS
+state still shows the hop active and continuable, and the authenticated actor
+proving a key is the party handling the request that hop authorized. Whether
+that actor may continue, and to what, is the IdP's decision under the envelope
+({{root-establishment}}, {{validation}}). A CAI may decline to issue under its
+domain's policy, but issuing never authorizes anything; it only makes the IdP's
+decision possible.
 
-The current actor is a control-plane participant, not a bare-handle
-transporter: the CAI obtains the handle from authenticated state associated
-with the actor's transaction, and the actor separately proves the key placed in
-`cnf`. The handle is advisory input, re-verified against RAS-bound state
-({{hop-activation}}) by the preconditions below before any assertion issues.
+The handle is advisory input, re-verified against RAS-bound state
+({{hop-activation}}) by the preconditions below ({{assertion-preconditions}})
+before any assertion issues.
 
 ### Request {#assertion-token-exchange}
 
 A CAI that is an OAuth authorization server, including a RAS acting as its own
 CAI, MAY issue assertions from its token endpoint using Token Exchange
-{{RFC8693}} as profiled in this and the following subsections. A RAS acting as
-its own CAI SHOULD support this profile, so that a workload in its domain has
-one request to implement. Issuance by other means remains deployment-specific
-({{handle-propagation}}). The requesting party is the current actor
-({{terms}}), acting as an OAuth client of the CAI; this profile calls it the
-client.
+{{RFC8693}} as profiled in this and the following subsections. Such a RAS
+SHOULD support this profile, so that a workload in its domain has one request
+to implement. Issuance by other means remains deployment-specific
+({{handle-propagation}}).
 
-The client makes a Token Exchange request to the CAI's token endpoint with the
-following parameters:
+The requesting party is the current actor ({{terms}}), acting as an OAuth
+client of the CAI; this profile calls it the client. The client makes a Token
+Exchange request to the CAI's token endpoint with the following parameters:
 
 `grant_type`:
 : REQUIRED. The value `urn:ietf:params:oauth:grant-type:token-exchange`.
@@ -771,8 +768,8 @@ following parameters:
 
 The `audience`, `resource`, `scope`, `actor_token`, and `actor_token_type`
 parameters MUST NOT be included: targets and scope are chosen at the IdP
-exchange ({{assertion-claims}}), the assertion's `aud` comes from the hop's
-binding, and the authenticated client is the actor named in `act`.
+exchange ({{assertion-claims}}), and the authenticated client is the actor
+named in `act`.
 
 The client MUST authenticate to the token endpoint ({{RFC6749}}, Section 2.3),
 and the request MUST include a DPoP proof {{RFC9449}} of the client's own key;
@@ -796,26 +793,25 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 The CAI MUST verify that the `subject_token` is one of the following:
 
 * an access token issued by a RAS whose hops the CAI attests, unexpired, and
-  valid
-  for a protected resource that the authenticated client operates. The client
-  is then a resource server exchanging a token it received, the scenario of
-  the example in {{RFC8693}}, Section 2.3. A RAS acting as CAI resolves its
-  own token; a separate CAI resolves it through introspection {{RFC7662}}; or
-* a Transaction Token valid under Section 12.2 of
-  {{I-D.ietf-oauth-transaction-tokens}} for the CAI's trust domain and
-  carrying the hop's handle as chain context ({{handle-propagation}}). The
-  Transaction Token is the carrier.
+  valid for a protected resource that the authenticated client operates; or
+* a Transaction Token valid for the CAI's trust domain under
+  {{I-D.ietf-oauth-transaction-tokens}}, Section 12.2, and carrying the hop's
+  handle as chain context ({{handle-propagation}}). The Transaction Token is
+  the carrier.
 
-Either way, the authorization behind the token is the one the preconditions
-({{assertion-preconditions}}) test: the token's integrity protection and the
-authenticated request satisfy precondition 1, the authenticated client is the
-actor of precondition 3, the DPoP key is the key of precondition 2, and the
-bound handle and live state satisfy preconditions 4 and 5.
+With an access token, the client is a resource server exchanging a token it
+received, the scenario of the example in {{RFC8693}}, Section 2.3. A RAS acting
+as CAI resolves its own token; a separate CAI resolves it through introspection
+{{RFC7662}}.
 
 ### Preconditions {#assertion-preconditions}
 
-The CAI MUST authenticate the actor and issue only after establishing these
-facts:
+Either `subject_token` type ({{assertion-token-exchange}}) supplies the facts
+below: the token's integrity protection and the authenticated request
+establish fact 1; the DPoP proof, fact 2; the authenticated client, fact 3;
+and the bound handle and live RAS state, facts 4 and 5. The CAI MUST
+authenticate the actor and
+issue only after establishing these facts:
 
 1. the handle came through an authenticated, confidential,
    integrity-protected chain path or equivalent authenticated state;
@@ -832,9 +828,8 @@ facts:
    the authorization remains active and its binding still records
    continuation as permitted.
 
-Possession of a handle or carrier token alone is insufficient. A domain may
-add its own conditions for issuing, for example limiting which of its
-workloads may obtain assertions, but such conditions narrow issuance only.
+A domain may add its own conditions for issuing, for example limiting which of
+its workloads may obtain assertions, but such conditions narrow issuance only.
 Target or purpose hints can narrow CAI issuance but MUST NOT control the IdP's
 target decision, and propagated context MUST NOT override the envelope.
 
@@ -850,13 +845,14 @@ one parameter:
 `audience`:
 : REQUIRED. The issuer identifier of the IdP to which the client presents the
   assertion, equal to the assertion's `aud`. Because the request carries no
-  `audience`, this is how the client learns where the assertion goes. The
-  client obtains that IdP's `token_endpoint` from its authorization server
-  metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
-  well-known URI suffix under the issuer identifier, after confirming that the
-  returned `issuer` exactly matches `audience`; where the IdP publishes no
-  metadata, the client uses configuration bound to that issuer identifier
-  ({{metadata}}).
+  `audience`, this is how the client learns where the assertion goes.
+
+The client obtains that IdP's `token_endpoint` from its authorization server
+metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
+well-known URI suffix under the issuer identifier, after confirming that the
+returned `issuer` exactly matches `audience`. Where the IdP publishes no
+metadata, the client uses configuration bound to that issuer identifier
+({{metadata}}).
 
 The response MUST NOT include a `refresh_token`, which would let a client
 obtain further assertions without presenting a token or passing the live
