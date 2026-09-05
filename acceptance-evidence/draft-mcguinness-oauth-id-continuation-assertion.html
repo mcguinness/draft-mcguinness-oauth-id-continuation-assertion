@@ -3294,12 +3294,12 @@ context cost nothing more while the token lasts.<a href="#section-8-3" class="pi
 if the CAI's preconditions still hold (<a href="#assertion-preconditions" class="auto internal xref">Section 5.5.2</a>); an
 expired access token does not by itself entitle the workload to another.<a href="#section-8-4" class="pilcrow">¶</a></p>
 <p id="section-8-5">The online model has an operational price. Every continuation depends on the
-IdP being reachable, and a separate CAI depends on the RAS's acceptance evidence as
-well. A call path that cannot tolerate either dependency is a case for
-offline attenuation only where <a href="#decision-rule" class="auto internal xref">Section 1.1</a> already allows it, that is,
-where the subject and the trusted issuer stay stable across the boundary;
-availability alone does not remove the need for the IdP to resolve the
-pairwise subject.<a href="#section-8-5" class="pilcrow">¶</a></p>
+IdP being reachable, and a separate CAI depends on the RAS's acceptance
+evidence as well. A call path that cannot tolerate either dependency is a case
+for offline attenuation only where <a href="#decision-rule" class="auto internal xref">Section 1.1</a> already allows it, that
+is, where the subject and the trusted issuer stay stable across the boundary;
+availability alone does not remove the need for the IdP to resolve the pairwise
+subject.<a href="#section-8-5" class="pilcrow">¶</a></p>
 <p id="section-8-6">The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It keeps each assertion's (<code>iss</code>, <code>jti</code>) reservation for as
 long as the assertion could still be presented, in state consistent enough
