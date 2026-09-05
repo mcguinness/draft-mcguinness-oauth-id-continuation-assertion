@@ -338,7 +338,9 @@ Continuation Assertion Issuer (CAI):
 
 Current actor:
 : The workload presenting the assertion to the IdP, named by `act` and
-  authenticated by `actor_token`.
+  authenticated by `actor_token`. Its canonical actor identity is the
+  (`iss`, `sub`) pair the IdP's client-to-actor mapping produces
+  ({{client-identity}}).
 
 Root actor:
 : The actor at the root of a chain: the authenticated OAuth client that
@@ -466,8 +468,8 @@ The claims have the following meanings and requirements:
     the actor's credential, the `actor_token` of {{request}}, and `sub` is
     the actor's identifier at that issuer, its `client_id` for an
     {{RFC7523}} credential.
-  * The IdP compares both with the `actor_token` and the authenticated
-    client ({{client-identity}}).
+  * The IdP compares both with the `actor_token` and with the canonical
+    actor identity of the authenticated client ({{client-identity}}).
   * Additional members MAY carry further identity attributes but are
     non-authoritative and MUST NOT affect identity, authorization, lineage,
     or issuance. A recipient MUST ignore members it does not understand,
@@ -510,7 +512,11 @@ authorization, and issuance.
 An `identity_continuation_handle` is an opaque, non-bearer reference to one
 IdP-held hop of a chain. The IdP mints a fresh handle for each hop and carries
 it in that hop's ID-JAG; continuing from a hop produces a child hop with its
-own handle, recorded against the hop it continued from.
+own handle, recorded against the hop it continued from. A handle is non-secret
+but security-sensitive correlation state: it confers no authority by itself,
+yet a handle together with a CAI trust path and the actor's credential is a
+larger compromise than the actor's credential alone ({{security-topology}});
+{{handle-propagation}} limits where it travels.
 
 The following rules apply:
 
@@ -733,7 +739,8 @@ for every carrier.
 
 A Resource Server has no obligations under this document, so a carrier
 SHOULD NOT expose the handle to a party with no role in continuation, and
-deployments keep it out of logs, traces, and responses.
+deployments keep this security-sensitive correlation state ({{chain-id}}) out
+of logs, traces, and responses.
 
 ## Assertion Issuance {#assertion-issuance}
 
@@ -749,8 +756,9 @@ state still shows the hop active and continuable, and the authenticated actor
 proving a key is the party handling the request that hop authorized. Whether
 that actor may continue, and to what, is the IdP's decision under the envelope
 ({{root-establishment}}, {{validation}}). A CAI may decline to issue under its
-domain's policy, but issuing never authorizes anything; it only makes the IdP's
-decision possible.
+domain's policy. Issuance grants no target authority, but it attests the facts
+without which the IdP cannot evaluate a continuation, so trust in a CAI is
+consequential ({{security-topology}}).
 
 The handle is advisory input, re-verified against RAS-bound state
 ({{hop-activation}}) by the preconditions below ({{assertion-preconditions}})
@@ -961,24 +969,45 @@ The current actor MUST authenticate as an OAuth client. Four rules govern how
 that authentication maps to an actor identity:
 
 * *Authoritative mapping.* The IdP MUST map the authenticated client to an
-  actor identity; self-asserted mappings MUST NOT be accepted.
+  actor identity, an (`iss`, `sub`) pair this document calls the canonical
+  actor identity, from its registration of that client; self-asserted
+  mappings MUST NOT be accepted. The client authentication method does not
+  determine the pair: a client that authenticates with an {{RFC7523}} client
+  assertion may have a workload identity in another namespace as its
+  canonical actor identity.
 * *Root versus continuation.* On a root exchange, client authentication alone
   identifies the root actor ({{root-establishment}}). On a continuation
-  exchange, the IdP MUST also match that identity to the assertion's `act` and
-  the `actor_token`.
+  exchange, the IdP MUST also match the canonical actor identity to the
+  assertion's `act` and the `actor_token`.
 * *Sender-constrained actor token.* The `actor_token` MUST NOT be bearer: for
-  a JWT the IdP verifies `cnf.jkt`, and for an opaque token it obtains
+  a JWT the IdP verifies its `cnf` confirmation (`jkt` in this version), and
+  for an opaque token it obtains
   equivalent confirmation from authoritative metadata such as introspection
   {{RFC7662}}.
 * *Dual-use JWT.* A sender-constrained JWT MAY serve as both client assertion
   and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
-  is the `client_id` and the IdP MUST authorize its issuer for that client.
-  Otherwise the client authenticates separately.
+  is the `client_id`, the canonical actor identity is then the assertion's
+  issuer and that `client_id`, and the IdP MUST authorize its issuer for that
+  client. Otherwise the client authenticates separately.
+
+
+The comparison runs between actor identities, never between a raw OAuth
+client identifier and an `act` value:
+
+~~~
+authenticated OAuth client
+        |  authoritative mapping (IdP registration)
+        v
+canonical actor identity (iss, sub)
+        ^                        ^
+        |  equal                 |  equal
+   actor_token                  act
+~~~
 
 The IdP MUST compare the actor `iss` and `sub` as case-sensitive strings with
-no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
-`act`, and the authenticated client, and identities in different tenants never
-compare equal.
+no transformation or canonicalization ({{RFC7519}}): the identity in
+`actor_token` and the assertion's `act` are each compared with the canonical
+actor identity, and identities in different tenants never compare equal.
 
 The actor MUST prove possession of the key in `cnf`; for the `jkt` method, that
 proof is a DPoP proof {{RFC9449}}. DPoP is the only confirmation method this
@@ -1054,10 +1083,10 @@ from another's resolution.
    * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
      seconds), `exp` follows `iat`, the assertion is unexpired, and its
      lifetime does not exceed 300 seconds; and
-   * `jti` is not yet reserved for the assertion issuer, or is RESERVED or
-     ISSUED under a fingerprint matching this request (permitting idempotent
-     retry; see {{validation-replay}}); a RESERVED or ISSUED `jti` under a
-     different fingerprint, or a FAILED `jti`, is rejected;
+   * `jti` is not yet reserved for the assertion issuer or, where the IdP
+     offers idempotent retry ({{validation-replay}}), is RESERVED or ISSUED
+     under a fingerprint matching this request; any other reserved `jti` is
+     rejected;
 
 7. **Envelope containment.** The effective authorization the IdP would grant,
    after applying any default scope and policy to the requested audience,
@@ -1210,13 +1239,30 @@ the current request.
 
 ## Replay Reservation and Retry {#validation-replay}
 
-The reservation model gives a client idempotent recovery after a lost response
-while preventing one assertion from authorizing more than one distinct request.
+An assertion is sender-constrained, so replaying it requires the actor's key
+({{security-pop}}), but a consumed assertion is not equivalent to a fresh one.
+The CAI rechecks live RAS state before each issuance
+({{assertion-preconditions}}), so an actor whose local authorization has
+lapsed cannot obtain a fresh assertion; without single-use it could keep
+presenting one it already used, for any target the envelope permits, until
+that assertion expired. Single-use closes that window for consumed
+assertions. Idempotent recovery after a lost response is a client convenience
+and is optional.
 
-After validation, grant issuance reserves the assertion's (`iss`, `jti`), bound
-to a fingerprint of the request it first authorizes, and records the
-reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
-{{hop-activation}}). The fingerprint MUST cover:
+The IdP MUST issue at most one grant per assertion, including under
+concurrent presentations: it reserves the assertion's (`iss`, `jti`) at grant
+issuance and MUST retain the reservation through `exp` plus the maximum
+permitted clock skew. Uniqueness is keyed on (`iss`, `jti`), since
+partitioning by tenant alone would let two assertion issuers in one tenant
+collide on a reused `jti`.
+
+A second presentation of a reserved assertion MUST be rejected unless the IdP
+offers idempotent retry. An IdP MAY offer it by binding the reservation to a
+fingerprint of the request first authorized and recording the reservation as
+RESERVED, ISSUED, or FAILED (distinct from the hop states of
+{{hop-activation}}). Such an IdP MUST return the previously issued grant for a
+presentation matching the fingerprint and MUST reject one that does not. The
+fingerprint MUST cover:
 
 * `audience` as an exact string;
 * the `resource` values as an order-independent set;
@@ -1224,25 +1270,19 @@ reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
 * the exact `authorization_details` JSON after form decoding (a different
   serialization is a different request);
 * the actor's `iss` and `sub`;
-* the confirmed key's `cnf.jkt` thumbprint; and
+* the confirmation key in `cnf` (its `jkt` thumbprint in this version); and
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
-Concurrent redemptions of one assertion MUST NOT produce more than one grant.
-An identical retry MUST return the same previously issued grant, not a new one,
-and a request that does not match that fingerprint MUST be rejected. Replay
-uniqueness MUST be keyed on (`iss`, `jti`); partitioning by tenant alone would
-let two assertion issuers in one tenant collide on a reused `jti`.
+A reservation that does not reach ISSUED before `exp` becomes FAILED, which is
+final and requires a fresh assertion.
 
-The IdP MUST retain the reservation through `exp` plus the maximum permitted
-clock skew, so an in-window retry is honored; a reservation that does not reach
-ISSUED before `exp` becomes FAILED, which is final and requires a fresh
-assertion.
-
-After a lost response, a client MAY retry the same assertion to recover the
-ISSUED result or obtain a fresh assertion. A fresh assertion may create an
+After a lost response, a client MAY retry the same assertion where the IdP
+offers retry, or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. Realization guidance is in {{implementation}}.
+idempotency remains out of scope. Realization guidance is in
+{{implementation}}; whether idempotent retry should be mandatory is an open
+question ({{open-items}}).
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -1422,10 +1462,12 @@ where the subject and the trusted issuer stay stable across the boundary;
 availability alone does not remove the need for the IdP to resolve the
 pairwise subject.
 
-The IdP retains hop records for the chain's lifetime and replay reservations
-for as long as an assertion could still be presented, in state consistent
-enough that concurrent requests yield one grant and a retry recovers it
-({{validation-replay}}); it prunes expired or revoked hop state.
+The IdP retains hop records for the chain's lifetime and prunes expired or
+revoked hop state. It keeps each assertion's (`iss`, `jti`) reservation for as
+long as the assertion could still be presented, in state consistent enough
+that concurrent presentations yield one grant; an IdP that offers idempotent
+retry also keeps the fingerprint and result so that a retry recovers it
+({{validation-replay}}).
 
 Because the actor-chain depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
@@ -1441,7 +1483,7 @@ Failure paths worth testing before deployment:
 
 An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
-does not relax the reservation durability of {{validation-replay}}. Whether
+does not relax the replay rules of {{validation-replay}}. Whether
 the hop tree could be replaced by self-verifying handles is an open question
 ({{open-items}}), not a realization this document describes.
 
@@ -1483,11 +1525,13 @@ all. Three carriers are common:
   response {{RFC7662}} can carry the handle as a member, generated when
   introspection occurs and present only when `active` is `true`.
 
-The replay reservation ({{validation-replay}}) is typically held in strongly
-consistent state: only one concurrent request reaches ISSUED, a concurrent
-request under a matching fingerprint waits for or retries that result, and the
-IdP retains and expires the reservation by the same clock it uses to evaluate
-`exp`.
+The replay reservation ({{validation-replay}}) needs an atomic first-writer
+decision so that only one concurrent request reaches ISSUED, and the IdP
+retains and expires it by the same clock it uses to evaluate `exp`. An IdP
+that offers idempotent retry also holds the fingerprint and result in state
+consistent enough that a concurrent request under a matching fingerprint waits
+for or retries that result; one that does not offer retry rejects the second
+presentation and needs no more than the reservation itself.
 
 A RAS can make the handle binding and token issuance of {{ras-processing}}
 one outcome with a local transaction, or with a compensating action that
@@ -1541,10 +1585,12 @@ At assertion issuance the client proves its own key, which the CAI binds to
 the new assertion; it need not prove possession of any key bound to the
 incoming subject token ({{assertion-token-exchange}}).
 
-Replay of a captured assertion is confined to the IdP continuation exchange,
-where the freshness and replay rules bind each assertion to the one request it
-first authorized ({{validation-replay}}); without that binding, a resubmitted
-assertion could authorize a second, different request within its window.
+Replay of a captured assertion is confined to the IdP continuation exchange
+and requires the actor's key. The freshness rule bounds the window, and
+single-use ({{validation-replay}}) confines a consumed assertion to the one
+grant it first obtained: without it, an actor whose RAS-local authorization had
+lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
+continuing from a consumed one until it expired.
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
@@ -3087,6 +3133,13 @@ This non-normative appendix lists unresolved design questions.
    revocation list costs in subtree revocation and unlinkability
    ({{privacy}}).
 
+7. **Mandatory idempotent retry.** {{validation-replay}} requires single-use
+   and makes idempotent retry optional; an earlier draft required both. Should
+   retry be mandatory, so that a client can rely on recovering a lost response
+   at any IdP, at the cost of fingerprint state consistent enough to serve a
+   concurrent retry, or is a rejected second presentation followed by a fresh
+   assertion an acceptable recovery path ({{implementation}})?
+
 Further questions are tracked in the project's issue list rather than expanded
 here: nested own-domain `act` segments and offline-actor audit
 ({{I-D.mcguinness-oauth-actor-receipts}},
@@ -3110,6 +3163,15 @@ this profile builds.
 
 -02
 
+* Kept single-use of an assertion required and made idempotent retry
+  optional, with the fingerprint rules applying to an IdP that offers retry;
+  explained why a consumed assertion is not equivalent to a fresh one; opened
+  a question on mandatory retry.
+
+* Defined the canonical actor identity and made it the sole comparand for
+  `act` and `actor_token`; reworded the CAI's role as attesting the facts the
+  IdP's evaluation requires; characterized the handle as security-sensitive
+  correlation state.
 * Named the two parts of the root-chain envelope, chain identity and
   continuation authorization, defined the authorization basis as a policy
   reference, and specified that policy narrows a running chain in either
