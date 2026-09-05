@@ -893,10 +893,10 @@ An Identity Continuation Assertion is used as the `subject_token` of an OAuth
 exchange use the same Token Exchange framework: a continuation exchange
 substitutes an Identity Continuation Assertion for the root credential and
 additionally supplies the actor authentication and DPoP proof described below.
-The IdP establishes the chain; no request parameter asks it to do so
-({{root-establishment}}). Before it can continue to a target, the current
-actor needs a client registration or resolvable client identity at that
-target's RAS; the onward ID-JAG `client_id` is that identifier
+The IdP, not the client, establishes the chain ({{root-establishment}}).
+
+Before a chain can continue to a target, the current actor needs a client
+registration or resolvable client identity at that target's RAS
 ({{onward-id-jag}}).
 
 ### Request {#request}
@@ -924,13 +924,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<JWT>
 ~~~
 
-The requested `audience`, `resource`, `scope`, `requested_token_type`, and
-any `authorization_details` {{RFC9396}} are supplied by the Token Exchange
-request and never by the assertion ({{assertion-claims}}). A request can carry
-multiple `resource` indicators {{RFC8707}}, which the IdP treats as an
-order-independent set; the envelope-containment rule ({{validation}})
-applies to `authorization_details` and to scope alike. Client authentication
-is required on every exchange ({{client-identity}}).
+The requested `audience`, `resource`, `scope`, `requested_token_type`, and any
+`authorization_details` {{RFC9396}} are supplied by the Token Exchange request
+and never by the assertion ({{assertion-claims}}). A request can carry multiple
+`resource` indicators {{RFC8707}}, which the IdP treats as an order-independent
+set; the envelope-containment rule ({{validation}}) applies to
+`authorization_details` and to scope alike.
 
 ### Presenter Authentication {#client-identity}
 
@@ -950,8 +949,7 @@ that authentication maps to an actor identity:
 * *Sender-constrained actor token.* The `actor_token` MUST NOT be bearer: for
   a JWT the IdP verifies `cnf.jkt`, and for an opaque token it obtains
   equivalent confirmation from authoritative metadata such as introspection
-  {{RFC7662}}; its issuer, acceptance, sender constraint, and applicability are
-  checked by the current-actor rule of {{validation}}.
+  {{RFC7662}}.
 * *Dual-use JWT.* A sender-constrained JWT MAY serve as both client assertion
   and `actor_token` when it satisfies both profiles; for {{RFC7523}} its `sub`
   is the `client_id` and the IdP MUST authorize its issuer for that client.
@@ -962,17 +960,13 @@ no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
 `act`, and the authenticated client, and identities in different tenants never
 compare equal.
 
-The actor MUST prove possession of the key in `cnf`; for the `jkt` method this
-document defines, that proof is a DPoP proof {{RFC9449}}. DPoP is the single
-method this version defines, so the target validates confirmation identically
-to a directly issued ID-JAG; a mutual-TLS method {{RFC8705}} is an open
-question ({{open-items}}). The onward ID-JAG MUST use the same key; key
-rotation takes effect when the actor obtains a new assertion and actor token
-bound to the new key.
-
-The current-actor rule of {{validation}} then requires client authentication,
-the `actor_token`, the assertion's `act`, and the DPoP proof to agree on one
-actor and one key.
+The actor MUST prove possession of the key in `cnf`; for the `jkt` method, that
+proof is a DPoP proof {{RFC9449}}. DPoP is the only confirmation method this
+version defines, so the target validates confirmation identically to a directly
+issued ID-JAG; a mutual-TLS method {{RFC8705}} is an open question
+({{open-items}}). The onward ID-JAG MUST use the same key; key rotation takes
+effect when the actor obtains a new assertion and actor token bound to the new
+key.
 
 ### Request Validation {#validation}
 
@@ -1048,12 +1042,16 @@ from another's resolution.
 7. **Envelope containment.** The effective authorization the IdP would grant,
    after applying any default scope and policy to the requested audience,
    resource, scopes, and authorization details, is within the root-chain
-   envelope, that is, consistent with the fixed facts of the root exchange
-   and within the tenant policy for targets, continuers, and limits as it
-   currently applies ({{root-establishment}}), and within current IdP actor
-   policy, and the issued ID-JAG carries the `scope`, `resource`, and
-   `authorization_details` values that express it; a request whose effective
-   authority cannot be established within the envelope is rejected.
+   envelope, that is:
+   * consistent with the fixed facts of the root exchange;
+   * within the tenant policy for targets, continuers, and limits as it
+     currently applies ({{root-establishment}}); and
+   * within current IdP actor policy.
+
+   The issued ID-JAG carries the `scope`, `resource`, and
+   `authorization_details` values that express that authorization, and a
+   request whose
+   effective authority cannot be established within the envelope is rejected.
    Authorization-details containment uses the comparison rules defined for
    each authorization-detail type, since {{RFC9396}} defines no generic
    comparison, and a detail type whose rules the IdP does not implement is
@@ -1083,18 +1081,20 @@ Pragma: no-cache
 
 The hop reference is delivered as the ID-JAG's `identity_continuation_handle`
 claim ({{chain-id}}, rule 1), a claim inside `access_token` and not a separate
-Token Exchange response parameter; the accepting Resource Authorization Server
-binds it ({{ras-processing}}), and the CAI reaches it through RAS state
-or intra-domain context ({{handle-propagation}}). There is likewise no
-chain-expiry response parameter: chain lifetime is authoritative at the IdP
-({{lifecycle}}), and a deployment needing advance warning conveys it through
-task or authorization state, an optional ID-JAG claim, or a management API.
+Token Exchange response parameter; the accepting RAS binds it
+({{ras-processing}}), and the CAI reaches it through RAS state or intra-domain
+context ({{handle-propagation}}).
+
+There is no chain-expiry response parameter: chain lifetime is authoritative
+at the IdP ({{lifecycle}}), and a deployment needing advance warning conveys it
+through task or authorization state, an optional ID-JAG claim, or a management
+API.
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG containing the resolved target `sub` and
 fresh handle. An idempotent retry (the freshness rule; {{validation-replay}})
-instead
-returns the previously issued grant unchanged, creating no new hop or handle.
+instead returns the previously issued grant unchanged, creating no new hop or
+handle.
 
 ### Onward ID-JAG Construction {#onward-id-jag}
 
@@ -1109,21 +1109,24 @@ MUST include them in the onward ID-JAG unchanged; continuation MUST NOT extend
 or strengthen the authentication context, for example by raising `acr` or
 adding `amr` beyond the user's root authentication.
 
-The IdP constructs `act`
-by placing the authenticated current actor atop the presented hop's lineage;
-it never copies lineage from the assertion, and siblings do not contribute. A
-hop's parent reference is immutable, and the IdP MUST derive lineage only by
-walking parent references to the root; it maintains no chain-wide actor
-history, so concurrent sibling continuations are independent branches.
-Consecutive identical actors merge into one entry, though the hop record
-remains; policy MAY limit disclosed depth, narrowing what a target sees without
-changing the depth bound the IdP enforces (the chain-state rule of
-{{validation}}). Because
-policy may narrow the disclosed lineage, a Resource Authorization Server
-MUST NOT read the absence of a further nested `act` as proof that no earlier
-actor exists. `act` is disclosed lineage, not the authoritative history, which
-only the IdP's hop records hold. The following is a
-non-normative example of the onward ID-JAG issued by the IdP:
+The IdP constructs `act` as follows:
+
+* It places the authenticated current actor atop the presented hop's lineage;
+  it never copies lineage from the assertion, and siblings do not contribute.
+* A hop's parent reference is immutable, and the IdP MUST derive lineage only
+  by walking parent references to the root; it maintains no chain-wide actor
+  history, so concurrent sibling continuations are independent branches.
+* Consecutive identical actors merge into one entry, though the hop record
+  remains; policy MAY limit disclosed depth, narrowing what a target sees
+  without changing the depth bound the IdP enforces (the chain-state rule of
+  {{validation}}).
+* Because policy may narrow the disclosed lineage, a RAS MUST NOT read the
+  absence of a further nested `act` as proof that no earlier actor exists:
+  `act` is disclosed lineage, not the authoritative history, which only the
+  IdP's hop records hold.
+
+The following is a non-normative example of the onward ID-JAG issued by the
+IdP:
 
 ~~~ json
 {
@@ -1175,15 +1178,14 @@ On failure, the IdP returns an OAuth error ({{RFC6749}}, {{RFC8693}}):
   `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
   request outside the envelope.
 
-An `invalid_continuation` handle is permanently unusable: retrying it cannot
-succeed.
-Recovery requires establishing a new chain and succeeds only where the
-governing authorization still permits continuation: a session-anchored chain
-re-roots by re-authenticating the user, a grant-anchored chain from its
-still-valid grant without the user, and a handle disabled by withdrawn
-continuation authorization cannot re-root at all. The other errors
-leave the chain still continuable, so a client abandons only the current
-request.
+Recovery from `invalid_continuation` requires establishing a new chain, and
+succeeds only where the governing authorization still permits continuation: a
+session-anchored chain re-roots by re-authenticating the user, a grant-anchored
+chain from its still-valid grant without the user, and a handle disabled by
+withdrawn continuation authorization cannot re-root at all.
+
+The other errors leave the chain still continuable, so a client abandons only
+the current request.
 
 ## Replay Reservation and Retry {#validation-replay}
 
@@ -1193,18 +1195,23 @@ while preventing one assertion from authorizing more than one distinct request.
 After validation, grant issuance reserves the assertion's (`iss`, `jti`), bound
 to a fingerprint of the request it first authorizes, and records the
 reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
-{{hop-activation}}). The fingerprint MUST cover `audience` as an exact string,
-the `resource` values as an order-independent set, `scope` as an
-order-independent set, the exact `authorization_details` JSON after form
-decoding (a different serialization is a different request), the actor's `iss`
-and `sub`, the confirmed key's `cnf.jkt` thumbprint, and a SHA-256 hash of the
-exact `subject_token` after form decoding, which binds the fingerprint to the
-specific assertion and its handle. Concurrent redemptions of one assertion
-MUST NOT produce more than one grant. An identical retry
-MUST return the same previously issued grant, not a new one, and a request that
-does not match that fingerprint MUST be rejected. Replay uniqueness MUST be
-keyed on (`iss`, `jti`); partitioning by tenant alone would let two assertion
-issuers in one tenant collide on a reused `jti`.
+{{hop-activation}}). The fingerprint MUST cover:
+
+* `audience` as an exact string;
+* the `resource` values as an order-independent set;
+* `scope` as an order-independent set;
+* the exact `authorization_details` JSON after form decoding (a different
+  serialization is a different request);
+* the actor's `iss` and `sub`;
+* the confirmed key's `cnf.jkt` thumbprint; and
+* a SHA-256 hash of the exact `subject_token` after form decoding, which binds
+  the fingerprint to the specific assertion and its handle.
+
+Concurrent redemptions of one assertion MUST NOT produce more than one grant.
+An identical retry MUST return the same previously issued grant, not a new one,
+and a request that does not match that fingerprint MUST be rejected. Replay
+uniqueness MUST be keyed on (`iss`, `jti`); partitioning by tenant alone would
+let two assertion issuers in one tenant collide on a reused `jti`.
 
 The IdP MUST retain the reservation through `exp` plus the maximum permitted
 clock skew, so an in-window retry is honored; a reservation that does not reach
