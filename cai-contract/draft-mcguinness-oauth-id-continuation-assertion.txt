@@ -3032,11 +3032,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<expense-service JWT>
 
    Expense CAI verifies the Transaction Token for its domain, reads H0
-   from it, rechecks with ExpenseRAS that the binding is still active,
-   confirms policy permits expense-service to continue, and issues the
-   assertion.  The IdP accepts Expense CAI's assertions for hops
-   ExpenseRAS accepts because it trusts Expense CAI for that RAS,
-   through identity_continuation_issuers or tenant configuration, and
+   from it, rechecks with ExpenseRAS that the binding is still active
+   and records continuation as permitted, and issues the assertion.  The
+   IdP accepts Expense CAI's assertions for hops ExpenseRAS accepts
+   because it trusts Expense CAI for that RAS, through
+   identity_continuation_issuers or tenant configuration, and
    independently trusts its issuer, keys, tenant, and actor-token-issuer
    pairing (Section 7, Section 9.4).  The response's audience,
    https://idp.example/, tells expense-service where to present it.

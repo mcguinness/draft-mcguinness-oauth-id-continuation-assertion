@@ -4891,8 +4891,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 </pre><a href="#appendix-B.2.3-2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.2.3-3">Expense CAI verifies the Transaction Token for its domain, reads H0 from it,
-rechecks with ExpenseRAS that the binding is still active, confirms policy
-permits <code>expense-service</code> to continue, and issues the assertion. The IdP
+rechecks with ExpenseRAS that the binding is still active and records
+continuation as permitted, and issues the assertion. The IdP
 accepts Expense CAI's assertions for hops ExpenseRAS accepts because it trusts
 Expense CAI for that RAS, through <code>identity_continuation_issuers</code> or tenant
 configuration, and independently trusts its issuer, keys, tenant, and
