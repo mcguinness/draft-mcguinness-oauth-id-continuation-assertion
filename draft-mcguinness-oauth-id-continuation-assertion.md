@@ -1588,7 +1588,7 @@ all. Three carriers are common:
   handle as request context ({{rationale-txn}}).
 * A signed JWT access token {{RFC9068}} issued by the accepting RAS can carry
   the handle as a claim. The claim records issuance-time state and therefore
-  cannot reflect a later revocation; the CAI's liveness recheck
+  cannot reflect a later revocation; the CAI's acceptance check
   ({{assertion-preconditions}}) covers that.
 * For an opaque access token issued by the accepting RAS, its introspection
   response {{RFC7662}} can carry the handle as a member, generated when
@@ -1645,13 +1645,12 @@ A continuation assertion names the actor the IdP will treat as the chain's
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
 that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
-every exchange requires live proof of possession of the `cnf` key, a DPoP
-proof {{RFC9449}} for the method this document defines ({{client-identity}}).
-A captured assertion is therefore useless without the private key, and because
-the onward ID-JAG is bound to the same key ({{client-identity}}) and the next
-RAS binds its access token to that key ({{ras-processing}}), possession is
-demonstrated continuously from the first continuation on, not once at
-issuance.
+every exchange requires live proof of possession of the `cnf` key, a DPoP proof
+{{RFC9449}} for the method this document defines ({{client-identity}}). A
+captured assertion is therefore useless without the private key, and because
+the onward ID-JAG is bound to the same proven key ({{client-identity}}) and the
+next RAS binds its access token to that key ({{ras-processing}}), possession is
+demonstrated continuously from the first continuation on, not once at issuance.
 
 The root hop is different. The root ID-JAG carries no `cnf`, and its RAS
 sender-constrains the access token by its own policy, so a root hop may issue
@@ -1770,7 +1769,7 @@ signed attestation ({{deployment-topologies}}).
 A workload that obtains the assertion by exchanging the access token or
 Transaction Token it holds for the call ({{assertion-token-exchange}})
 presents nothing it did not already hold; what it gains is the CAI's
-attestation, gated by policy and the live recheck.
+attestation, gated by policy and the acceptance check.
 
 A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
