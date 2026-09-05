@@ -380,9 +380,17 @@ Governing authorization:
   chain and bounds every continuation under it ({{lifecycle}}).
 
 Root-chain envelope:
-: What the IdP evaluates every continuation against: fixed facts from the
-  root exchange plus tenant policy applied as it currently stands; see
-  {{root-establishment}} for the fixed-versus-policy breakdown.
+: What the IdP evaluates every continuation against. It has two parts: the
+  chain identity, the facts of the root exchange, fixed at establishment; and
+  the continuation authorization, the onward targets, continuers, and limits
+  the IdP recorded at establishment and evaluates under tenant policy as it
+  stands, except that targets widen only through a recorded authorization
+  basis ({{root-establishment}}).
+
+Authorization basis:
+: A reference to tenant policy, recorded in the continuation authorization in
+  place of an enumerated target list, that the IdP reads at each continuation
+  to decide which targets a chain may reach ({{root-establishment}}).
 
 Continuation-capable:
 : Describes an ID-JAG that carries the `identity_continuation_handle` claim
@@ -577,26 +585,33 @@ IdP session, or, for a durable chain, a refresh token's OAuth grant
 Tenant policy at the IdP determines whether the governing authorization
 permits continuation and, if so, populates the root-chain envelope:
 
-| Envelope dimension | Source | At each continuation |
-|---|---|---|
-| The authenticated user and authentication context (`auth_time`, `acr`, `amr`) | root authentication | fixed |
-| The root actor and its key | root exchange | fixed |
-| The governing authorization's anchor and the chain's expiry ({{lifecycle}}) | the root subject token's anchor | fixed |
-| Onward targets: the permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or an authorization basis against which the IdP evaluates each requested target | tenant policy | as policy stands |
-| The actors or trust domains permitted to continue, and the basis for that permission | tenant policy | as policy stands |
-| Any maximum actor-chain depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
+| Part | Dimension | Source | At each continuation |
+|---|---|---|---|
+| Chain identity | The authenticated user and authentication context (`auth_time`, `acr`, `amr`) | root authentication | fixed |
+| Chain identity | The root actor and its key | root exchange | fixed |
+| Chain identity | The governing authorization's anchor and the chain's expiry ({{lifecycle}}) | the root subject token's anchor | fixed |
+| Continuation authorization | Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or recorded as an authorization basis | tenant policy | enumerated: narrows only; basis: as policy stands |
+| Continuation authorization | The actors or trust domains permitted to continue, and the basis for that permission | tenant policy | as policy stands |
+| Continuation authorization | Any maximum actor-chain depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
 
-Token claims cannot supply these values. The fixed dimensions are facts of the
-root exchange: no later policy or request changes the user, the authentication
-context, the root actor, or the anchor a chain is bound to. The policy
-dimensions are the tenant's to change, as in ID-JAG itself, where the IdP
-rather than the user authorizes each grant.
+Token claims cannot supply these values. The chain identity is fixed: no later
+policy or request changes the user, the authentication context, the root
+actor, or the anchor a chain is bound to. The continuation authorization is
+the tenant's to change, as in ID-JAG itself, where the IdP rather than the
+user authorizes each grant; how a change reaches a running chain depends on
+the form the IdP recorded.
 
-The IdP applies them as they stand at each continuation, so a target the
-tenant admits or removes after establishment, or a change in what an
-authorization basis reads, such as a service's classification or a group's
-membership, takes effect at the next continuation in either direction
-({{example-gateway-root}} works through this).
+A policy change that narrows a chain, a target or continuer withdrawn or a
+limit tightened, takes effect at the next continuation whichever form the
+envelope takes (the envelope-containment rule of {{validation}}). Continuers
+and limits are tenant controls read as policy stands in either direction.
+Target authority widens only through an authorization basis: an envelope that
+enumerates its targets MUST NOT admit a target the tenant adds after
+establishment ({{example-dynamic}}), while a basis-referenced envelope admits
+whatever the basis currently reads, such as a service's classification or a
+group's membership ({{example-gateway-root}}). The effective authority at any
+continuation is therefore the recorded continuation authorization evaluated
+under current policy, never more.
 
 What the root request asked for is not a ceiling either: its audience and
 scope bound only the root ID-JAG.
@@ -681,7 +696,12 @@ without that attestation continuation fails closed.
 Acceptance gates continuation but does not bound downstream authority: the
 IdP evaluates later targets against the root envelope
 ({{root-establishment}}), and local RAS authorization neither narrows nor
-widens it.
+widens it. Continuation propagates authorization provenance, not the accepting
+RAS's authorization vocabulary: a scope granted at one audience says nothing
+about a scope at another, so the accepted grant cannot serve as a ceiling for
+later targets. A deployment that wants the work itself to narrow downstream
+authority expresses that in the governing authorization, not in RAS scopes
+({{rationale-boundary}}).
 
 ## Intra-Domain Handle Propagation {#handle-propagation}
 
@@ -1043,9 +1063,10 @@ from another's resolution.
    after applying any default scope and policy to the requested audience,
    resource, scopes, and authorization details, is within the root-chain
    envelope, that is:
-   * consistent with the fixed facts of the root exchange;
-   * within the tenant policy for targets, continuers, and limits as it
-     currently applies ({{root-establishment}}); and
+   * consistent with the chain identity, the fixed facts of the root exchange;
+   * within the continuation authorization as recorded at establishment,
+     evaluated under tenant policy as it currently applies
+     ({{root-establishment}}); and
    * within current IdP actor policy.
 
    The issued ID-JAG carries the `scope`, `resource`, and
@@ -1533,15 +1554,16 @@ envelope. Because the assertion is target-agnostic, a permitted actor may
 select any target within that ceiling.
 
 An envelope that records an authorization basis instead of listing targets
-({{root-establishment}}) admits every target the basis permits at request
-time; how broad that is depends on the basis, not on its form. A gateway that
+({{root-establishment}}) admits every target the basis permits at request time;
+how broad that is depends on the policy the basis references. A gateway that
 chooses its upstream at request time is the intended case and also a
 confused-deputy surface, since a compromised or misdirected workload can steer
 continuation to any target the basis admits.
 
 The IdP's per-target evaluation, the tenant policy that forms the basis, and
 the per-authorization fan-out limits bound the damage; a deployment whose
-targets are known at establishment gains more protection by listing them.
+targets are known at establishment gains more protection by enumerating them,
+since an enumerated envelope never gains a target ({{root-establishment}}).
 
 Reclassifying a service changes the authority of every open chain whose basis
 reads that classification ({{root-establishment}}), so a basis should name a
@@ -2180,8 +2202,9 @@ upstreams are unknown at root time, the envelope records an authorization
 basis, the tenant's policy for agent access to its productivity tools, rather
 than enumerated targets, and that policy permits `tool-gateway` to continue.
 
-Nothing about the targets is frozen. The IdP applies the tenant's policy as it
-stands at each continuation: which services the tenant classifies as
+The envelope records that basis by reference rather than enumerating targets,
+so nothing about the targets is frozen. The IdP applies the tenant's policy as
+it stands at each continuation: which services the tenant classifies as
 productivity tools, what access it allows agents to them, and whether
 `tool-gateway` may continue. A wiki the tenant adds to that class after this
 exchange is therefore admitted in {{example-gateway-continue}} without a new
@@ -2439,9 +2462,9 @@ On the wire (decoded ID-JAG for WikiRAS):
 }
 ~~~
 
-A target outside the basis fails with `invalid_target`; the chain stays
+A target outside the envelope fails with `invalid_target`; the chain stays
 continuable and only that tool call fails ({{error-response}}).
-{{example-dynamic}} shows one.
+{{example-dynamic}} shows the same failure for an enumerated envelope.
 
 ### WikiRAS Redeems an Ordinary ID-JAG {#example-gateway-terminal}
 
@@ -2963,10 +2986,11 @@ descendant, of the previous run's child.
 
 Suppose the platform later extends the briefing to include unread mail,
 which requires `https://api.mail.example/` behind `https://ras.mail.example/`,
-a target nobody named when Alice created the task. Tenant policy for the
-task still permits only the Platform and Calendar targets, so a run's
-continuation exchange presenting H0 for that audience fails; had policy
-since added Mail, the same exchange would succeed:
+a target nobody named when Alice created the task. The envelope enumerates the
+Platform and Calendar targets, so a run's continuation exchange presenting H0
+for that audience fails, and adding Mail to tenant policy afterward does not
+change that: an enumerated envelope never gains a target
+({{root-establishment}}).
 
 ~~~
 HTTP/1.1 400 Bad Request
@@ -3033,8 +3057,10 @@ This non-normative appendix lists unresolved design questions.
    or suppress chain establishment, or negotiate lifetime, depth, or
    permitted continuers ({{root-establishment}})?
 
-4. **Authorization-basis representation.** Should the envelope expose a
-   testable representation of the authorization ceiling, for example:
+4. **Authorization-basis representation.** This document defines an
+   authorization basis as a policy reference ({{terms}}) but not its
+   representation. Should the envelope expose a testable representation of
+   the authorization ceiling, for example:
 
    ~~~ json
    { "targets": [ { "audience": "https://ras.travel.example/",
@@ -3083,6 +3109,12 @@ this profile builds.
 \[\[ To be removed before publication as an RFC ]]
 
 -02
+
+* Named the two parts of the root-chain envelope, chain identity and
+  continuation authorization, defined the authorization basis as a policy
+  reference, and specified that policy narrows a running chain in either
+  form but widens its targets only through a recorded basis; stated in Hop
+  Activation why RAS acceptance does not attenuate downstream authority.
 
 * Gathered durable-chain material into Chain Lifetime and Revocation, with
   anchors, ending, and limits as subsections and a lead that separates the
