@@ -801,10 +801,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    The RAS MUST bind the handle and issue the access token as one
    outcome: no access token without its binding, and no binding without
    a token.  Repeated redemption of one ID-JAG, identified by its
-   handle, which is unique to the hop (Section 4), MUST bind to the same
-   hop authorization record, so a retry cannot create multiple records
-   for one grant.  The RAS exposes the binding only within its trust
-   domain (Section 5.5).
+   validated issuer and handle within the authenticated tenant binding,
+   MUST bind to the same hop authorization record, so a retry cannot
+   create multiple records for one grant; a matching handle under
+   another issuer is a different grant, not a retry.  The RAS exposes
+   the binding only within its trust domain (Section 5.5).
 
 5.4.  Hop Activation
 
@@ -1533,13 +1534,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    this document's requirements; conformance depends only on the
    normative sections.
 
-   Continuation is per target, not per call.  A workload continues once
-   to obtain an ID-JAG for a target and then uses the access token it
-   redeems there for that token's lifetime.  The first call to a target
-   therefore costs the assertion exchange, the continuation exchange,
-   and the redemption; later calls cost nothing more until that access
-   token expires, after which the workload continues again with a fresh
-   assertion.
+   Continuation is per authorization context, not per call.  A workload
+   continues once to obtain an ID-JAG for a target on behalf of one user
+   under one chain, then reuses the access token it redeems there while
+   that token remains valid and covers the requested access.  Calls for
+   another user, tenant, chain, or key need their own continuation;
+   reusing a token across chains would attach later calls to the earlier
+   chain's handle and lineage.  The first call in a context therefore
+   costs the assertion exchange, the continuation exchange, and the
+   redemption, and later calls in the same context cost nothing more
+   while the token lasts.  Renewal is another continuation with a fresh
+   assertion, which succeeds only if the CAI's preconditions still hold
+   (Section 5.6.2); an expired access token does not by itself entitle
+   the workload to another.
 
    The online model has an operational price.  Every continuation
    depends on the IdP being reachable, and a separate CAI depends on
@@ -2709,9 +2716,10 @@ B.1.6.  WikiRAS Redeems an Ordinary ID-JAG
    this profile: it validates the ID-JAG as the base profile requires,
    ignores the handle, and issues an access token without binding H1
    (Section 5.3).  ToolGateway calls WikiAPI as Alice's wiki subject and
-   returns the result to AgentApp.  Each further tool call repeats the
-   exchange of Appendix B.1.4 and creates a sibling hop under H0 (H2,
-   and so on).
+   returns the result to AgentApp.  Further calls to WikiAPI for Alice
+   reuse this access token while it remains valid (Section 8); each
+   further upstream a tool call needs repeats the exchange of
+   Appendix B.1.4 and creates a sibling hop under H0 (H2, and so on).
 
 B.1.7.  What a Gateway Implements
 
@@ -3333,7 +3341,8 @@ Document History
       states where its iss and sub come from; carriers are described for
       either topology; the gateway checklist names the registrations it
       presupposes; the redemption dedupe rule names its key;
-      continuation is stated to be per target, not per call.
+      continuation is stated to be per authorization context, not per
+      call.
 
    *  Rewrote the Protocol Overview as a numbered walk-through of the
       gateway deployment, with the figure keyed to the steps, and

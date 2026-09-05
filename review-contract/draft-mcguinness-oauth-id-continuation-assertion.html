@@ -2219,10 +2219,11 @@ whether continuation is permitted.<a href="#section-5.3-3.2.1" class="pilcrow">�
         </ol>
 <p id="section-5.3-4">The RAS <span class="bcp14">MUST</span> bind the handle and issue the access token as one outcome: no
 access token without its binding, and no binding without a token. Repeated
-redemption of one ID-JAG, identified by its handle, which is unique to the hop
-(<a href="#chain-id" class="auto internal xref">Section 4</a>), <span class="bcp14">MUST</span> bind to the same hop authorization record, so a retry
-cannot create multiple records for one grant. The RAS exposes the binding only
-within its trust domain (<a href="#handle-propagation" class="auto internal xref">Section 5.5</a>).<a href="#section-5.3-4" class="pilcrow">¶</a></p>
+redemption of one ID-JAG, identified by its validated issuer and handle within
+the authenticated tenant binding, <span class="bcp14">MUST</span> bind to the same hop authorization
+record, so a retry cannot create multiple records for one grant; a matching
+handle under another issuer is a different grant, not a retry. The RAS exposes
+the binding only within its trust domain (<a href="#handle-propagation" class="auto internal xref">Section 5.5</a>).<a href="#section-5.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="hop-activation">
@@ -3095,12 +3096,18 @@ takes effect.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
       </h2>
 <p id="section-8-1">This section is non-normative. It describes ways an IdP can realize this
 document's requirements; conformance depends only on the normative sections.<a href="#section-8-1" class="pilcrow">¶</a></p>
-<p id="section-8-2">Continuation is per target, not per call. A workload continues once to obtain
-an ID-JAG for a target and then uses the access token it redeems there for
-that token's lifetime. The first call to a target therefore costs the
-assertion exchange, the continuation exchange, and the redemption; later calls
-cost nothing more until that access token expires, after which the workload
-continues again with a fresh assertion.<a href="#section-8-2" class="pilcrow">¶</a></p>
+<p id="section-8-2">Continuation is per authorization context, not per call. A workload continues
+once to obtain an ID-JAG for a target on behalf of one user under one chain,
+then reuses the access token it redeems there while that token remains valid
+and covers the requested access. Calls for another user, tenant, chain, or key
+need their own continuation; reusing a token across chains would attach later
+calls to the earlier chain's handle and lineage. The first call in a context
+therefore costs the assertion exchange, the continuation exchange, and the
+redemption, and later calls in the same context cost nothing more while the
+token lasts. Renewal is another continuation with a fresh assertion, which
+succeeds only if the CAI's preconditions still hold
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.6.2</a>); an expired access token does not by itself
+entitle the workload to another.<a href="#section-8-2" class="pilcrow">¶</a></p>
 <p id="section-8-3">The online model has an operational price. Every continuation depends on the
 IdP being reachable, and a separate CAI depends on authoritative RAS state as
 well; a call path that cannot tolerate either dependency is a case for offline
@@ -4545,9 +4552,11 @@ continuable and only that tool call fails (<a href="#error-response" class="auto
 proof of the same key. WikiRAS implements nothing from this profile: it
 validates the ID-JAG as the base profile requires, ignores the handle, and
 issues an access token without binding H1 (<a href="#ras-processing" class="auto internal xref">Section 5.3</a>). ToolGateway
-calls WikiAPI as Alice's wiki subject and returns the result to AgentApp. Each
-further tool call repeats the exchange of <a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.4</a> and creates
-a sibling hop under H0 (H2, and so on).<a href="#appendix-B.1.6-1" class="pilcrow">¶</a></p>
+calls WikiAPI as Alice's wiki subject and returns the result to AgentApp.
+Further calls to WikiAPI for Alice reuse this access token while it remains
+valid (<a href="#implementation" class="auto internal xref">Section 8</a>); each further upstream a tool call needs repeats the
+exchange of <a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.4</a> and creates a sibling hop under H0 (H2, and
+so on).<a href="#appendix-B.1.6-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-checklist">
@@ -5277,7 +5286,7 @@ continuation-permitted flag the binding requires; the <code>act</code> claim sta
 where its <code>iss</code> and <code>sub</code> come from; carriers are described for either
 topology; the gateway checklist names the registrations it presupposes; the
 redemption dedupe rule names its key; continuation is stated to be per
-target, not per call.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+authorization context, not per call.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.3">
           <p id="appendix-E-3.3.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
