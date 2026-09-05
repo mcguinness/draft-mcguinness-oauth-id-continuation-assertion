@@ -242,10 +242,11 @@ Table of Contents
    subject token resolves to a grant or session keeps its exchange
    unchanged (Section 5.1); this profile asks nothing new of it, not
    even sender constraint.  A RAS from which no workload continues runs
-   unmodified ID-JAG, which this document calls the base profile, and
-   need not know that a chain exists (Section 5.2).  Support is needed
-   only where continuation proceeds: at the continuing workload, its RAS
-   and CAI, and the IdP.  Chain state, envelope enforcement, and replay
+   unmodified ID-JAG, which this document calls the base profile,
+   including its redemption of a key-bound ID-JAG, and need not know
+   that a chain exists (Section 5.2).  Support is needed only where
+   continuation proceeds: at the continuing workload, its RAS and CAI,
+   and the IdP.  Chain state, envelope enforcement, and replay
    protection sit at the IdP, which already resolves the pairwise
    subject and holds the tenant policy; a continuation-aware RAS adds
    only the binding of its own hops and the assertion that a workload
@@ -566,9 +567,10 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       request, encoded as a single-level act claim per [RFC8693]:
 
       *  iss and sub are REQUIRED, non-empty strings: the actor's
-         canonical actor identity (Section 5.6.2), the issuer of the
-         actor's credential and the actor's identifier there, its
-         client_id for an [RFC7523] credential.
+         canonical actor identity as Section 5.6.2 defines it.  Where
+         the actor's credential is issued under that identity, as an
+         [RFC7523] client assertion serving as the dual-use JWT is, they
+         equal the credential's iss and sub.
 
       *  The IdP compares both with the canonical actor identity of the
          authenticated client and with any actor_token (Section 5.6.2).
@@ -823,6 +825,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
        [I-D.ietf-oauth-identity-assertion-authz-grant].  That processing
        validates the grant, authenticates the presenting client,
        verifies the sender constraint of an ID-JAG that carries cnf,
+       which arrives under the DPoP-bound JWT grant (Section 5.6.5),
        applies local authorization policy, and issues an access token.
        The access token is sender-constrained to the confirmed key when
        the ID-JAG carries cnf, as every onward ID-JAG does
@@ -1043,8 +1046,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
        actor, the attenuated credential it received is valid
        (Section 1.1).
 
-   4.  The actor is bound to the current transaction, and the handle
-       matches that transaction's RAS-bound state (Section 5.3).  The
+   4.  The handle is the one bound to the authorization context the
+       actor presents, its access token or carrier, and the actor is a
+       party that context was issued or forwarded to (Section 5.4,
+       Section 5.3).  Selecting another intact context is the actor's
+       choice; substituting a handle within a context is not.  The
        handle is input to verify, never authority in itself (Section 4).
 
    5.  Evidence that is authoritative by the RAS's own authorization
@@ -1445,6 +1451,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    the target audience, and aud_sub remains available under the base
    profile where the target's native subject namespace differs.
 
+   Because the onward ID-JAG carries cnf, the actor redeems it with the
+   DPoP-bound JWT grant, urn:ietf:params:oauth:grant-type:jwt-dpop
+   ([I-D.parecki-oauth-jwt-dpop-grant]), and a DPoP proof of the bound
+   key, as the base profile specifies for a key-bound ID-JAG
+   ([I-D.ietf-oauth-identity-assertion-authz-grant], Section 9.8.1.2.1).
+   The target RAS needs nothing from this document to do so.
+
    Where the envelope records auth_time, acr, or amr, the IdP MUST
    include them in the onward ID-JAG unchanged.  Continuation MUST NOT
    extend or strengthen the authentication context, for example by
@@ -1735,7 +1748,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    profile:id-jag-continuation MUST also advertise the base
    urn:ietf:params:oauth:grant-profile:id-jag profile and the
    urn:ietf:params:oauth:grant-type:jwt-bearer grant type on which ID-
-   JAG depends ([I-D.ietf-oauth-identity-assertion-authz-grant]).
+   JAG depends ([I-D.ietf-oauth-identity-assertion-authz-grant]).  It
+   MUST also advertise urn:ietf:params:oauth:grant-type:jwt-dpop, since
+   every onward ID-JAG it redeems carries cnf (Section 5.6.5).
 
    A Resource Authorization Server does not list itself as a CAI for its
    own hops; the issuer-trust rule of Section 5.6.3 accepts it directly,
@@ -1957,9 +1972,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    continuation on, not once at issuance.  A terminal RAS runs the base
    profile and may issue a bearer token; the chain ends there.
 
-   The root hop is different.  The root ID-JAG carries no cnf, and its
-   RAS sender-constrains the access token by its own policy, so a root
-   hop may issue a bearer token.  A party that captures such a token can
+   The root hop is different.  A root ID-JAG need not carry cnf, and its
+   RAS
+
+   sender-constrains the access token by its own policy, so a root hop
+   may issue a bearer token.  A party that captures such a token can
    call the workload and so induce that honest workload's continuation
    under the workload's own key; the workload's proof of possession does
    not prevent this, because the workload is the legitimate presenter.
@@ -2505,6 +2522,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
               <https://datatracker.ietf.org/doc/html/draft-mcguinness-
               oauth-actor-receipts-00>.
 
+   [I-D.parecki-oauth-jwt-dpop-grant]
+              Parecki, A., "OAuth 2.0 JWT Authorization Grant with DPoP
+              Binding", Work in Progress, Internet-Draft, draft-parecki-
+              oauth-jwt-dpop-grant-01, 30 January 2026,
+              <https://datatracker.ietf.org/doc/html/draft-parecki-
+              oauth-jwt-dpop-grant-01>.
+
    [RFC6755]  Campbell, B. and H. Tschofenig, "An IETF URN Sub-Namespace
               for OAuth", RFC 6755, DOI 10.17487/RFC6755, October 2012,
               <https://www.rfc-editor.org/rfc/rfc6755>.
@@ -2630,9 +2654,9 @@ A.6.  Why a Signed Assertion Rather Than a Bare Grant Type
 
    The signed assertion lets the CAI attest the authenticated actor,
    key, accepted hop, and any intra-domain policy checks that the IdP
-   cannot observe: acceptance is a state of the RAS, and the transaction
-   binding is domain-local, so the assertion is the IdP's only evidence
-   of either.
+   cannot observe: acceptance is a state of the RAS, and the binding of
+   a handle to an authorization context is domain-local, so the
+   assertion is the IdP's only evidence of either.
 
    The IdP still authenticates each current actor and checks its
    authorization (Section 5.6.2, Section 5.6.3); what the assertion
@@ -2640,8 +2664,8 @@ A.6.  Why a Signed Assertion Rather Than a Bare Grant Type
    another domain's state.  The assertion does not authorize target or
    scope (Section 5.5).  Where domain-local attestation is unnecessary,
    a recipient-bound direct grant remains a possible simplification, at
-   the cost of the acceptance evidence and transaction checks that only
-   a party in that domain can provide.
+   the cost of the acceptance evidence and authorization-context checks
+   that only a party in that domain can provide.
 
 A.7.  Why Asymmetric Signing Only
 
@@ -2861,7 +2885,9 @@ B.1.1.  Provisioning
    | WikiRAS      | tool-gateway registered as a client,  | base      |
    |              | as the base profile requires of any   | profile   |
    |              | ID-JAG presenter; the IdP trusted as  |           |
-   |              | ID-JAG issuer                         |           |
+   |              | ID-JAG issuer; the DPoP-bound JWT     |           |
+   |              | grant supported, as the base profile  |           |
+   |              | requires for a key-bound ID-JAG       |           |
    +--------------+---------------------------------------+-----------+
 
                                  Table 4
@@ -3166,12 +3192,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 B.1.6.  WikiRAS Redeems an Ordinary ID-JAG
 
-   ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant
-   and a DPoP proof of the same key.  WikiRAS implements nothing from
-   this profile: it validates the ID-JAG as the base profile requires,
-   ignores the handle, and issues an access token without binding H1
-   (Section 5.2).  ToolGateway calls WikiAPI as Alice's wiki subject and
-   returns the result to AgentApp.
+   ToolGateway redeems the ID-JAG at WikiRAS with the DPoP-bound JWT
+   grant and a DPoP proof of the same key (Section 5.6.5).  WikiRAS
+   implements nothing from this profile: it validates the ID-JAG as the
+   base profile requires, ignores the handle, and issues an access token
+   without binding H1 (Section 5.2).  ToolGateway calls WikiAPI as
+   Alice's wiki subject and returns the result to AgentApp.
 
    Further calls to WikiAPI for Alice reuse this access token while it
    remains valid (Section 8); each further upstream a tool call needs
@@ -3256,7 +3282,7 @@ ExpenseService    Expense CAI     IdP       TravelRAS  Travel TTS/API
        |<--assertion---|           |            |             |
        |--assertion, actor, DPoP-->|            |             |
        |<--------ID-JAG H1---------|            |             |
-       |-------jwt-bearer: ID-JAG + DPoP------->| bind H1     |
+       |-------jwt-dpop: ID-JAG + DPoP--------->| bind H1     |
        |<------------------AT2------------------|             |
        |-------------call TravelAPI: AT2 + DPoP-------------->|
        |               |           |            | TT with H1 to workload
@@ -3827,6 +3853,13 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Aligned redemption of the key-bound onward ID-JAG with the base
+      profile's DPoP-bound JWT grant in RAS processing, Onward ID-JAG
+      Construction, RAS metadata, and the examples; defined act by the
+      canonical actor identity; CAI precondition 4 binds to the
+      authorization context rather than a transaction; a root ID-JAG
+      need not carry cnf.
 
    *  Fresh-eyes review fixes: qualified the single-use rationale for
       self-contained acceptance evidence; rule 4 now tests the presented
