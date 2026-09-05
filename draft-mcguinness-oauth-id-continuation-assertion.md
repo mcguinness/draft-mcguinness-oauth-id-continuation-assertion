@@ -587,9 +587,8 @@ establish a chain, the IdP MUST include the root handle in the ID-JAG. Absent
 the continuation authorization, the IdP MUST NOT establish a chain or include an
 `identity_continuation_handle`.
 
-To establish a chain, the root subject token MUST resolve to a lifecycle anchor:
-the user's active IdP session, or, for a durable chain, a refresh token's OAuth
-grant ({{lifecycle-anchors}}).
+The lifecycle anchor is the user's active IdP session or, for a durable
+chain, a refresh token's OAuth grant ({{lifecycle-anchors}}).
 
 This document places no proof-of-possession requirement on the root exchange
 beyond the one an optional `actor_token` brings with it ({{root-actor}}). The
@@ -890,7 +889,7 @@ A successful response is a Token Exchange response ({{RFC8693}}, Section
 2.2.1) in which `access_token` carries the Identity Continuation Assertion,
 `issued_token_type` is
 `urn:ietf:params:oauth:token-type:identity-continuation`, `token_type` is
-`N_A` (not applicable; {{RFC8693}}, Section 2.2.1), and `expires_in` reflects
+`N_A` (not applicable), and `expires_in` reflects
 the assertion's lifetime. This document adds one parameter:
 
 `audience`:
@@ -1287,20 +1286,19 @@ identities per target; a target for which the actor has none fails with
 On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
 {{RFC8693}}, Section 2.2.2):
 
-
 * The IdP MUST return `invalid_continuation` ({{iana}}) only when the handle is
-  permanently unusable: unknown, on an expired or ended chain, on a revoked hop
-  or ancestor, or on a chain whose continuation authorization the tenant has
-  withdrawn ({{lifecycle-ending}}).
-* The IdP SHOULD use `invalid_request` for a malformed, inconsistent, or
-  unacceptable token, including a lifetime above the maximum the IdP accepts,
-  `invalid_dpop_proof` for a DPoP failure, `unauthorized_client` for an actor
-  that current tenant policy does not permit to continue from the presented hop,
-  which leaves the chain continuable by other actors, `invalid_grant` when the
-  presented hop cannot be continued further under the chain's depth, fan-out, or
-  hop-count limits ({{lifecycle-limits}}), and `invalid_target`,
-  `invalid_scope`, or `invalid_authorization_details` for a request outside the
-  envelope.
+permanently unusable: unknown, on an expired or ended chain, on a revoked hop
+or ancestor, or on a chain whose continuation authorization the tenant has
+withdrawn ({{lifecycle-ending}}). * The IdP SHOULD use `invalid_request` for a
+malformed, inconsistent, or unacceptable token, including a lifetime above the
+maximum the IdP accepts, `invalid_dpop_proof` for a DPoP failure,
+`unauthorized_client` for an actor that current tenant policy does not permit
+to continue from the presented hop, which leaves the chain continuable by other
+actors, `invalid_grant` when the presented hop cannot be continued further
+under the chain's depth, fan-out, or hop-count limits ({{lifecycle-limits}}),
+and `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
+request outside the envelope or for a target at which the IdP can resolve no
+subject or client identity for the actor.
 
 Recovery from `invalid_continuation` requires establishing a new chain, and
 succeeds only where the governing authorization still permits continuation: a
@@ -1310,7 +1308,8 @@ a handle disabled by withdrawn continuation authorization cannot re-root at
 all.
 
 The other errors leave the chain still continuable, so the client abandons
-only the current request.
+only the current request or, for a hop at its depth bound, further
+continuation from that hop.
 
 ## Replay Reservation and Retry {#validation-replay}
 
@@ -1330,8 +1329,7 @@ one tenant collide on a reused `jti`. Without idempotent retry this needs only
 the set of (`iss`, `jti`) values presented within that window.
 
 A request that fails validation leaves the assertion unreserved and usable
-within its window; a reservation made and not completed becomes FAILED as
-described below.
+within its window.
 
 A second presentation of a reserved assertion MUST be rejected unless the IdP
 offers idempotent retry. An IdP MAY offer it by binding the reservation to a
@@ -1676,7 +1674,8 @@ induce that honest workload's continuation under the workload's own key; the
 workload's proof of possession does not prevent this, because the workload is
 the legitimate presenter. Because acceptance does not bound downstream authority
 ({{hop-activation}}), a captured root token reaches every target the envelope
-permits, not only the gateway's own scope. That is the base profile's
+permits, not only the resource the token was issued for. That is the base
+profile's
 bearer-token exposure at the ingress, not an exposure this profile creates, and
 a RAS that sender-constrains its tokens removes it. This profile adds no proof
 requirement at the root because continuation rests on the continuing actor's
@@ -2236,9 +2235,9 @@ continuation, with the envelope and any authorization details as its inputs;
 nothing in the chain itself carries purpose, and an implementation that reads
 the envelope as a complete agent authorization model is mistaken.
 
-Acceptance at a RAS is not a ceiling for later targets ({{hop-activation}}). A
-scope granted at one audience says nothing about a scope at another, so the
-accepted grant cannot serve as a ceiling for later targets. A deployment that
+Acceptance at a RAS is not a ceiling for later targets ({{hop-activation}}),
+because a scope granted at one audience says nothing about a scope at
+another. A deployment that
 wants the work itself to narrow downstream authority expresses that in the
 governing authorization, not in RAS scopes.
 
@@ -3346,6 +3345,15 @@ this profile builds.
 
 -02
 
+* Fresh-eyes review fixes: qualified the single-use rationale for
+  self-contained acceptance evidence; rule 4 now tests the presented hop's
+  own revocation; chain establishment requires a resolvable anchor and
+  otherwise issues a plain ID-JAG; error codes for a non-permitted actor, an
+  exhausted depth bound, and prohibited parameters; identity authority
+  defined for clients registered directly at the IdP; reservation timing;
+  Security Considerations aligned with CAI authority, terminal RAS bearer
+  tokens, bearer-ingress reach, and continuer widening; B.2 shows the
+  dual-use credential; gateway checklist and provisioning table completed.
 * Rewrote Section 5 in plain language with OAuth RFC structure: Establishing a
   Chain gains Root Exchange Request, Chain Establishment, Root Actor, and
   Root-Chain Envelope subsections; rationale moved to Design Rationale and
