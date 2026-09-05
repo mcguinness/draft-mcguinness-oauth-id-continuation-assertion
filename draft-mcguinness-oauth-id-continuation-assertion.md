@@ -294,15 +294,10 @@ call of step 3 are unchanged. Alice's ID Token is presented only to its issuing
 IdP, never to the gateway or the wiki, and no party other than the IdP ever
 names Alice for the wiki.
 
-Two states describe a hop. H0 is PENDING from step 1, when the IdP issues its
-ID-JAG, and ACCEPTED from step 2, when the RAS redeems the grant and binds the
-handle. The IdP is not told when that happens: acceptance is a fact held by
-the RAS, and the IdP learns of it only when the assertion issued in step 4
-reaches it in step 5. The IdP therefore accepts an assertion about a hop only
-from that hop's RAS or, where the CAI is a separate component, from a CAI it
-trusts to speak for that RAS (the issuer-trust rule of {{validation}}), and a
-hop can be continued only while such an assertion says it is still active
-({{hop-activation}}).
+The IdP is never told that a RAS redeemed a grant; the assertion of step 4 is
+how it learns that the hop was accepted and is still active. That is why it
+accepts an assertion about a hop only from that hop's RAS or from a CAI it
+trusts to speak for that RAS.
 
 {{example-gateway}} shows these same steps with every artifact spelled out.
 
@@ -3279,7 +3274,11 @@ this profile builds.
 
 -02
 
-* Made the gateway example show the floor: a root client that proves no key,
+* Reduced the Protocol Overview's closing paragraph to the one insight the
+  walk-through needs, that the IdP learns of acceptance only through the
+  assertion; the hop state names now first appear where they are defined.
+* Made the gateway example show the floor
+: a root client that proves no key,
   a bearer access token at GatewayRAS, and a continuation exchange carrying
   the client credential alone; the SaaS example keeps sender-constrained
   access tokens as the hardened variant.
