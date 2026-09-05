@@ -1934,16 +1934,17 @@ client that may redeem the grant at the target RAS. Both appear because the
 artifact this profile produces is an ID-JAG, which the base profile defines as
 a grant a registered client presents; a target RAS authenticates that client
 and applies its policy by `client_id`, and need not understand this
-continuation profile. So before
-continuing to a target, the current actor needs a client identity resolvable at
-that target's RAS ({{token-exchange}}), and the IdP places it in the onward
-ID-JAG. That is compatibility with ID-JAG, not the profile's model of
-delegation: a workload with a strong identity and key but no registration at a
-target cannot receive a grant for it because nothing there could redeem the
-grant, not because it is any less the actor. The two identifiers often
-coincide, as when a gateway registers everywhere under one name, but the
-profile keeps them distinct so that lineage records who acted while the grant
-records who may redeem.
+continuation profile. So before continuing to a target, the current actor
+needs a client identity resolvable at that target's RAS ({{token-exchange}}),
+and the IdP places it in the onward ID-JAG.
+
+That is compatibility with ID-JAG, not the profile's model of delegation: a
+workload with a strong identity and key but no registration at a target
+cannot receive a grant for it because nothing there could redeem the grant,
+not because it is any less the actor. The two identifiers often coincide, as
+when a gateway registers everywhere under one name, but the profile keeps
+them distinct so that lineage records who acted while the grant records who
+may redeem.
 
 The `may_act` claim of {{RFC8693}} does not remove the need for this profile.
 It lets an issuer state, inside a token the target already trusts, which party
@@ -1965,10 +1966,11 @@ a Transaction Token profile.
 
 The choice follows {{decision-rule}}: a pairwise-subject boundary can be
 crossed only by the IdP, which the target trusts to name the user, and IdP
-exchange permits current-state and envelope checks at every hop. Direct
-propagation instead fits deployments with a global subject,
-shared issuer trust, and no need for mid-chain IdP revocation, such as a
-single SPIFFE-style trust domain (one workload-identity namespace with no
+exchange permits current-state and envelope checks at every hop.
+
+Direct propagation instead fits deployments with a global subject, shared
+issuer trust, and no need for mid-chain IdP revocation, such as a single
+SPIFFE-style trust domain (one workload-identity namespace with no
 pairwise-subject boundary to cross). Delegated Authorization
 {{I-D.li-oauth-delegated-authorization}}, whose client-issued tokens carry no
 subject, composes with this profile as the intra-domain layer and stops where
@@ -1987,14 +1989,15 @@ acceptance evidence. Pull remains a possible companion profile.
 The signed assertion lets the CAI attest the authenticated actor, key,
 accepted hop, and any intra-domain policy checks that the IdP cannot observe:
 acceptance is a state of the RAS, and the transaction binding is domain-local,
-so the assertion is the IdP's only evidence of either. The IdP still
-authenticates each current actor and checks its authorization
+so the assertion is the IdP's only evidence of either.
+
+The IdP still authenticates each current actor and checks its authorization
 ({{client-identity}}, {{validation}}); what the assertion removes is not that
 step but any need for the IdP to reach into another domain's state. The
-assertion does not authorize target or scope. Where domain-local attestation
-is unnecessary, a recipient-bound direct grant remains a possible
-simplification, at the cost of the acceptance evidence and transaction checks
-that only a party in that domain can provide.
+assertion does not authorize target or scope ({{assertion-issuance}}). Where
+domain-local attestation is unnecessary, a recipient-bound direct grant
+remains a possible simplification, at the cost of the acceptance evidence and
+transaction checks that only a party in that domain can provide.
 
 ## Why Asymmetric Signing Only {#rationale-alg}
 
@@ -2013,24 +2016,30 @@ Continuation serves the Resource Authorization Servers that trust the common
 IdP. A target outside that circle fails in one of two ways: where the IdP
 holds no pairwise subject for it or no authorization basis covers it, the
 exchange fails with `invalid_target` (the current-actor and
-envelope-containment rules of {{validation}}); where
-the IdP could issue an ID-JAG regardless, the target rejects it, since it does
-not trust the issuer. That is the profile's edge, not a deployment error. A
-separate
-identity-chaining profile can cross it under a bilateral agreement; for
-example, a workload can present its Transaction Token to its own domain's
-authorization server under {{I-D.fletcher-transaction-token-chaining-profile}}
-for a minimized grant to the partner. The Transaction Token and the handle
-stay in the domain.
+envelope-containment rules of {{validation}}); where the IdP could issue an
+ID-JAG regardless, the target rejects it, since it does not trust the issuer.
+That is the profile's edge, not a deployment error.
+
+A separate identity-chaining profile can cross it under a bilateral
+agreement; for example, a workload can present its Transaction Token to its
+own domain's authorization server under
+{{I-D.fletcher-transaction-token-chaining-profile}} for a minimized grant to
+the partner. The Transaction Token and the handle stay in the domain.
 
 The profile's other boundary is semantic. It establishes who is continuing
-what: the user, the actor, the lineage, and the accepted authorization the
-request descends from. It does not establish why. Whether a requested action
-belongs to the work the user or tenant sanctioned is a policy question the IdP
-answers at each continuation, with the envelope and any authorization details
-as its inputs; nothing in the chain itself carries purpose, and an
-implementation that reads the envelope as a complete agent authorization model
-has read too much into it.
+what:
+
+* the user;
+* the actor;
+* the lineage; and
+* the accepted authorization the request descends from.
+
+It does not establish why. Whether a requested action belongs to the work the
+user or tenant sanctioned is a policy question the IdP answers at each
+continuation, with the envelope and any authorization details as its inputs;
+nothing in the chain itself carries purpose, and an implementation that reads
+the envelope as a complete agent authorization model has read too much into
+it.
 
 # Examples {#examples}
 
