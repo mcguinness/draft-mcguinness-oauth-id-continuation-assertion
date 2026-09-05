@@ -1227,29 +1227,26 @@ idempotency remains out of scope. Realization guidance is in {{implementation}}.
 
 A chain anchored to the user's IdP session is the core case: it lives while
 the session does. A chain anchored to a refresh token's grant is a durable
-chain: it outlives the session, which is what an unattended agent needs
-({{example-background}}), and it is the reason this document has lifetimes and
-revocation that extend past a session. The anchors, ending rules, and limits
-below apply to both forms; a reader building only session-bounded
-continuation can skip the grant-specific discussion and the background
-example, not these shared rules.
+chain that outlives the session, as an unattended agent needs
+({{example-background}}). The anchors, ending rules, and limits below apply
+to both forms; a reader building only session-bounded continuation can skip
+the grant-specific discussion and the background example, not these shared
+rules.
 
 A chain is continuable only while active at the IdP. Each cross-boundary hop
-is a fresh policy check. Revoking a hop stops its subtree at the next
-continuation, fail-closed, but does not invalidate already-issued ID-JAGs or
-access tokens. The revocation window is therefore the ID-JAG's remaining
-redemption window plus the lifetime of the access token a late redemption
-obtains; any refresh token the RAS issues, which the base profile recommends
-against, extends it further.
-
-This is the deliberate difference from an offline-attenuated token, whose
-minted child stays usable for its lifetime without contacting an authority.
+is a fresh policy check, and revoking a hop stops its subtree at the next
+continuation, fail-closed; an offline-attenuated token, by contrast, stays
+usable for its lifetime without contacting an authority. Revocation does not
+invalidate an already-issued ID-JAG, so the revocation window is the ID-JAG's
+remaining redemption window plus the lifetime of the access token a late
+redemption obtains; any refresh token the RAS issues, which the base profile
+recommends against, extends it further.
 
 Three independent lifetimes govern a continuation: the ID-JAG's short
 redemption window; the access-token lifetime the accepting RAS sets, which
-this profile does not constrain; and the IdP-held
-continuation chain. Revoking the chain does not shorten an already-issued
-access token, and an access token outliving the chain does not extend it.
+this profile does not constrain; and the IdP-held continuation chain.
+Revoking the chain does not shorten an already-issued access token, and an
+access token outliving the chain does not extend it.
 
 ~~~
 ID-JAG redeem   |==|
@@ -1284,17 +1281,20 @@ A chain ends when:
 A session-anchored chain MUST NOT outlive its session; only grant-anchored
 chains may outlive logout. Ending a chain this way bounds only new
 continuations; an ID-JAG already issued remains redeemable for its own
-lifetime, since redemption is not a continuation. The IdP ends a chain when it
-observes the withdrawal, whether through a policy event or at the next
-continuation attempt, and an ended chain stays ended: restoring the policy
-that withdrew permission does not revive it, its handles remain permanently
-unusable ({{error-response}}), and a new chain is needed. Live policy governs
-what an active chain may reach, not whether an ended one returns.
+lifetime, since redemption is not a continuation.
 
-The IdP MUST bound chain lifetime by the governing
-authorization. It MUST support administrative revocation of an entire chain
-and MAY revoke an individual hop's subtree, and MUST reject continuation on a
-revoked, expired, or ended chain.
+The IdP ends a chain when it observes the withdrawal, whether through a
+policy event or at the next continuation attempt, and an ended chain stays
+ended: restoring the policy that withdrew permission does not revive it, its
+handles remain permanently unusable ({{error-response}}), and a new chain is
+needed.
+
+The IdP has these duties over chain lifetime:
+
+* it MUST bound chain lifetime by the governing authorization;
+* it MUST support administrative revocation of an entire chain and MAY
+  revoke an individual hop's subtree; and
+* it MUST reject continuation on a revoked, expired, or ended chain.
 
 How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
@@ -1344,35 +1344,34 @@ depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
 
 A Resource Authorization Server does not list itself as a CAI for its own
 hops; the issuer-trust rule of {{validation}} accepts it directly, subject to
-the IdP's issuer
-trust ({{security-trust-model}}). It MAY advertise additional Continuation
-Assertion
-Issuers it authorizes to attest those hops, so the IdP can discover them rather
-than be configured out of band:
+the IdP's issuer trust ({{security-trust-model}}). It MAY advertise
+additional Continuation Assertion Issuers it authorizes to attest those hops,
+so the IdP can discover them rather than be configured out of band:
 
 `identity_continuation_issuers`:
 : OPTIONAL. A JSON array of additional CAI issuer identifiers, each a
-  `StringOrURI` {{RFC7519}}, that this Resource Authorization Server authorizes
-  to attest hops it accepts; an empty array authorizes no additional CAIs.
-  Values are compared with
-  the assertion `iss` as exact, case-sensitive strings, and duplicates are
-  ignored. The advertisement is a nomination only: the IdP MUST establish each
+  `StringOrURI` {{RFC7519}}, that this Resource Authorization Server
+  authorizes to attest hops it accepts; an empty array authorizes no
+  additional CAIs. Values are compared with the assertion `iss` as exact,
+  case-sensitive strings, and duplicates are ignored.
+
+  The advertisement is a nomination only: the IdP MUST establish each
   issuer's identity and signing keys independently, and the advertisement
   alone MUST NOT establish key trust or override the IdP's tenant
-  issuer-pairing policy. Because the IdP
-  evaluates issuer trust and keys against its current trusted issuer and key
-  state, removing an issuer or revoking its keys de-authorizes it for existing
-  chains.
-  Acceptance remains the IdP's decision.
+  issuer-pairing policy. Because the IdP evaluates issuer trust and keys
+  against its current trusted issuer and key state, removing an issuer or
+  revoking its keys de-authorizes it for existing chains.
 
 When a CAI's issuer identifier is that of an OAuth authorization server, the
 IdP obtains its signing keys from the `jwks_uri` in that server's metadata
 ({{RFC8414}}); a CAI without such a `jwks_uri`, like any other CAI, uses
-authenticated configuration. A RAS nomination MUST NOT by itself trigger that
-retrieval or authorize the issuer; the IdP applies its own issuer policy
-first. The IdP MUST refresh remotely obtained keys under a bounded cache
-policy, so a key removed from the JWK Set stops validating once the refresh
-takes effect.
+authenticated configuration. A RAS nomination MUST NOT by itself trigger
+that retrieval or authorize the issuer; the IdP applies its own issuer
+policy first.
+
+The IdP MUST refresh remotely obtained keys under a bounded cache policy, so
+a key removed from the JWK Set stops validating once the refresh takes
+effect.
 
 # Implementation Considerations {#implementation}
 
