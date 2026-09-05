@@ -1255,15 +1255,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    7.  *Envelope containment.* The effective authorization the IdP would
        grant, after applying any default scope and policy to the
        requested audience, resource, scopes, and authorization details,
-       is within the root-chain envelope as recorded at establishment
-       and within current IdP actor policy, and the issued ID-JAG
-       carries the scope, resource, and authorization_details values
-       that express it; a request whose effective authority cannot be
-       established within the envelope is rejected.  Authorization-
-       details containment uses the comparison rules defined for each
-       authorization-detail type, since [RFC9396] defines no generic
-       comparison, and a detail type whose rules the IdP does not
-       implement is rejected.
+       is within the root-chain envelope, that is, consistent with the
+       fixed facts of the root exchange and within the tenant policy for
+       targets, continuers, and limits as it currently applies
+       (Section 5.2), and within current IdP actor policy, and the
+       issued ID-JAG carries the scope, resource, and
+       authorization_details values that express it; a request whose
+       effective authority cannot be established within the envelope is
+       rejected.  Authorization-details containment uses the comparison
+       rules defined for each authorization-detail type, since [RFC9396]
+       defines no generic comparison, and a detail type whose rules the
+       IdP does not implement is rejected.
 
 5.7.4.  Successful Response
 
@@ -1464,7 +1466,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A session-anchored chain MUST NOT outlive its session; only grant-
    anchored chains may outlive logout.  Ending a chain this way bounds
    only new continuations; an ID-JAG already issued remains redeemable
-   for its own lifetime, since redemption is not a continuation.
+   for its own lifetime, since redemption is not a continuation.  The
+   IdP ends a chain when it observes the withdrawal, whether through a
+   policy event or at the next continuation attempt, and an ended chain
+   stays ended: restoring the policy that withdrew permission does not
+   revive it, its handles remain permanently unusable (Section 5.7.6),
+   and a new chain is needed.  Live policy governs what an active chain
+   may reach, not whether an ended one returns.
 
    The IdP MUST bound chain lifetime by the governing authorization.  It
    MUST support administrative revocation of an entire chain and MAY
@@ -3138,8 +3146,8 @@ B.3.  Background Agent Example (Scheduled Continuation)
    Compared with the SaaS chain example, this one anchors the chain to
    an OAuth grant rather than to her session and binds its root hop to
    durable, platform-owned task authorization, so that runs continue
-   after she has gone.  It also shows a target nobody named at setup
-   being refused.
+   after she has gone.  It also shows a target that tenant policy still
+   excludes being refused.
 
    Topology: separate CAI with a Transaction Token carrier.
 
@@ -3248,9 +3256,10 @@ B.3.4.  A Dynamic Target
    Suppose the platform later extends the briefing to include unread
    mail, which requires https://api.mail.example/ behind
    https://ras.mail.example/, a target nobody named when Alice created
-   the task.  Under the target entries recorded at setup, a run's
-   continuation exchange presenting H0 for that audience fails, and the
-   chain is otherwise unaffected:
+   the task.  Tenant policy for the task still permits only the Platform
+   and Calendar targets, so a run's continuation exchange presenting H0
+   for that audience fails, and the chain is otherwise unaffected; had
+   policy since added Mail, the same exchange would succeed:
 
    HTTP/1.1 400 Bad Request
    Content-Type: application/json
@@ -3268,9 +3277,9 @@ B.3.4.  A Dynamic Target
    stands at continuation time (the envelope-containment rule of
    Section 5.7.3).  The same exchange then succeeds only if read access
    to the mail service is within that policy and it permits briefing-
-   agent to reach it; a request for mail.send, outside it, fails with
-   invalid_scope.  A target-specific failure leaves the chain
-   continuable for other authorized targets.
+   agent to reach it; a request for mail.send, which that policy still
+   excludes, fails with invalid_scope.  A target-specific failure leaves
+   the chain continuable for other authorized targets.
 
 B.3.5.  What Differs from the SaaS Chain Example
 

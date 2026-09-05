@@ -2778,8 +2778,10 @@ different fingerprint, or a FAILED <code>jti</code>, is rejected;<a href="#secti
               <p id="section-5.7.3-2.7.1"><strong>Envelope containment.</strong> The effective authorization the IdP would grant,
 after applying any default scope and policy to the requested audience,
 resource, scopes, and authorization details, is within the root-chain
-envelope as recorded at establishment and within current IdP actor policy,
-and the issued ID-JAG carries the <code>scope</code>, <code>resource</code>, and
+envelope, that is, consistent with the fixed facts of the root exchange
+and within the tenant policy for targets, continuers, and limits as it
+currently applies (<a href="#root-establishment" class="auto internal xref">Section 5.2</a>), and within current IdP actor
+policy, and the issued ID-JAG carries the <code>scope</code>, <code>resource</code>, and
 <code>authorization_details</code> values that express it; a request whose effective
 authority cannot be established within the envelope is rejected.
 Authorization-details containment uses the comparison rules defined for
@@ -3007,7 +3009,12 @@ rotation of a refresh token does not affect the grant anchor.<a href="#section-6
 <p id="section-6-8">A session-anchored chain <span class="bcp14">MUST NOT</span> outlive its session; only grant-anchored
 chains may outlive logout. Ending a chain this way bounds only new
 continuations; an ID-JAG already issued remains redeemable for its own
-lifetime, since redemption is not a continuation.<a href="#section-6-8" class="pilcrow">¶</a></p>
+lifetime, since redemption is not a continuation. The IdP ends a chain when it
+observes the withdrawal, whether through a policy event or at the next
+continuation attempt, and an ended chain stays ended: restoring the policy
+that withdrew permission does not revive it, its handles remain permanently
+unusable (<a href="#error-response" class="auto internal xref">Section 5.7.6</a>), and a new chain is needed. Live policy governs
+what an active chain may reach, not whether an ended one returns.<a href="#section-6-8" class="pilcrow">¶</a></p>
 <p id="section-6-9">The IdP <span class="bcp14">MUST</span> bound chain lifetime by the governing
 authorization. It <span class="bcp14">MUST</span> support administrative revocation of an entire chain
 and <span class="bcp14">MAY</span> revoke an individual hop's subtree, and <span class="bcp14">MUST</span> reject continuation on a
@@ -5028,7 +5035,7 @@ continuation actors above the root actor, before the terminal hop.<a href="#appe
 with the SaaS chain example, this one anchors the chain to an OAuth grant
 rather than to her session and binds its root hop to durable, platform-owned
 task authorization, so that runs continue after she has gone. It also shows a
-target nobody named at setup being refused.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+target that tenant policy still excludes being refused.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.3-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.3-3.1">
@@ -5158,9 +5165,10 @@ descendant, of the previous run's child.<a href="#appendix-B.3.3-2" class="pilcr
           </h4>
 <p id="appendix-B.3.4-1">Suppose the platform later extends the briefing to include unread mail,
 which requires <code>https://api.mail.example/</code> behind <code>https://ras.mail.example/</code>,
-a target nobody named when Alice created the task. Under the target entries
-recorded at setup, a run's continuation exchange presenting H0 for that
-audience fails, and the chain is otherwise unaffected:<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
+a target nobody named when Alice created the task. Tenant policy for the task
+still permits only the Platform and Calendar targets, so a run's continuation
+exchange presenting H0 for that audience fails, and the chain is otherwise
+unaffected; had policy since added Mail, the same exchange would succeed:<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.3.4-2">
 <pre>
 HTTP/1.1 400 Bad Request
@@ -5179,8 +5187,8 @@ agent read access to productivity services, and the IdP evaluates each dynamic
 target against that policy as it stands at continuation time (the
 envelope-containment rule of <a href="#validation" class="auto internal xref">Section 5.7.3</a>). The same exchange then succeeds
 only if read access to the mail service is within that policy and it permits
-<code>briefing-agent</code> to reach it; a request for <code>mail.send</code>, outside it, fails
-with <code>invalid_scope</code>. A target-specific failure leaves the chain continuable
+<code>briefing-agent</code> to reach it; a request for <code>mail.send</code>, which that policy
+still excludes, fails with <code>invalid_scope</code>. A target-specific failure leaves the chain continuable
 for other authorized targets.<a href="#appendix-B.3.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
