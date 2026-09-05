@@ -225,7 +225,8 @@ Four parties take part:
 * The workload is a service that received a request for Alice and must now
   call a further API for her. Here it is the gateway.
 * A Continuation Assertion Issuer (CAI) vouches, within the gateway's trust
-  domain, that the gateway is entitled to continue Alice's request. In the
+  domain, that the gateway holds an accepted, still-active authorization for
+  Alice's request and is the party asking to continue it. In the
   baseline deployment, and in this walk-through, the gateway's RAS also
   performs this role, so no separate component is needed.
 
@@ -755,6 +756,14 @@ CAI MUST set the assertion's `aud` to the IdP recorded in the hop's RAS binding
 ({{ras-processing}}); it MUST NOT accept an IdP audience supplied by the
 requester.
 
+The CAI attests facts about its own domain: that the RAS accepted the hop,
+that RAS state still shows the hop active and continuable, and that the
+authenticated actor proving a key is the party handling the request that hop
+authorized. Whether that actor may continue, and to what, is the IdP's
+decision under the envelope ({{root-establishment}}, {{validation}}). A CAI
+may decline to issue under its domain's policy, but its issuing never
+authorizes anything; it only makes the IdP's decision possible.
+
 The current actor is a control-plane participant, not a bare-handle
 transporter: the CAI obtains the handle from authenticated state associated
 with the actor's transaction, and the actor separately proves the key placed in
@@ -832,32 +841,34 @@ The CAI MUST verify that the `subject_token` is one of the following:
 Either way, the authorization behind the token is the one the preconditions
 ({{assertion-preconditions}}) test: the token's integrity protection and the
 authenticated request satisfy precondition 1, the authenticated client is the
-actor of preconditions 2 and 4, the DPoP key is the key of precondition 3, and
-the bound handle and live state satisfy preconditions 5 and 6.
+actor of precondition 3, the DPoP key is the key of precondition 2, and the
+bound handle and live state satisfy preconditions 4 and 5.
 
 ### Preconditions {#assertion-preconditions}
 
-The CAI MUST authenticate the actor and issue only after establishing that:
+The CAI MUST authenticate the actor and issue only after establishing these
+facts:
 
 1. the handle came through an authenticated, confidential,
    integrity-protected chain path or equivalent authenticated state;
 
-2. the current actor is authorized under CAI policy to continue the chain;
+2. the current actor controls the key placed in `cnf`;
 
-3. the current actor controls the key placed in `cnf`;
-
-4. `act` names that actor and, if offline attenuation reached the actor, the
+3. `act` names that actor and, if offline attenuation reached the actor, the
    attenuated credential it received is valid ({{decision-rule}});
 
-5. the actor is bound to the current transaction and the handle matches that
+4. the actor is bound to the current transaction and the handle matches that
    transaction's RAS-bound state; and
 
-6. a recheck against authoritative RAS state, whatever the carrier, confirms
-   the authorization remains active and continuation remains permitted.
+5. a recheck against authoritative RAS state, whatever the carrier, confirms
+   the authorization remains active and its binding still records
+   continuation as permitted.
 
-Possession of a handle or carrier token alone is insufficient. Target or
-purpose hints can narrow CAI issuance but MUST NOT control the IdP's target
-decision, and propagated context MUST NOT override the envelope.
+Possession of a handle or carrier token alone is insufficient. A domain may
+add its own conditions for issuing, for example limiting which of its
+workloads may obtain assertions, but such conditions narrow issuance only.
+Target or purpose hints can narrow CAI issuance but MUST NOT control the IdP's
+target decision, and propagated context MUST NOT override the envelope.
 
 ### Successful Response {#assertion-response}
 
@@ -906,7 +917,7 @@ On failure, the CAI returns an OAuth error ({{RFC6749}}, Section 5.2;
 * `invalid_request` when the `subject_token` is invalid or unacceptable under
   policy, including when it is unknown, expired, revoked, not valid for a
   resource the client operates, has no bound handle, or names an authorization
-  the client is not permitted to continue;
+  whose binding does not record continuation as permitted;
 * `unauthorized_client` when the client is not permitted to use this grant
   type; and
 * `invalid_dpop_proof` ({{RFC9449}}) for a failed proof.
@@ -2053,12 +2064,12 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 The exchanges below presuppose the following configuration. Every item is an
 ordinary OAuth or ID-JAG registration except the three the profile adds: the
 IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
-GatewayRAS's assertion policy.
+GatewayRAS's advertisement of the continuation profile.
 
 | Party | Provisioned before the flow | Specified in |
 |---|---|---|
 | IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor-token issuer pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
-| GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates; policy permitting `tool-gateway` to obtain assertions for hops bound to the access tokens it presents | {{metadata-ras}}, {{assertion-preconditions}} |
+| GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates, which is what lets it obtain assertions for hops bound to access tokens presented to that resource | {{metadata-ras}}, {{assertion-preconditions}} |
 | `tool-gateway` | one key pair, used for its credential's `cnf`, its DPoP proofs, and the assertion's `cnf`; a credential issued at `https://gateway.example/` | {{client-identity}} |
 | WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer | base profile |
 
@@ -2252,7 +2263,7 @@ assertion's `cnf`, and is not matched against the token's own `cnf`
 GatewayRAS confirms the token is its own, unexpired, and addressed to
 `https://gateway.example/`, the resource `tool-gateway` is registered to
 operate; reads H0 from it and rechecks that the binding is still active;
-confirms that policy permits `tool-gateway` to continue; and issues the
+confirms that the binding records continuation as permitted; and issues the
 assertion bound to the proven key.
 
 On the wire (issuance response):
@@ -2612,8 +2623,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 ~~~
 
 Expense CAI verifies the Transaction Token for its domain, reads H0 from it,
-rechecks with ExpenseRAS that the binding is still active, confirms policy
-permits `expense-service` to continue, and issues the assertion. The IdP
+rechecks with ExpenseRAS that the binding is still active and records
+continuation as permitted, and issues the assertion. The IdP
 accepts Expense CAI's assertions for hops ExpenseRAS accepts because it trusts
 Expense CAI for that RAS, through `identity_continuation_issuers` or tenant
 configuration, and independently trusts its issuer, keys, tenant, and
@@ -2998,6 +3009,11 @@ this profile builds.
 
 -02
 
+* Narrowed the CAI contract to attested facts: the RAS accepted the hop,
+  RAS state still shows it continuable, and the authenticated actor proving a
+  key is the party handling that request; dropped the "authorized under CAI
+  policy" precondition, leaving a domain free to narrow issuance, and moved
+  every decision about who may continue and to what to the IdP.
 * Opened the Introduction with the three core properties the protocol rests
   on and stated what continuation does not prove; named co-located as the
   baseline deployment and a separate CAI as advanced, with the same exchange
