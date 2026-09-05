@@ -131,6 +131,29 @@ so this is not attenuated delegation in which each service forwards a subset
 of what it received. Continuation therefore stays a fresh policy decision at
 every boundary, never a bearer of standing authority.
 
+Three properties are at the core of the protocol:
+
+1. Only the IdP names the user for a new audience.
+2. Only an accepted authorization may be continued.
+3. Only an authenticated actor that the IdP permits to continue from that
+   accepted authorization, and that proves possession of its own key, may
+   request continuation.
+
+The IdP establishes the first by minting every ID-JAG itself. The RAS
+establishes the second by binding the handle when it accepts a grant. For the
+third, the CAI's assertion, the actor's client authentication, and its proof
+of possession establish who is asking, and the IdP's envelope decides whether
+that actor may continue. The actor need not be the party the incoming token
+was bound to: a gateway continues from a token bound to the application that
+called it, proving its own key. Each continuation also passes the IdP's policy
+decision on the requested target ({{validation}}).
+
+Continuation proves continuity of delegated identity and of authorization
+ancestry. It does not establish that an onward action is part of the work the
+user or tenant sanctioned; that is the IdP's policy decision at each
+continuation, expressed through the envelope and, where a deployment uses
+them, authorization details {{RFC9396}} ({{rationale-boundary}}).
+
 This profile is an opt-in extension to ID-JAG. A root client whose exchange
 already carries a DPoP proof and a subject token that resolves to a grant or
 session ({{root-establishment}}) keeps that exchange unchanged. A RAS from
@@ -203,7 +226,7 @@ Four parties take part:
   call a further API for her. Here it is the gateway.
 * A Continuation Assertion Issuer (CAI) vouches, within the gateway's trust
   domain, that the gateway is entitled to continue Alice's request. In the
-  simplest deployment, and in this walk-through, the gateway's RAS also
+  baseline deployment, and in this walk-through, the gateway's RAS also
   performs this role, so no separate component is needed.
 
 The steps are numbered as in the figure. Steps marked "as in ID-JAG" are
@@ -344,7 +367,8 @@ Trust domain:
 
 Continuation Handle (`identity_continuation_handle`):
 : An opaque, unguessable, IdP-generated reference to one hop of a continuation
-  chain; see {{chain-id}}.
+  chain. It correlates a request with the IdP's state for that hop and confers
+  no authority by itself ({{chain-id}}).
 
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, holding an
@@ -535,9 +559,10 @@ How a workload obtains an assertion other than by the exchange of step 4, and
 how the bound handle reaches a separate CAI inside the RAS's trust domain, are
 deployment-specific, subject to the provenance rule in {{handle-propagation}}.
 
-The accepting RAS may itself hold the CAI role (co-located), as in
-{{protocol-overview}}, or a separate CAI may hold it (separate); see
-{{deployment-topologies}}. Each role validates only within its authority, and
+The baseline deployment is co-located: the accepting RAS is also the CAI, as
+in {{protocol-overview}}. A separate CAI is an advanced deployment for a domain
+that centralizes continuation issuance ({{deployment-topologies}}). Each role
+validates only within its authority, and
 no artifact or role alone authorizes continuation ({{security-trust-model}}).
 
 ## Establishing a Chain {#root-establishment}
@@ -1120,7 +1145,8 @@ changing the depth bound the IdP enforces (the chain-state rule of
 {{validation}}). Because
 policy may narrow the disclosed lineage, a Resource Authorization Server
 MUST NOT read the absence of a further nested `act` as proof that no earlier
-actor exists. The following is a
+actor exists. `act` is disclosed lineage, not the authoritative history, which
+only the IdP's hop records hold. The following is a
 non-normative example of the onward ID-JAG issued by the IdP:
 
 ~~~ json
@@ -1376,8 +1402,9 @@ and local revocation after an assertion has been issued.
 | Co-located | the accepting RAS | read from RAS state | one operator runs the domain |
 | Separate | a separate CAI the IdP trusts for the RAS | a carrier inside the domain | the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation |
 
-Co-located is the default: it needs no CAI configuration at the IdP beyond the
-RAS's own issuer trust and no self-entry in `identity_continuation_issuers`.
+Co-located is the baseline: it needs no CAI configuration at the IdP beyond
+the RAS's own issuer trust and no self-entry in
+`identity_continuation_issuers`.
 The RAS still advertises the continuation
 profile ({{metadata}}), and the IdP still holds the RAS's issuer, key, tenant,
 and issuer-pairing trust ({{security-trust-model}}). Both topologies produce
@@ -1385,7 +1412,11 @@ the same Identity Continuation Assertion and apply the same CAI requirements;
 they differ only in how the CAI reaches the accepted hop's state. Either CAI
 can issue the assertion from its token endpoint ({{assertion-token-exchange}}):
 a co-located RAS takes the access token it issued as the `subject_token`, and a
-separate CAI takes the token that carries the handle.
+separate CAI takes the token that carries the handle. Both topologies make the
+same three exchanges per continuation, the assertion exchange, the
+continuation exchange, and the redemption; co-location removes configuration
+and trust surface, not calls, while a separate CAI adds the carrier and the
+state lookup behind it.
 
 A carrier serves either topology. A co-located RAS may place the handle in
 its own access token as a key into its state, as the gateway example does
@@ -1582,7 +1613,10 @@ supplies. The IdP MUST reject any mismatch between the current actor and the
 assertion's `act`.
 Because lineage derives from IdP-held state rather than assertion input, a
 party cannot rewrite history it does not control; offline-attenuation
-segments, which the IdP does not observe, do not enter lineage.
+segments, which the IdP does not observe, do not enter lineage. Lineage is
+also disclosed, not exhaustive: policy may narrow it ({{onward-id-jag}}), so a
+rule such as "deny if a given actor ever participated" cannot be enforced from
+`act` alone.
 
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
@@ -1936,13 +1970,22 @@ authorization server under {{I-D.fletcher-transaction-token-chaining-profile}}
 for a minimized grant to the partner. The Transaction Token and the handle
 stay in the domain.
 
+The profile's other boundary is semantic. It establishes who is continuing
+what: the user, the actor, the lineage, and the accepted authorization the
+request descends from. It does not establish why. Whether a requested action
+belongs to the work the user or tenant sanctioned is a policy question the IdP
+answers at each continuation, with the envelope and any authorization details
+as its inputs; nothing in the chain itself carries purpose, and an
+implementation that reads the envelope as a complete agent authorization model
+has read too much into it.
+
 # Examples {#examples}
 
 This non-normative appendix illustrates three deployment shapes: a tool
 gateway that selects its upstream at request time ({{example-gateway}}),
 a SaaS chain across three domains with separate CAIs ({{example}}), and an
 unattended background agent ({{example-background}}). The gateway example
-comes first because it is the simplest deployment: one domain runs RAS and
+comes first because it is the baseline deployment: one domain runs RAS and
 CAI together, and the handle travels in the access token.
 
 Message sequences are vertical lifelines with time flowing downward. The
@@ -1962,7 +2005,7 @@ gateway decides at request time which upstream API a tool call needs, here a
 wiki, so AgentApp knows the gateway's audience but not the eventual upstream,
 and the gateway holds no assertion of Alice's identity addressed to it. This
 example shows the gateway obtaining an audience-specific ID-JAG for the wiki
-without ever seeing Alice's credential. It is the simplest deployment of this
+without ever seeing Alice's credential. It is the baseline deployment of this
 profile and the one a gateway vendor implements.
 
 Topology: co-located. GatewayRAS is the Resource Authorization Server (RAS)
@@ -2955,6 +2998,11 @@ this profile builds.
 
 -02
 
+* Opened the Introduction with the three core properties the protocol rests
+  on and stated what continuation does not prove; named co-located as the
+  baseline deployment and a separate CAI as advanced, with the same exchange
+  count in both; said that the handle correlates state and confers nothing
+  and that `act` is disclosed lineage, not authoritative history.
 * Aligned the envelope with ID-JAG's policy model: the facts of the root
   exchange are fixed, tenant policy for targets, continuers, and limits
   applies as it stands at each continuation in either direction, and
