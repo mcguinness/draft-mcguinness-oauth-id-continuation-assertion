@@ -1827,10 +1827,10 @@ chain and bounds every continuation under it (<a href="#lifecycle" class="auto i
         <dd style="margin-left: 1.5em" id="section-2-3.30">
           <p id="section-2-3.30.1">What the IdP evaluates every continuation against. It has two parts: the
 chain identity, the facts of the root exchange, fixed at establishment; and
-the continuation authorization, the targets, continuers, and limits the IdP
-recorded at establishment, which later policy may narrow at any
-continuation but widens only through a recorded authorization basis
-(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+the continuation authorization, the onward targets, continuers, and limits
+the IdP recorded at establishment and evaluates under tenant policy as it
+stands, except that targets widen only through a recorded authorization
+basis (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.31">Authorization basis:</dt>
@@ -2154,14 +2154,15 @@ user authorizes each grant; how a change reaches a running chain depends on
 the form the IdP recorded.<a href="#section-5.1-8" class="pilcrow">¶</a></p>
 <p id="section-5.1-9">A policy change that narrows a chain, a target or continuer withdrawn or a
 limit tightened, takes effect at the next continuation whichever form the
-envelope takes (the envelope-containment rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>). A policy
-change widens a chain only through an authorization basis: an envelope that
+envelope takes (the envelope-containment rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>). Continuers
+and limits are tenant controls read as policy stands in either direction.
+Target authority widens only through an authorization basis: an envelope that
 enumerates its targets <span class="bcp14">MUST NOT</span> admit a target the tenant adds after
 establishment (<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>), while a basis-referenced envelope admits
-whatever the basis currently reads, such as a service's classification
-or a group's membership (<a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>). The effective authority at
-any continuation is therefore the recorded continuation authorization
-evaluated under current policy, never more.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
+whatever the basis currently reads, such as a service's classification or a
+group's membership (<a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>). The effective authority at any
+continuation is therefore the recorded continuation authorization evaluated
+under current policy, never more.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
 <p id="section-5.1-10">What the root request asked for is not a ceiling either: its audience and
 scope bound only the root ID-JAG.<a href="#section-5.1-10" class="pilcrow">¶</a></p>
 <p id="section-5.1-11">The root actor is the authenticated OAuth client; its identity rests entirely
@@ -3417,15 +3418,15 @@ attenuation segment (<a href="#assertion-issuance" class="auto internal xref">Se
 envelope. Because the assertion is target-agnostic, a permitted actor may
 select any target within that ceiling.<a href="#section-9.2-1" class="pilcrow">¶</a></p>
 <p id="section-9.2-2">An envelope that records an authorization basis instead of listing targets
-(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) admits every target the basis permits at request
-time; how broad that is depends on the policy the basis references. A gateway that
+(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) admits every target the basis permits at request time;
+how broad that is depends on the policy the basis references. A gateway that
 chooses its upstream at request time is the intended case and also a
 confused-deputy surface, since a compromised or misdirected workload can steer
 continuation to any target the basis admits.<a href="#section-9.2-2" class="pilcrow">¶</a></p>
 <p id="section-9.2-3">The IdP's per-target evaluation, the tenant policy that forms the basis, and
 the per-authorization fan-out limits bound the damage; a deployment whose
 targets are known at establishment gains more protection by enumerating them,
-since an enumerated envelope never widens (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-9.2-3" class="pilcrow">¶</a></p>
+since an enumerated envelope never gains a target (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-9.2-3" class="pilcrow">¶</a></p>
 <p id="section-9.2-4">Reclassifying a service changes the authority of every open chain whose basis
 reads that classification (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>), so a basis should name a
 class the tenant manages for this purpose, such as services marked eligible
@@ -5356,7 +5357,8 @@ which requires <code>https://api.mail.example/</code> behind <code>https://ras.m
 a target nobody named when Alice created the task. The envelope enumerates the
 Platform and Calendar targets, so a run's continuation exchange presenting H0
 for that audience fails, and adding Mail to tenant policy afterward does not
-change that: an enumerated envelope never widens (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
+change that: an enumerated envelope never gains a target
+(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B.3.4-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.3.4-2">
 <pre>
 HTTP/1.1 400 Bad Request
@@ -5512,8 +5514,8 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
           <p id="appendix-E-3.1.1">Named the two parts of the root-chain envelope, chain identity and
 continuation authorization, defined the authorization basis as a policy
 reference, and specified that policy narrows a running chain in either
-form but widens it only through a recorded basis; stated in Hop Activation
-why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+form but widens its targets only through a recorded basis; stated in Hop
+Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
           <p id="appendix-E-3.2.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
