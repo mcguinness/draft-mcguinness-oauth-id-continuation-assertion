@@ -1461,13 +1461,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 6.  Chain Lifetime and Revocation
 
    A chain anchored to the user's IdP session is the core case: it lives
-   while the session does, and continuation within it needs nothing in
-   this section beyond the ending rules.  A chain anchored to a refresh
-   token's grant is a durable chain: it outlives the session, which is
-   what an unattended agent needs (Appendix B.3), and it is the reason
-   this document has lifetimes, revocation, and budgets that extend past
-   a session.  A reader building session-bounded continuation can stop
-   after Section 6.2.
+   while the session does.  A chain anchored to a refresh token's grant
+   is a durable chain: it outlives the session, which is what an
+   unattended agent needs (Appendix B.3), and it is the reason this
+   document has lifetimes and revocation that extend past a session.
+   The anchors, ending rules, and limits below apply to both forms; a
+   reader building only session-bounded continuation can skip the grant-
+   specific discussion and the background example, not these shared
+   rules.
 
    A chain is continuable only while active at the IdP.  Each cross-
    boundary hop is a fresh policy check.  Revoking a hop stops its
@@ -1656,17 +1657,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    a credential from the wrong tenant, and local revocation after an
    assertion has been issued.
 
-   The hop tree need not be a persisted table.  An IdP can defer
-   materializing chain state until the first continuation, provided the
-   handle still resolves to the same root and envelope, and it can go
-   further: a handle can be a self-describing commitment only the IdP
-   can verify, carrying the root, parent, RAS, and actor, so that the
-   IdP keeps centrally only root state, revocation, and the replay
-   reservations.  The trade is that revoking one hop's subtree then
-   needs a revocation list rather than a row update, and the commitment
-   must stay opaque and unlinkable (Section 4, Section 10).  Neither
-   realization relaxes the reservation durability of Section 5.8
-   (Appendix C).
+   An IdP can defer materializing chain state until the first
+   continuation, provided the handle still resolves to the same root and
+   envelope; deferral does not relax the reservation durability of
+   Section 5.8.  Whether the hop tree could be replaced by self-
+   verifying handles is an open question (Appendix C), not a realization
+   this document describes.
 
 8.1.  Deployment Topologies
 
@@ -3466,10 +3462,16 @@ Appendix C.  Open Items for Working Group Discussion
        with session-bounded continuation, or does one document with a
        stoppable core serve implementers better?
 
-   6.  *Stateless hop commitments.* Could handles be self-verifying
-       commitments so that the IdP keeps only root, revocation, and
-       reservation state (Section 8), and what does that cost in subtree
-       revocation and unlinkability?
+   6.  *Stateless hop commitments.* Could a handle be a self-verifying
+       commitment carrying the root, parent, RAS, and actor, so that the
+       IdP keeps only root, revocation, and reservation state?  The
+       proposal must show how the IdP recovers a hop's ancestry when the
+       parent record no longer exists, since lineage is derived by
+       walking parent references and an ancestor's revocation must be
+       detectable (Section 5.7.5, Section 6); how it does so within the
+       handle's 256-character bound (Section 4) without embedding
+       commitments recursively; and what a revocation list costs in
+       subtree revocation and unlinkability (Section 10).
 
    Further questions are tracked in the project's issue list rather than
    expanded here: nested own-domain act segments and offline-actor audit
@@ -3494,11 +3496,10 @@ Document History
 
    *  Gathered durable-chain material into Chain Lifetime and
       Revocation, with anchors, ending, and limits as subsections and a
-      lead that lets a reader of session-bounded continuation stop
-      early; moved the anchor list and the cross-chain limits there from
-      Establishing a Chain; described stateless hop commitments as a
-      realization; opened two questions on document factoring and
-      stateless commitments.
+      lead that separates the shared rules from the grant-specific
+      discussion; moved the anchor list and the cross-chain limits there
+      from Establishing a Chain; opened two questions on document
+      factoring and stateless hop commitments.
 
    *  Added a Design Rationale subsection separating actor identity
       (act) from the target's client_id and explaining why may_act does
