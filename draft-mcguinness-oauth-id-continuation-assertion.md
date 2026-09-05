@@ -689,7 +689,7 @@ values carried on the wire.
 
 | State | Where it lives | Meaning |
 |---|---|---|
-| PENDING | IdP | the IdP issued the ID-JAG but has no acceptance evidence |
+| PENDING | IdP | the IdP issued the ID-JAG and has not yet received an attestation of acceptance |
 | ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
 
 A CAI attests a hop only once it is ACCEPTED. A PENDING hop yields no
@@ -1062,12 +1062,12 @@ no transformation or canonicalization ({{RFC7519}}): the assertion's `act`,
 and the identity in any `actor_token`, are each compared with the canonical
 actor identity, and identities in different tenants never compare equal.
 
-The actor MUST prove possession of the key in `cnf`; for the `jkt` method,
-that proof is a DPoP proof {{RFC9449}}. The IdP MUST bind the onward ID-JAG to
-a key the actor proves in the request. DPoP is the only confirmation method
-this version defines, so the target validates confirmation identically to a
-directly issued ID-JAG; a mutual-TLS method {{RFC8705}} is an open question
-({{open-items}}).
+The actor MUST prove possession of the key in `cnf`; for the `jkt` method, that
+proof is a DPoP proof {{RFC9449}}. The IdP MUST bind the onward ID-JAG to a key
+the actor proves in the request. DPoP is the only confirmation method this
+version defines, so a target validates the onward ID-JAG's confirmation with the
+DPoP mechanics it already implements ({{RFC9449}}); a mutual-TLS method
+{{RFC8705}} is an open question ({{open-items}}).
 
 A request carries one DPoP proof, so that key is the assertion's `cnf` key,
 any `actor_token` is bound to it as well, and the actor's credential, the
@@ -1645,8 +1645,8 @@ adversaries:
 * a malicious Resource Server or audience attempting cross-domain correlation,
   or metadata that discloses deployment structure ({{privacy}},
   {{security-metadata}}); and
-* a faulty carrier or RAS state lookup ({{security-envelope}},
-  {{security-trust-model}}).
+* a faulty carrier or RAS state lookup ({{handle-propagation}},
+  {{security-topology}}).
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
@@ -1656,19 +1656,23 @@ transit, from a log, or from a compromised intermediary, continue the chain as
 that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
 every exchange requires live proof of possession of the `cnf` key, a DPoP proof
 {{RFC9449}} for the method this document defines ({{client-identity}}). A
-captured assertion is therefore useless without the private key, and because
-the onward ID-JAG is bound to the same proven key ({{client-identity}}) and the
-next RAS binds its access token to that key ({{ras-processing}}), possession is
-demonstrated continuously from the first continuation on, not once at issuance.
+captured assertion is therefore useless without the private key, and because the
+onward ID-JAG is bound to the same proven key ({{client-identity}}) and a
+continuation-aware RAS binds its access token to that key ({{ras-processing}}),
+possession is demonstrated continuously from the first continuation on, not once
+at issuance. A terminal RAS runs the base profile and may issue a bearer token;
+the chain ends there.
 
 The root hop is different. The root ID-JAG carries no `cnf`, and its RAS
-sender-constrains the access token by its own policy, so a root hop may issue
-a bearer token. A party that captures such a token can call the workload and
-so induce that honest workload's continuation under the workload's own key;
-the workload's proof of possession does not prevent this, because the
-workload is the legitimate presenter. That is the base profile's bearer-token
-exposure at the ingress, not an exposure this profile creates, and a RAS that
-sender-constrains its tokens removes it. This profile adds no proof
+sender-constrains the access token by its own policy, so a root hop may issue a
+bearer token. A party that captures such a token can call the workload and so
+induce that honest workload's continuation under the workload's own key; the
+workload's proof of possession does not prevent this, because the workload is
+the legitimate presenter. Because acceptance does not bound downstream authority
+({{hop-activation}}), a captured root token reaches every target the envelope
+permits, not only the gateway's own scope. That is the base profile's
+bearer-token exposure at the ingress, not an exposure this profile creates, and
+a RAS that sender-constrains its tokens removes it. This profile adds no proof
 requirement at the root because continuation rests on the continuing actor's
 key, the RAS binding, and the CAI's attestation, not on the root client's key.
 
@@ -1709,14 +1713,19 @@ reads that classification ({{root-establishment}}), so a basis should name a
 class the tenant manages for this purpose, such as services marked eligible
 for agent continuation, rather than an ambient classification.
 
+Continuers and limits are read as policy stands ({{root-establishment}}), so
+adding a continuer admits a new actor into every running chain that policy
+governs. A tenant manages that list with the same care as a basis.
+
 Wrong-handle association can continue the wrong user's bounded chain. The
 RAS-bound state establishes the authoritative association between the request
 and the handle, whether the CAI reads it directly or through a carrier derived
 from that state ({{handle-propagation}}); the CAI rejects substitution
 ({{assertion-preconditions}}).
 
-Keeping CAI issuance in-domain ({{assertion-issuance}}) prevents a
-handle-holding party from bypassing the RAS-acceptance path.
+Because the CAI issues only for an actor it is authoritative to associate with
+the accepted authorization ({{assertion-issuance}}), a party that merely holds a
+handle cannot bypass the RAS-acceptance path.
 
 A CAI MUST derive a scheduled continuation from durable RAS task
 authorization, not from a scheduler-held handle, which would become a durable
@@ -2222,11 +2231,11 @@ nothing in the chain itself carries purpose, and an implementation that reads
 the envelope as a complete agent authorization model has read too much into
 it.
 
-Acceptance at a RAS gates continuation but does not bound downstream authority
-({{hop-activation}}). A scope granted at one audience says nothing about a
-scope at another, so the accepted grant cannot serve as a ceiling for later
-targets. A deployment that wants the work itself to narrow downstream authority
-expresses that in the governing authorization, not in RAS scopes.
+Acceptance at a RAS is not a ceiling for later targets ({{hop-activation}}). A
+scope granted at one audience says nothing about a scope at another, so the
+accepted grant cannot serve as a ceiling for later targets. A deployment that
+wants the work itself to narrow downstream authority expresses that in the
+governing authorization, not in RAS scopes.
 
 ## The Test for a Requirement {#rationale-invariants}
 
