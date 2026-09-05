@@ -1014,9 +1014,10 @@ resolves to its canonical actor identity. The canonical actor identity is the
 (`iss`, `sub`) pair the IdP holds for that client. Its `iss` is the actor's
 identity authority, and issuer pairing ({{validation}},
 {{security-trust-model}}) is defined against that authority, not against
-whichever parameter carried the credential. For a client authenticated with a
-credential the IdP itself issued or registered directly, such as a client secret
-or a mutual-TLS certificate, the identity authority is the IdP's own issuer
+whichever parameter carried the credential. Where the IdP's registration of
+the client supplies no other canonical actor identity, for example a client
+authenticated with a client secret or a mutual-TLS certificate and registered
+without a workload identity, the identity authority is the IdP's own issuer
 identifier and `sub` is the `client_id`.
 
 The IdP MUST derive that pair from its registration of the client or its
@@ -1287,18 +1288,19 @@ On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
 {{RFC8693}}, Section 2.2.2):
 
 * The IdP MUST return `invalid_continuation` ({{iana}}) only when the handle is
-permanently unusable: unknown, on an expired or ended chain, on a revoked hop
-or ancestor, or on a chain whose continuation authorization the tenant has
-withdrawn ({{lifecycle-ending}}). * The IdP SHOULD use `invalid_request` for a
-malformed, inconsistent, or unacceptable token, including a lifetime above the
-maximum the IdP accepts, `invalid_dpop_proof` for a DPoP failure,
-`unauthorized_client` for an actor that current tenant policy does not permit
-to continue from the presented hop, which leaves the chain continuable by other
-actors, `invalid_grant` when the presented hop cannot be continued further
-under the chain's depth, fan-out, or hop-count limits ({{lifecycle-limits}}),
-and `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for a
-request outside the envelope or for a target at which the IdP can resolve no
-subject or client identity for the actor.
+  permanently unusable: unknown, on an expired or ended chain, on a revoked hop
+  or ancestor, or on a chain whose continuation authorization the tenant has
+  withdrawn ({{lifecycle-ending}}).
+* The IdP SHOULD use `invalid_request` for a malformed, inconsistent, or
+  unacceptable token, including a lifetime above the maximum the IdP accepts,
+  `invalid_dpop_proof` for a DPoP failure, `unauthorized_client` for an actor
+  that current tenant policy does not permit to continue from the presented
+  hop, which leaves the chain continuable by other actors, `invalid_grant` when
+  the continuation would exceed the chain's depth, fan-out, or hop-count limits
+  ({{lifecycle-limits}}), and `invalid_target`, `invalid_scope`, or
+  `invalid_authorization_details` for a request outside the envelope or for a
+  target at which the IdP can resolve no subject or client identity for the
+  actor.
 
 Recovery from `invalid_continuation` requires establishing a new chain, and
 succeeds only where the governing authorization still permits continuation: a
@@ -1308,8 +1310,10 @@ a handle disabled by withdrawn continuation authorization cannot re-root at
 all.
 
 The other errors leave the chain still continuable, so the client abandons
-only the current request or, for a hop at its depth bound, further
-continuation from that hop.
+only the current request. A depth-bound rejection concerns the particular
+continuation whose resulting lineage would exceed the bound, not the hop
+itself; a continuation that merges into an existing lineage entry, or a later
+policy raising the bound, may still succeed.
 
 ## Replay Reservation and Retry {#validation-replay}
 
@@ -1328,8 +1332,8 @@ succeeds and before it issues the grant, and MUST retain the reservation through
 one tenant collide on a reused `jti`. Without idempotent retry this needs only
 the set of (`iss`, `jti`) values presented within that window.
 
-A request that fails validation leaves the assertion unreserved and usable
-within its window.
+A request that fails validation creates no reservation and does not modify
+any existing reservation.
 
 A second presentation of a reserved assertion MUST be rejected unless the IdP
 offers idempotent retry. An IdP MAY offer it by binding the reservation to a
