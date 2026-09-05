@@ -124,18 +124,24 @@ ties the request to the chain state the IdP recorded when the chain was
 established. A Resource Authorization Server (RAS) still trusts only the
 IdP to name the user and scope authority; at each hop the IdP resolves
 identity and re-checks the requested authority against the root-chain
-envelope. Continuation therefore stays a fresh policy decision at every
-boundary, never a bearer of standing authority.
+envelope. Acceptance at a RAS establishes eligibility to continue; it does not
+make the accepted token's scopes the ceiling for later targets. The CAI attests
+that local transition, and the IdP authorizes the next target independently,
+so this is not attenuated delegation in which each service forwards a subset
+of what it received. Continuation therefore stays a fresh policy decision at
+every boundary, never a bearer of standing authority.
 
-This profile is an opt-in extension to ID-JAG that requires no change to
-existing ID-JAG clients or Resource Authorization Servers. A RAS implements it
-only where continuation may proceed from its domain; a RAS from which no
-workload continues runs unmodified ID-JAG, which this document calls the base
-profile, and need not know that a chain exists ({{ras-processing}}). Chain
-state, envelope enforcement, and
-replay protection sit at the IdP, which already resolves the pairwise subject
-and holds the consent record, so a continuation-aware RAS adds only the
-binding of its own hops and the assertion that a workload may continue them.
+This profile is an opt-in extension to ID-JAG. A root client whose exchange
+already carries a DPoP proof and a subject token that resolves to a grant or
+session ({{root-establishment}}) keeps that exchange unchanged. A RAS from
+which no workload continues runs unmodified ID-JAG, which this document calls
+the base profile, and need not know that a chain exists ({{ras-processing}}).
+Explicit support and configuration are needed only where continuation
+proceeds: at the continuing workload, its RAS and CAI, and the IdP. Chain
+state, envelope enforcement, and replay protection sit at the IdP, which
+already resolves the pairwise subject and holds the consent record, so a
+continuation-aware RAS adds only the binding of its own hops and the assertion
+that a workload may continue them.
 An existing ID-JAG ecosystem can therefore add multi-hop access where a
 request's path is not known in advance, such as at a tool gateway for agents,
 including Model Context Protocol (MCP) gateways, that selects its upstream at
@@ -256,8 +262,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 5. New: the gateway presents the assertion to the IdP as the `subject_token`
    of a Token Exchange request, with its own credential and a DPoP proof,
    asking for an ID-JAG for the wiki. The IdP looks up H0, checks that the
-   wiki is within the envelope recorded in step 1 and that the gateway is a
-   permitted continuer, resolves Alice's subject identifier for the wiki, and
+   wiki is within the envelope recorded in step 1 (not within the scope of the
+   gateway's own access token) and that the gateway is a permitted continuer,
+   resolves Alice's subject identifier for the wiki, and
    issues the ID-JAG. That grant is a new hop, H1, whose parent is H0.
 6. As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS and
    receives an access token. If the wiki's RAS does not implement this
@@ -594,7 +601,12 @@ permits continuation and, if so, populate the root-chain envelope:
 Token claims cannot supply these values. Every dimension is an
 establishment-time ceiling that later policy MAY narrow or revoke but MUST NOT
 broaden; broadening requires a new chain, and consent granted afterward does
-not widen the envelope.
+not widen the envelope. For an authorization basis, the ceiling is the consent
+and the policy expression recorded at establishment. The inputs that
+expression reads, such as a service's classification or a group's membership,
+are evaluated at request time: a change to them is evaluation within the
+ceiling, while a change to the consent or to the expression narrows or
+broadens it ({{example-gateway-root}} works through both).
 
 The root actor is the authenticated OAuth client; its identity rests entirely
 on the mapping in {{client-identity}}. Base ID-JAG's recommendation to use a
@@ -1328,6 +1340,24 @@ succeeds only if the CAI's preconditions still hold
 ({{assertion-preconditions}}); an expired access token does not by itself
 entitle the workload to another.
 
+The online model has an operational price. Every continuation depends on the
+IdP being reachable, and a separate CAI depends on authoritative RAS state as
+well. A call path that cannot tolerate either dependency is a case for offline
+attenuation only where {{decision-rule}} already allows it, that is, where the
+subject and the trusted issuer stay stable across the boundary; availability
+alone does not remove the need for the IdP to resolve the pairwise subject.
+The IdP retains hop records for the chain's
+lifetime and replay reservations for as long as an assertion could still be
+presented, in state consistent enough that concurrent requests yield one grant
+and a retry recovers it ({{validation-replay}}); it prunes expired or revoked
+hop state. Because the actor-chain depth bound counts merged lineage entries,
+a workload that repeatedly continues as itself never trips it; the fan-out,
+rate, and hop-count limits of {{root-establishment}} bound that growth
+instead. Failure paths worth testing before deployment: concurrent redemption
+of one ID-JAG, a crash between issuing an ID-JAG and recording its hop, a
+policy change between two continuations, a credential from the wrong tenant,
+and local revocation after an assertion has been issued.
+
 ## Deployment Topologies {#deployment-topologies}
 
 | Topology | CAI role held by | CAI handle source | Fits when |
@@ -1368,11 +1398,6 @@ IdP retains and expires the reservation by the same clock it uses to evaluate
 `exp`. A RAS can make the handle binding and token issuance of
 {{ras-processing}} one outcome with a local transaction, or with a
 compensating action that revokes a token whose binding did not commit.
-
-Because the actor-chain depth bound counts merged lineage entries, an actor
-that repeatedly continues as itself never trips it; the fan-out, rate, and
-hop-count limits of {{root-establishment}} bound such retry-driven growth
-instead, and the IdP prunes expired or revoked hop state.
 
 The CAI accounts for retries separately from fan-out and keeps audit records of
 its issuance and limit enforcement. The IdP performs end-to-end audit
@@ -1440,7 +1465,8 @@ Because the assertion is target-agnostic, a permitted actor may select any
 target within that ceiling.
 
 An envelope that records an authorization basis instead of listing targets
-({{root-establishment}}) widens what that actor may select. A gateway that
+({{root-establishment}}) admits every target the basis permits at request
+time; how broad that is depends on the basis, not on its form. A gateway that
 chooses its upstream at request time is the intended
 case and also a confused-deputy surface, since a compromised or misdirected
 workload can steer continuation to any target the basis admits. The IdP's
@@ -1964,6 +1990,46 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
     |<-------------------result-------------------|               |
 ~~~
 
+### Provisioning {#example-gateway-provisioning}
+
+The exchanges below presuppose the following configuration. Every item is an
+ordinary OAuth or ID-JAG registration except the three the profile adds: the
+IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
+GatewayRAS's assertion policy.
+
+| Party | Provisioned before the flow | Specified in |
+|---|---|---|
+| IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor-token issuer pair for `tenant-123`, since trust in each alone is not enough; tenant policy recording Alice's consent basis and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
+| GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates; policy permitting `tool-gateway` to obtain assertions for hops bound to the access tokens it presents | {{metadata-ras}}, {{assertion-preconditions}} |
+| `tool-gateway` | one key pair, used for its credential's `cnf`, its DPoP proofs, and the assertion's `cnf`; a credential issued at `https://gateway.example/` | {{client-identity}} |
+| WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer | base profile |
+
+The credential that `tool-gateway` presents to the IdP as both
+`client_assertion` and `actor_token` ({{example-gateway-continue}}) is, in
+this example, a JWT issued by the gateway domain and bound to the gateway's
+key. Any sender-constrained credential the IdP accepts under
+{{client-identity}} would serve; this choice is illustrative. It is addressed
+to the IdP alone: the earlier exchange at GatewayRAS
+({{example-gateway-ica}}) uses a separate client assertion addressed to
+GatewayRAS, as {{RFC7523}} requires.
+
+~~~ json
+{
+  "iss": "https://gateway.example/",
+  "sub": "tool-gateway",
+  "aud": "https://idp.example/",
+  "cnf": {
+    "jkt": "base64url-tool-gateway-key-thumbprint"
+  },
+  "iat": 1710000230,
+  "exp": 1710000290,
+  "jti": "tg-cred-01"
+}
+~~~
+
+Its `iss` and `sub` are the values the assertion's `act` and the onward
+ID-JAG's lineage carry ({{assertion-claims}}).
+
 ### Root Exchange {#example-gateway-root}
 
 AgentApp exchanges Alice's ID Token, whose `sid` anchors the chain to her IdP
@@ -1993,6 +2059,20 @@ authorization, so the IdP establishes a chain and embeds H0
 envelope records an authorization basis, Alice's standing consent
 and tenant policy, rather than enumerated targets, and enterprise policy
 permits `tool-gateway` to continue it.
+
+What the IdP freezes is the basis itself: Alice's consent, read access to the
+tenant's productivity tools through `tool-gateway`, and the tenant policy
+expression it was granted under. What it evaluates at request time are that
+expression's inputs: which services the tenant currently classifies as
+productivity tools, and whether `tool-gateway` is still permitted to continue.
+A wiki that the tenant adds to that class after this exchange is therefore
+admitted in {{example-gateway-continue}} without a new chain, because the
+basis, not its membership at establishment, is the ceiling
+({{security-envelope}} names the exposure this creates). If Alice withdraws
+consent, the tenant tightens the expression, or the wiki leaves the class, the
+next continuation is refused. A later consent, or a policy that widens the
+expression, does not extend this chain; it needs a new one
+({{root-establishment}}).
 
 On the wire (decoded ID-JAG for GatewayRAS):
 
@@ -2194,7 +2274,8 @@ names an accepted hop on an active chain. The `act`
 claim names `tool-gateway`, the authenticated client, and the DPoP proof
 matches `cnf`. The wiki target falls within the recorded basis, Alice's
 standing consent and tenant policy, which is how a target nobody enumerated
-at root time is admitted; `wiki.read` is evaluated against that basis, not
+at root time, even one classified as a productivity tool only after the chain
+was established, is admitted; `wiki.read` is evaluated against that basis, not
 against the root `tools.invoke` scope. The IdP resolves Alice's wiki subject
 and issues the ID-JAG with H1 and `tool-gateway` atop `agent-app` in the
 lineage.
@@ -2268,9 +2349,11 @@ an OAuth client of the IdP, holding the key its credential and DPoP proofs use,
 and a client known to WikiRAS, which the onward ID-JAG names as `client_id`
 ({{token-exchange}}).
 
-Outside the domain nothing changes. AgentApp performs a base ID-JAG exchange
-and never shares Alice's credential, and WikiRAS runs the base profile
-unmodified.
+Outside the domain, AgentApp and WikiRAS change nothing: AgentApp performs a
+base ID-JAG exchange with a DPoP proof and never shares Alice's credential, and
+WikiRAS runs the base profile unmodified. The IdP carries the rest: it
+establishes the chain and evaluates each continuation
+({{root-establishment}}, {{token-exchange}}).
 
 ## SaaS Chain Example (Separate CAI and Transaction Token Carrier) {#example}
 
@@ -2861,6 +2944,14 @@ this profile builds.
 
 -02
 
+* Applied a whole-draft review: stated in the Introduction that acceptance
+  does not make the accepted token's scopes the ceiling for later targets;
+  qualified the compatibility claims to root clients with DPoP and a
+  resolvable anchor, terminal RASes, and the parties that continue; defined
+  what an authorization basis freezes and what it evaluates at request time,
+  with a worked case in the gateway example; added a provisioning table and
+  the gateway's dual-use credential to that example; added an operational
+  paragraph on availability, state retention, limits, and failure paths.
 * Applied a gateway-vendor review: example hop records show the
   continuation-permitted flag the binding requires; the `act` claim states
   where its `iss` and `sub` come from; carriers are described for either
