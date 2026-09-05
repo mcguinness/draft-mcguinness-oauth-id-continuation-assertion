@@ -700,7 +700,8 @@ The issuer-trust, chain-state, current-actor, and freshness rules of
 
 Because the IdP learns of acceptance only through attestation
 ({{protocol-overview}}), the accepting RAS attests its own hops first-hand and
-any other trusted CAI rechecks authoritative RAS state before attesting
+any other trusted CAI confirms acceptance and activity by the RAS's
+authorization semantics before attesting
 ({{assertion-issuance}}). Absent CAI compromise ({{security-trust-model}}), an
 issued-but-rejected ID-JAG cannot be continued: no trusted CAI attests it, and
 without that attestation continuation fails closed.
@@ -740,8 +741,8 @@ What identifies the authorization depends on where the call lands:
   the task authorization for which that actor is designated
   ({{security-envelope}}).
 
-The CAI's recheck against RAS state ({{assertion-issuance}}) covers staleness
-for every carrier.
+The CAI's acceptance check ({{assertion-preconditions}}) covers staleness for
+every carrier.
 
 A Resource Server has no obligations under this document, so a carrier
 SHOULD NOT expose the handle to a party with no role in continuation, and
@@ -757,8 +758,9 @@ CAI MUST set the assertion's `aud` to the IdP recorded in the hop's RAS binding
 ({{ras-processing}}); it MUST NOT accept an IdP audience supplied by the
 requester.
 
-The CAI attests facts about its own domain: the RAS accepted the hop, RAS
-state still shows the hop active and continuable, and the authenticated actor
+The CAI attests facts about its own domain: the RAS accepted the hop, the hop
+is still active and continuable by the RAS's own authorization semantics, and
+the authenticated actor
 proving a key is the party handling the request that hop authorized. Whether
 that actor may continue, and to what, is the IdP's decision under the envelope
 ({{root-establishment}}, {{validation}}). A CAI may decline to issue under its
@@ -836,14 +838,15 @@ The CAI MUST verify that the `subject_token` is one of the following:
 With an access token, the client is a resource server exchanging a token it
 received, the scenario of the example in {{RFC8693}}, Section 2.3. A RAS acting
 as CAI resolves its own token; a separate CAI resolves it through introspection
-{{RFC7662}}.
+{{RFC7662}} or, for a self-contained token, by validating it.
 
 ### Preconditions {#assertion-preconditions}
 
 Either `subject_token` type ({{assertion-token-exchange}}) supplies the facts
 below: the token's integrity protection and the authenticated request
 establish fact 1; the DPoP proof, fact 2; the authenticated client, fact 3;
-and the bound handle and live RAS state, facts 4 and 5. The CAI MUST
+and the bound handle and the RAS's acceptance evidence, facts 4 and 5. The CAI
+MUST
 authenticate the actor and
 issue only after establishing these facts:
 
@@ -858,9 +861,19 @@ issue only after establishing these facts:
 4. the actor is bound to the current transaction and the handle matches that
    transaction's RAS-bound state; and
 
-5. a recheck against authoritative RAS state, whatever the carrier, confirms
-   the authorization remains active and its binding still records
-   continuation as permitted.
+5. evidence that is authoritative by the RAS's own authorization semantics,
+   whatever the carrier, confirms that the authorization remains active and
+   that its binding still records continuation as permitted: a recheck of RAS
+   authorization state, or, where the RAS's authorization is a self-contained
+   short-lived token, that token's validity.
+
+A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
+authorization to stop fresh assertions before the RAS's token would expire.
+With self-contained evidence, the token's expiry is when the CAI stops
+issuing, as for any OAuth access token; an assertion already issued remains
+usable until its own `exp`, so the withdrawal tail is the token's remaining
+lifetime plus the assertion lifetime ({{security-topology}}). A CAI that caps
+the assertion's `exp` at the evidence's expiry removes the second term.
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
@@ -889,8 +902,8 @@ metadata, the client uses configuration bound to that issuer identifier
 ({{metadata}}).
 
 The response MUST NOT include a `refresh_token`, which would let a client
-obtain further assertions without presenting a token or passing the live
-recheck.
+obtain further assertions without presenting a token or passing the
+acceptance check.
 
 ~~~
 HTTP/1.1 200 OK
@@ -1288,8 +1301,9 @@ the current request.
 
 An assertion is sender-constrained, so replaying it requires the actor's key
 ({{security-pop}}), but a consumed assertion is not equivalent to a fresh one.
-The CAI rechecks live RAS state before each issuance
+The CAI confirms before each issuance that the hop is still active
 ({{assertion-preconditions}}), so an actor whose local authorization has
+
 lapsed cannot obtain a fresh assertion; without single-use it could keep
 presenting one it already used, for any target the envelope permits, until
 that assertion expired. Single-use closes that window for consumed
@@ -1502,12 +1516,12 @@ if the CAI's preconditions still hold ({{assertion-preconditions}}); an
 expired access token does not by itself entitle the workload to another.
 
 The online model has an operational price. Every continuation depends on the
-IdP being reachable, and a separate CAI depends on authoritative RAS state as
-well. A call path that cannot tolerate either dependency is a case for
-offline attenuation only where {{decision-rule}} already allows it, that is,
-where the subject and the trusted issuer stay stable across the boundary;
-availability alone does not remove the need for the IdP to resolve the
-pairwise subject.
+IdP being reachable, and a separate CAI depends on the RAS's acceptance
+evidence as well. A call path that cannot tolerate either dependency is a case
+for offline attenuation only where {{decision-rule}} already allows it, that
+is, where the subject and the trusted issuer stay stable across the boundary;
+availability alone does not remove the need for the IdP to resolve the pairwise
+subject.
 
 The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It keeps each assertion's (`iss`, `jti`) reservation for as
@@ -1755,7 +1769,11 @@ separate CAI reads that state as authoritative; a compromised separate CAI can
 additionally attest a hop the RAS refused. In both topologies, RAS-local
 authorization revocation after issuance, which the IdP cannot observe, leaves
 the assertion valid for its remaining lifetime; a separate CAI adds any delay
-in RAS state reaching it. The root envelope still bounds the result.
+in RAS state reaching it, and where the RAS's acceptance evidence is a
+self-contained token ({{assertion-preconditions}}) fresh issuance continues
+for that token's remaining lifetime, on top of the assertion's own lifetime,
+so a tenant that needs faster withdrawal configures a live recheck. The root
+envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -3224,6 +3242,12 @@ this profile builds.
 \[\[ To be removed before publication as an RFC ]]
 
 -02
+
+* Defined the CAI's acceptance evidence by the RAS's own authorization
+  semantics, so a RAS whose authorization is a self-contained short-lived
+  token satisfies the issuance precondition by that token's validity; a live
+  recheck is recommended where fresh issuance must stop before the token
+  expires.
 
 * Made the `actor_token` optional on a continuation exchange: the actor
   authenticates as an OAuth client with a credential that resolves to its
