@@ -1553,8 +1553,8 @@ envelope. Because the assertion is target-agnostic, a permitted actor may
 select any target within that ceiling.
 
 An envelope that records an authorization basis instead of listing targets
-({{root-establishment}}) admits every target the basis permits at request
-time; how broad that is depends on the policy the basis references. A gateway that
+({{root-establishment}}) admits every target the basis permits at request time;
+how broad that is depends on the policy the basis references. A gateway that
 chooses its upstream at request time is the intended case and also a
 confused-deputy surface, since a compromised or misdirected workload can steer
 continuation to any target the basis admits.
