@@ -2073,6 +2073,7 @@ refresh token, or SAML assertion:<a href="#section-5.1-1" class="pilcrow">¶</a>
 POST /token HTTP/1.1
 Host: idp.example
 Content-Type: application/x-www-form-urlencoded
+
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;requested_token_type=urn:ietf:params:oauth:token-type:id-jag
 &amp;audience=https://ras.travel.example/
@@ -2093,9 +2094,10 @@ governing authorization for a root exchange permits continuation; no request
 parameter asks for it, and advertised support (<a href="#metadata-idp" class="auto internal xref">Section 7.1</a>) signals
 capability, not authority. To
 establish, the IdP <span class="bcp14">MUST</span> include the root handle in the ID-JAG. This profile
-places no proof-of-possession requirement on the root exchange: the root
-client's obligations are those of the base profile, and sender constraint
-becomes a requirement only for an actor that continues (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>).
+places no proof-of-possession requirement on the root exchange beyond the one
+an optional <code>actor_token</code> brings with it (below): the root client's
+obligations are those of the base profile, and sender constraint becomes a
+requirement for an actor that continues (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>).
 Absent the continuation authorization, the IdP <span class="bcp14">MUST NOT</span> establish a chain or
 include an <code>identity_continuation_handle</code>.<a href="#section-5.1-4" class="pilcrow">¶</a></p>
 <p id="section-5.1-5">The root subject token <span class="bcp14">MUST</span> resolve to a lifecycle anchor: the user's active
@@ -2202,8 +2204,11 @@ accepting a continuation-capable ID-JAG:<a href="#section-5.2-1" class="pilcrow"
 <li id="section-5.2-2.1">
             <p id="section-5.2-2.1.1">accept the ID-JAG per <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>,
 which includes validating the grant, authenticating the presenting client,
-verifying any sender constraint, applying local authorization policy, and
-issuing an access token, sender-constrained where the RAS requires it; and<a href="#section-5.2-2.1.1" class="pilcrow">¶</a></p>
+verifying the sender constraint of an ID-JAG that carries <code>cnf</code>, applying
+local authorization policy, and issuing an access token: sender-constrained
+to the confirmed key when the ID-JAG carries <code>cnf</code>, as every onward ID-JAG
+does (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>), and otherwise as the RAS's own policy determines,
+as for a root ID-JAG (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>); and<a href="#section-5.2-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-5.2-2.2">
             <p id="section-5.2-2.2.1">bind <code>identity_continuation_handle</code>, the ID-JAG's issuer and tenant, and
@@ -2614,7 +2619,7 @@ set; the envelope-containment rule (<a href="#validation" class="auto internal x
           </h4>
 <p id="section-5.6.2-1">The client-to-actor mapping below applies to every exchange; the <code>act</code> and
 <code>actor_token</code> matching and the DPoP proof apply to a continuation exchange; a
-root exchange carries no proof-of-possession requirement
+root exchange carries no unconditional proof-of-possession requirement
 (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-5.6.2-1" class="pilcrow">¶</a></p>
 <p id="section-5.6.2-2">The current actor <span class="bcp14">MUST</span> authenticate as an OAuth client. Four rules govern how
 that authentication maps to an actor identity:<a href="#section-5.6.2-2" class="pilcrow">¶</a></p>
@@ -3442,21 +3447,29 @@ that actor. The assertion <span class="bcp14">MUST NOT</span> be accepted as a b
 every exchange requires live proof of possession of the <code>cnf</code> key, a DPoP
 proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> for the method this document defines (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>).
 A captured assertion is therefore useless without the private key, and because
-the onward ID-JAG is bound to the same key (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>), possession
-is demonstrated continuously across the chain, not once at issuance. The root
-exchange and its ID-JAG keep the base profile's sender-constraint posture;
-this profile adds none there, because continuation rests on the continuing
-actor's key, the RAS binding, and the CAI's attestation, not on the root
-client's key.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
-<p id="section-9.1-2">At assertion issuance the client proves its own key, which the CAI binds to
+the onward ID-JAG is bound to the same key (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>) and the next
+RAS binds its access token to that key (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>), possession is
+demonstrated continuously from the first continuation on, not once at
+issuance.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+<p id="section-9.1-2">The root hop is different. The root ID-JAG carries no <code>cnf</code>, and its RAS
+sender-constrains the access token by its own policy, so a root hop may issue
+a bearer token. A party that captures such a token can call the workload and
+so induce that honest workload's continuation under the workload's own key;
+the workload's proof of possession does not prevent this, because the
+workload is the legitimate presenter. That is the base profile's bearer-token
+exposure at the ingress, not an exposure this profile creates, and a RAS that
+sender-constrains its tokens removes it. This profile adds no proof
+requirement at the root because continuation rests on the continuing actor's
+key, the RAS binding, and the CAI's attestation, not on the root client's key.<a href="#section-9.1-2" class="pilcrow">¶</a></p>
+<p id="section-9.1-3">At assertion issuance the client proves its own key, which the CAI binds to
 the new assertion; it need not prove possession of any key bound to the
-incoming subject token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.5.1</a>).<a href="#section-9.1-2" class="pilcrow">¶</a></p>
-<p id="section-9.1-3">Replay of a captured assertion is confined to the IdP continuation exchange
+incoming subject token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.5.1</a>).<a href="#section-9.1-3" class="pilcrow">¶</a></p>
+<p id="section-9.1-4">Replay of a captured assertion is confined to the IdP continuation exchange
 and requires the actor's key. The freshness rule bounds the window, and
 single-use (<a href="#validation-replay" class="auto internal xref">Section 5.7</a>) confines a consumed assertion to the one
 grant it first obtained: without it, an actor whose RAS-local authorization had
 lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
-continuing from a consumed one until it expired.<a href="#section-9.1-3" class="pilcrow">¶</a></p>
+continuing from a consumed one until it expired.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-envelope">
@@ -5567,7 +5580,9 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
           <p id="appendix-E-3.1.1">Removed the proof-of-possession requirement from the root exchange: a root
 client keeps only the base profile's obligations, and sender constraint is
 required of a continuing actor; an optional root <code>actor_token</code> still needs
-a proof of the key it is bound to.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+a proof of the key it is bound to. A RAS binds its access token to the
+confirmed key when the ID-JAG carries <code>cnf</code> and otherwise by its own
+policy.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
           <p id="appendix-E-3.2.1">Kept single-use of an assertion required
