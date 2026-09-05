@@ -838,7 +838,7 @@ The CAI MUST verify that the `subject_token` is one of the following:
 With an access token, the client is a resource server exchanging a token it
 received, the scenario of the example in {{RFC8693}}, Section 2.3. A RAS acting
 as CAI resolves its own token; a separate CAI resolves it through introspection
-{{RFC7662}}.
+{{RFC7662}} or, for a self-contained token, by validating it.
 
 ### Preconditions {#assertion-preconditions}
 
@@ -868,10 +868,12 @@ issue only after establishing these facts:
    short-lived token, that token's validity.
 
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
-authorization to take effect before the RAS's token would expire. With
-self-contained evidence, withdrawal takes effect at that token's expiry, as it
-does for any OAuth access token, and the CAI's freshness is bounded by the
-RAS token lifetime ({{security-topology}}).
+authorization to stop fresh assertions before the RAS's token would expire.
+With self-contained evidence, the token's expiry is when the CAI stops
+issuing, as for any OAuth access token; an assertion already issued remains
+usable until its own `exp`, so the withdrawal tail is the token's remaining
+lifetime plus the assertion lifetime ({{security-topology}}). A CAI that caps
+the assertion's `exp` at the evidence's expiry removes the second term.
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
@@ -900,8 +902,8 @@ metadata, the client uses configuration bound to that issuer identifier
 ({{metadata}}).
 
 The response MUST NOT include a `refresh_token`, which would let a client
-obtain further assertions without presenting a token or passing the live
-recheck.
+obtain further assertions without presenting a token or passing the
+acceptance check.
 
 ~~~
 HTTP/1.1 200 OK
@@ -1768,9 +1770,10 @@ additionally attest a hop the RAS refused. In both topologies, RAS-local
 authorization revocation after issuance, which the IdP cannot observe, leaves
 the assertion valid for its remaining lifetime; a separate CAI adds any delay
 in RAS state reaching it, and where the RAS's acceptance evidence is a
-self-contained token ({{assertion-preconditions}}) the delay is that token's
-remaining lifetime, so a tenant that needs faster withdrawal configures a live
-recheck. The root envelope still bounds the result.
+self-contained token ({{assertion-preconditions}}) fresh issuance continues
+for that token's remaining lifetime, on top of the assertion's own lifetime,
+so a tenant that needs faster withdrawal configures a live recheck. The root
+envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -3243,7 +3246,9 @@ this profile builds.
 * Defined the CAI's acceptance evidence by the RAS's own authorization
   semantics, so a RAS whose authorization is a self-contained short-lived
   token satisfies the issuance precondition by that token's validity; a live
-  recheck is recommended where withdrawal must take effect before expiry.
+  recheck is recommended where fresh issuance must stop before the token
+  expires.
+
 * Made the `actor_token` optional on a continuation exchange: the actor
   authenticates as an OAuth client with a credential that resolves to its
   canonical actor identity, presenting an `actor_token` when that credential
