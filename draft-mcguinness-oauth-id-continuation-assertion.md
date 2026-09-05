@@ -960,6 +960,27 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<JWT>
 ~~~
 
+A client whose client assertion is itself a sender-constrained credential that
+resolves to the canonical actor identity omits the actor token
+({{client-identity}}):
+
+~~~
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<identity-continuation-assertion>
+&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<sender-constrained JWT identifying the actor>
+~~~
+
 The requested `audience`, `resource`, `scope`, `requested_token_type`, and any
 `authorization_details` {{RFC9396}} are supplied by the Token Exchange request
 and never by the assertion ({{assertion-claims}}). A request can carry multiple
@@ -987,7 +1008,10 @@ the actor. Four rules govern how authentication maps to an actor identity:
   of the client's credential issuer; self-asserted mappings MUST NOT be
   accepted. The client authentication method does not determine the pair: a
   client that authenticates with an {{RFC7523}} client assertion may have a
-  workload identity in another namespace as its canonical actor identity.
+  workload identity in another namespace as its canonical actor identity. The
+  `iss` of the canonical actor identity is the actor's identity authority;
+  issuer pairing ({{validation}}, {{security-trust-model}}) is defined against
+  it, not against whichever parameter carried the credential.
 * *Root versus continuation.* On a root exchange, client authentication alone
   identifies the root actor ({{root-establishment}}). On a continuation
   exchange, the IdP MUST also match the canonical actor identity to the
@@ -1045,8 +1069,9 @@ from another's resolution.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
-     `requested_token_type`, `actor_token`, `actor_token_type`, and
-     `audience`;
+     `requested_token_type`, and `audience`; zero or one `actor_token`, with
+     `actor_token_type` present exactly when `actor_token` is ({{RFC8693}},
+     Section 2.1);
    * zero or more `resource`, and at most one each of `scope` and
      `authorization_details`, all OPTIONAL and, when present, evaluated by
      the envelope-containment rule; and
@@ -1072,7 +1097,9 @@ from another's resolution.
    one-element array, or another issuer the IdP trusts to attest that RAS's
    hops, recorded from tenant configuration or the RAS's nomination
    ({{metadata-ras}}); in either case the issuer is trusted for the tenant and
-   authorized to pair with the `actor_token` issuer for that tenant;
+   authorized to pair, for that tenant, with the actor's identity authority,
+   the `iss` of the canonical actor identity ({{client-identity}}), whether an
+   `actor_token` or the IdP's mapping of the client credential supplied it;
 
 4. **Chain state.**
    * the handle identifies a RAS-accepted hop ({{hop-activation}}) on an
@@ -1576,7 +1603,7 @@ adversaries:
 * a compromised intermediate workload broadening authority, continuing the
   wrong user's chain, or raising authentication context ({{security-envelope}},
   {{security-actor-chain}});
-* a compromised CAI or actor-token issuer, in either deployment topology
+* a compromised CAI or actor identity authority, in either deployment topology
   ({{security-trust-model}}, {{security-topology}},
   {{security-actor-issuers}});
 * a party influencing the client-to-actor mapping, which is the sole
@@ -1672,16 +1699,19 @@ a step-up-gated resource the user never authenticated strongly enough for.
 Authentication context therefore comes only from the root envelope, copied
 unchanged into onward ID-JAGs ({{onward-id-jag}}).
 
-## Trust in Actor Token Issuers {#security-actor-issuers}
+## Trust in Actor Identity Authorities {#security-actor-issuers}
 
-The `actor_token` authenticates the current actor to the IdP, so a rogue or
-over-scoped actor-token issuer is an impersonation vector: a party controlling
-one issuer could mint a token naming an actor in another domain or tenant and
-continue that actor's chains. The current-actor rule of {{validation}}
-requires a trusted issuer for the actor's own domain and tenant, and an
-accompanying CAI assertion does not relax it: CAI attestation of the hop and
-actor-token authentication of the actor are independent checks
-({{security-trust-model}}); neither substitutes for the other.
+The actor's identity authority, the `iss` of its canonical actor identity
+({{client-identity}}), vouches for the current actor to the IdP, whether
+through an `actor_token` it issued or through the IdP's mapping of the client
+credential. A rogue or over-scoped authority is an impersonation vector: a
+party controlling one could name an actor in another domain or tenant and
+continue that actor's chains. The current-actor and issuer-trust rules of
+{{validation}} require an authority trusted for the actor's own domain and
+tenant and paired with the CAI, and an accompanying CAI assertion does not
+relax that: CAI attestation of the hop and authentication of the actor are
+independent checks ({{security-trust-model}}); neither substitutes for the
+other.
 
 ## Conjunctive Trust and Issuer Pairing {#security-trust-model}
 
@@ -1690,16 +1720,16 @@ A continuation requires all of these, and no one of them suffices alone:
 * a CAI the IdP trusts for the presented hop's accepting Resource
   Authorization Server, which attests the chain-to-actor transition (the
   issuer-trust rule of {{validation}});
-* the workload identity issuer trusted for the current actor's trust domain,
-  which authenticates the actor through the `actor_token` (the current-actor
-  rule of {{validation}});
+* the actor's identity authority, trusted for the current actor's domain and
+  tenant, which vouches for the actor through an `actor_token` or the mapping
+  of its client credential (the current-actor rule of {{validation}});
 * live proof of possession of the confirmed key (the current-actor rule of
   {{validation}}); and
 * the IdP's own envelope and current-actor policy (the envelope-containment
   rule of {{validation}}).
 
-The IdP MUST authorize CAI and actor-token issuer pairings per tenant; separate
-trust in each is insufficient. Tenant determination MUST derive from
+The IdP MUST authorize CAI and actor identity authority pairings per tenant;
+separate trust in each is insufficient. Tenant determination MUST derive from
 authenticated material, not requester-supplied input. The IdP MUST scope CAI
 trust by issuer, keys, tenant, and the RAS it attests for.
 
@@ -3200,7 +3230,9 @@ this profile builds.
   canonical actor identity, presenting an `actor_token` when that credential
   does not identify the actor or as independent evidence; stated that the
   shared key across credential, assertion, and onward ID-JAG is a consequence
-  of a single proof method, not a continuation property.
+  of a single proof method, not a continuation property; defined issuer
+  pairing against the actor's identity authority.
+
 * Removed the proof-of-possession requirement from the root exchange
 : a root
   client keeps only the base profile's obligations, and sender constraint is
