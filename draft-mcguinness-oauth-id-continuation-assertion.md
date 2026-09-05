@@ -383,7 +383,8 @@ Root-chain envelope:
 : What the IdP evaluates every continuation against. It has two parts: the
   chain identity, the facts of the root exchange, fixed at establishment; and
   the continuation authorization, the targets, continuers, and limits the IdP
-  recorded at establishment and evaluates under tenant policy as it stands
+  recorded at establishment, which later policy may narrow at any
+  continuation but widens only through a recorded authorization basis
   ({{root-establishment}}).
 
 Authorization basis:
@@ -589,7 +590,7 @@ permits continuation and, if so, populates the root-chain envelope:
 | Chain identity | The authenticated user and authentication context (`auth_time`, `acr`, `amr`) | root authentication | fixed |
 | Chain identity | The root actor and its key | root exchange | fixed |
 | Chain identity | The governing authorization's anchor and the chain's expiry ({{lifecycle}}) | the root subject token's anchor | fixed |
-| Continuation authorization | Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or recorded as an authorization basis | tenant policy | enumerated: fixed; basis: as policy stands |
+| Continuation authorization | Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or recorded as an authorization basis | tenant policy | enumerated: narrows only; basis: as policy stands |
 | Continuation authorization | The actors or trust domains permitted to continue, and the basis for that permission | tenant policy | as policy stands |
 | Continuation authorization | Any maximum actor-chain depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
 
@@ -606,7 +607,7 @@ envelope takes (the envelope-containment rule of {{validation}}). A policy
 change widens a chain only through an authorization basis: an envelope that
 enumerates its targets MUST NOT admit a target the tenant adds after
 establishment ({{example-dynamic}}), while a basis-referenced envelope admits
-whatever the basis reads as policy stands, such as a service's classification
+whatever the basis currently reads, such as a service's classification
 or a group's membership ({{example-gateway-root}}). The effective authority at
 any continuation is therefore the recorded continuation authorization
 evaluated under current policy, never more.
@@ -1553,7 +1554,7 @@ select any target within that ceiling.
 
 An envelope that records an authorization basis instead of listing targets
 ({{root-establishment}}) admits every target the basis permits at request
-time; how broad that is depends on the basis, not on its form. A gateway that
+time; how broad that is depends on the policy the basis references. A gateway that
 chooses its upstream at request time is the intended case and also a
 confused-deputy surface, since a compromised or misdirected workload can steer
 continuation to any target the basis admits.
@@ -2460,9 +2461,9 @@ On the wire (decoded ID-JAG for WikiRAS):
 }
 ~~~
 
-A target outside the basis fails with `invalid_target`; the chain stays
+A target outside the envelope fails with `invalid_target`; the chain stays
 continuable and only that tool call fails ({{error-response}}).
-{{example-dynamic}} shows one.
+{{example-dynamic}} shows the same failure for an enumerated envelope.
 
 ### WikiRAS Redeems an Ordinary ID-JAG {#example-gateway-terminal}
 
