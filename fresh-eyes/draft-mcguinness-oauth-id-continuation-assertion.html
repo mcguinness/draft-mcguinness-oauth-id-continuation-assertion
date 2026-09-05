@@ -2704,9 +2704,10 @@ resolves to its canonical actor identity. The canonical actor identity is the
 (<code>iss</code>, <code>sub</code>) pair the IdP holds for that client. Its <code>iss</code> is the actor's
 identity authority, and issuer pairing (<a href="#validation" class="auto internal xref">Section 5.6.3</a>,
 <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>) is defined against that authority, not against
-whichever parameter carried the credential. For a client authenticated with a
-credential the IdP itself issued or registered directly, such as a client secret
-or a mutual-TLS certificate, the identity authority is the IdP's own issuer
+whichever parameter carried the credential. Where the IdP's registration of
+the client supplies no other canonical actor identity, for example a client
+authenticated with a client secret or a mutual-TLS certificate and registered
+without a workload identity, the identity authority is the IdP's own issuer
 identifier and <code>sub</code> is the <code>client_id</code>.<a href="#section-5.6.2-1" class="pilcrow">¶</a></p>
 <p id="section-5.6.2-2">The IdP <span class="bcp14">MUST</span> derive that pair from its registration of the client or its
 configuration of the client's credential issuer, not from the client
@@ -3065,16 +3066,19 @@ identities per target; a target for which the actor has none fails with
               <p id="section-5.6.6-2.1.1">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 11</a>) only when the handle is
 permanently unusable: unknown, on an expired or ended chain, on a revoked hop
 or ancestor, or on a chain whose continuation authorization the tenant has
-withdrawn (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>). * The IdP <span class="bcp14">SHOULD</span> use <code>invalid_request</code> for a
-malformed, inconsistent, or unacceptable token, including a lifetime above the
-maximum the IdP accepts, <code>invalid_dpop_proof</code> for a DPoP failure,
-<code>unauthorized_client</code> for an actor that current tenant policy does not permit
-to continue from the presented hop, which leaves the chain continuable by other
-actors, <code>invalid_grant</code> when the presented hop cannot be continued further
-under the chain's depth, fan-out, or hop-count limits (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>),
-and <code>invalid_target</code>, <code>invalid_scope</code>, or <code>invalid_authorization_details</code> for a
-request outside the envelope or for a target at which the IdP can resolve no
-subject or client identity for the actor.<a href="#section-5.6.6-2.1.1" class="pilcrow">¶</a></p>
+withdrawn (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-5.6.6-2.1.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="section-5.6.6-2.2">
+              <p id="section-5.6.6-2.2.1">The IdP <span class="bcp14">SHOULD</span> use <code>invalid_request</code> for a malformed, inconsistent, or
+unacceptable token, including a lifetime above the maximum the IdP accepts,
+<code>invalid_dpop_proof</code> for a DPoP failure, <code>unauthorized_client</code> for an actor
+that current tenant policy does not permit to continue from the presented
+hop, which leaves the chain continuable by other actors, <code>invalid_grant</code> when
+the continuation would exceed the chain's depth, fan-out, or hop-count limits
+(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>), and <code>invalid_target</code>, <code>invalid_scope</code>, or
+<code>invalid_authorization_details</code> for a request outside the envelope or for a
+target at which the IdP can resolve no subject or client identity for the
+actor.<a href="#section-5.6.6-2.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-5.6.6-3">Recovery from <code>invalid_continuation</code> requires establishing a new chain, and
@@ -3084,8 +3088,10 @@ grant-anchored chain re-roots from its still-valid grant without the user, and
 a handle disabled by withdrawn continuation authorization cannot re-root at
 all.<a href="#section-5.6.6-3" class="pilcrow">¶</a></p>
 <p id="section-5.6.6-4">The other errors leave the chain still continuable, so the client abandons
-only the current request or, for a hop at its depth bound, further
-continuation from that hop.<a href="#section-5.6.6-4" class="pilcrow">¶</a></p>
+only the current request. A depth-bound rejection concerns the particular
+continuation whose resulting lineage would exceed the bound, not the hop
+itself; a continuation that merges into an existing lineage entry, or a later
+policy raising the bound, may still succeed.<a href="#section-5.6.6-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3108,8 +3114,8 @@ succeeds and before it issues the grant, and <span class="bcp14">MUST</span> ret
 <code>jti</code>), since partitioning by tenant alone would let two assertion issuers in
 one tenant collide on a reused <code>jti</code>. Without idempotent retry this needs only
 the set of (<code>iss</code>, <code>jti</code>) values presented within that window.<a href="#section-5.7-2" class="pilcrow">¶</a></p>
-<p id="section-5.7-3">A request that fails validation leaves the assertion unreserved and usable
-within its window.<a href="#section-5.7-3" class="pilcrow">¶</a></p>
+<p id="section-5.7-3">A request that fails validation creates no reservation and does not modify
+any existing reservation.<a href="#section-5.7-3" class="pilcrow">¶</a></p>
 <p id="section-5.7-4">A second presentation of a reserved assertion <span class="bcp14">MUST</span> be rejected unless the IdP
 offers idempotent retry. An IdP <span class="bcp14">MAY</span> offer it by binding the reservation to a
 fingerprint of the request first authorized and recording the reservation as
