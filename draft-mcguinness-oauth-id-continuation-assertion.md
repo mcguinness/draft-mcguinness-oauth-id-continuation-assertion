@@ -338,7 +338,9 @@ Continuation Assertion Issuer (CAI):
 
 Current actor:
 : The workload presenting the assertion to the IdP, named by `act` and
-  authenticated by `actor_token`.
+  authenticated by `actor_token`. Its canonical actor identity is the
+  (`iss`, `sub`) pair the IdP's client-to-actor mapping produces
+  ({{client-identity}}).
 
 Root actor:
 : The actor at the root of a chain: the authenticated OAuth client that
@@ -466,8 +468,8 @@ The claims have the following meanings and requirements:
     the actor's credential, the `actor_token` of {{request}}, and `sub` is
     the actor's identifier at that issuer, its `client_id` for an
     {{RFC7523}} credential.
-  * The IdP compares both with the `actor_token` and the authenticated
-    client ({{client-identity}}).
+  * The IdP compares both with the `actor_token` and with the canonical
+    actor identity of the authenticated client ({{client-identity}}).
   * Additional members MAY carry further identity attributes but are
     non-authoritative and MUST NOT affect identity, authorization, lineage,
     or issuance. A recipient MUST ignore members it does not understand,
@@ -510,7 +512,11 @@ authorization, and issuance.
 An `identity_continuation_handle` is an opaque, non-bearer reference to one
 IdP-held hop of a chain. The IdP mints a fresh handle for each hop and carries
 it in that hop's ID-JAG; continuing from a hop produces a child hop with its
-own handle, recorded against the hop it continued from.
+own handle, recorded against the hop it continued from. A handle is non-secret
+but security-sensitive correlation state: it confers no authority by itself,
+yet a handle together with a CAI trust path and the actor's credential is a
+larger compromise than the actor's credential alone ({{security-topology}});
+{{handle-propagation}} limits where it travels.
 
 The following rules apply:
 
@@ -733,7 +739,8 @@ for every carrier.
 
 A Resource Server has no obligations under this document, so a carrier
 SHOULD NOT expose the handle to a party with no role in continuation, and
-deployments keep it out of logs, traces, and responses.
+deployments keep this security-sensitive correlation state ({{chain-id}}) out
+of logs, traces, and responses.
 
 ## Assertion Issuance {#assertion-issuance}
 
@@ -749,8 +756,9 @@ state still shows the hop active and continuable, and the authenticated actor
 proving a key is the party handling the request that hop authorized. Whether
 that actor may continue, and to what, is the IdP's decision under the envelope
 ({{root-establishment}}, {{validation}}). A CAI may decline to issue under its
-domain's policy, but issuing never authorizes anything; it only makes the IdP's
-decision possible.
+domain's policy. Issuance grants no target authority, but it attests the facts
+without which the IdP cannot evaluate a continuation, so trust in a CAI is
+consequential ({{security-topology}}).
 
 The handle is advisory input, re-verified against RAS-bound state
 ({{hop-activation}}) by the preconditions below ({{assertion-preconditions}})
@@ -961,13 +969,18 @@ The current actor MUST authenticate as an OAuth client. Four rules govern how
 that authentication maps to an actor identity:
 
 * *Authoritative mapping.* The IdP MUST map the authenticated client to an
-  actor identity; self-asserted mappings MUST NOT be accepted.
+  actor identity, an (`iss`, `sub`) pair this document calls the canonical
+  actor identity; self-asserted mappings MUST NOT be accepted. For an
+  {{RFC7523}} client assertion the pair is the assertion's issuer and the
+  `client_id`; for a workload credential issued in another namespace, the
+  IdP's registration of the client supplies the pair.
 * *Root versus continuation.* On a root exchange, client authentication alone
   identifies the root actor ({{root-establishment}}). On a continuation
-  exchange, the IdP MUST also match that identity to the assertion's `act` and
-  the `actor_token`.
+  exchange, the IdP MUST also match the canonical actor identity to the
+  assertion's `act` and the `actor_token`.
 * *Sender-constrained actor token.* The `actor_token` MUST NOT be bearer: for
-  a JWT the IdP verifies `cnf.jkt`, and for an opaque token it obtains
+  a JWT the IdP verifies its `cnf` confirmation (`jkt` in this version), and
+  for an opaque token it obtains
   equivalent confirmation from authoritative metadata such as introspection
   {{RFC7662}}.
 * *Dual-use JWT.* A sender-constrained JWT MAY serve as both client assertion
@@ -975,10 +988,23 @@ that authentication maps to an actor identity:
   is the `client_id` and the IdP MUST authorize its issuer for that client.
   Otherwise the client authenticates separately.
 
+The comparison runs between actor identities, never between a raw OAuth
+client identifier and an `act` value:
+
+~~~
+authenticated OAuth client
+        |  authoritative mapping (IdP registration)
+        v
+canonical actor identity (iss, sub)
+        ^                        ^
+        |  equal                 |  equal
+   actor_token                  act
+~~~
+
 The IdP MUST compare the actor `iss` and `sub` as case-sensitive strings with
-no transformation or canonicalization ({{RFC7519}}), across `actor_token`,
-`act`, and the authenticated client, and identities in different tenants never
-compare equal.
+no transformation or canonicalization ({{RFC7519}}): the identity in
+`actor_token` and the assertion's `act` are each compared with the canonical
+actor identity, and identities in different tenants never compare equal.
 
 The actor MUST prove possession of the key in `cnf`; for the `jkt` method, that
 proof is a DPoP proof {{RFC9449}}. DPoP is the only confirmation method this
@@ -1224,7 +1250,7 @@ reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
 * the exact `authorization_details` JSON after form decoding (a different
   serialization is a different request);
 * the actor's `iss` and `sub`;
-* the confirmed key's `cnf.jkt` thumbprint; and
+* the confirmation key in `cnf` (its `jkt` thumbprint in this version); and
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
@@ -3110,6 +3136,10 @@ this profile builds.
 
 -02
 
+* Defined the canonical actor identity and made it the sole comparand for
+  `act` and `actor_token`; reworded the CAI's role as attesting the facts the
+  IdP's evaluation requires; characterized the handle as security-sensitive
+  correlation state.
 * Named the two parts of the root-chain envelope, chain identity and
   continuation authorization, defined the authorization basis as a policy
   reference, and specified that policy narrows a running chain in either
