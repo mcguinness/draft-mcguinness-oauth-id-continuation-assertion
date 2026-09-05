@@ -115,7 +115,7 @@ Table of Contents
    9.  Security Considerations
      9.1.  Sender Constraint and Proof of Possession
      9.2.  Envelope Enforcement and Offline Attenuation
-     9.3.  Trust in Actor Token Issuers
+     9.3.  Trust in Actor Identity Authorities
      9.4.  Conjunctive Trust and Issuer Pairing
      9.5.  Topology and Trust
      9.6.  Actor Chain Integrity
@@ -446,9 +446,10 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       resolves the target audience's user subject.
 
    Current actor:  The workload presenting the assertion to the IdP,
-      named by act and authenticated by actor_token.  Its canonical
-      actor identity is the (iss, sub) pair the IdP's client-to-actor
-      mapping produces (Section 5.6.2).
+      named by act and authenticated to the IdP by its client
+      credential, an actor_token, or one JWT serving as both.  Its
+      canonical actor identity is the (iss, sub) pair that
+      authentication resolves to (Section 5.6.2).
 
    Root actor:  The actor at the root of a chain: the authenticated
       OAuth client that obtains the first ID-JAG (Section 5.6.2); this
@@ -564,14 +565,13 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    act:  REQUIRED.  The current actor presenting the Token Exchange
       request, encoded as a single-level act claim per [RFC8693]:
 
-      *  iss and sub are REQUIRED, non-empty strings. iss is the issuer
-         of the actor's credential, the actor_token of Section 5.6.1,
-         and sub is the actor's identifier at that issuer, its client_id
-         for an [RFC7523] credential.
+      *  iss and sub are REQUIRED, non-empty strings: the actor's
+         canonical actor identity (Section 5.6.2), the issuer of the
+         actor's credential and the actor's identifier there, its
+         client_id for an [RFC7523] credential.
 
-      *  The IdP compares both with the actor_token and with the
-         canonical actor identity of the authenticated client
-         (Section 5.6.2).
+      *  The IdP compares both with the canonical actor identity of the
+         authenticated client and with any actor_token (Section 5.6.2).
 
       *  Additional members MAY carry further identity attributes but
          are non-authoritative and MUST NOT affect identity,
@@ -1112,8 +1112,10 @@ Pragma: no-cache
 5.6.1.  Request
 
    The root exchange is shown in Section 5.1.  A continuation exchange
-   presents an Identity Continuation Assertion and adds the actor_token
-   and a DPoP proof of the cnf key:
+   presents an Identity Continuation Assertion with a DPoP proof of the
+   cnf key and the actor's authentication (Section 5.6.2); the example
+   shows a client assertion and a separate actor_token, though one JWT
+   can serve as both:
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -1132,6 +1134,25 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<JWT>
 
+   A client whose client assertion is itself a sender-constrained
+   credential that resolves to the canonical actor identity omits the
+   actor token (Section 5.6.2):
+
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: <proof of possession of the cnf key>
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&audience=https://ras.travel.example/
+&resource=https://api.travel.example/
+&scope=trips.read
+&subject_token=<identity-continuation-assertion>
+&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&client_assertion=<sender-constrained JWT identifying the actor>
+
    The requested audience, resource, scope, requested_token_type, and
    any authorization_details [RFC9396] are supplied by the Token
    Exchange request and never by the assertion (Section 3.2).  A request
@@ -1142,39 +1163,47 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 5.6.2.  Presenter Authentication
 
    The client-to-actor mapping below applies to every exchange; the act
-   and actor_token matching and the DPoP proof apply to a continuation
-   exchange; a root exchange carries no unconditional proof-of-
+   matching and the DPoP proof apply to a continuation exchange
+   (Section 5.6.1); a root exchange carries no unconditional proof-of-
    possession requirement (Section 5.1).
 
-   The current actor MUST authenticate as an OAuth client.  Four rules
-   govern how that authentication maps to an actor identity:
+   The current actor MUST authenticate as an OAuth client with a
+   credential that resolves to its canonical actor identity.  A separate
+   actor_token is OPTIONAL: a deployment presents one when the client
+   credential does not itself identify the actor and prove its key, or
+   when it wants independent evidence of the actor.  Four rules govern
+   how authentication maps to an actor identity:
 
    *  _Authoritative mapping._ The IdP MUST map the authenticated client
       to an actor identity, an (iss, sub) pair this document calls the
-      canonical actor identity, from its registration of that client;
-      self-asserted mappings MUST NOT be accepted.  The client
-      authentication method does not determine the pair: a client that
-      authenticates with an [RFC7523] client assertion may have a
-      workload identity in another namespace as its canonical actor
-      identity.
+      canonical actor identity, from its registration of that client or
+      its configuration of the client's credential issuer; self-asserted
+      mappings MUST NOT be accepted.  The client authentication method
+      does not determine the pair: a client that authenticates with an
+      [RFC7523] client assertion may have a workload identity in another
+      namespace as its canonical actor identity.  The iss of the
+      canonical actor identity is the actor's identity authority; issuer
+      pairing (Section 5.6.3, Section 9.4) is defined against it, not
+      against whichever parameter carried the credential.
 
    *  _Root versus continuation._ On a root exchange, client
       authentication alone identifies the root actor (Section 5.1).  On
       a continuation exchange, the IdP MUST also match the canonical
-      actor identity to the assertion's act and the actor_token.
+      actor identity to the assertion's act and, where an actor_token is
+      present, to that token.
 
-   *  _Sender-constrained actor token._ The actor_token MUST NOT be
+   *  _Sender-constrained actor token._ An actor_token MUST NOT be
       bearer: for a JWT the IdP verifies its cnf confirmation (jkt in
       this version), and for an opaque token it obtains equivalent
       confirmation from authoritative metadata such as introspection
-      [RFC7662].
+      [RFC7662].  Its key is one the actor proves in the request.
 
    *  _Dual-use JWT._ A sender-constrained JWT MAY serve as both client
       assertion and actor_token when it satisfies both profiles; for
       [RFC7523] its sub is the client_id, the canonical actor identity
       is then the assertion's issuer and that client_id, and the IdP
-      MUST authorize its issuer for that client.  Otherwise the client
-      authenticates separately.
+      MUST authorize its issuer for that client.  This is the natural
+      form for a workload credential from an issuer the tenant trusts.
 
    The comparison runs between actor identities, never between a raw
    OAuth client identifier and an act value:
@@ -1185,21 +1214,29 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    canonical actor identity (iss, sub)
            ^                        ^
            |  equal                 |  equal
-      actor_token                  act
+      actor_token (if present)     act
 
    The IdP MUST compare the actor iss and sub as case-sensitive strings
-   with no transformation or canonicalization ([RFC7519]): the identity
-   in actor_token and the assertion's act are each compared with the
-   canonical actor identity, and identities in different tenants never
-   compare equal.
+   with no transformation or canonicalization ([RFC7519]): the
+   assertion's act, and the identity in any actor_token, are each
+   compared with the canonical actor identity, and identities in
+   different tenants never compare equal.
 
    The actor MUST prove possession of the key in cnf; for the jkt
    method, that proof is a DPoP proof [RFC9449].  DPoP is the only
    confirmation method this version defines, so the target validates
    confirmation identically to a directly issued ID-JAG; a mutual-TLS
-   method [RFC8705] is an open question (Appendix C).  The onward ID-JAG
-   MUST use the same key; key rotation takes effect when the actor
-   obtains a new assertion and actor token bound to the new key.
+   method [RFC8705] is an open question (Appendix C).  The IdP MUST bind
+   the onward ID-JAG to a key the actor proves in the request.  Because
+   a request carries one DPoP proof, that key is the assertion's cnf
+   key, and any actor_token is bound to it as well: the actor's
+   credential, the assertion, and the onward ID-JAG share one key.  That
+   is a consequence of a single proof method, not a property
+   continuation requires; continuation requires continuity of the actor,
+   and a future confirmation method could bind these artifacts to
+   different proven keys (Appendix C).  Key rotation takes effect when
+   the actor obtains a new assertion and actor token bound to the new
+   key.
 
 5.6.3.  Request Validation
 
@@ -1210,8 +1247,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    1.  *Request parameters.*
 
        *  exactly one each of grant_type, subject_token,
-          subject_token_type, requested_token_type, actor_token,
-          actor_token_type, and audience;
+          subject_token_type, requested_token_type, and audience; zero
+          or one actor_token, with actor_token_type present exactly when
+          actor_token is ([RFC8693], Section 2.1);
 
        *  zero or more resource, and at most one each of scope and
           authorization_details, all OPTIONAL and, when present,
@@ -1246,8 +1284,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
        string or one-element array, or another issuer the IdP trusts to
        attest that RAS's hops, recorded from tenant configuration or the
        RAS's nomination (Section 7.2); in either case the issuer is
-       trusted for the tenant and authorized to pair with the
-       actor_token issuer for that tenant;
+       trusted for the tenant and authorized to pair, for that tenant,
+       with the actor's identity authority, the iss of the canonical
+       actor identity (Section 5.6.2), whether an actor_token or the
+       IdP's mapping of the client credential supplied it;
 
    4.  *Chain state.*
 
@@ -1264,15 +1304,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    5.  *Current actor and binding.*
 
        *  act is present, conforms to the schema of Section 3.2, and
-          identifies the current actor, which is the OAuth client the
-          request is authenticated as (Section 5.6.2);
+          identifies the current actor, the canonical actor identity of
+          the authenticated client (Section 5.6.2);
 
-       *  the actor_token_type names a token type the IdP supports, and
-          the actor_token has a trusted issuer for the actor's domain
-          and tenant, is valid for that type, is accepted, designates
-          the IdP where applicable, authenticates the actor, and is
-          sender-constrained to the key confirmed by the assertion's cnf
-          (Section 5.6.2);
+       *  where an actor_token is present, actor_token_type names a
+          token type the IdP supports, and the token has a trusted
+          issuer for the actor's domain and tenant, is valid for that
+          type, is accepted, designates the IdP where applicable,
+          identifies the same actor, and is sender-constrained to a key
+          the actor proves in the request (Section 5.6.2);
 
        *  the request proves possession of the cnf key with a matching
           DPoP proof (Section 5.6.2, [RFC9449]);
@@ -1822,12 +1862,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       continuing the wrong user's chain, or raising authentication
       context (Section 9.2, Section 9.6);
 
-   *  a compromised CAI or actor-token issuer, in either deployment
-      topology (Section 9.4, Section 9.5, Section 9.3);
+   *  a compromised CAI or actor identity authority, in either
+      deployment topology (Section 9.4, Section 9.5, Section 9.3);
 
-   *  a party influencing the client-to-actor mapping, which on a root
-      exchange carrying no actor_token is the sole authenticator of the
-      root actor (Section 5.6.2);
+   *  a party influencing the client-to-actor mapping, which is the sole
+      authenticator of an actor that presents no actor_token
+      (Section 5.6.2);
 
    *  token, type, or algorithm confusion (Section 9.7);
 
@@ -1926,17 +1966,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    from the root envelope, copied unchanged into onward ID-JAGs
    (Section 5.6.5).
 
-9.3.  Trust in Actor Token Issuers
+9.3.  Trust in Actor Identity Authorities
 
-   The actor_token authenticates the current actor to the IdP, so a
-   rogue or over-scoped actor-token issuer is an impersonation vector: a
-   party controlling one issuer could mint a token naming an actor in
+   The actor's identity authority, the iss of its canonical actor
+   identity (Section 5.6.2), vouches for the current actor to the IdP,
+   whether through an actor_token it issued or through the IdP's mapping
+   of the client credential.  A rogue or over-scoped authority is an
+   impersonation vector: a party controlling one could name an actor in
    another domain or tenant and continue that actor's chains.  The
-   current-actor rule of Section 5.6.3 requires a trusted issuer for the
-   actor's own domain and tenant, and an accompanying CAI assertion does
-   not relax it: CAI attestation of the hop and actor-token
-   authentication of the actor are independent checks (Section 9.4);
-   neither substitutes for the other.
+   current-actor and issuer-trust rules of Section 5.6.3 require an
+   authority trusted for the actor's own domain and tenant and paired
+   with the CAI, and an accompanying CAI assertion does not relax that:
+   CAI attestation of the hop and authentication of the actor are
+   independent checks (Section 9.4); neither substitutes for the other.
 
 9.4.  Conjunctive Trust and Issuer Pairing
 
@@ -1947,9 +1989,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       Authorization Server, which attests the chain-to-actor transition
       (the issuer-trust rule of Section 5.6.3);
 
-   *  the workload identity issuer trusted for the current actor's trust
-      domain, which authenticates the actor through the actor_token (the
-      current-actor rule of Section 5.6.3);
+   *  the actor's identity authority, trusted for the current actor's
+      domain and tenant, which vouches for the actor through an
+      actor_token or the mapping of its client credential (the current-
+      actor rule of Section 5.6.3);
 
    *  live proof of possession of the confirmed key (the current-actor
       rule of Section 5.6.3); and
@@ -1957,7 +2000,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    *  the IdP's own envelope and current-actor policy (the envelope-
       containment rule of Section 5.6.3).
 
-   The IdP MUST authorize CAI and actor-token issuer pairings per
+   The IdP MUST authorize CAI and actor identity authority pairings per
    tenant; separate trust in each is insufficient.  Tenant determination
    MUST derive from authenticated material, not requester-supplied
    input.  The IdP MUST scope CAI trust by issuer, keys, tenant, and the
@@ -3558,7 +3601,9 @@ Appendix C.  Open Items for Working Group Discussion
 
    2.  *Mutual-TLS confirmation.* Should this profile define a mutual-
        TLS confirmation method (x5t#S256, [RFC8705]) alongside jkt, and
-       should it do so together with ID-JAG (Section 5.6.2)?
+       should it do so together with ID-JAG (Section 5.6.2)?  With a
+       second proof method available, may the actor_token and the onward
+       ID-JAG be bound to a different proven key than the assertion?
 
    3.  *A client establishment parameter.* Should a client be able to
        require or suppress chain establishment, or negotiate lifetime,
@@ -3621,12 +3666,21 @@ Document History
 
    -02
 
+   *  Made the actor_token optional on a continuation exchange: the
+      actor authenticates as an OAuth client with a credential that
+      resolves to its canonical actor identity, presenting an
+      actor_token when that credential does not identify the actor or as
+      independent evidence; stated that the shared key across
+      credential, assertion, and onward ID-JAG is a consequence of a
+      single proof method, not a continuation property; defined issuer
+      pairing against the actor's identity authority.
+
    *  Removed the proof-of-possession requirement from the root
-      exchange: a root client keeps only the base profile's obligations,
-      and sender constraint is required of a continuing actor; an
-      optional root actor_token still needs a proof of the key it is
-      bound to.  A RAS binds its access token to the confirmed key when
-      the ID-JAG carries cnf and otherwise by its own policy.
+      exchange  a root client keeps only the base profile's obligations,
+         and sender constraint is required of a continuing actor; an
+         optional root actor_token still needs a proof of the key it is
+         bound to.  A RAS binds its access token to the confirmed key
+         when the ID-JAG carries cnf and otherwise by its own policy.
 
    *  Kept single-use of an assertion required and made idempotent retry
       optional, with the fingerprint rules applying to an IdP that
