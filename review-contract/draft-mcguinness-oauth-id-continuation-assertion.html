@@ -3110,8 +3110,11 @@ succeeds only if the CAI's preconditions still hold
 entitle the workload to another.<a href="#section-8-2" class="pilcrow">¶</a></p>
 <p id="section-8-3">The online model has an operational price. Every continuation depends on the
 IdP being reachable, and a separate CAI depends on authoritative RAS state as
-well; a call path that cannot tolerate either dependency is a case for offline
-attenuation (<a href="#decision-rule" class="auto internal xref">Section 1.1</a>). The IdP retains hop records for the chain's
+well. A call path that cannot tolerate either dependency is a case for offline
+attenuation only where <a href="#decision-rule" class="auto internal xref">Section 1.1</a> already allows it, that is, where the
+subject and the trusted issuer stay stable across the boundary; availability
+alone does not remove the need for the IdP to resolve the pairwise subject.
+The IdP retains hop records for the chain's
 lifetime and replay reservations for as long as an assertion could still be
 presented, in state consistent enough that concurrent requests yield one grant
 and a retry recovers it (<a href="#validation-replay" class="auto internal xref">Section 5.8</a>); it prunes expired or revoked
@@ -4189,14 +4192,14 @@ GatewayRAS's assertion policy.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">IdP</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; tenant policy recording Alice's consent basis and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised</td>
+                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; GatewayRAS and <code>https://gateway.example/</code> authorized as a CAI and actor-token issuer pair for <code>tenant-123</code>, since trust in each alone is not enough; tenant policy recording Alice's consent basis and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised</td>
                 <td class="text-left" rowspan="1" colspan="1">
                   <a href="#client-identity" class="auto internal xref">Section 5.7.2</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#root-establishment" class="auto internal xref">Section 5.2</a>, <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>
 </td>
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">GatewayRAS</td>
-                <td class="text-left" rowspan="1" colspan="1">the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; policy permitting <code>tool-gateway</code> to obtain assertions for hops bound to the access tokens it presents</td>
+                <td class="text-left" rowspan="1" colspan="1">the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; <code>tool-gateway</code> registered as an OAuth client of GatewayRAS and associated with the resource <code>https://gateway.example/</code> it operates; policy permitting <code>tool-gateway</code> to obtain assertions for hops bound to the access tokens it presents</td>
                 <td class="text-left" rowspan="1" colspan="1">
                   <a href="#metadata-ras" class="auto internal xref">Section 7.2</a>, <a href="#assertion-preconditions" class="auto internal xref">Section 5.6.2</a>
 </td>
@@ -4219,10 +4222,14 @@ GatewayRAS's assertion policy.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a>
               </tr>
             </tbody>
           </table>
-<p id="appendix-B.1.1-3">The credential that <code>tool-gateway</code> presents as both <code>client_assertion</code> and
-<code>actor_token</code> is, in this example, a JWT issued by the gateway domain and
-bound to the gateway's key. Any sender-constrained credential the IdP accepts
-under <a href="#client-identity" class="auto internal xref">Section 5.7.2</a> would serve; this choice is illustrative.<a href="#appendix-B.1.1-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-3">The credential that <code>tool-gateway</code> presents to the IdP as both
+<code>client_assertion</code> and <code>actor_token</code> (<a href="#example-gateway-continue" class="auto internal xref">Appendix B.1.5</a>) is, in
+this example, a JWT issued by the gateway domain and bound to the gateway's
+key. Any sender-constrained credential the IdP accepts under
+<a href="#client-identity" class="auto internal xref">Section 5.7.2</a> would serve; this choice is illustrative. It is addressed
+to the IdP alone: the earlier exchange at GatewayRAS
+(<a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.4</a>) uses a separate client assertion addressed to
+GatewayRAS, as <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> requires.<a href="#appendix-B.1.1-3" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.1-4">
 <pre>
 {

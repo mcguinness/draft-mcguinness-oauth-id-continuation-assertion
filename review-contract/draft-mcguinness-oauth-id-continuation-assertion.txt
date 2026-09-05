@@ -1550,8 +1550,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    The online model has an operational price.  Every continuation
    depends on the IdP being reachable, and a separate CAI depends on
-   authoritative RAS state as well; a call path that cannot tolerate
-   either dependency is a case for offline attenuation (Section 1.1).
+   authoritative RAS state as well.  A call path that cannot tolerate
+   either dependency is a case for offline attenuation only where
+   Section 1.1 already allows it, that is, where the subject and the
+   trusted issuer stay stable across the boundary; availability alone
+   does not remove the need for the IdP to resolve the pairwise subject.
    The IdP retains hop records for the chain's lifetime and replay
    reservations for as long as an assertion could still be presented, in
    state consistent enough that concurrent requests yield one grant and
@@ -2386,7 +2389,11 @@ B.1.1.  Provisioning
    |              | gateway's credential; GatewayRAS's    | Section   |
    |              | issuer https://ras.gateway.example/   | 5.2,      |
    |              | and its signing keys trusted for the  | Section   |
-   |              | hops it accepts; tenant policy        | 7.1       |
+   |              | hops it accepts; GatewayRAS and       | 7.1       |
+   |              | https://gateway.example/ authorized   |           |
+   |              | as a CAI and actor-token issuer pair  |           |
+   |              | for tenant-123, since trust in each   |           |
+   |              | alone is not enough; tenant policy    |           |
    |              | recording Alice's consent basis and   |           |
    |              | permitting tool-gateway to continue;  |           |
    |              | identity_continuation_supported       |           |
@@ -2394,10 +2401,13 @@ B.1.1.  Provisioning
    +--------------+---------------------------------------+-----------+
    | GatewayRAS   | the continuation grant profile        | Section   |
    |              | advertised; the IdP trusted as ID-JAG | 7.2,      |
-   |              | issuer; policy permitting tool-       | Section   |
-   |              | gateway to obtain assertions for hops | 5.6.2     |
-   |              | bound to the access tokens it         |           |
-   |              | presents                              |           |
+   |              | issuer; tool-gateway registered as an | Section   |
+   |              | OAuth client of GatewayRAS and        | 5.6.2     |
+   |              | associated with the resource          |           |
+   |              | https://gateway.example/ it operates; |           |
+   |              | policy permitting tool-gateway to     |           |
+   |              | obtain assertions for hops bound to   |           |
+   |              | the access tokens it presents         |           |
    +--------------+---------------------------------------+-----------+
    | tool-gateway | one key pair, used for its            | Section   |
    |              | credential's cnf, its DPoP proofs,    | 5.7.2     |
@@ -2412,11 +2422,14 @@ B.1.1.  Provisioning
 
                                  Table 5
 
-   The credential that tool-gateway presents as both client_assertion
-   and actor_token is, in this example, a JWT issued by the gateway
-   domain and bound to the gateway's key.  Any sender-constrained
-   credential the IdP accepts under Section 5.7.2 would serve; this
-   choice is illustrative.
+   The credential that tool-gateway presents to the IdP as both
+   client_assertion and actor_token (Appendix B.1.5) is, in this
+   example, a JWT issued by the gateway domain and bound to the
+   gateway's key.  Any sender-constrained credential the IdP accepts
+   under Section 5.7.2 would serve; this choice is illustrative.  It is
+   addressed to the IdP alone: the earlier exchange at GatewayRAS
+   (Appendix B.1.4) uses a separate client assertion addressed to
+   GatewayRAS, as [RFC7523] requires.
 
    {
      "iss": "https://gateway.example/",
