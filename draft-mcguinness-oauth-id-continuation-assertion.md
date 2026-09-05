@@ -72,6 +72,7 @@ informative:
   I-D.li-oauth-delegated-authorization:
   I-D.mcguinness-oauth-actor-receipts:
   I-D.mcguinness-oauth-actor-proofs:
+  I-D.parecki-oauth-jwt-dpop-grant:
   GRANT-MGMT:
     title: "Grant Management for OAuth 2.0"
     target: "https://openid.net/specs/oauth-v2-grant-management.html"
@@ -154,9 +155,9 @@ where a deployment uses them, authorization details {{RFC9396}}
 This profile is an opt-in extension to ID-JAG. A root client whose subject
 token resolves to a grant or session keeps its exchange unchanged
 ({{root-establishment}}); this profile asks nothing new of it, not even sender
-constraint. A RAS from
-which no workload continues runs unmodified ID-JAG, which this document calls
-the base profile, and need not know that a chain exists ({{ras-processing}}).
+constraint. A RAS from which no workload continues runs unmodified ID-JAG,
+which this document calls the base profile, including its redemption of a
+key-bound ID-JAG, and need not know that a chain exists ({{ras-processing}}).
 Support is needed only where continuation proceeds: at the continuing
 workload, its RAS and CAI, and the IdP. Chain state, envelope enforcement, and
 replay protection sit at the IdP, which already resolves the pairwise subject
@@ -662,7 +663,8 @@ On accepting a continuation-capable ID-JAG, a continuation-aware RAS MUST:
 
 1. accept the ID-JAG per {{I-D.ietf-oauth-identity-assertion-authz-grant}}.
 That processing validates the grant, authenticates the presenting client,
-verifies the sender constraint of an ID-JAG that carries `cnf`, applies local
+verifies the sender constraint of an ID-JAG that carries `cnf`, which arrives
+under the DPoP-bound JWT grant ({{onward-id-jag}}), applies local
 authorization policy, and issues an access token. The access token is
 sender-constrained to the confirmed key when the ID-JAG carries `cnf`, as
 every onward ID-JAG does ({{client-identity}}); otherwise, as for a root
@@ -1222,6 +1224,13 @@ extends it: its `sub` is the IdP-issued pairwise subject for the target
 audience, and `aud_sub` remains available under the base profile where the
 target's native subject namespace differs.
 
+Because the onward ID-JAG carries `cnf`, the actor redeems it with the
+DPoP-bound JWT grant, `urn:ietf:params:oauth:grant-type:jwt-dpop`
+({{I-D.parecki-oauth-jwt-dpop-grant}}), and a DPoP proof of the bound key, as
+the base profile specifies for a key-bound ID-JAG
+({{I-D.ietf-oauth-identity-assertion-authz-grant}}, Section 9.8.1.2.1). The
+target RAS needs nothing from this document to do so.
+
 Where the envelope records `auth_time`, `acr`, or `amr`, the IdP MUST include
 them in the onward ID-JAG unchanged. Continuation MUST NOT extend or
 strengthen the authentication context, for example by raising `acr` or adding
@@ -1488,7 +1497,9 @@ Server that advertises
 `urn:ietf:params:oauth:grant-profile:id-jag-continuation` MUST also advertise
 the base `urn:ietf:params:oauth:grant-profile:id-jag` profile and the
 `urn:ietf:params:oauth:grant-type:jwt-bearer` grant type on which ID-JAG
-depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
+depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}). It MUST also
+advertise `urn:ietf:params:oauth:grant-type:jwt-dpop`, since every onward
+ID-JAG it redeems carries `cnf` ({{onward-id-jag}}).
 
 A Resource Authorization Server does not list itself as a CAI for its own
 hops; the issuer-trust rule of {{validation}} accepts it directly, subject to
@@ -2364,7 +2375,7 @@ GatewayRAS's advertisement of the continuation profile.
 | IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor identity authority pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised; `tool-gateway`'s client identifier at WikiRAS recorded for the onward ID-JAG's `client_id` | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
 | GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates, which is what lets it obtain assertions for hops bound to access tokens presented to that resource | {{metadata-ras}}, {{assertion-preconditions}} |
 | `tool-gateway` | one key pair, used for its credential's `cnf`, its DPoP proofs, and the assertion's `cnf`; a credential issued at `https://gateway.example/` | {{client-identity}} |
-| WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer | base profile |
+| WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer; the DPoP-bound JWT grant supported, as the base profile requires for a key-bound ID-JAG | base profile |
 
 The credential that `tool-gateway` presents to the IdP as its
 `client_assertion` ({{example-gateway-continue}}) is, in this example, a JWT
@@ -2680,8 +2691,9 @@ continuable and only that tool call fails ({{error-response}}).
 
 ### WikiRAS Redeems an Ordinary ID-JAG {#example-gateway-terminal}
 
-ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant and a
-DPoP proof of the same key. WikiRAS implements nothing from this profile: it
+ToolGateway redeems the ID-JAG at WikiRAS with the DPoP-bound JWT grant and a
+DPoP proof of the same key ({{onward-id-jag}}). WikiRAS implements nothing
+from this profile: it
 validates the ID-JAG as the base profile requires, ignores the handle, and
 issues an access token without binding H1 ({{ras-processing}}). ToolGateway
 calls WikiAPI as Alice's wiki subject and returns the result to AgentApp.
@@ -2767,7 +2779,7 @@ ExpenseService    Expense CAI     IdP       TravelRAS  Travel TTS/API
        |<--assertion---|           |            |             |
        |--assertion, actor, DPoP-->|            |             |
        |<--------ID-JAG H1---------|            |             |
-       |-------jwt-bearer: ID-JAG + DPoP------->| bind H1     |
+       |-------jwt-dpop: ID-JAG + DPoP--------->| bind H1     |
        |<------------------AT2------------------|             |
        |-------------call TravelAPI: AT2 + DPoP-------------->|
        |               |           |            | TT with H1 to workload
@@ -3355,6 +3367,11 @@ this profile builds.
 
 -02
 
+* Aligned redemption of the key-bound onward ID-JAG with the base profile's
+  DPoP-bound JWT grant in RAS processing, Onward ID-JAG Construction, RAS
+  metadata, and the examples; defined `act` by the canonical actor identity;
+  CAI precondition 4 binds to the authorization context rather than a
+  transaction; a root ID-JAG need not carry `cnf`.
 * Fresh-eyes review fixes: qualified the single-use rationale for
   self-contained acceptance evidence; rule 4 now tests the presented hop's
   own revocation; chain establishment requires a resolvable anchor and
