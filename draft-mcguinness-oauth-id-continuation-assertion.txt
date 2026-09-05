@@ -134,12 +134,13 @@ Table of Contents
      12.2.  Informative References
    Appendix A.  Design Rationale
      A.1.  Relationship to ID-JAG
-     A.2.  Why Not a Transaction Token
-     A.3.  Why Not a Cross-Domain Propagation Token
-     A.4.  Alternative Topology: Resolution at the Target
-     A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
-     A.6.  Why Asymmetric Signing Only
-     A.7.  Boundary of the Profile
+     A.2.  Actor Identity and Target client_id
+     A.3.  Why Not a Transaction Token
+     A.4.  Why Not a Cross-Domain Propagation Token
+     A.5.  Alternative Topology: Resolution at the Target
+     A.6.  Why a Signed Assertion Rather Than a Bare Grant Type
+     A.7.  Why Asymmetric Signing Only
+     A.8.  Boundary of the Profile
    Appendix B.  Examples
      B.1.  Gateway Example (Co-located RAS and CAI)
        B.1.1.  Provisioning
@@ -235,7 +236,7 @@ Table of Contents
    is part of the work the user or tenant sanctioned; that is the IdP's
    policy decision at each continuation, expressed through the envelope
    and, where a deployment uses them, authorization details [RFC9396]
-   (Appendix A.7).
+   (Appendix A.8).
 
    This profile is an opt-in extension to ID-JAG.  A root client whose
    exchange already carries a DPoP proof and a subject token that
@@ -579,10 +580,13 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       a recipient MUST ignore members it does not understand, and exp,
       nbf, aud, scope, cnf, and nested act MUST NOT be present.
 
-   cnf:  REQUIRED.  A confirmation claim [RFC7800] that binds the
-      assertion to the current actor's key.  It MUST contain exactly one
-      method: jkt, the JWK SHA-256 thumbprint [RFC7638] of the DPoP key
-      [RFC9449].
+   cnf:  REQUIRED.  A confirmation claim [RFC7800] binding the assertion
+      to a key the current actor proves.  The property this profile
+      needs is that proof; the method is how it is shown.  In this
+      profile, cnf MUST contain exactly one confirmation method: jkt,
+      the JWK SHA-256 thumbprint [RFC7638] of the DPoP key [RFC9449].  A
+      future profile may replace that restriction with another method
+      offering equivalent live proof (Section 9.1).
 
    iat, exp:  REQUIRED. exp MUST follow iat, and exp - iat MUST NOT
       exceed 300 seconds.
@@ -1183,13 +1187,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    actor_token, act, and the authenticated client, and identities in
    different tenants never compare equal.
 
-   The actor MUST present a DPoP proof [RFC9449] for the key in cnf.jkt.
-   DPoP is the single mandatory confirmation method, so the target
-   validates confirmation identically to a directly issued ID-JAG, and
-   this version defines no mutual-TLS variant [RFC8705] (Appendix C).
-   The onward ID-JAG MUST use the same DPoP key; key rotation takes
-   effect when the actor obtains a new assertion and actor token bound
-   to the new key.
+   The actor MUST prove possession of the key in cnf; for the jkt method
+   this document defines, that proof is a DPoP proof [RFC9449].  DPoP is
+   the single method this version defines, so the target validates
+   confirmation identically to a directly issued ID-JAG; a mutual-TLS
+   method [RFC8705] is an open question (Appendix C).  The onward ID-JAG
+   MUST use the same key; key rotation takes effect when the actor
+   obtains a new assertion and actor token bound to the new key.
 
    The current-actor rule of Section 5.7.3 then requires client
    authentication, the actor_token, the assertion's act, and the DPoP
@@ -1671,7 +1675,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    to receive the handle at all.  Three carriers are common:
 
    *  A Transaction Token [I-D.ietf-oauth-transaction-tokens] can carry
-      the handle as request context (Appendix A.2).
+      the handle as request context (Appendix A.3).
 
    *  A signed JWT access token [RFC9068] issued by the accepting RAS
       can carry the handle as a claim.  The claim records issuance-time
@@ -1741,15 +1745,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    that captured it, in transit, from a log, or from a compromised
    intermediary, continue the chain as that actor.  The assertion MUST
    NOT be accepted as a bearer token [RFC7800]; every exchange requires
-   live proof of possession of the cnf key via a DPoP proof [RFC9449]
-   (Section 5.7.2).  A captured assertion is therefore useless without
-   the private key, and because the onward ID-JAG is bound to the same
-   key (Section 5.7.2), possession is demonstrated continuously across
-   the chain, not once at issuance.  At assertion issuance the client
-   proves its own key, which the CAI binds to the new assertion; it need
-   not prove possession of any key bound to the incoming subject token
-   (Section 5.6.1).  The applicable subject-token validation and every
-   issuance precondition still apply.
+   live proof of possession of the cnf key, a DPoP proof [RFC9449] for
+   the method this document defines (Section 5.7.2).  A captured
+   assertion is therefore useless without the private key, and because
+   the onward ID-JAG is bound to the same key (Section 5.7.2),
+   possession is demonstrated continuously across the chain, not once at
+   issuance.  At assertion issuance the client proves its own key, which
+   the CAI binds to the new assertion; it need not prove possession of
+   any key bound to the incoming subject token (Section 5.6.1).  The
+   applicable subject-token validation and every issuance precondition
+   still apply.
 
    The 300-second ceiling and the single-use (iss, jti) reservation
    (Section 5.8) confine replay to the IdP continuation exchange.  The
@@ -2298,7 +2303,37 @@ A.1.  Relationship to ID-JAG
    subject and, when applicable, a continuation handle.  The artifacts
    therefore have different issuers, audiences, subjects, and consumers.
 
-A.2.  Why Not a Transaction Token
+A.2.  Actor Identity and Target client_id
+
+   act and client_id answer different questions. act names the actor
+   doing the work: the workload the IdP authenticated as its OAuth
+   client on the continuation exchange, recorded in the lineage.
+   client_id names the OAuth client that may redeem the grant at the
+   target RAS.  Both appear because the artifact this profile produces
+   is an ID-JAG, which the base profile defines as a grant a registered
+   client presents; a target RAS authenticates that client and applies
+   its policy by client_id, and need not understand this continuation
+   profile.  So before continuing to a target, the current actor needs a
+   client identity resolvable at that target's RAS (Section 5.7), and
+   the IdP places it in the onward ID-JAG.  That is compatibility with
+   ID-JAG, not the profile's model of delegation: a workload with a
+   strong identity and key but no registration at a target cannot
+   receive a grant for it because nothing there could redeem the grant,
+   not because it is any less the actor.  The two identifiers often
+   coincide, as when a gateway registers everywhere under one name, but
+   the profile keeps them distinct so that lineage records who acted
+   while the grant records who may redeem.
+
+   The may_act claim of [RFC8693] does not remove the need for this
+   profile.  It lets an issuer state, inside a token the target already
+   trusts, which party may later act for the token's subject: an
+   authorization to act, made in advance.  Continuation needs the
+   opposite: a party the previous token never named must obtain a new
+   token for an audience whose pairwise subject only the IdP can
+   produce. may_act could constrain who may continue; it cannot mint the
+   subject, so the IdP exchange remains.
+
+A.3.  Why Not a Transaction Token
 
    A Transaction Token [I-D.ietf-oauth-transaction-tokens] carries
    request context within one trust domain.  The assertion crosses from
@@ -2306,7 +2341,7 @@ A.2.  Why Not a Transaction Token
    subject nor general request context.  It may be derived from
    Transaction Token context, but is not a Transaction Token profile.
 
-A.3.  Why Not a Cross-Domain Propagation Token
+A.4.  Why Not a Cross-Domain Propagation Token
 
    The choice follows Section 1.1: a pairwise-subject boundary can be
    crossed only by the IdP, which the target trusts to name the user,
@@ -2320,7 +2355,7 @@ A.3.  Why Not a Cross-Domain Propagation Token
    the intra-domain layer and stops where re-issuance to a new subject
    begins.
 
-A.4.  Alternative Topology: Resolution at the Target
+A.5.  Alternative Topology: Resolution at the Target
 
    A pull design would have each target resolve a reference at the IdP
    over a back channel [RFC7662].  It requires a new target-side grant
@@ -2329,7 +2364,7 @@ A.4.  Alternative Topology: Resolution at the Target
    RASes; the CAI supplies acceptance evidence.  Pull remains a possible
    companion profile.
 
-A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
+A.6.  Why a Signed Assertion Rather Than a Bare Grant Type
 
    The signed assertion lets the CAI attest the authenticated actor,
    key, accepted hop, and any intra-domain policy checks that the IdP
@@ -2344,7 +2379,7 @@ A.5.  Why a Signed Assertion Rather Than a Bare Grant Type
    the acceptance evidence and transaction checks that only a party in
    that domain can provide.
 
-A.6.  Why Asymmetric Signing Only
+A.7.  Why Asymmetric Signing Only
 
    This profile requires asymmetric signing and forbids encryption and
    nested signing (Section 3.1), tighter than RFC 8725 [RFC8725], which
@@ -2356,7 +2391,7 @@ A.6.  Why Asymmetric Signing Only
    a single compact signed form removes an interoperability choice
    between issuers and verifiers.
 
-A.7.  Boundary of the Profile
+A.8.  Boundary of the Profile
 
    Continuation serves the Resource Authorization Servers that trust the
    common IdP.  A target outside that circle fails in one of two ways:
@@ -3178,7 +3213,7 @@ B.2.5.  The Pattern Repeats to BookingRAS (H2)
    BookingRAS is terminal: it redeems the ID-JAG under the base profile,
    ignores H2, issues AT3, and binds nothing (Section 5.3). travel-
    service calls BookingAPI with AT3.  A target outside the trust circle
-   cannot be reached this way (Appendix A.7).
+   cannot be reached this way (Appendix A.8).
 
 B.2.6.  What Differs from the Gateway Example
 
@@ -3375,10 +3410,11 @@ Appendix C.  Open Items for Working Group Discussion
        actor class, trust domain, or key and accept it with client
        authentication, sender-constrained actor_token, and live key
        proof?  Are the CAI's actor/key attestation and domain-local gate
-       worth the added trust configuration (Appendix A.5)?
+       worth the added trust configuration (Appendix A.6)?
 
-   2.  *Mutual-TLS binding.* Should this profile and ID-JAG add mutual-
-       TLS binding together (Section 5.7.2)?
+   2.  *Mutual-TLS confirmation.* Should this profile define a mutual-
+       TLS confirmation method (x5t#S256, [RFC8705]) alongside jkt, and
+       should it do so together with ID-JAG (Section 5.7.2)?
 
    3.  *A client establishment parameter.* Should a client be able to
        require or suppress chain establishment, or negotiate lifetime,
@@ -3399,7 +3435,7 @@ Appendix C.  Open Items for Working Group Discussion
    expanded here: nested own-domain act segments and offline-actor audit
    ([I-D.mcguinness-oauth-actor-receipts],
    [I-D.mcguinness-oauth-actor-proofs]); a pull topology with target-
-   side resolution (Appendix A.4); IdP discovery metadata for accepted
+   side resolution (Appendix A.5); IdP discovery metadata for accepted
    actor-token types, issuers, and proof methods (Section 7); a non-user
    root profile (Section 1.1); and RAS-derived narrowing with a signed
    intersection model (Section 5.4).
@@ -3415,6 +3451,12 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Added a Design Rationale subsection separating actor identity
+      (act) from the target's client_id and explaining why may_act does
+      not suffice; restated the confirmation claim as a proof-of-
+      possession property with DPoP as the one method this document
+      defines.
 
    *  Narrowed the CAI contract to attested facts: the RAS accepted the
       hop, RAS state still shows it continuable, and the authenticated
