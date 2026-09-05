@@ -1291,7 +1291,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
                 <p id="section-toc.1-1.9.2.2.1"><a href="#section-9.2" class="auto internal xref">9.2</a>.  <a href="#name-envelope-enforcement-and-of" class="internal xref">Envelope Enforcement and Offline Attenuation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.3">
-                <p id="section-toc.1-1.9.2.3.1"><a href="#section-9.3" class="auto internal xref">9.3</a>.  <a href="#name-trust-in-actor-token-issuer" class="internal xref">Trust in Actor Token Issuers</a></p>
+                <p id="section-toc.1-1.9.2.3.1"><a href="#section-9.3" class="auto internal xref">9.3</a>.  <a href="#name-trust-in-actor-identity-aut" class="internal xref">Trust in Actor Identity Authorities</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.4">
                 <p id="section-toc.1-1.9.2.4.1"><a href="#section-9.4" class="auto internal xref">9.4</a>.  <a href="#name-conjunctive-trust-and-issue" class="internal xref">Conjunctive Trust and Issuer Pairing</a></p>
@@ -1518,7 +1518,7 @@ request continuation.<a href="#section-1-5.3.1" class="pilcrow">¶</a></p>
       </ol>
 <p id="section-1-6">The IdP establishes the first by minting every ID-JAG itself, and the RAS the
 second by binding the handle when it accepts a grant. For the third, a
-Continuation Assertion Issuer (CAI) in the RAS's trust domain attests that the
+Continuation Assertion Issuer (CAI) trusted for the RAS's hops attests that the
 actor holds an accepted, still-active authorization, and the actor's own
 client authentication and proof of possession establish who is asking. The
 IdP's envelope then decides whether that actor may continue. The actor need
@@ -2453,7 +2453,7 @@ the carrier.<a href="#section-5.5.1-8.2.1" class="pilcrow">¶</a></p>
 <p id="section-5.5.1-9">With an access token, the client is a resource server exchanging a token it
 received, the scenario of the example in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.3. A RAS acting
 as CAI resolves its own token; a separate CAI resolves it through introspection
-<span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>.<a href="#section-5.5.1-9" class="pilcrow">¶</a></p>
+<span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> or, for a self-contained token, by validating it.<a href="#section-5.5.1-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="assertion-preconditions">
@@ -2493,10 +2493,12 @@ short-lived token, that token's validity.<a href="#section-5.5.2-2.5.1" class="p
 </li>
           </ol>
 <p id="section-5.5.2-3">A live recheck <span class="bcp14">SHOULD</span> be used where the tenant requires withdrawal of a hop's
-authorization to take effect before the RAS's token would expire. With
-self-contained evidence, withdrawal takes effect at that token's expiry, as it
-does for any OAuth access token, and the CAI's freshness is bounded by the
-RAS token lifetime (<a href="#security-topology" class="auto internal xref">Section 9.5</a>).<a href="#section-5.5.2-3" class="pilcrow">¶</a></p>
+authorization to stop fresh assertions before the RAS's token would expire.
+With self-contained evidence, the token's expiry is when the CAI stops
+issuing, as for any OAuth access token; an assertion already issued remains
+usable until its own <code>exp</code>, so the withdrawal tail is the token's remaining
+lifetime plus the assertion lifetime (<a href="#security-topology" class="auto internal xref">Section 9.5</a>). A CAI that caps
+the assertion's <code>exp</code> at the evidence's expiry removes the second term.<a href="#section-5.5.2-3" class="pilcrow">¶</a></p>
 <p id="section-5.5.2-4">A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
 Target or purpose hints can narrow CAI issuance but <span class="bcp14">MUST NOT</span> control the IdP's
@@ -2531,8 +2533,8 @@ returned <code>issuer</code> exactly matches <code>audience</code>. Where the Id
 metadata, the client uses configuration bound to that issuer identifier
 (<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.5.3-3" class="pilcrow">¶</a></p>
 <p id="section-5.5.3-4">The response <span class="bcp14">MUST NOT</span> include a <code>refresh_token</code>, which would let a client
-obtain further assertions without presenting a token or passing the live
-recheck.<a href="#section-5.5.3-4" class="pilcrow">¶</a></p>
+obtain further assertions without presenting a token or passing the
+acceptance check.<a href="#section-5.5.3-4" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.5.3-5">
 <pre>
 HTTP/1.1 200 OK
@@ -2621,12 +2623,33 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;JWT&gt;
 </pre><a href="#section-5.6.1-2" class="pilcrow">¶</a>
 </div>
-<p id="section-5.6.1-3">The requested <code>audience</code>, <code>resource</code>, <code>scope</code>, <code>requested_token_type</code>, and any
+<p id="section-5.6.1-3">A client whose client assertion is itself a sender-constrained credential that
+resolves to the canonical actor identity omits the actor token
+(<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>):<a href="#section-5.6.1-3" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-5.6.1-4">
+<pre>
+POST /token HTTP/1.1
+Host: idp.example
+Content-Type: application/x-www-form-urlencoded
+DPoP: &lt;proof of possession of the cnf key&gt;
+
+grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+&amp;requested_token_type=urn:ietf:params:oauth:token-type:id-jag
+&amp;audience=https://ras.travel.example/
+&amp;resource=https://api.travel.example/
+&amp;scope=trips.read
+&amp;subject_token=&lt;identity-continuation-assertion&gt;
+&amp;subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
+&amp;client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
+&amp;client_assertion=&lt;sender-constrained JWT identifying the actor&gt;
+</pre><a href="#section-5.6.1-4" class="pilcrow">¶</a>
+</div>
+<p id="section-5.6.1-5">The requested <code>audience</code>, <code>resource</code>, <code>scope</code>, <code>requested_token_type</code>, and any
 <code>authorization_details</code> <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span> are supplied by the Token Exchange request
 and never by the assertion (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>). A request can carry multiple
 <code>resource</code> indicators <span>[<a href="#RFC8707" class="cite xref">RFC8707</a>]</span>, which the IdP treats as an order-independent
 set; the envelope-containment rule (<a href="#validation" class="auto internal xref">Section 5.6.3</a>) applies to
-<code>authorization_details</code> and to scope alike.<a href="#section-5.6.1-3" class="pilcrow">¶</a></p>
+<code>authorization_details</code> and to scope alike.<a href="#section-5.6.1-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="client-identity">
@@ -2652,7 +2675,10 @@ actor identity, from its registration of that client or its configuration
 of the client's credential issuer; self-asserted mappings <span class="bcp14">MUST NOT</span> be
 accepted. The client authentication method does not determine the pair: a
 client that authenticates with an <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client assertion may have a
-workload identity in another namespace as its canonical actor identity.<a href="#section-5.6.2-3.1.1" class="pilcrow">¶</a></p>
+workload identity in another namespace as its canonical actor identity. The
+<code>iss</code> of the canonical actor identity is the actor's identity authority;
+issuer pairing (<a href="#validation" class="auto internal xref">Section 5.6.3</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>) is defined against
+it, not against whichever parameter carried the credential.<a href="#section-5.6.2-3.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.6.2-3.2">
               <p id="section-5.6.2-3.2.1"><em>Root versus continuation.</em> On a root exchange, client authentication alone
@@ -2722,8 +2748,9 @@ from another's resolution.<a href="#section-5.6.3-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.6.3-2.1.2.1">
                   <p id="section-5.6.3-2.1.2.1.1">exactly one each of <code>grant_type</code>, <code>subject_token</code>, <code>subject_token_type</code>,
-<code>requested_token_type</code>, <code>actor_token</code>, <code>actor_token_type</code>, and
-<code>audience</code>;<a href="#section-5.6.3-2.1.2.1.1" class="pilcrow">¶</a></p>
+<code>requested_token_type</code>, and <code>audience</code>; zero or one <code>actor_token</code>, with
+<code>actor_token_type</code> present exactly when <code>actor_token</code> is (<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>,
+Section 2.1);<a href="#section-5.6.3-2.1.2.1.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.6.3-2.1.2.2">
                   <p id="section-5.6.3-2.1.2.2.1">zero or more <code>resource</code>, and at most one each of <code>scope</code> and
@@ -2769,7 +2796,9 @@ identified by the ID-JAG <code>aud</code> recorded for the hop as a string or
 one-element array, or another issuer the IdP trusts to attest that RAS's
 hops, recorded from tenant configuration or the RAS's nomination
 (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>); in either case the issuer is trusted for the tenant and
-authorized to pair with the <code>actor_token</code> issuer for that tenant;<a href="#section-5.6.3-2.3.1" class="pilcrow">¶</a></p>
+authorized to pair, for that tenant, with the actor's identity authority,
+the <code>iss</code> of the canonical actor identity (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>), whether an
+<code>actor_token</code> or the IdP's mapping of the client credential supplied it;<a href="#section-5.6.3-2.3.1" class="pilcrow">¶</a></p>
 </li>
             <li id="section-5.6.3-2.4">
               <p id="section-5.6.3-2.4.1"><strong>Chain state.</strong><a href="#section-5.6.3-2.4.1" class="pilcrow">¶</a></p>
@@ -3447,7 +3476,7 @@ wrong user's chain, or raising authentication context (<a href="#security-envelo
 <a href="#security-actor-chain" class="auto internal xref">Section 9.6</a>);<a href="#section-9-2.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-9-2.3">
-          <p id="section-9-2.3.1">a compromised CAI or actor-token issuer, in either deployment topology
+          <p id="section-9-2.3.1">a compromised CAI or actor identity authority, in either deployment topology
 (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#security-topology" class="auto internal xref">Section 9.5</a>,
 <a href="#security-actor-issuers" class="auto internal xref">Section 9.3</a>);<a href="#section-9-2.3.1" class="pilcrow">¶</a></p>
 </li>
@@ -3550,17 +3579,20 @@ unchanged into onward ID-JAGs (<a href="#onward-id-jag" class="auto internal xre
 </div>
 <div id="security-actor-issuers">
 <section id="section-9.3">
-        <h3 id="name-trust-in-actor-token-issuer">
-<a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-trust-in-actor-token-issuer" class="section-name selfRef">Trust in Actor Token Issuers</a>
+        <h3 id="name-trust-in-actor-identity-aut">
+<a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-trust-in-actor-identity-aut" class="section-name selfRef">Trust in Actor Identity Authorities</a>
         </h3>
-<p id="section-9.3-1">The <code>actor_token</code> authenticates the current actor to the IdP, so a rogue or
-over-scoped actor-token issuer is an impersonation vector: a party controlling
-one issuer could mint a token naming an actor in another domain or tenant and
-continue that actor's chains. The current-actor rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>
-requires a trusted issuer for the actor's own domain and tenant, and an
-accompanying CAI assertion does not relax it: CAI attestation of the hop and
-actor-token authentication of the actor are independent checks
-(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>); neither substitutes for the other.<a href="#section-9.3-1" class="pilcrow">¶</a></p>
+<p id="section-9.3-1">The actor's identity authority, the <code>iss</code> of its canonical actor identity
+(<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>), vouches for the current actor to the IdP, whether
+through an <code>actor_token</code> it issued or through the IdP's mapping of the client
+credential. A rogue or over-scoped authority is an impersonation vector: a
+party controlling one could name an actor in another domain or tenant and
+continue that actor's chains. The current-actor and issuer-trust rules of
+<a href="#validation" class="auto internal xref">Section 5.6.3</a> require an authority trusted for the actor's own domain and
+tenant and paired with the CAI, and an accompanying CAI assertion does not
+relax that: CAI attestation of the hop and authentication of the actor are
+independent checks (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>); neither substitutes for the
+other.<a href="#section-9.3-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-trust-model">
@@ -3576,9 +3608,9 @@ Authorization Server, which attests the chain-to-actor transition (the
 issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>);<a href="#section-9.4-2.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-9.4-2.2">
-            <p id="section-9.4-2.2.1">the workload identity issuer trusted for the current actor's trust domain,
-which authenticates the actor through the <code>actor_token</code> (the current-actor
-rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>);<a href="#section-9.4-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-9.4-2.2.1">the actor's identity authority, trusted for the current actor's domain and
+tenant, which vouches for the actor through an <code>actor_token</code> or the mapping
+of its client credential (the current-actor rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>);<a href="#section-9.4-2.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-9.4-2.3">
             <p id="section-9.4-2.3.1">live proof of possession of the confirmed key (the current-actor rule of
@@ -3589,8 +3621,8 @@ rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>);<a h
 rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>).<a href="#section-9.4-2.4.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-9.4-3">The IdP <span class="bcp14">MUST</span> authorize CAI and actor-token issuer pairings per tenant; separate
-trust in each is insufficient. Tenant determination <span class="bcp14">MUST</span> derive from
+<p id="section-9.4-3">The IdP <span class="bcp14">MUST</span> authorize CAI and actor identity authority pairings per tenant;
+separate trust in each is insufficient. Tenant determination <span class="bcp14">MUST</span> derive from
 authenticated material, not requester-supplied input. The IdP <span class="bcp14">MUST</span> scope CAI
 trust by issuer, keys, tenant, and the RAS it attests for.<a href="#section-9.4-3" class="pilcrow">¶</a></p>
 <p id="section-9.4-4">The IdP <span class="bcp14">MAY</span> learn additional issuers from the RAS's advertised
@@ -3618,9 +3650,10 @@ additionally attest a hop the RAS refused. In both topologies, RAS-local
 authorization revocation after issuance, which the IdP cannot observe, leaves
 the assertion valid for its remaining lifetime; a separate CAI adds any delay
 in RAS state reaching it, and where the RAS's acceptance evidence is a
-self-contained token (<a href="#assertion-preconditions" class="auto internal xref">Section 5.5.2</a>) the delay is that token's
-remaining lifetime, so a tenant that needs faster withdrawal configures a live
-recheck. The root envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
+self-contained token (<a href="#assertion-preconditions" class="auto internal xref">Section 5.5.2</a>) fresh issuance continues
+for that token's remaining lifetime, on top of the assertion's own lifetime,
+so a tenant that needs faster withdrawal configures a live recheck. The root
+envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -5667,7 +5700,8 @@ Rationale.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
  by the RAS's own authorization
 semantics, so a RAS whose authorization is a self-contained short-lived
 token satisfies the issuance precondition by that token's validity; a live
-recheck is recommended where withdrawal must take effect before expiry.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+recheck is recommended where fresh issuance must stop before the token
+expires.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.3">
           <p id="appendix-E-3.3.1">Made the <code>actor_token</code> optional on a continuation exchange: the actor
@@ -5675,7 +5709,8 @@ authenticates as an OAuth client with a credential that resolves to its
 canonical actor identity, presenting an <code>actor_token</code> when that credential
 does not identify the actor or as independent evidence; stated that the
 shared key across credential, assertion, and onward ID-JAG is a consequence
-of a single proof method, not a continuation property.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+of a single proof method, not a continuation property; defined issuer
+pairing against the actor's identity authority.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.4">
           <span class="break"></span><dl class="dlParallel" id="appendix-E-3.4.1">
