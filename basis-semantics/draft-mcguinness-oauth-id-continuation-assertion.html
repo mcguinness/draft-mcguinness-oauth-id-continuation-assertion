@@ -1828,7 +1828,8 @@ chain and bounds every continuation under it (<a href="#lifecycle" class="auto i
           <p id="section-2-3.30.1">What the IdP evaluates every continuation against. It has two parts: the
 chain identity, the facts of the root exchange, fixed at establishment; and
 the continuation authorization, the targets, continuers, and limits the IdP
-recorded at establishment and evaluates under tenant policy as it stands
+recorded at establishment, which later policy may narrow at any
+continuation but widens only through a recorded authorization basis
 (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
@@ -2129,7 +2130,7 @@ permits continuation and, if so, populates the root-chain envelope:<a href="#sec
               <td class="text-left" rowspan="1" colspan="1">Continuation authorization</td>
               <td class="text-left" rowspan="1" colspan="1">Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details <span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>, or recorded as an authorization basis</td>
               <td class="text-left" rowspan="1" colspan="1">tenant policy</td>
-              <td class="text-left" rowspan="1" colspan="1">enumerated: fixed; basis: as policy stands</td>
+              <td class="text-left" rowspan="1" colspan="1">enumerated: narrows only; basis: as policy stands</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">Continuation authorization</td>
@@ -2157,7 +2158,7 @@ envelope takes (the envelope-containment rule of <a href="#validation" class="au
 change widens a chain only through an authorization basis: an envelope that
 enumerates its targets <span class="bcp14">MUST NOT</span> admit a target the tenant adds after
 establishment (<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>), while a basis-referenced envelope admits
-whatever the basis reads as policy stands, such as a service's classification
+whatever the basis currently reads, such as a service's classification
 or a group's membership (<a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>). The effective authority at
 any continuation is therefore the recorded continuation authorization
 evaluated under current policy, never more.<a href="#section-5.1-9" class="pilcrow">¶</a></p>
@@ -3417,7 +3418,7 @@ envelope. Because the assertion is target-agnostic, a permitted actor may
 select any target within that ceiling.<a href="#section-9.2-1" class="pilcrow">¶</a></p>
 <p id="section-9.2-2">An envelope that records an authorization basis instead of listing targets
 (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) admits every target the basis permits at request
-time; how broad that is depends on the basis, not on its form. A gateway that
+time; how broad that is depends on the policy the basis references. A gateway that
 chooses its upstream at request time is the intended case and also a
 confused-deputy surface, since a compromised or misdirected workload can steer
 continuation to any target the basis admits.<a href="#section-9.2-2" class="pilcrow">¶</a></p>
@@ -4756,9 +4757,9 @@ productivity tool only after the chain was established, is admitted;
 }
 </pre><a href="#appendix-B.1.5-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.5-8">A target outside the basis fails with <code>invalid_target</code>; the chain stays
+<p id="appendix-B.1.5-8">A target outside the envelope fails with <code>invalid_target</code>; the chain stays
 continuable and only that tool call fails (<a href="#error-response" class="auto internal xref">Section 5.6.6</a>).
-<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a> shows one.<a href="#appendix-B.1.5-8" class="pilcrow">¶</a></p>
+<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a> shows the same failure for an enumerated envelope.<a href="#appendix-B.1.5-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-terminal">

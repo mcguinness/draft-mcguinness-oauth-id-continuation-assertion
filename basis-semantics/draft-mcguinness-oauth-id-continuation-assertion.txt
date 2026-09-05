@@ -489,8 +489,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       against.  It has two parts: the chain identity, the facts of the
       root exchange, fixed at establishment; and the continuation
       authorization, the targets, continuers, and limits the IdP
-      recorded at establishment and evaluates under tenant policy as it
-      stands (Section 5.1).
+      recorded at establishment, which later policy may narrow at any
+      continuation but widens only through a recorded authorization
+      basis (Section 5.1).
 
    Authorization basis:  A reference to tenant policy, recorded in the
       continuation authorization in place of an enumerated target list,
@@ -708,9 +709,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    |               | (Section 6)       |                |              |
    +---------------+-------------------+----------------+--------------+
    | Continuation  | Onward targets,   | tenant policy  | enumerated:  |
-   | authorization | either            |                | fixed;       |
-   |               | enumerated as     |                | basis: as    |
-   |               | permitted         |                | policy       |
+   | authorization | either            |                | narrows      |
+   |               | enumerated as     |                | only; basis: |
+   |               | permitted         |                | as policy    |
    |               | audiences with    |                | stands       |
    |               | their resources,  |                |              |
    |               | scopes, and       |                |              |
@@ -752,11 +753,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    Section 5.6.3).  A policy change widens a chain only through an
    authorization basis: an envelope that enumerates its targets MUST NOT
    admit a target the tenant adds after establishment (Appendix B.3.4),
-   while a basis-referenced envelope admits whatever the basis reads as
-   policy stands, such as a service's classification or a group's
-   membership (Appendix B.1.2).  The effective authority at any
-   continuation is therefore the recorded continuation authorization
-   evaluated under current policy, never more.
+   while a basis-referenced envelope admits whatever the basis currently
+   reads, such as a service's classification or a group's membership
+   (Appendix B.1.2).  The effective authority at any continuation is
+   therefore the recorded continuation authorization evaluated under
+   current policy, never more.
 
    What the root request asked for is not a ceiling either: its audience
    and scope bound only the root ID-JAG.
@@ -1819,11 +1820,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    An envelope that records an authorization basis instead of listing
    targets (Section 5.1) admits every target the basis permits at
-   request time; how broad that is depends on the basis, not on its
-   form.  A gateway that chooses its upstream at request time is the
-   intended case and also a confused-deputy surface, since a compromised
-   or misdirected workload can steer continuation to any target the
-   basis admits.
+   request time; how broad that is depends on the policy the basis
+   references.  A gateway that chooses its upstream at request time is
+   the intended case and also a confused-deputy surface, since a
+   compromised or misdirected workload can steer continuation to any
+   target the basis admits.
 
    The IdP's per-target evaluation, the tenant policy that forms the
    basis, and the per-authorization fan-out limits bound the damage; a
@@ -2919,9 +2920,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      "jti": "idjag-wiki-01"
    }
 
-   A target outside the basis fails with invalid_target; the chain stays
-   continuable and only that tool call fails (Section 5.6.6).
-   Appendix B.3.4 shows one.
+   A target outside the envelope fails with invalid_target; the chain
+   stays continuable and only that tool call fails (Section 5.6.6).
+   Appendix B.3.4 shows the same failure for an enumerated envelope.
 
 B.1.6.  WikiRAS Redeems an Ordinary ID-JAG
 
