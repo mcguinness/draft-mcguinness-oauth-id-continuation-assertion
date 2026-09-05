@@ -2592,8 +2592,9 @@ Pragma: no-cache
           <h4 id="name-error-response">
 <a href="#section-5.5.4" class="section-number selfRef">5.5.4. </a><a href="#name-error-response" class="section-name selfRef">Error Response</a>
           </h4>
-<p id="section-5.5.4-1">On failure, the CAI returns an error response (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 5.2;
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2) with one of the following <code>error</code> values:<a href="#section-5.5.4-1" class="pilcrow">¶</a></p>
+<p id="section-5.5.4-1">On failure, the CAI returns an error response according to <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>,
+Section 5.2, and <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2. This document specifies the
+following error mappings:<a href="#section-5.5.4-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.4-2.1">
               <p id="section-5.5.4-2.1.1"><code>invalid_request</code> when the <code>subject_token</code> is invalid or unacceptable under
@@ -4317,20 +4318,21 @@ may redeem.<a href="#appendix-A.2-2" class="pilcrow">¶</a></p>
 <p id="appendix-A.2-3">The IdP's mapping from client to canonical actor identity does not depend on
 the client authentication method: a client that authenticates with an
 <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client assertion may have a workload identity in another namespace
-as its canonical actor identity, and a sender-constrained JWT from an issuer
-the tenant trusts is the natural form of such a credential, serving as both
-client assertion and <code>actor_token</code> (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>). The shared key
-across the actor's credential, the assertion, and the onward ID-JAG is a
+as its canonical actor identity. A sender-constrained JWT from an issuer the
+tenant trusts is the natural form of a workload credential and, when it
+satisfies both profiles, serves as both client assertion and <code>actor_token</code>
+(<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>). The shared key<a href="#appendix-A.2-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-4">across the actor's credential, the assertion, and the onward ID-JAG is a
 consequence of a single proof method, not a property continuation requires:
 continuation requires continuity of the actor, and a future confirmation
-method could bind these artifacts to different proven keys (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.2-4">The <code>may_act</code> claim of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> does not remove the need for this profile.
+method could bind these artifacts to different proven keys (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-4" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-5">The <code>may_act</code> claim of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> does not remove the need for this profile.
 It lets an issuer state, inside a token the target already trusts, which party
 may later act for the token's subject: an authorization to act, made in
 advance. Continuation needs the opposite: a party the previous token never
 named must obtain a new token for an audience whose pairwise subject only the
 IdP can produce. <code>may_act</code> could constrain who may continue; it cannot mint
-the subject, so the IdP exchange remains.<a href="#appendix-A.2-4" class="pilcrow">¶</a></p>
+the subject, so the IdP exchange remains.<a href="#appendix-A.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-txn">
