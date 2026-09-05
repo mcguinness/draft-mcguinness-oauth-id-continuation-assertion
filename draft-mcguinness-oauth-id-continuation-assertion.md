@@ -2050,15 +2050,16 @@ unattended background agent ({{example-background}}). The gateway example
 comes first because it is the baseline deployment: one domain runs RAS and
 CAI together, and the handle travels in the access token.
 
-Message sequences are vertical lifelines with time flowing downward. The
-payload and state blocks below them are tagged "On the wire" when they cross a
-trust boundary,
-"Intra-domain context" when they travel only within one trust domain, and
-"Server-side state" when they are never transmitted. Continuation handles
-are written H0, H1, and so on, one per hop. Each example identifies its
-deployment topology before describing the flow. JWTs are shown as decoded
-payloads; JOSE headers and signatures are omitted. Except where shown, client
-authentication is omitted. Proof of possession uses DPoP.
+Message sequences are vertical lifelines with time flowing downward. Each
+example identifies its deployment topology before describing the flow.
+
+* Tags mark where payload and state blocks travel: "On the wire" crosses a
+  trust boundary, "Intra-domain context" stays within one trust domain, and
+  "Server-side state" is never transmitted.
+* Continuation handles are numbered H0, H1, and so on, one per hop.
+* JWTs are shown as decoded payloads with JOSE headers and signatures
+  omitted; client authentication is omitted except where shown; proof of
+  possession uses DPoP.
 
 ## Gateway Example (Co-located RAS and CAI) {#example-gateway}
 
@@ -2184,12 +2185,12 @@ stands at each continuation: which services the tenant classifies as
 productivity tools, what access it allows agents to them, and whether
 `tool-gateway` may continue. A wiki the tenant adds to that class after this
 exchange is therefore admitted in {{example-gateway-continue}} without a new
-chain, and one it removes is refused at the next continuation, just as
-changing an application assignment takes effect for existing sessions. What
-is fixed is the root exchange: Alice, her authentication context, `agent-app`
-as root actor, and the session that anchors the chain
-({{root-establishment}}). {{security-envelope}} names the exposure live policy
-creates and how to scope a basis.
+chain, and one it removes is refused at the next continuation.
+
+What is fixed is the root exchange: Alice, her authentication context,
+`agent-app` as root actor, and the session that anchors the chain
+({{root-establishment}}). {{security-envelope}} names the exposure live
+policy creates and how to scope a basis.
 
 On the wire (decoded ID-JAG for GatewayRAS):
 
@@ -2384,19 +2385,22 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<the same tool-gateway credential>
 ~~~
 
-The IdP validates the exchange ({{validation}}). The assertion is signed by
-GatewayRAS, the RAS recorded for H0's hop, which the issuer-trust rule accepts
-directly. H0
-names an accepted hop on an active chain. The `act`
-claim names `tool-gateway`, the authenticated client, and the DPoP proof
-matches `cnf`. The wiki target falls within the recorded basis, the tenant's
-policy for agent access to productivity tools, which is how a target nobody
-enumerated at root time, even one classified as a productivity tool only after
-the chain was established, is admitted; `wiki.read` is evaluated against that
-policy, not against the root `tools.invoke` scope. The IdP resolves Alice's
-wiki subject
-and issues the ID-JAG with H1 and `tool-gateway` atop `agent-app` in the
-lineage.
+The IdP validates the exchange ({{validation}}):
+
+* Issuer trust: the assertion is signed by GatewayRAS, the RAS recorded for
+  H0's hop, which the issuer-trust rule accepts directly.
+* Hop status: H0 names an accepted hop on an active chain.
+* act and cnf match: the `act` claim names `tool-gateway`, the authenticated
+  client, and the DPoP proof matches `cnf`.
+* Basis containment: the wiki target falls within the recorded basis, the
+  tenant's policy for agent access to productivity tools, which is how a
+  target nobody enumerated at root time, even one classified as a
+  productivity tool only after the chain was established, is admitted;
+  `wiki.read` is evaluated against that policy, not against the root
+  `tools.invoke` scope.
+
+The IdP resolves Alice's wiki subject and issues the ID-JAG with H1 and
+`tool-gateway` atop `agent-app` in the lineage.
 
 On the wire (decoded ID-JAG for WikiRAS):
 
@@ -2441,15 +2445,16 @@ continuable and only that tool call fails ({{error-response}}).
 
 ### WikiRAS Redeems an Ordinary ID-JAG {#example-gateway-terminal}
 
-ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant and a DPoP
-proof of the same key. WikiRAS implements nothing from this profile: it
+ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant and a
+DPoP proof of the same key. WikiRAS implements nothing from this profile: it
 validates the ID-JAG as the base profile requires, ignores the handle, and
 issues an access token without binding H1 ({{ras-processing}}). ToolGateway
 calls WikiAPI as Alice's wiki subject and returns the result to AgentApp.
+
 Further calls to WikiAPI for Alice reuse this access token while it remains
-valid ({{implementation}}); each further upstream a tool call needs repeats the
-exchange of {{example-gateway-ica}} and creates a sibling hop under H0 (H2, and
-so on).
+valid ({{implementation}}); each further upstream a tool call needs repeats
+the exchange of {{example-gateway-ica}} and creates a sibling hop under H0
+(H2, and so on).
 
 ### What a Gateway Implements {#example-gateway-checklist}
 
@@ -2477,11 +2482,10 @@ establishes the chain and evaluates each continuation
 
 A user's request crosses three SaaS domains: ExpenseApp calls ExpenseAPI,
 whose workload calls TravelAPI, whose workload calls BookingAPI. Each domain
-has its own Resource Authorization Server, and all trust one enterprise IdP at
-`https://idp.example/`. Compared with the gateway example, this one shows a
-separate CAI in each continuing domain, a Transaction Token carrying the
-handle so the access token never does, an envelope that enumerates
-its targets, and a lineage three entries deep.
+has its own Resource Authorization Server, and all trust one enterprise IdP
+at `https://idp.example/`. Compared with the gateway example, this one uses
+a separate CAI and a Transaction Token carrier; {{example-differences}}
+lists what differs.
 
 Topology: separate CAI with a Transaction Token carrier.
 
@@ -2844,10 +2848,9 @@ way ({{rationale-boundary}}).
 ## Background Agent Example (Scheduled Continuation) {#example-background}
 
 Alice sets up a daily calendar briefing and is absent at every run. Compared
-with the SaaS chain example, this one anchors the chain to an OAuth grant
-rather than to her session and binds its root hop to durable, platform-owned
-task authorization, so that runs continue after she has gone. It also shows a
-target that tenant policy still excludes being refused.
+with the SaaS chain example, this one anchors the chain to a grant rather
+than a session; {{example-background-differences}} lists what differs. It
+also shows a target that tenant policy still excludes being refused.
 
 Topology: separate CAI with a Transaction Token carrier.
 
@@ -2944,11 +2947,13 @@ designated actor, derives H0 into a fresh Transaction Token
        |               |             |      no binding (terminal)
 ~~~
 
-BriefingAgent exchanges the Transaction Token at Platform CAI's token endpoint
-({{assertion-token-exchange}}) and presents the assertion to the IdP the
-response's `audience` names, with its actor credential and a DPoP proof. Before
-issuing, Platform CAI authenticates `briefing-agent`, verifies its key and
-transaction, and rechecks that PlatformRAS's H0 authorization remains active.
+BriefingAgent exchanges the Transaction Token at Platform CAI's token
+endpoint ({{assertion-token-exchange}}) and presents the assertion to the
+IdP the response's `audience` names, with its actor credential and a DPoP
+proof. Before issuing, Platform CAI authenticates `briefing-agent`, verifies
+its key and transaction, and rechecks that PlatformRAS's H0 authorization
+remains active.
+
 The assertion and onward ID-JAG have the shapes shown in {{example-ica}} and
 {{example-chained}}. CalendarRAS is terminal and issues the access token
 without binding the child hop. Each run's child is a sibling, not a
@@ -2958,10 +2963,10 @@ descendant, of the previous run's child.
 
 Suppose the platform later extends the briefing to include unread mail,
 which requires `https://api.mail.example/` behind `https://ras.mail.example/`,
-a target nobody named when Alice created the task. Tenant policy for the task
-still permits only the Platform and Calendar targets, so a run's continuation
-exchange presenting H0 for that audience fails, and the chain is otherwise
-unaffected; had policy since added Mail, the same exchange would succeed:
+a target nobody named when Alice created the task. Tenant policy for the
+task still permits only the Platform and Calendar targets, so a run's
+continuation exchange presenting H0 for that audience fails; had policy
+since added Mail, the same exchange would succeed:
 
 ~~~
 HTTP/1.1 400 Bad Request
@@ -2974,15 +2979,17 @@ Pragma: no-cache
 }
 ~~~
 
-For a deployment that expects dynamic targets, the envelope instead records an
-authorization basis, for example the tenant's policy granting the briefing
-agent read access to productivity services, and the IdP evaluates each dynamic
-target against that policy as it stands at continuation time (the
-envelope-containment rule of {{validation}}). The same exchange then succeeds
-only if read access to the mail service is within that policy and it permits
-`briefing-agent` to reach it; a request for `mail.send`, which that policy
-still excludes, fails with `invalid_scope`. A target-specific failure leaves
-the chain continuable for other authorized targets.
+For a deployment that expects dynamic targets, the envelope instead records
+an authorization basis, for example the tenant's policy granting the
+briefing agent read access to productivity services, and the IdP evaluates
+each dynamic target against that policy as it stands at continuation time
+(the envelope-containment rule of {{validation}}).
+
+The same exchange then succeeds only if read access to the mail service is
+within that policy and it permits `briefing-agent` to reach it; a request
+for `mail.send`, which that policy still excludes, fails with
+`invalid_scope`. A target-specific failure leaves the chain continuable for
+other authorized targets.
 
 ### What Differs from the SaaS Chain Example {#example-background-differences}
 
