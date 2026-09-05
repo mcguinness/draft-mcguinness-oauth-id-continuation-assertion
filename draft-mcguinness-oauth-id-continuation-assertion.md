@@ -2240,9 +2240,12 @@ example identifies its deployment topology before describing the flow.
 * Continuation handles are numbered H0, H1, and so on, one per hop.
 * JWTs are shown as decoded payloads with JOSE headers and signatures
   omitted; client authentication is omitted except where shown; proof of
-  possession uses DPoP. A root client's DPoP proofs are its RAS's
-  requirement for the access tokens it issues, not this profile's
-  ({{root-establishment}}).
+  possession uses DPoP. The gateway example shows the floor, with a root
+  client that never proves a key; the SaaS example shows a root RAS that
+  sender-constrains its access token by its own policy
+  ({{root-establishment}}). From the first continuation on, every RAS binds
+  its token to the proven key ({{ras-processing}}).
+
 
 ## Gateway Example (Co-located RAS and CAI) {#example-gateway}
 
@@ -2280,12 +2283,12 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
     |            |               |                |               |
     |-ID Token-->|               |                |               |
     |<-ID-JAG H0-|               |                |               |
-    |-jwt-bearer: ID-JAG + DPoP->| bind H0        |               |
+    |-jwt-bearer: ID-JAG-------->| bind H0        |               |
     |<--access token, H0 claim---|                |               |
-    |----------tool call with AT + DPoP---------->|               |
+    |----------tool call with AT----------------->|               |
     |            |               |<--exchange AT--|               |
     |            |               |-assertion H0-->|               |
-    |            |<-assertion, actor token, DPoP--|               |
+    |            |<--assertion + DPoP-------------|               |
     |            |-----------ID-JAG H1----------->|               |
     |            |               |                |-ID-JAG, DPoP->|
     |            |               |                |   (no binding)|
@@ -2303,16 +2306,17 @@ GatewayRAS's advertisement of the continuation profile.
 
 | Party | Provisioned before the flow | Specified in |
 |---|---|---|
-| IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor-token issuer pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
+| IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor identity authority pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
 | GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates, which is what lets it obtain assertions for hops bound to access tokens presented to that resource | {{metadata-ras}}, {{assertion-preconditions}} |
 | `tool-gateway` | one key pair, used for its credential's `cnf`, its DPoP proofs, and the assertion's `cnf`; a credential issued at `https://gateway.example/` | {{client-identity}} |
 | WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer | base profile |
 
-The credential that `tool-gateway` presents to the IdP as both
-`client_assertion` and `actor_token` ({{example-gateway-continue}}) is, in
-this example, a JWT issued by the gateway domain and bound to the gateway's
-key. Any sender-constrained credential the IdP accepts under
-{{client-identity}} would serve; this choice is illustrative. It is addressed
+The credential that `tool-gateway` presents to the IdP as its
+`client_assertion` ({{example-gateway-continue}}) is, in this example, a JWT
+issued by the gateway domain and bound to the gateway's key; it resolves to the
+canonical actor identity, so no separate `actor_token` is needed. Any
+sender-constrained credential the IdP accepts under {{client-identity}} would
+serve; this choice is illustrative. It is addressed
 to the IdP alone: the earlier exchange at GatewayRAS
 ({{example-gateway-ica}}) uses a separate client assertion addressed to
 GatewayRAS, as {{RFC7523}} requires.
@@ -2402,15 +2406,14 @@ On the wire (decoded ID-JAG for GatewayRAS):
 ### GatewayRAS Binds H0 and Issues the Access Token {#example-gateway-bind}
 
 AgentApp redeems the ID-JAG at GatewayRAS with the jwt-bearer grant, exactly
-as for any ID-JAG. The DPoP proof is what GatewayRAS requires of its clients,
-not something this profile asks of a root client:
-
+as for any ID-JAG, and nothing in this profile asks it to sender-constrain the
+exchange; GatewayRAS issues a bearer access token here, its own policy choice
+({{ras-processing}}):
 
 ~~~
 POST /token HTTP/1.1
 Host: ras.gateway.example
 Content-Type: application/x-www-form-urlencoded
-DPoP: <proof signed by the agent-app key>
 
 grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 &assertion=<the ID-JAG above>
@@ -2419,9 +2422,10 @@ grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 ~~~
 
 GatewayRAS advertises the continuation grant profile ({{metadata-ras}}) and so
-recognizes the handle. It binds H0, the issuing IdP, the tenant it associates
-with that IdP, and the confirmed key to the authorization state behind the
-access token, in the same outcome that issues the token ({{ras-processing}}).
+recognizes the handle. It binds H0, the issuing IdP, and the tenant it
+associates with that IdP to the authorization state behind the access token,
+in the same outcome that issues the token ({{ras-processing}}); the ID-JAG
+carried no `cnf`, so there is no key to record.
 
 Server-side state at GatewayRAS:
 
@@ -2434,7 +2438,6 @@ Server-side state at GatewayRAS:
   "idp": "https://idp.example/",
   "tenant": "tenant-123",
   "client_id": "agent-app",
-  "cnf_jkt": "base64url-agent-app-key-thumbprint",
   "bound_at": 1710000210
 }
 ~~~
@@ -2452,23 +2455,21 @@ On the wire (decoded access token):
   "client_id": "agent-app",
   "scope": "tools.invoke",
   "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
-  "cnf": {
-    "jkt": "base64url-agent-app-key-thumbprint"
-  },
   "iat": 1710000210,
   "exp": 1710000810,
   "jti": "at-gw-0001"
 }
 ~~~
 
-AgentApp calls the gateway with this token and a DPoP proof. It chooses which
-token to present, and with it which authorization, but cannot alter the handle
-inside the token or pair it with another token's key.
+AgentApp calls the gateway with this token. It chooses which token to present,
+and with it which authorization, but cannot alter the handle inside the token.
+A RAS that sender-constrains its tokens closes the bearer-ingress exposure of
+{{security-pop}}; {{example}} shows that variant.
 
 ### ToolGateway Obtains the Assertion {#example-gateway-ica}
 
-ToolGateway validates the access token and its DPoP binding as any resource
-server would. Resolving the tool call, it selects the wiki as the upstream. To
+ToolGateway validates the access token as any resource server would.
+Resolving the tool call, it selects the wiki as the upstream. To
 continue Alice's chain there it needs an Identity Continuation Assertion,
 which it obtains by exchanging the access token it just received at
 GatewayRAS's token endpoint, authenticating as the OAuth client `tool-gateway`
@@ -2488,9 +2489,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<tool-gateway JWT>
 ~~~
 
-The access token is bound to the `agent-app` key; the DPoP proof on this
-request proves the `tool-gateway` key, which GatewayRAS places in the
-assertion's `cnf`, and is not matched against the token's own `cnf`
+The DPoP proof on this request proves the `tool-gateway` key, which GatewayRAS
+places in the assertion's `cnf`; had the access token been sender-constrained,
+its own `cnf` would not be matched against this proof
 ({{assertion-token-exchange}}).
 
 GatewayRAS confirms the token is its own, unexpired, and addressed to
@@ -2542,10 +2543,10 @@ On the wire (decoded assertion):
 ToolGateway resolves the token endpoint of `https://idp.example/`, the
 `audience` it was given, from that IdP's metadata and presents the assertion
 there as the `subject_token` of a
-continuation exchange, with its actor credential and a DPoP proof of the same
+continuation exchange, with its client credential and a DPoP proof of the same
 key, requesting an ID-JAG for WikiRAS. `tool-gateway` is a registered client
-of the IdP; its sender-constrained credential serves as both client assertion
-and `actor_token` under the dual-use rule of {{client-identity}}:
+of the IdP whose sender-constrained credential resolves to its canonical actor
+identity, so it presents no separate `actor_token` ({{client-identity}}):
 
 ~~~
 POST /token HTTP/1.1
@@ -2560,10 +2561,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &scope=wiki.read
 &subject_token=<identity-continuation-assertion>
 &subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
-&actor_token=<sender-constrained tool-gateway credential>
-&actor_token_type=urn:ietf:params:oauth:token-type:jwt
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<the same tool-gateway credential>
+&client_assertion=<sender-constrained tool-gateway credential>
 ~~~
 
 The IdP validates the exchange ({{validation}}):
@@ -2645,8 +2644,8 @@ The gateway domain adds two things to an ordinary OAuth deployment:
   places it in the access token, and issues assertions from its token endpoint
   by Token Exchange.
 * `tool-gateway` exchanges the access token it received for an assertion, then
-  presents that assertion, its actor credential, and a DPoP proof to the IdP
-  for the next ID-JAG.
+  presents that assertion with its client credential and a DPoP proof to the
+  IdP for the next ID-JAG.
 
 Both presuppose registrations that ID-JAG already requires: `tool-gateway` is
 an OAuth client of the IdP, holding the key its credential and DPoP proofs use,
@@ -2654,8 +2653,8 @@ and a client known to WikiRAS, which the onward ID-JAG names as `client_id`
 ({{token-exchange}}).
 
 Outside the domain, AgentApp and WikiRAS change nothing: AgentApp performs a
-base ID-JAG exchange, with the DPoP proof its RAS already expects, and never
-shares Alice's credential, and WikiRAS runs the base profile unmodified. The
+base ID-JAG exchange, proves no key anywhere, and never shares Alice's
+credential, and WikiRAS runs the base profile unmodified. The
 IdP carries the rest: it
 establishes the chain and evaluates each continuation
 ({{root-establishment}}, {{token-exchange}}).
@@ -3022,6 +3021,12 @@ way ({{rationale-boundary}}).
   matched against an entry rather than evaluated against a policy basis.
 * Two continuing domains produce a lineage three entries deep, two
   continuation actors above the root actor, before the terminal hop.
+* ExpenseRAS chooses to sender-constrain the root access token, so ExpenseApp
+  presents DPoP proofs at the RAS and on its API call; that is RAS policy
+  under the base profile, and the gateway example shows the floor without it.
+  The continuation-aware RASes downstream bind their access tokens to the
+  proven key because their ID-JAGs carry `cnf`, which {{ras-processing}}
+  requires.
 
 ## Background Agent Example (Scheduled Continuation) {#example-background}
 
@@ -3274,7 +3279,12 @@ this profile builds.
 
 -02
 
-* Replaced trust-domain membership with CAI authority over the actor-to-hop
+* Made the gateway example show the floor: a root client that proves no key,
+  a bearer access token at GatewayRAS, and a continuation exchange carrying
+  the client credential alone; the SaaS example keeps sender-constrained
+  access tokens as the hardened variant.
+* Replaced trust-domain membership
+ with CAI authority over the actor-to-hop
   association; made the 300-second assertion lifetime a recommended upper
   bound with the IdP's own maximum governing; tied chain lifetime to the
   anchor rather than to the session as such; stated the cost of single-use
