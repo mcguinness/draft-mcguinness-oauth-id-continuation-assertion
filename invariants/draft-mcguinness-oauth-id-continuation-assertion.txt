@@ -210,20 +210,25 @@ Table of Contents
    received.  Continuation therefore stays a fresh policy decision at
    every boundary, never a bearer of standing authority.
 
-   Three invariants define the protocol:
+   Three properties are at the core of the protocol:
 
    1.  Only the IdP names the user for a new audience.
 
    2.  Only an accepted authorization may be continued.
 
-   3.  Only the currently authenticated holder of that accepted
-       authorization may request its continuation.
+   3.  Only an authenticated actor that the IdP permits to continue from
+       that accepted authorization, and that proves possession of its
+       own key, may request continuation.
 
    The IdP establishes the first by minting every ID-JAG itself.  The
    RAS establishes the second by binding the handle when it accepts a
-   grant.  The CAI's assertion, the actor's client authentication, and
-   its proof of possession together establish the third.  Everything
-   else in this document exists to make one of the three checkable.
+   grant.  For the third, the CAI's assertion, the actor's client
+   authentication, and its proof of possession establish who is asking,
+   and the IdP's envelope decides whether that actor may continue.  The
+   actor need not be the party the incoming token was bound to: a
+   gateway continues from a token bound to the application that called
+   it, proving its own key.  Each continuation also passes the IdP's
+   policy decision on the requested target (Section 5.7.3).
 
    Continuation proves continuity of delegated identity and of
    authorization ancestry.  It does not establish that an onward action
@@ -3400,12 +3405,12 @@ Document History
 
    -02
 
-   *  Opened the Introduction with the three invariants the protocol
-      rests on and stated what continuation does not prove; named co-
-      located as the baseline deployment and a separate CAI as advanced,
-      with the same exchange count in both; said that the handle
-      correlates state and confers nothing and that act is disclosed
-      lineage, not authoritative history.
+   *  Opened the Introduction with the three core properties the
+      protocol rests on and stated what continuation does not prove;
+      named co-located as the baseline deployment and a separate CAI as
+      advanced, with the same exchange count in both; said that the
+      handle correlates state and confers nothing and that act is
+      disclosed lineage, not authoritative history.
 
    *  Aligned the envelope with ID-JAG's policy model: the facts of the
       root exchange are fixed, tenant policy for targets, continuers,
