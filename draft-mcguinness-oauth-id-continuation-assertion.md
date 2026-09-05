@@ -2241,9 +2241,11 @@ example identifies its deployment topology before describing the flow.
 * JWTs are shown as decoded payloads with JOSE headers and signatures
   omitted; client authentication is omitted except where shown; proof of
   possession uses DPoP. The gateway example shows the floor, with a root
-  client that never proves a key; the SaaS example shows a RAS that
-  sender-constrains its access tokens, its own policy rather than this
-  profile's ({{root-establishment}}).
+  client that never proves a key; the SaaS example shows a root RAS that
+  sender-constrains its access token by its own policy
+  ({{root-establishment}}). From the first continuation on, every RAS binds
+  its token to the proven key ({{ras-processing}}).
+
 
 ## Gateway Example (Co-located RAS and CAI) {#example-gateway}
 
@@ -2304,7 +2306,7 @@ GatewayRAS's advertisement of the continuation profile.
 
 | Party | Provisioned before the flow | Specified in |
 |---|---|---|
-| IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor-token issuer pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
+| IdP | `agent-app` and `tool-gateway` registered as confidential OAuth clients in `tenant-123`; `https://gateway.example/` authorized as the issuer of `tool-gateway`'s credential; GatewayRAS's issuer `https://ras.gateway.example/` and its signing keys trusted for the hops it accepts; GatewayRAS and `https://gateway.example/` authorized as a CAI and actor identity authority pair for `tenant-123`, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting `tool-gateway` to continue; `identity_continuation_supported` advertised | {{client-identity}}, {{security-trust-model}}, {{root-establishment}}, {{metadata-idp}} |
 | GatewayRAS | the continuation grant profile advertised; the IdP trusted as ID-JAG issuer; `tool-gateway` registered as an OAuth client of GatewayRAS and associated with the resource `https://gateway.example/` it operates, which is what lets it obtain assertions for hops bound to access tokens presented to that resource | {{metadata-ras}}, {{assertion-preconditions}} |
 | `tool-gateway` | one key pair, used for its credential's `cnf`, its DPoP proofs, and the assertion's `cnf`; a credential issued at `https://gateway.example/` | {{client-identity}} |
 | WikiRAS | `tool-gateway` registered as a client, as the base profile requires of any ID-JAG presenter; the IdP trusted as ID-JAG issuer | base profile |
@@ -2420,9 +2422,10 @@ grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer
 ~~~
 
 GatewayRAS advertises the continuation grant profile ({{metadata-ras}}) and so
-recognizes the handle. It binds H0, the issuing IdP, the tenant it associates
-with that IdP, and the confirmed key to the authorization state behind the
-access token, in the same outcome that issues the token ({{ras-processing}}).
+recognizes the handle. It binds H0, the issuing IdP, and the tenant it
+associates with that IdP to the authorization state behind the access token,
+in the same outcome that issues the token ({{ras-processing}}); the ID-JAG
+carried no `cnf`, so there is no key to record.
 
 Server-side state at GatewayRAS:
 
@@ -3018,10 +3021,12 @@ way ({{rationale-boundary}}).
   matched against an entry rather than evaluated against a policy basis.
 * Two continuing domains produce a lineage three entries deep, two
   continuation actors above the root actor, before the terminal hop.
-* Each RAS sender-constrains its access tokens, so the root client presents
-  DPoP proofs at the RAS and on API calls. That is RAS policy under the base
-  profile ({{ras-processing}}); the gateway example shows the floor without
-  it.
+* ExpenseRAS chooses to sender-constrain the root access token, so ExpenseApp
+  presents DPoP proofs at the RAS and on its API call; that is RAS policy
+  under the base profile, and the gateway example shows the floor without it.
+  The continuation-aware RASes downstream bind their access tokens to the
+  proven key because their ID-JAGs carry `cnf`, which {{ras-processing}}
+  requires.
 
 ## Background Agent Example (Scheduled Continuation) {#example-background}
 
