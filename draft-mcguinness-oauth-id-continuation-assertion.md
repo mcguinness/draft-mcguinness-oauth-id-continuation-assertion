@@ -109,10 +109,10 @@ after the user is no longer present, or reach an audience the credential never
 addressed, as at a tool gateway for agents, including Model Context Protocol
 (MCP) gateways, that selects its upstream at request time
 ({{example-gateway}}). The first hop can present the user's credential to
-obtain an ID-JAG; a workload further along the chain holds nothing of the
-user's. When each Resource Authorization Server (RAS) knows the user by a
-different pairwise subject that only the IdP can resolve, that workload cannot
-even name the user for the next audience.
+obtain an ID-JAG; a workload further along the chain holds no such credential.
+When each Resource Authorization Server (RAS) knows the user by a different
+pairwise subject that only the IdP can resolve, that workload cannot even name
+the user for the next audience.
 
 This document defines the Identity Continuation Assertion: a short-lived,
 sender-constrained JWT that a later workload presents as the `subject_token`
