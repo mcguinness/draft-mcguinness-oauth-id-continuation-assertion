@@ -1083,10 +1083,10 @@ from another's resolution.
    * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
      seconds), `exp` follows `iat`, the assertion is unexpired, and its
      lifetime does not exceed 300 seconds; and
-   * `jti` is not yet reserved for the assertion issuer, or is RESERVED or
-     ISSUED under a fingerprint matching this request (permitting idempotent
-     retry; see {{validation-replay}}); a RESERVED or ISSUED `jti` under a
-     different fingerprint, or a FAILED `jti`, is rejected;
+   * `jti` passes the replay check of {{validation-replay}}: not yet presented
+     for the assertion issuer within the window or, where the IdP offers
+     idempotent retry, RESERVED or ISSUED under a fingerprint matching this
+     request; a `jti` under a different fingerprint, or FAILED, is rejected;
 
 7. **Envelope containment.** The effective authorization the IdP would grant,
    after applying any default scope and policy to the requested audience,
@@ -1239,13 +1239,29 @@ the current request.
 
 ## Replay Reservation and Retry {#validation-replay}
 
-The reservation model gives a client idempotent recovery after a lost response
-while preventing one assertion from authorizing more than one distinct request.
+An assertion is sender-constrained, so replaying it requires the actor's key
+({{security-pop}}), and a fresh assertion can always create an equivalent
+sibling hop ({{hop-activation}}). Replay control therefore adds no authority
+protection; it prevents one captured assertion from being redirected to a
+different request within its window, and it can give a client idempotent
+recovery after a lost response. This document recommends the first and makes
+the second optional.
 
-After validation, grant issuance reserves the assertion's (`iss`, `jti`), bound
-to a fingerprint of the request it first authorizes, and records the
-reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
-{{hop-activation}}). The fingerprint MUST cover:
+The IdP SHOULD accept each assertion at most once, keyed on (`iss`, `jti`) for
+the assertion's validity window plus permitted clock skew, with concurrent
+presentations yielding at most one grant. Partitioning by tenant alone would
+let two assertion issuers in one tenant collide on a reused `jti`. An IdP that
+enforces no replay control accepts that a compromised actor key can mint
+equivalent sibling hops within the window, bounded by the chain's fan-out and
+rate limits ({{root-establishment}}).
+
+An IdP MAY instead offer idempotent retry. Such an IdP reserves the
+assertion's (`iss`, `jti`) at grant issuance, bound to a fingerprint of the
+request it first authorizes, and records the reservation as RESERVED, ISSUED,
+or FAILED (distinct from the hop states of {{hop-activation}}). It MUST reject
+a presentation whose request does not match the fingerprint, MUST return the
+previously issued grant for one that matches, and MUST NOT produce more than
+one grant for concurrent presentations. The fingerprint MUST cover:
 
 * `audience` as an exact string;
 * the `resource` values as an order-independent set;
@@ -1257,21 +1273,17 @@ reservation as RESERVED, ISSUED, or FAILED (distinct from the hop states of
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
-Concurrent redemptions of one assertion MUST NOT produce more than one grant.
-An identical retry MUST return the same previously issued grant, not a new one,
-and a request that does not match that fingerprint MUST be rejected. Replay
-uniqueness MUST be keyed on (`iss`, `jti`); partitioning by tenant alone would
-let two assertion issuers in one tenant collide on a reused `jti`.
+Such an IdP MUST retain the reservation through `exp` plus the maximum
+permitted clock skew, so an in-window retry is honored; a reservation that does
+not reach ISSUED before `exp` becomes FAILED, which is final and requires a
+fresh assertion.
 
-The IdP MUST retain the reservation through `exp` plus the maximum permitted
-clock skew, so an in-window retry is honored; a reservation that does not reach
-ISSUED before `exp` becomes FAILED, which is final and requires a fresh
-assertion.
-
-After a lost response, a client MAY retry the same assertion to recover the
-ISSUED result or obtain a fresh assertion. A fresh assertion may create an
+After a lost response, a client MAY retry the same assertion where the IdP
+offers retry, or obtain a fresh assertion. A fresh assertion may create an
 equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. Realization guidance is in {{implementation}}.
+idempotency remains out of scope. Realization guidance is in
+{{implementation}}; whether replay control should be mandatory is an open
+question ({{open-items}}).
 
 # Chain Lifetime and Revocation {#lifecycle}
 
@@ -1451,10 +1463,12 @@ where the subject and the trusted issuer stay stable across the boundary;
 availability alone does not remove the need for the IdP to resolve the
 pairwise subject.
 
-The IdP retains hop records for the chain's lifetime and replay reservations
-for as long as an assertion could still be presented, in state consistent
-enough that concurrent requests yield one grant and a retry recovers it
-({{validation-replay}}); it prunes expired or revoked hop state.
+The IdP retains hop records for the chain's lifetime and prunes expired or
+revoked hop state. A single-use IdP keeps a replay cache of (`iss`, `jti`) for
+the assertion validity window; one that offers idempotent retry keeps
+reservations for as long as an assertion could still be presented, in state
+consistent enough that concurrent requests yield one grant and a retry recovers
+it ({{validation-replay}}).
 
 Because the actor-chain depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
@@ -1470,7 +1484,7 @@ Failure paths worth testing before deployment:
 
 An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
-does not relax the reservation durability of {{validation-replay}}. Whether
+does not relax the replay rules of {{validation-replay}}. Whether
 the hop tree could be replaced by self-verifying handles is an open question
 ({{open-items}}), not a realization this document describes.
 
@@ -1512,11 +1526,12 @@ all. Three carriers are common:
   response {{RFC7662}} can carry the handle as a member, generated when
   introspection occurs and present only when `active` is `true`.
 
-The replay reservation ({{validation-replay}}) is typically held in strongly
-consistent state: only one concurrent request reaches ISSUED, a concurrent
-request under a matching fingerprint waits for or retries that result, and the
-IdP retains and expires the reservation by the same clock it uses to evaluate
-`exp`.
+Where the IdP offers idempotent retry, the replay reservation
+({{validation-replay}}) is typically held in strongly consistent state: only
+one concurrent request reaches ISSUED, a concurrent request under a matching
+fingerprint waits for or retries that result, and the IdP retains and expires
+the reservation by the same clock it uses to evaluate `exp`. A single-use IdP
+needs only a replay cache for the same window.
 
 A RAS can make the handle binding and token issuance of {{ras-processing}}
 one outcome with a local transaction, or with a compensating action that
@@ -1570,10 +1585,12 @@ At assertion issuance the client proves its own key, which the CAI binds to
 the new assertion; it need not prove possession of any key bound to the
 incoming subject token ({{assertion-token-exchange}}).
 
-Replay of a captured assertion is confined to the IdP continuation exchange,
-where the freshness and replay rules bind each assertion to the one request it
-first authorized ({{validation-replay}}); without that binding, a resubmitted
-assertion could authorize a second, different request within its window.
+Replay of a captured assertion is confined to the IdP continuation exchange
+and requires the actor's key. The freshness rule bounds the window; single-use
+or retry binding ({{validation-replay}}) confines a resubmitted assertion to at
+most the request it first authorized, and an IdP that enforces neither accepts
+equivalent sibling hops within the window, bounded by the chain's fan-out and
+rate limits.
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
@@ -3116,6 +3133,15 @@ This non-normative appendix lists unresolved design questions.
    revocation list costs in subtree revocation and unlinkability
    ({{privacy}}).
 
+7. **Mandatory replay control.** {{validation-replay}} recommends single-use
+   and makes idempotent retry optional. Should either be mandatory? The
+   assertion is sender-constrained, so a replay needs the actor's key and can
+   at most redirect one captured assertion to a different request within its
+   300-second window, while a fresh assertion can always create an equivalent
+   sibling hop; exactly-once issuance, by contrast, needs strongly consistent
+   state on the issuance path ({{implementation}}). {{RFC7523}}, Section 3
+   leaves `jti` tracking to the authorization server's discretion.
+
 Further questions are tracked in the project's issue list rather than expanded
 here: nested own-domain `act` segments and offline-actor audit
 ({{I-D.mcguinness-oauth-actor-receipts}},
@@ -3139,6 +3165,10 @@ this profile builds.
 
 -02
 
+* Made single-use of an assertion recommended rather than required and
+  idempotent retry optional, with the fingerprint and reservation rules
+  applying to an IdP that offers retry; opened a question on mandatory replay
+  control.
 * Defined the canonical actor identity and made it the sole comparand for
   `act` and `actor_token`; reworded the CAI's role as attesting the facts the
   IdP's evaluation requires; characterized the handle as security-sensitive
