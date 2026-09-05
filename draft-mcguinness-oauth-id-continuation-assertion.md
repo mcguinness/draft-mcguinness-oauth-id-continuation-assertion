@@ -382,10 +382,10 @@ Governing authorization:
 Root-chain envelope:
 : What the IdP evaluates every continuation against. It has two parts: the
   chain identity, the facts of the root exchange, fixed at establishment; and
-  the continuation authorization, the targets, continuers, and limits the IdP
-  recorded at establishment, which later policy may narrow at any
-  continuation but widens only through a recorded authorization basis
-  ({{root-establishment}}).
+  the continuation authorization, the onward targets, continuers, and limits
+  the IdP recorded at establishment and evaluates under tenant policy as it
+  stands, except that targets widen only through a recorded authorization
+  basis ({{root-establishment}}).
 
 Authorization basis:
 : A reference to tenant policy, recorded in the continuation authorization in
@@ -603,14 +603,15 @@ the form the IdP recorded.
 
 A policy change that narrows a chain, a target or continuer withdrawn or a
 limit tightened, takes effect at the next continuation whichever form the
-envelope takes (the envelope-containment rule of {{validation}}). A policy
-change widens a chain only through an authorization basis: an envelope that
+envelope takes (the envelope-containment rule of {{validation}}). Continuers
+and limits are tenant controls read as policy stands in either direction.
+Target authority widens only through an authorization basis: an envelope that
 enumerates its targets MUST NOT admit a target the tenant adds after
 establishment ({{example-dynamic}}), while a basis-referenced envelope admits
-whatever the basis currently reads, such as a service's classification
-or a group's membership ({{example-gateway-root}}). The effective authority at
-any continuation is therefore the recorded continuation authorization
-evaluated under current policy, never more.
+whatever the basis currently reads, such as a service's classification or a
+group's membership ({{example-gateway-root}}). The effective authority at any
+continuation is therefore the recorded continuation authorization evaluated
+under current policy, never more.
 
 What the root request asked for is not a ceiling either: its audience and
 scope bound only the root ID-JAG.
@@ -1562,7 +1563,7 @@ continuation to any target the basis admits.
 The IdP's per-target evaluation, the tenant policy that forms the basis, and
 the per-authorization fan-out limits bound the damage; a deployment whose
 targets are known at establishment gains more protection by enumerating them,
-since an enumerated envelope never widens ({{root-establishment}}).
+since an enumerated envelope never gains a target ({{root-establishment}}).
 
 Reclassifying a service changes the authority of every open chain whose basis
 reads that classification ({{root-establishment}}), so a basis should name a
@@ -2988,7 +2989,8 @@ which requires `https://api.mail.example/` behind `https://ras.mail.example/`,
 a target nobody named when Alice created the task. The envelope enumerates the
 Platform and Calendar targets, so a run's continuation exchange presenting H0
 for that audience fails, and adding Mail to tenant policy afterward does not
-change that: an enumerated envelope never widens ({{root-establishment}}).
+change that: an enumerated envelope never gains a target
+({{root-establishment}}).
 
 ~~~
 HTTP/1.1 400 Bad Request
@@ -3111,8 +3113,9 @@ this profile builds.
 * Named the two parts of the root-chain envelope, chain identity and
   continuation authorization, defined the authorization basis as a policy
   reference, and specified that policy narrows a running chain in either
-  form but widens it only through a recorded basis; stated in Hop Activation
-  why RAS acceptance does not attenuate downstream authority.
+  form but widens its targets only through a recorded basis; stated in Hop
+  Activation why RAS acceptance does not attenuate downstream authority.
+
 * Gathered durable-chain material into Chain Lifetime and Revocation, with
   anchors, ending, and limits as subsections and a lead that separates the
   shared rules from the grant-specific discussion; moved the anchor list and
