@@ -1514,12 +1514,12 @@ if the CAI's preconditions still hold ({{assertion-preconditions}}); an
 expired access token does not by itself entitle the workload to another.
 
 The online model has an operational price. Every continuation depends on the
-IdP being reachable, and a separate CAI depends on the RAS's acceptance evidence as
-well. A call path that cannot tolerate either dependency is a case for
-offline attenuation only where {{decision-rule}} already allows it, that is,
-where the subject and the trusted issuer stay stable across the boundary;
-availability alone does not remove the need for the IdP to resolve the
-pairwise subject.
+IdP being reachable, and a separate CAI depends on the RAS's acceptance
+evidence as well. A call path that cannot tolerate either dependency is a case
+for offline attenuation only where {{decision-rule}} already allows it, that
+is, where the subject and the trusted issuer stay stable across the boundary;
+availability alone does not remove the need for the IdP to resolve the pairwise
+subject.
 
 The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It keeps each assertion's (`iss`, `jti`) reservation for as
