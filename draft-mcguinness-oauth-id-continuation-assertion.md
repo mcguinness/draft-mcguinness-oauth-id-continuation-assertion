@@ -134,7 +134,7 @@ Three properties are at the core of the protocol:
 
 The IdP establishes the first by minting every ID-JAG itself, and the RAS the
 second by binding the handle when it accepts a grant. For the third, a
-Continuation Assertion Issuer (CAI) in the RAS's trust domain attests that the
+Continuation Assertion Issuer (CAI) trusted for the RAS's hops attests that the
 actor holds an accepted, still-active authorization, and the actor's own
 client authentication and proof of possession establish who is asking. The
 IdP's envelope then decides whether that actor may continue. The actor need
