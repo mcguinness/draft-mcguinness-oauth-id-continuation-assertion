@@ -1706,15 +1706,10 @@ consumes it (steps 4 and 5). The base exchanges of steps 1, 2, and 6 and the
 call of step 3 are unchanged. Alice's ID Token is presented only to its issuing
 IdP, never to the gateway or the wiki, and no party other than the IdP ever
 names Alice for the wiki.<a href="#section-1.2-7" class="pilcrow">¶</a></p>
-<p id="section-1.2-8">Two states describe a hop. H0 is PENDING from step 1, when the IdP issues its
-ID-JAG, and ACCEPTED from step 2, when the RAS redeems the grant and binds the
-handle. The IdP is not told when that happens: acceptance is a fact held by
-the RAS, and the IdP learns of it only when the assertion issued in step 4
-reaches it in step 5. The IdP therefore accepts an assertion about a hop only
-from that hop's RAS or, where the CAI is a separate component, from a CAI it
-trusts to speak for that RAS (the issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.6.3</a>), and a
-hop can be continued only while such an assertion says it is still active
-(<a href="#hop-activation" class="auto internal xref">Section 5.3</a>).<a href="#section-1.2-8" class="pilcrow">¶</a></p>
+<p id="section-1.2-8">The IdP is never told that a RAS redeemed a grant; the assertion of step 4 is
+how it learns that the hop was accepted and is still active. That is why it
+accepts an assertion about a hop only from that hop's RAS or from a CAI it
+trusts to speak for that RAS.<a href="#section-1.2-8" class="pilcrow">¶</a></p>
 <p id="section-1.2-9"><a href="#example-gateway" class="auto internal xref">Appendix B.1</a> shows these same steps with every artifact spelled out.<a href="#section-1.2-9" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -5695,216 +5690,227 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Made the gateway example show the floor: a root client that proves no key,
-a bearer access token at GatewayRAS, and a continuation exchange carrying
-the client credential alone; the SaaS example keeps sender-constrained
-access tokens as the hardened variant.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Reduced the Protocol Overview's closing paragraph to the one insight the
+walk-through needs, that the IdP learns of acceptance only through the
+assertion; the hop state names now first appear where they are defined.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
-          <p id="appendix-E-3.2.1">Replaced trust-domain membership
+          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.2.1">
+            <dt id="appendix-E-3.2.1.1">Made the gateway example show the floor</dt>
+            <dd style="margin-left: 1.5em" id="appendix-E-3.2.1.2">
+              <p id="appendix-E-3.2.1.2.1">a root client that proves no key,
+a bearer access token at GatewayRAS, and a continuation exchange carrying
+the client credential alone; the SaaS example keeps sender-constrained
+access tokens as the hardened variant.<a href="#appendix-E-3.2.1.2.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+</dl>
+</li>
+        <li class="normal" id="appendix-E-3.3">
+          <p id="appendix-E-3.3.1">Replaced trust-domain membership
  with CAI authority over the actor-to-hop
 association; made the 300-second assertion lifetime a recommended upper
 bound with the IdP's own maximum governing; tied chain lifetime to the
 anchor rather than to the session as such; stated the cost of single-use
 without retry; added the six-item test for a requirement to Design
-Rationale.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+Rationale.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.3">
-          <p id="appendix-E-3.3.1">Defined the CAI's acceptance evidence
+        <li class="normal" id="appendix-E-3.4">
+          <p id="appendix-E-3.4.1">Defined the CAI's acceptance evidence
  by the RAS's own authorization
 semantics, so a RAS whose authorization is a self-contained short-lived
 token satisfies the issuance precondition by that token's validity; a live
 recheck is recommended where fresh issuance must stop before the token
-expires.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+expires.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.4">
-          <p id="appendix-E-3.4.1">Made the <code>actor_token</code> optional on a continuation exchange: the actor
+        <li class="normal" id="appendix-E-3.5">
+          <p id="appendix-E-3.5.1">Made the <code>actor_token</code> optional on a continuation exchange: the actor
 authenticates as an OAuth client with a credential that resolves to its
 canonical actor identity, presenting an <code>actor_token</code> when that credential
 does not identify the actor or as independent evidence; stated that the
 shared key across credential, assertion, and onward ID-JAG is a consequence
 of a single proof method, not a continuation property; defined issuer
-pairing against the actor's identity authority.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
+pairing against the actor's identity authority.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.5">
-          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.5.1">
-            <dt id="appendix-E-3.5.1.1">Removed the proof-of-possession requirement from the root exchange</dt>
-            <dd style="margin-left: 1.5em" id="appendix-E-3.5.1.2">
-              <p id="appendix-E-3.5.1.2.1">a root
+        <li class="normal" id="appendix-E-3.6">
+          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.6.1">
+            <dt id="appendix-E-3.6.1.1">Removed the proof-of-possession requirement from the root exchange</dt>
+            <dd style="margin-left: 1.5em" id="appendix-E-3.6.1.2">
+              <p id="appendix-E-3.6.1.2.1">a root
 client keeps only the base profile's obligations, and sender constraint is
 required of a continuing actor; an optional root <code>actor_token</code> still needs
 a proof of the key it is bound to. A RAS binds its access token to the
 confirmed key when the ID-JAG carries <code>cnf</code> and otherwise by its own
-policy.<a href="#appendix-E-3.5.1.2.1" class="pilcrow">¶</a></p>
+policy.<a href="#appendix-E-3.6.1.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
 </li>
-        <li class="normal" id="appendix-E-3.6">
-          <p id="appendix-E-3.6.1">Kept single-use of an assertion required
+        <li class="normal" id="appendix-E-3.7">
+          <p id="appendix-E-3.7.1">Kept single-use of an assertion required
  and made idempotent retry
 optional, with the fingerprint rules applying to an IdP that offers retry;
 explained why a consumed assertion is not equivalent to a fresh one; opened
-a question on mandatory retry.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.7">
-          <p id="appendix-E-3.7.1">Defined the canonical actor identity and made it the sole comparand for
-<code>act</code> and <code>actor_token</code>; reworded the CAI's role as attesting the facts the
-IdP's evaluation requires; characterized the handle as security-sensitive
-correlation state.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
+a question on mandatory retry.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.8">
-          <p id="appendix-E-3.8.1">Named the two parts of the root-chain envelope, chain identity and
+          <p id="appendix-E-3.8.1">Defined the canonical actor identity and made it the sole comparand for
+<code>act</code> and <code>actor_token</code>; reworded the CAI's role as attesting the facts the
+IdP's evaluation requires; characterized the handle as security-sensitive
+correlation state.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.9">
+          <p id="appendix-E-3.9.1">Named the two parts of the root-chain envelope, chain identity and
 continuation authorization, defined the authorization basis as a policy
 reference, and specified that policy narrows a running chain in either
 form but widens its targets only through a recorded basis; stated in Hop
-Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.9">
-          <p id="appendix-E-3.9.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
+        <li class="normal" id="appendix-E-3.10">
+          <p id="appendix-E-3.10.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
 anchors, ending, and limits as subsections and a lead that separates the
 shared rules from the grant-specific discussion; moved the anchor list and
 the cross-chain limits there from Establishing a Chain; opened two
-questions on document factoring and stateless hop commitments.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.10">
-          <p id="appendix-E-3.10.1">Added a Design Rationale subsection separating actor identity (<code>act</code>)
-from the target's <code>client_id</code> and explaining why <code>may_act</code> does not
-suffice; restated the confirmation claim as a proof-of-possession property
-with DPoP as the one method this document defines.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
+questions on document factoring and stateless hop commitments.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.11">
-          <p id="appendix-E-3.11.1">Narrowed the CAI contract to attested facts: the RAS accepted the hop,
+          <p id="appendix-E-3.11.1">Added a Design Rationale subsection separating actor identity (<code>act</code>)
+from the target's <code>client_id</code> and explaining why <code>may_act</code> does not
+suffice; restated the confirmation claim as a proof-of-possession property
+with DPoP as the one method this document defines.<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.12">
+          <p id="appendix-E-3.12.1">Narrowed the CAI contract to attested facts: the RAS accepted the hop,
 RAS state still shows it continuable, and the authenticated actor proving a
 key is the party handling that request; dropped the "authorized under CAI
 policy" precondition, leaving a domain free to narrow issuance, and moved
-every decision about who may continue and to what to the IdP.<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
+every decision about who may continue and to what to the IdP.<a href="#appendix-E-3.12.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.12">
-          <p id="appendix-E-3.12.1">Opened the Introduction with the three core properties the protocol rests
+        <li class="normal" id="appendix-E-3.13">
+          <p id="appendix-E-3.13.1">Opened the Introduction with the three core properties the protocol rests
 on and stated what continuation does not prove; named co-located as the
 baseline deployment and a separate CAI as advanced, with the same exchange
 count in both; said that the handle correlates state and confers nothing
-and that <code>act</code> is disclosed lineage, not authoritative history.<a href="#appendix-E-3.12.1" class="pilcrow">¶</a></p>
+and that <code>act</code> is disclosed lineage, not authoritative history.<a href="#appendix-E-3.13.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.13">
-          <p id="appendix-E-3.13.1">Aligned the envelope with ID-JAG's policy model: the facts of the root
+        <li class="normal" id="appendix-E-3.14">
+          <p id="appendix-E-3.14.1">Aligned the envelope with ID-JAG's policy model: the facts of the root
 exchange are fixed, tenant policy for targets, continuers, and limits
 applies as it stands at each continuation in either direction, and
 "consent" wording became tenant policy throughout; dropped the
-narrow-but-not-broaden rule and the consent-scope open question.<a href="#appendix-E-3.13.1" class="pilcrow">¶</a></p>
+narrow-but-not-broaden rule and the consent-scope open question.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.14">
-          <p id="appendix-E-3.14.1">Applied a whole-draft review: stated in the Introduction that acceptance
+        <li class="normal" id="appendix-E-3.15">
+          <p id="appendix-E-3.15.1">Applied a whole-draft review: stated in the Introduction that acceptance
 does not make the accepted token's scopes the ceiling for later targets;
 qualified the compatibility claims to root clients with DPoP and a
 resolvable anchor, terminal RASes, and the parties that continue; added a
 worked authorization-basis case to the gateway example; added a
 provisioning table and
 the gateway's dual-use credential to that example; added an operational
-paragraph on availability, state retention, limits, and failure paths.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
+paragraph on availability, state retention, limits, and failure paths.<a href="#appendix-E-3.15.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.15">
-          <p id="appendix-E-3.15.1">Applied a gateway-vendor review: example hop records show the
+        <li class="normal" id="appendix-E-3.16">
+          <p id="appendix-E-3.16.1">Applied a gateway-vendor review: example hop records show the
 continuation-permitted flag the binding requires; the <code>act</code> claim states
 where its <code>iss</code> and <code>sub</code> come from; carriers are described for either
 topology; the gateway checklist names the registrations it presupposes; the
 redemption dedupe rule names its key; continuation is stated to be per
-authorization context, not per call.<a href="#appendix-E-3.15.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.16">
-          <p id="appendix-E-3.16.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
-deployment, with the figure keyed to the steps, and reduced the Multi-Hop
-Overview to a map from those steps to the sections that specify them.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
+authorization context, not per call.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.17">
-          <p id="appendix-E-3.17.1">Stated the design goal in the Introduction: an opt-in extension that
-requires no change to existing ID-JAG clients or RASes, keeps chain state at
-the IdP, and lets an ID-JAG ecosystem add multi-hop access at gateways.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.17.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
+deployment, with the figure keyed to the steps, and reduced the Multi-Hop
+Overview to a map from those steps to the sections that specify them.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.18">
-          <p id="appendix-E-3.18.1">Cited validation rules by name, tabulated the envelope, removed the
-duplicate signals table, merged three short Security subsections into
-their neighbors, trimmed the IdP metadata entry, and reorganized the
-background example by hop.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.18.1">Stated the design goal in the Introduction: an opt-in extension that
+requires no change to existing ID-JAG clients or RASes, keeps chain state at
+the IdP, and lets an ID-JAG ecosystem add multi-hop access at gateways.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.19">
-          <p id="appendix-E-3.19.1">Trimmed the vocabulary: removed the binding, authenticated context, and
-intra-domain carrier entries and the presenting-actor alias, unified on
-"pairwise subject", narrowed continuation-capable to ID-JAGs, and made
-continuable a plain adjective rather than a third hop state.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.19.1">Cited validation rules by name, tabulated the envelope, removed the
+duplicate signals table, merged three short Security subsections into
+their neighbors, trimmed the IdP metadata entry, and reorganized the
+background example by hop.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.20">
-          <p id="appendix-E-3.20.1">Named the CAI as the subject of the carrier and scheduled-task rules, noted
-the confused-deputy surface of an envelope that records a basis rather
-than targets, and showed client
-authentication in every example request.<a href="#appendix-E-3.20.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.20.1">Trimmed the vocabulary: removed the binding, authenticated context, and
+intra-domain carrier entries and the presenting-actor alias, unified on
+"pairwise subject", narrowed continuation-capable to ID-JAGs, and made
+continuable a plain adjective rather than a third hop state.<a href="#appendix-E-3.20.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.21">
-          <p id="appendix-E-3.21.1">Prohibited a refresh token in the continuation response, required envelope
-containment of the effective authorization after defaults, forbade a
-top-level <code>nbf</code> in the assertion, made authentication-context preservation
-unconditional, and corrected the signed-assertion rationale.<a href="#appendix-E-3.21.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.21.1">Named the CAI as the subject of the carrier and scheduled-task rules, noted
+the confused-deputy surface of an envelope that records a basis rather
+than targets, and showed client
+authentication in every example request.<a href="#appendix-E-3.21.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.22">
-          <p id="appendix-E-3.22.1">Ordered the protocol section chronologically: establishing a chain, RAS
-binding and hop activation, handle propagation, assertion issuance, the
-continuation exchange, and replay reservation.<a href="#appendix-E-3.22.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.22.1">Prohibited a refresh token in the continuation response, required envelope
+containment of the effective authorization after defaults, forbade a
+top-level <code>nbf</code> in the assertion, made authentication-context preservation
+unconditional, and corrected the signed-assertion rationale.<a href="#appendix-E-3.22.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.23">
-          <p id="appendix-E-3.23.1">Added a Protocol Overview to the Introduction, regrouped the Overview by
-role, moved Chain Lifetime and Revocation after the protocol section, moved
-replay reservation to the end of that section, and ordered assertion
-issuance as request, preconditions, response.<a href="#appendix-E-3.23.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.23.1">Ordered the protocol section chronologically: establishing a chain, RAS
+binding and hop activation, handle propagation, assertion issuance, the
+continuation exchange, and replay reservation.<a href="#appendix-E-3.23.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.24">
-          <p id="appendix-E-3.24.1">Reorganized the SaaS chain example by hop, trimmed restated specification
-text from it, and moved the trust-boundary note to Design Rationale.<a href="#appendix-E-3.24.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.24.1">Added a Protocol Overview to the Introduction, regrouped the Overview by
+role, moved Chain Lifetime and Revocation after the protocol section, moved
+replay reservation to the end of that section, and ordered assertion
+issuance as request, preconditions, response.<a href="#appendix-E-3.24.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.25">
-          <p id="appendix-E-3.25.1">Added the <code>audience</code> parameter to the assertion issuance response, so the
-client learns which IdP to present the assertion to, and registered its
-token response usage.<a href="#appendix-E-3.25.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.25.1">Reorganized the SaaS chain example by hop, trimmed restated specification
+text from it, and moved the trust-boundary note to Design Rationale.<a href="#appendix-E-3.25.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.26">
-          <p id="appendix-E-3.26.1">Rewrote the gateway example as the first, end-to-end example for gateway
-implementers: co-located RAS and CAI, handle carried in the access token,
-assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
-the terminal RAS.<a href="#appendix-E-3.26.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.26.1">Added the <code>audience</code> parameter to the assertion issuance response, so the
+client learns which IdP to present the assertion to, and registered its
+token response usage.<a href="#appendix-E-3.26.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.27">
-          <p id="appendix-E-3.27.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
-CAI that is an authorization server, with the access token or Transaction
-Token the workload holds as the subject token, resolving the CAI-issuance
-open item; the gateway example uses it.<a href="#appendix-E-3.27.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.27.1">Rewrote the gateway example as the first, end-to-end example for gateway
+implementers: co-located RAS and CAI, handle carried in the access token,
+assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
+the terminal RAS.<a href="#appendix-E-3.27.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.28">
-          <p id="appendix-E-3.28.1">Made the retry-limit and replay-concurrency requirements self-contained
+          <p id="appendix-E-3.28.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
+CAI that is an authorization server, with the access token or Transaction
+Token the workload holds as the subject token, resolving the CAI-issuance
+open item; the gateway example uses it.<a href="#appendix-E-3.28.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.29">
+          <p id="appendix-E-3.29.1">Made the retry-limit and replay-concurrency requirements self-contained
 rather than pointing into Implementation Considerations, defined
 when a hop is continuable and what continuation-capable means without
 circularity, and moved the
 per-target client registration prerequisite to the Token Exchange
-introduction.<a href="#appendix-E-3.28.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.29">
-          <p id="appendix-E-3.29.1">Annotated the overview diagram with this profile's additions and the
-terminal hop.<a href="#appendix-E-3.29.1" class="pilcrow">¶</a></p>
+introduction.<a href="#appendix-E-3.29.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.30">
-          <p id="appendix-E-3.30.1">Made the accepting RAS a CAI for its own hops without configuration; metadata
+          <p id="appendix-E-3.30.1">Annotated the overview diagram with this profile's additions and the
+terminal hop.<a href="#appendix-E-3.30.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.31">
+          <p id="appendix-E-3.31.1">Made the accepting RAS a CAI for its own hops without configuration; metadata
 now lists only additional CAIs. Added a scope statement to the Overview and a
 non-normative Deployment Topologies subsection holding the carrier
 realizations, added a Topology and Trust security subsection, and switched
-the gateway example to the co-located topology.<a href="#appendix-E-3.30.1" class="pilcrow">¶</a></p>
+the gateway example to the co-located topology.<a href="#appendix-E-3.31.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.31">
-          <p id="appendix-E-3.31.1">Removed the prohibition on carrying the handle in an access token, along
+        <li class="normal" id="appendix-E-3.32">
+          <p id="appendix-E-3.32.1">Removed the prohibition on carrying the handle in an access token, along
 with the carrier requirements that restated the CAI preconditions. One rule
 remains: the handle surfaced for a call is the one the RAS bound to the
 authorization that the call's credential or context identifies, read from RAS
 state or from a carrier derived from it. The accepting RAS's own access
 token is now a permitted carrier, and the handle is also registered as an
-introspection response member.<a href="#appendix-E-3.31.1" class="pilcrow">¶</a></p>
+introspection response member.<a href="#appendix-E-3.32.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
