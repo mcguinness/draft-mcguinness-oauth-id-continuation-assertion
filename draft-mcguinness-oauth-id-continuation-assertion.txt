@@ -106,6 +106,9 @@ Table of Contents
        5.7.6.  Error Response and Recovery
      5.8.  Replay Reservation and Retry
    6.  Chain Lifetime and Revocation
+     6.1.  Anchors
+     6.2.  Ending a Chain
+     6.3.  Limits
    7.  Authorization Server Metadata
      7.1.  IdP Authorization Server Metadata
      7.2.  Resource Authorization Server Metadata
@@ -734,21 +737,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    authorization or a valid proof, the IdP MUST NOT establish a chain or
    include an identity_continuation_handle.
 
-   The root subject token MUST resolve to one of these lifecycle
-   anchors:
-
-   *  a refresh token's OAuth grant;
-
-   *  an ID Token sid [OIDC.FrontChannelLogout] resolving to an active
-      IdP session for that user and client; or
-
-   *  a SAML SessionIndex [SAML2.Core] resolving to an active IdP
-      session for that user and client.
-
-   The IdP MUST NOT root a chain from an unresolved anchor or an access
-   token; non-user-rooted authority is out of scope. sid and
-   SessionIndex are used only for resolution and MUST NOT enter
-   assertions or chain context.
+   The root subject token MUST resolve to a lifecycle anchor: the user's
+   active IdP session, or, for a durable chain, a refresh token's OAuth
+   grant (Section 6.1).
 
    Tenant policy at the IdP determines whether the governing
    authorization permits continuation and, if so, populates the root-
@@ -815,12 +806,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    (Section 7.2).
 
    Establishment is at-least-once: retrying a lost response MAY create a
-   second chain.  Revocation of the governing authorization applies to
-   every chain rooted in it, and the actor-chain depth bound is enforced
-   per branch.  Fan-out, rate, or hop-count limits configured for a
-   governing authorization apply across every chain rooted in it, so
-   sibling chains share one budget; a retried establishment MUST NOT
-   evade them.
+   second chain, and the limits of Section 6.3 apply across every chain
+   rooted in one governing authorization.
 
 5.3.  Continuation-Aware RAS Processing
 
@@ -1473,6 +1460,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 6.  Chain Lifetime and Revocation
 
+   A chain anchored to the user's IdP session is the core case: it lives
+   while the session does.  A chain anchored to a refresh token's grant
+   is a durable chain: it outlives the session, which is what an
+   unattended agent needs (Appendix B.3), and it is the reason this
+   document has lifetimes and revocation that extend past a session.
+   The anchors, ending rules, and limits below apply to both forms; a
+   reader building only session-bounded continuation can skip the grant-
+   specific discussion and the background example, not these shared
+   rules.
+
    A chain is continuable only while active at the IdP.  Each cross-
    boundary hop is a fresh policy check.  Revoking a hop stops its
    subtree at the next continuation, fail-closed, but does not
@@ -1496,14 +1493,32 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    access token    |===========|              RAS-set, independent
    IdP-held chain  |=========================| IdP-held, spans hops
 
-   The governing authorization is anchored as Section 5.2 specifies;
-   rotation of a refresh token does not affect the grant anchor.
+6.1.  Anchors
+
+   The root subject token resolves to one of these anchors
+   (Section 5.2):
+
+   *  an ID Token sid [OIDC.FrontChannelLogout] resolving to an active
+      IdP session for that user and client;
+
+   *  a SAML SessionIndex [SAML2.Core] resolving to an active IdP
+      session for that user and client; or
+
+   *  for a durable chain, a refresh token's OAuth grant.
+
+   The IdP MUST NOT root a chain from an unresolved anchor or an access
+   token; non-user-rooted authority is out of scope. sid and
+   SessionIndex are used only for resolution and MUST NOT enter
+   assertions or chain context.  Rotation of a refresh token does not
+   affect the grant anchor.
+
+6.2.  Ending a Chain
 
    A chain ends when:
 
-   *  the grant it is anchored to expires or is revoked;
+   *  the session it is anchored to terminates;
 
-   *  the session it is anchored to terminates; or
+   *  the grant it is anchored to expires or is revoked; or
 
    *  tenant policy withdraws permission to continue it.
 
@@ -1526,6 +1541,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    How an IdP surfaces chains to users and administrators for review and
    revocation is deployment-specific; [GRANT-MGMT] describes OAuth grant
    management for that purpose.
+
+6.3.  Limits
+
+   Revocation of the governing authorization applies to every chain
+   rooted in it, and the actor-chain depth bound is enforced per branch.
+   Fan-out, rate, or hop-count limits configured for a governing
+   authorization apply across every chain rooted in it, so sibling
+   chains share one budget; a retried establishment (Section 5.2) MUST
+   NOT evade them.
 
 7.  Authorization Server Metadata
 
@@ -1626,12 +1650,19 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    a retry recovers it (Section 5.8); it prunes expired or revoked hop
    state.  Because the actor-chain depth bound counts merged lineage
    entries, a workload that repeatedly continues as itself never trips
-   it; the fan-out, rate, and hop-count limits of Section 5.2 bound that
+   it; the fan-out, rate, and hop-count limits of Section 6.3 bound that
    growth instead.  Failure paths worth testing before deployment:
    concurrent redemption of one ID-JAG, a crash between issuing an ID-
    JAG and recording its hop, a policy change between two continuations,
    a credential from the wrong tenant, and local revocation after an
    assertion has been issued.
+
+   An IdP can defer materializing chain state until the first
+   continuation, provided the handle still resolves to the same root and
+   envelope; deferral does not relax the reservation durability of
+   Section 5.8.  Whether the hop tree could be replaced by self-
+   verifying handles is an open question (Appendix C), not a realization
+   this document describes.
 
 8.1.  Deployment Topologies
 
@@ -1704,11 +1735,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    An IdP can derive handles from an internal delegation identifier
    using a keyed one-way function, provided the derived handles still
    satisfy rules 1 and 2 of Section 4 and remain unlinkable.
-
-   An IdP can defer materializing chain state until the first
-   continuation, provided the handle still resolves to the same root and
-   envelope; deferral does not relax the reservation durability of
-   Section 5.8.
 
 9.  Security Considerations
 
@@ -3431,6 +3457,22 @@ Appendix C.  Open Items for Working Group Discussion
        Dynamic ceilings might instead use an authorization detail
        [RFC9396] or a policy reference.
 
+   5.  *Document factoring.* Should durable chains (Section 6,
+       Appendix B.3) become a separate profile, leaving this document
+       with session-bounded continuation, or does one document with a
+       stoppable core serve implementers better?
+
+   6.  *Stateless hop commitments.* Could a handle be a self-verifying
+       commitment carrying the root, parent, RAS, and actor, so that the
+       IdP keeps only root, revocation, and reservation state?  The
+       proposal must show how the IdP recovers a hop's ancestry when the
+       parent record no longer exists, since lineage is derived by
+       walking parent references and an ancestor's revocation must be
+       detectable (Section 5.7.5, Section 6); how it does so within the
+       handle's 256-character bound (Section 4) without embedding
+       commitments recursively; and what a revocation list costs in
+       subtree revocation and unlinkability (Section 10).
+
    Further questions are tracked in the project's issue list rather than
    expanded here: nested own-domain act segments and offline-actor audit
    ([I-D.mcguinness-oauth-actor-receipts],
@@ -3451,6 +3493,13 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Gathered durable-chain material into Chain Lifetime and
+      Revocation, with anchors, ending, and limits as subsections and a
+      lead that separates the shared rules from the grant-specific
+      discussion; moved the anchor list and the cross-chain limits there
+      from Establishing a Chain; opened two questions on document
+      factoring and stateless hop commitments.
 
    *  Added a Design Rationale subsection separating actor identity
       (act) from the target's client_id and explaining why may_act does
