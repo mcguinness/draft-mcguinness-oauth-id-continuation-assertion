@@ -364,11 +364,10 @@ Continuation Handle (`identity_continuation_handle`):
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, holding an
   immutable reference to its parent hop unless it is the root. Its lineage is
-  its path to the root. A continuation-aware RAS that redeems the hop's ID-JAG
-  binds the handle to the authorization it issues ({{ras-processing}}); the hop
-  is then ACCEPTED.
-  A hop from which no workload continues is terminal; its branch ends there,
-  while sibling branches may continue.
+  its path to the root. When a RAS redeems the hop's ID-JAG, it binds the hop
+  to its authorization state and the hop becomes ACCEPTED ({{ras-processing}},
+  {{hop-activation}}). A hop from which no workload continues is terminal: its
+  branch ends there, while sibling branches may continue.
 
 Chain:
 : An IdP-held tree of hops under one governing authorization; each hop's
@@ -381,11 +380,9 @@ Governing authorization:
   chain and bounds every continuation under it ({{lifecycle}}).
 
 Root-chain envelope:
-: What the IdP evaluates every continuation against: the facts of the root
-  exchange (the authenticated user and authentication context, the root actor,
-  and the chain's anchor and expiry), fixed at establishment, and the tenant
-  policy for targets, permitted continuers, and limits, applied as it stands
-  at each continuation ({{root-establishment}}).
+: What the IdP evaluates every continuation against: fixed facts from the
+  root exchange plus tenant policy applied as it currently stands; see
+  {{root-establishment}} for the fixed-versus-policy breakdown.
 
 Continuation-capable:
 : Describes an ID-JAG that carries the `identity_continuation_handle` claim
@@ -455,23 +452,25 @@ The claims have the following meanings and requirements:
 
 `act`:
 : REQUIRED. The current actor presenting the Token Exchange request, encoded
-  as a single-level `act` claim per {{RFC8693}}, with a REQUIRED `iss` and
-  `sub`, both non-empty strings: `iss` is the issuer of the actor's credential,
-  the `actor_token` of {{request}}, and `sub` is the actor's identifier at that
-  issuer, its `client_id` for an {{RFC7523}} credential. The IdP compares both
-  with the `actor_token` and the authenticated client ({{client-identity}}).
-  Additional members MAY carry further identity attributes but are
-  non-authoritative and MUST NOT affect identity, authorization, lineage, or
-  issuance; a recipient MUST ignore members it does not understand, and `exp`,
-  `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present.
+  as a single-level `act` claim per {{RFC8693}}:
+
+  * `iss` and `sub` are REQUIRED, non-empty strings. `iss` is the issuer of
+    the actor's credential, the `actor_token` of {{request}}, and `sub` is
+    the actor's identifier at that issuer, its `client_id` for an
+    {{RFC7523}} credential.
+  * The IdP compares both with the `actor_token` and the authenticated
+    client ({{client-identity}}).
+  * Additional members MAY carry further identity attributes but are
+    non-authoritative and MUST NOT affect identity, authorization, lineage,
+    or issuance. A recipient MUST ignore members it does not understand,
+    and `exp`, `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be
+    present.
 
 `cnf`:
-: REQUIRED. A confirmation claim {{RFC7800}} binding the assertion to a key the
-  current actor proves. The property this profile needs is that proof; the
-  method is how it is shown. In this profile, `cnf` MUST contain exactly one
-  confirmation method: `jkt`, the JWK SHA-256 thumbprint {{RFC7638}} of the
-  DPoP key {{RFC9449}}. A future profile may replace that restriction with
-  another method offering equivalent live proof ({{security-pop}}).
+: REQUIRED. A confirmation claim {{RFC7800}} binding the assertion to a key
+  the current actor proves. `cnf` MUST contain exactly one confirmation
+  method: `jkt`, the JWK SHA-256 thumbprint {{RFC7638}} of the DPoP key
+  {{RFC9449}} ({{security-pop}}).
 
 `iat`, `exp`:
 : REQUIRED. `exp` MUST follow `iat`, and `exp - iat` MUST NOT exceed 300
@@ -483,15 +482,17 @@ The claims have the following meanings and requirements:
   of entropy.
 
 The assertion is a subject token whose subject the IdP resolves from the
-referenced hop, not an {{RFC7523}} JWT-profile assertion. It MUST NOT contain
-a top-level `sub`, `auth_time`, `acr`, `amr`, or `sid` claim (these come from
-the envelope), nor a top-level `nbf` claim, whose {{RFC7519}}
-semantics would add a validity condition this profile does not define, nor the
-Token Exchange request parameters
-`audience`, `resource`, `scope`,
-`authorization_details`, or `requested_token_type` (these are supplied by
-the request). The assertion's `aud` identifies the IdP, not the requested
-target.
+referenced hop, not an {{RFC7523}} JWT-profile assertion. It MUST NOT
+contain:
+
+* a top-level `sub`, `auth_time`, `acr`, `amr`, or `sid` claim (these come
+  from the envelope), or a top-level `nbf` claim, whose {{RFC7519}}
+  semantics would add a validity condition this profile does not define; or
+* the Token Exchange request parameters `audience`, `resource`, `scope`,
+  `authorization_details`, or `requested_token_type` (these are supplied by
+  the request).
+
+The assertion's `aud` identifies the IdP, not the requested target.
 
 Other top-level claims MAY appear but MUST be ignored for validation,
 authorization, and issuance.
@@ -507,8 +508,8 @@ The following rules apply:
 
 1. When it establishes or continues a chain ({{root-establishment}}), the IdP
    MUST embed a fresh `identity_continuation_handle` claim in the issued
-   ID-JAG, for that root or child hop, and MUST NOT reuse a handle across hops.
-   An ID-JAG carrying this claim is continuation-capable.
+   ID-JAG, for that root or child hop, and MUST NOT reuse a handle across
+   hops.
 
 2. `identity_continuation_handle` MUST contain at least 128 bits of entropy,
    MUST NOT contain user-identifying information, and MUST consist of 22 to
