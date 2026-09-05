@@ -1501,7 +1501,7 @@ that local transition, and the IdP authorizes the next target independently,
 so this is not attenuated delegation in which each service forwards a subset
 of what it received. Continuation therefore stays a fresh policy decision at
 every boundary, never a bearer of standing authority.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">Three invariants define the protocol:<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-4">Three properties are at the core of the protocol:<a href="#section-1-4" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-1-5">
 <li id="section-1-5.1">
           <p id="section-1-5.1.1">Only the IdP names the user for a new audience.<a href="#section-1-5.1.1" class="pilcrow">¶</a></p>
@@ -1510,15 +1510,19 @@ every boundary, never a bearer of standing authority.<a href="#section-1-3" clas
           <p id="section-1-5.2.1">Only an accepted authorization may be continued.<a href="#section-1-5.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-1-5.3">
-          <p id="section-1-5.3.1">Only the currently authenticated holder of that accepted authorization may
-request its continuation.<a href="#section-1-5.3.1" class="pilcrow">¶</a></p>
+          <p id="section-1-5.3.1">Only an authenticated actor that the IdP permits to continue from that
+accepted authorization, and that proves possession of its own key, may
+request continuation.<a href="#section-1-5.3.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="section-1-6">The IdP establishes the first by minting every ID-JAG itself. The RAS
-establishes the second by binding the handle when it accepts a grant. The
-CAI's assertion, the actor's client authentication, and its proof of
-possession together establish the third. Everything else in this document
-exists to make one of the three checkable.<a href="#section-1-6" class="pilcrow">¶</a></p>
+establishes the second by binding the handle when it accepts a grant. For the
+third, the CAI's assertion, the actor's client authentication, and its proof
+of possession establish who is asking, and the IdP's envelope decides whether
+that actor may continue. The actor need not be the party the incoming token
+was bound to: a gateway continues from a token bound to the application that
+called it, proving its own key. Each continuation also passes the IdP's policy
+decision on the requested target (<a href="#validation" class="auto internal xref">Section 5.7.3</a>).<a href="#section-1-6" class="pilcrow">¶</a></p>
 <p id="section-1-7">Continuation proves continuity of delegated identity and of authorization
 ancestry. It does not establish that an onward action is part of the work the
 user or tenant sanctioned; that is the IdP's policy decision at each
@@ -5402,8 +5406,8 @@ policy" precondition, leaving a domain free to narrow issuance, and moved
 every decision about who may continue and to what to the IdP.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.3">
-          <p id="appendix-E-3.3.1">Opened the Introduction with the three invariants the protocol rests on
-and stated what continuation does not prove; named co-located as the
+          <p id="appendix-E-3.3.1">Opened the Introduction with the three core properties the protocol rests
+on and stated what continuation does not prove; named co-located as the
 baseline deployment and a separate CAI as advanced, with the same exchange
 count in both; said that the handle correlates state and confers nothing
 and that <code>act</code> is disclosed lineage, not authoritative history.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
