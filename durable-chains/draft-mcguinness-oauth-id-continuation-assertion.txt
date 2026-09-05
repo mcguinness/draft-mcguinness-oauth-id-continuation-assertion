@@ -585,11 +585,11 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 
    cnf:  REQUIRED.  A confirmation claim [RFC7800] binding the assertion
       to a key the current actor proves.  The property this profile
-      needs is that proof; the method is how it is shown.  This document
-      defines one method, jkt, the JWK SHA-256 thumbprint [RFC7638] of
-      the DPoP key [RFC9449], and the claim MUST contain exactly one
-      method.  A future profile may define another method with an
-      equivalent live proof (Section 9.1).
+      needs is that proof; the method is how it is shown.  In this
+      profile, cnf MUST contain exactly one confirmation method: jkt,
+      the JWK SHA-256 thumbprint [RFC7638] of the DPoP key [RFC9449].  A
+      future profile may replace that restriction with another method
+      offering equivalent live proof (Section 9.1).
 
    iat, exp:  REQUIRED. exp MUST follow iat, and exp - iat MUST NOT
       exceed 300 seconds.
@@ -2342,17 +2342,17 @@ A.2.  Actor Identity and Target client_id
    target RAS.  Both appear because the artifact this profile produces
    is an ID-JAG, which the base profile defines as a grant a registered
    client presents; a target RAS authenticates that client and applies
-   its policy by client_id, and knows nothing of actors.  So before
-   continuing to a target, the current actor needs a client identity
-   resolvable at that target's RAS (Section 5.7), and the IdP places it
-   in the onward ID-JAG.  That is compatibility with ID-JAG, not the
-   profile's model of delegation: a workload with a strong identity and
-   key but no registration at a target cannot receive a grant for it
-   because nothing there could redeem the grant, not because it is any
-   less the actor.  The two identifiers often coincide, as when a
-   gateway registers everywhere under one name, but the profile keeps
-   them distinct so that lineage records who acted while the grant
-   records who may redeem.
+   its policy by client_id, and need not understand this continuation
+   profile.  So before continuing to a target, the current actor needs a
+   client identity resolvable at that target's RAS (Section 5.7), and
+   the IdP places it in the onward ID-JAG.  That is compatibility with
+   ID-JAG, not the profile's model of delegation: a workload with a
+   strong identity and key but no registration at a target cannot
+   receive a grant for it because nothing there could redeem the grant,
+   not because it is any less the actor.  The two identifiers often
+   coincide, as when a gateway registers everywhere under one name, but
+   the profile keeps them distinct so that lineage records who acted
+   while the grant records who may redeem.
 
    The may_act claim of [RFC8693] does not remove the need for this
    profile.  It lets an issuer state, inside a token the target already
