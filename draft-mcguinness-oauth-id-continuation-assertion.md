@@ -557,6 +557,7 @@ refresh token, or SAML assertion:
 POST /token HTTP/1.1
 Host: idp.example
 Content-Type: application/x-www-form-urlencoded
+
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &requested_token_type=urn:ietf:params:oauth:token-type:id-jag
 &audience=https://ras.travel.example/
@@ -578,9 +579,10 @@ governing authorization for a root exchange permits continuation; no request
 parameter asks for it, and advertised support ({{metadata-idp}}) signals
 capability, not authority. To
 establish, the IdP MUST include the root handle in the ID-JAG. This profile
-places no proof-of-possession requirement on the root exchange: the root
-client's obligations are those of the base profile, and sender constraint
-becomes a requirement only for an actor that continues ({{client-identity}}).
+places no proof-of-possession requirement on the root exchange beyond the one
+an optional `actor_token` brings with it (below): the root client's
+obligations are those of the base profile, and sender constraint becomes a
+requirement for an actor that continues ({{client-identity}}).
 Absent the continuation authorization, the IdP MUST NOT establish a chain or
 include an `identity_continuation_handle`.
 
@@ -652,8 +654,11 @@ accepting a continuation-capable ID-JAG:
 
 1. accept the ID-JAG per {{I-D.ietf-oauth-identity-assertion-authz-grant}},
 which includes validating the grant, authenticating the presenting client,
-verifying any sender constraint, applying local authorization policy, and
-issuing an access token, sender-constrained where the RAS requires it; and
+verifying the sender constraint of an ID-JAG that carries `cnf`, applying
+local authorization policy, and issuing an access token: sender-constrained
+to the confirmed key when the ID-JAG carries `cnf`, as every onward ID-JAG
+does ({{client-identity}}), and otherwise as the RAS's own policy determines,
+as for a root ID-JAG ({{root-establishment}}); and
 2. bind `identity_continuation_handle`, the ID-JAG's issuer and tenant, and
 any confirmed key to the authorization state it establishes, recording
 whether continuation is permitted.
@@ -964,7 +969,7 @@ set; the envelope-containment rule ({{validation}}) applies to
 
 The client-to-actor mapping below applies to every exchange; the `act` and
 `actor_token` matching and the DPoP proof apply to a continuation exchange; a
-root exchange carries no proof-of-possession requirement
+root exchange carries no unconditional proof-of-possession requirement
 ({{root-establishment}}).
 
 The current actor MUST authenticate as an OAuth client. Four rules govern how
@@ -1580,12 +1585,21 @@ that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
 every exchange requires live proof of possession of the `cnf` key, a DPoP
 proof {{RFC9449}} for the method this document defines ({{client-identity}}).
 A captured assertion is therefore useless without the private key, and because
-the onward ID-JAG is bound to the same key ({{client-identity}}), possession
-is demonstrated continuously across the chain, not once at issuance. The root
-exchange and its ID-JAG keep the base profile's sender-constraint posture;
-this profile adds none there, because continuation rests on the continuing
-actor's key, the RAS binding, and the CAI's attestation, not on the root
-client's key.
+the onward ID-JAG is bound to the same key ({{client-identity}}) and the next
+RAS binds its access token to that key ({{ras-processing}}), possession is
+demonstrated continuously from the first continuation on, not once at
+issuance.
+
+The root hop is different. The root ID-JAG carries no `cnf`, and its RAS
+sender-constrains the access token by its own policy, so a root hop may issue
+a bearer token. A party that captures such a token can call the workload and
+so induce that honest workload's continuation under the workload's own key;
+the workload's proof of possession does not prevent this, because the
+workload is the legitimate presenter. That is the base profile's bearer-token
+exposure at the ingress, not an exposure this profile creates, and a RAS that
+sender-constrains its tokens removes it. This profile adds no proof
+requirement at the root because continuation rests on the continuing actor's
+key, the RAS binding, and the CAI's attestation, not on the root client's key.
 
 At assertion issuance the client proves its own key, which the CAI binds to
 the new assertion; it need not prove possession of any key bound to the
@@ -3168,7 +3182,10 @@ this profile builds.
 * Removed the proof-of-possession requirement from the root exchange: a root
   client keeps only the base profile's obligations, and sender constraint is
   required of a continuing actor; an optional root `actor_token` still needs
-  a proof of the key it is bound to.
+  a proof of the key it is bound to. A RAS binds its access token to the
+  confirmed key when the ID-JAG carries `cnf` and otherwise by its own
+  policy.
+
 * Kept single-use of an assertion required
  and made idempotent retry
   optional, with the fingerprint rules applying to an IdP that offers retry;
