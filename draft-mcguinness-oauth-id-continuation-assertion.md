@@ -433,11 +433,14 @@ The claims have the following meanings and requirements:
 `act`:
 : REQUIRED. The current actor presenting the Token Exchange request, encoded
   as a single-level `act` claim per {{RFC8693}}, with a REQUIRED `iss` and
-  `sub`, both non-empty strings. Additional members MAY carry further identity
-  attributes but are non-authoritative and MUST NOT affect identity,
-  authorization, lineage, or issuance; a recipient MUST ignore members it does
-  not understand, and `exp`, `nbf`, `aud`, `scope`, `cnf`, and nested `act`
-  MUST NOT be present.
+  `sub`, both non-empty strings: `iss` is the issuer of the actor's credential,
+  the `actor_token` of {{request}}, and `sub` is the actor's identifier at that
+  issuer, its `client_id` for an {{RFC7523}} credential. The IdP compares both
+  with the `actor_token` and the authenticated client ({{client-identity}}).
+  Additional members MAY carry further identity attributes but are
+  non-authoritative and MUST NOT affect identity, authorization, lineage, or
+  issuance; a recipient MUST ignore members it does not understand, and `exp`,
+  `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present.
 
 `cnf`:
 : REQUIRED. A confirmation claim {{RFC7800}} that binds the assertion to the
@@ -634,9 +637,11 @@ on accepting a continuation-capable ID-JAG:
 
 The RAS MUST bind the handle and issue the access token as one outcome: no
 access token without its binding, and no binding without a token. Repeated
-redemption of one ID-JAG MUST bind to the same hop authorization record, so a
-retry cannot create multiple records for one grant. The RAS exposes the binding
-only within its trust domain ({{handle-propagation}}).
+redemption of one ID-JAG, identified by its validated issuer and handle within
+the authenticated tenant binding, MUST bind to the same hop authorization
+record, so a retry cannot create multiple records for one grant; a matching
+handle under another issuer is a different grant, not a retry. The RAS exposes
+the binding only within its trust domain ({{handle-propagation}}).
 
 ## Hop Activation {#hop-activation}
 
@@ -1310,6 +1315,19 @@ takes effect.
 This section is non-normative. It describes ways an IdP can realize this
 document's requirements; conformance depends only on the normative sections.
 
+Continuation is per authorization context, not per call. A workload continues
+once to obtain an ID-JAG for a target on behalf of one user under one chain,
+then reuses the access token it redeems there while that token remains valid
+and covers the requested access. Calls for another user, tenant, chain, or key
+need their own continuation; reusing a token across chains would attach later
+calls to the earlier chain's handle and lineage. The first call in a context
+therefore costs the assertion exchange, the continuation exchange, and the
+redemption, and later calls in the same context cost nothing more while the
+token lasts. Renewal is another continuation with a fresh assertion, which
+succeeds only if the CAI's preconditions still hold
+({{assertion-preconditions}}); an expired access token does not by itself
+entitle the workload to another.
+
 ## Deployment Topologies {#deployment-topologies}
 
 | Topology | CAI role held by | CAI handle source | Fits when |
@@ -1328,13 +1346,17 @@ can issue the assertion from its token endpoint ({{assertion-token-exchange}}):
 a co-located RAS takes the access token it issued as the `subject_token`, and a
 separate CAI takes the token that carries the handle.
 
-With a separate CAI, a deployment can propagate the handle in several ways:
+A carrier serves either topology. A co-located RAS may place the handle in
+its own access token as a key into its state, as the gateway example does
+({{example-gateway}}); a separate CAI needs a carrier to receive the handle at
+all. Three carriers are common:
 
 * A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} can carry the
   handle as request context ({{rationale-txn}}).
 * A signed JWT access token {{RFC9068}} issued by the accepting RAS can carry
   the handle as a claim. The claim records issuance-time state and therefore
-  cannot reflect a later revocation.
+  cannot reflect a later revocation; the CAI's liveness recheck
+  ({{assertion-preconditions}}) covers that.
 * For an opaque access token issued by the accepting RAS, its introspection
   response {{RFC7662}} can carry the handle as a member, generated when
   introspection occurs and present only when `active` is `true`.
@@ -2028,6 +2050,7 @@ Server-side state at GatewayRAS:
 {
   "identity_continuation_handle": "Qm7zXu2VtL9pKe4RaW1nHc",
   "status": "ACCEPTED",
+  "continuation_permitted": true,
   "authorization_state": "gw-authz-7a1e",
   "idp": "https://idp.example/",
   "tenant": "tenant-123",
@@ -2223,9 +2246,11 @@ ToolGateway redeems the ID-JAG at WikiRAS with the jwt-bearer grant and a DPoP
 proof of the same key. WikiRAS implements nothing from this profile: it
 validates the ID-JAG as the base profile requires, ignores the handle, and
 issues an access token without binding H1 ({{ras-processing}}). ToolGateway
-calls WikiAPI as Alice's wiki subject and returns the result to AgentApp. Each
-further tool call repeats the exchange of {{example-gateway-ica}} and creates
-a sibling hop under H0 (H2, and so on).
+calls WikiAPI as Alice's wiki subject and returns the result to AgentApp.
+Further calls to WikiAPI for Alice reuse this access token while it remains
+valid ({{implementation}}); each further upstream a tool call needs repeats the
+exchange of {{example-gateway-ica}} and creates a sibling hop under H0 (H2, and
+so on).
 
 ### What a Gateway Implements {#example-gateway-checklist}
 
@@ -2237,6 +2262,11 @@ The gateway domain adds two things to an ordinary OAuth deployment:
 * `tool-gateway` exchanges the access token it received for an assertion, then
   presents that assertion, its actor credential, and a DPoP proof to the IdP
   for the next ID-JAG.
+
+Both presuppose registrations that ID-JAG already requires: `tool-gateway` is
+an OAuth client of the IdP, holding the key its credential and DPoP proofs use,
+and a client known to WikiRAS, which the onward ID-JAG names as `client_id`
+({{token-exchange}}).
 
 Outside the domain nothing changes. AgentApp performs a base ID-JAG exchange
 and never shares Alice's credential, and WikiRAS runs the base profile
@@ -2380,6 +2410,7 @@ Server-side state at ExpenseRAS:
 {
   "identity_continuation_handle": "kW4uJ8pTe2NxA6rQvD1zYs",
   "status": "ACCEPTED",
+  "continuation_permitted": true,
   "authorization_state": "at1-authz-2f9c",
   "client_id": "expense-app",
   "bound_at": 1710000010
@@ -2830,6 +2861,12 @@ this profile builds.
 
 -02
 
+* Applied a gateway-vendor review: example hop records show the
+  continuation-permitted flag the binding requires; the `act` claim states
+  where its `iss` and `sub` come from; carriers are described for either
+  topology; the gateway checklist names the registrations it presupposes; the
+  redemption dedupe rule names its key; continuation is stated to be per
+  authorization context, not per call.
 * Rewrote the Protocol Overview as a numbered walk-through of the gateway
   deployment, with the figure keyed to the steps, and reduced the Multi-Hop
   Overview to a map from those steps to the sections that specify them.
