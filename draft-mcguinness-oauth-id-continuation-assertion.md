@@ -175,7 +175,7 @@ continues from: a RAS that accepts an ID-JAG and binds the hop, and a
 Continuation Assertion Issuer (CAI) that mints the assertion the workload
 presents to the IdP. It defines their cross-domain artifacts and one request
 for obtaining the assertion at a CAI token endpoint, leaving intra-domain
-handle transport to the deployment ({{overview}}).
+handle transport to the deployment ({{handle-propagation}}).
 
 The profile stays deliberately narrow: it defines no new access-token format,
 a Resource Server never consumes the Identity Continuation Assertion directly,
@@ -200,8 +200,7 @@ trust domain, continuation where a boundary re-mints the subject.
 This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, and ID-JAG
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}, and complements OAuth
 Identity Chaining {{I-D.ietf-oauth-identity-chaining}} ({{rationale-idjag}});
-{{protocol-overview}} walks through what it adds, and {{overview}} maps each
-step to the sections that specify it.
+{{protocol-overview}} walks through what it adds.
 
 ## Protocol Overview {#protocol-overview}
 
@@ -267,29 +266,32 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    first hop of a chain; each ID-JAG it issues in the chain is one hop, linked
    to the hop it continues from. With the hop it records an envelope: the
    user, the targets that tenant policy permits, the parties permitted to
-   continue, and the chain's depth and lifetime limits.
-   It places a handle, an opaque reference to that hop, in the ID-JAG as the
-   `identity_continuation_handle` claim. The figure calls this hop H0.
+   continue, and the chain's depth and lifetime limits
+   ({{root-establishment}}). It places a handle, an opaque reference to that
+   hop, in the ID-JAG as the `identity_continuation_handle` claim
+   ({{chain-id}}). The figure calls this hop H0.
 2. As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS and
    receives an access token. New: the RAS keeps the handle alongside the
    authorization it has just created, so that it can later say which hop that
-   access token belongs to. A RAS that does not implement this profile ignores
-   the claim.
+   access token belongs to ({{ras-processing}}). A RAS that does not implement
+   this profile ignores the claim.
 3. AgentApp calls the gateway with the access token and a DPoP proof, as in
    any OAuth deployment.
 4. New: the gateway needs a grant for the wiki. It exchanges the access token
    it received at its RAS's token endpoint for an Identity Continuation
-   Assertion, the artifact this document defines. The RAS finds the hop bound
-   to that access token, confirms that the authorization is still active, and
-   issues the assertion: a short-lived, sender-constrained JWT saying, in
-   effect, "hop H0 is active and this gateway may continue it."
+   Assertion, the artifact this document defines ({{assertion}}). The RAS
+   finds the hop bound to that access token, confirms that the authorization
+   is still active, and issues the assertion ({{assertion-issuance}}): a
+   short-lived, sender-constrained JWT saying, in effect, "hop H0 is active
+   and this gateway may continue it."
 5. New: the gateway presents the assertion to the IdP as the `subject_token`
-   of a Token Exchange request, with its own credential and a DPoP proof,
-   asking for an ID-JAG for the wiki. The IdP looks up H0, checks that the
-   wiki is within the envelope recorded in step 1 (not within the scope of the
-   gateway's own access token) and that the gateway is a permitted continuer,
-   resolves Alice's subject identifier for the wiki, and
-   issues the ID-JAG. That grant is a new hop, H1, whose parent is H0.
+   of a Token Exchange request ({{token-exchange}}), with its own credential
+   and a DPoP proof, asking for an ID-JAG for the wiki. The IdP looks up H0,
+   checks that the wiki is within the envelope recorded in step 1 (not within
+   the scope of the gateway's own access token) and that the gateway is a
+   permitted continuer ({{validation}}), resolves Alice's subject identifier
+   for the wiki, and issues the ID-JAG. That grant is a new hop, H1, whose
+   parent is H0.
 6. As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS and
    receives an access token. If the wiki's RAS does not implement this
    profile, it ignores the handle and the chain ends there. If it does, it
@@ -539,35 +541,8 @@ The following rules apply:
 
 # Multi-Hop Cross-Domain Access {#access}
 
-## Overview {#overview}
-
-{{protocol-overview}} walks through one continuation in six steps. The table
-maps those steps to the sections that specify them, and the sections that
-follow trace a chain in the same order.
-
-| Step | Obligation | Specified in |
-|---|---|---|
-| 1 | The IdP embeds the handle claim in the ID-JAG and establishes and bounds the chain | {{chain-id}}, {{root-establishment}} |
-| 2 | A continuation-aware RAS binds the handle to the authorization it issues; the hop becomes ACCEPTED | {{ras-processing}}, {{hop-activation}} |
-| 3 | The call reaches the workload; within the domain, the bound handle reaches the CAI (a co-located RAS reads its own state) | {{handle-propagation}} |
-| 4 | The CAI issues the Identity Continuation Assertion, by Token Exchange when it is an authorization server | {{assertion}}, {{assertion-issuance}} |
-| 5 | The workload presents the assertion with its actor credential and a DPoP proof; the IdP validates the exchange, guards against replay, and issues the next ID-JAG | {{token-exchange}}, {{validation-replay}} |
-| 6 | The next RAS redeems an ordinary ID-JAG under the base profile; a continuation-aware one binds the handle as in step 2, after which steps 3 to 5 can recur from its domain | {{ras-processing}} |
-
-Across all steps, the governing authorization bounds the chain's lifetime
-({{lifecycle}}), and Authorization Server metadata advertises support: a
-continuation-aware RAS advertises the grant profile, and the IdP should signal
-its capability ({{metadata}}).
-
-How a workload obtains an assertion other than by the exchange of step 4, and
-how the bound handle reaches a separate CAI inside the RAS's trust domain, are
-deployment-specific, subject to the provenance rule in {{handle-propagation}}.
-
-The baseline deployment is co-located: the accepting RAS is also the CAI, as
-in {{protocol-overview}}. A separate CAI is an advanced deployment for a domain
-that centralizes continuation issuance ({{deployment-topologies}}). Each role
-validates only within its authority, and
-no artifact or role alone authorizes continuation ({{security-trust-model}}).
+This section specifies the processing requirements for the flow introduced in
+{{protocol-overview}}.
 
 ## Establishing a Chain {#root-establishment}
 
