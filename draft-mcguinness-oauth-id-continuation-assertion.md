@@ -463,9 +463,10 @@ The claims have the following meanings and requirements:
   as a single-level `act` claim per {{RFC8693}}:
 
   * `iss` and `sub` are REQUIRED, non-empty strings: the actor's canonical
-    actor identity ({{client-identity}}), the issuer of the actor's
-    credential and the actor's identifier there, its `client_id` for an
-    {{RFC7523}} credential.
+    actor identity as {{client-identity}} defines it. Where the actor's
+    credential is issued under that identity, as an {{RFC7523}} client
+    assertion serving as the dual-use JWT is, they equal the credential's
+    `iss` and `sub`.
   * The IdP compares both with the canonical actor identity of the
     authenticated client and with any `actor_token` ({{client-identity}}).
   * Additional members MAY carry further identity attributes but are
@@ -856,9 +857,12 @@ these facts:
 3. `act` names that actor and, if offline attenuation reached the actor, the
    attenuated credential it received is valid ({{decision-rule}}).
 
-4. The actor is bound to the current transaction, and the handle matches that
-   transaction's RAS-bound state ({{hop-activation}}). The handle is input to
-   verify, never authority in itself ({{chain-id}}).
+4. The handle is the one bound to the authorization context the actor
+   presents, its access token or carrier, and the actor is a party that
+   context was issued or forwarded to ({{handle-propagation}},
+   {{hop-activation}}). Selecting another intact context is the actor's
+   choice; substituting a handle within a context is not. The handle is input
+   to verify, never authority in itself ({{chain-id}}).
 
 5. Evidence that is authoritative by the RAS's own authorization semantics,
    whatever the carrier, confirms that the authorization remains active and
@@ -1671,7 +1675,8 @@ possession is demonstrated continuously from the first continuation on, not once
 at issuance. A terminal RAS runs the base profile and may issue a bearer token;
 the chain ends there.
 
-The root hop is different. The root ID-JAG carries no `cnf`, and its RAS
+The root hop is different. A root ID-JAG need not carry `cnf`, and its RAS
+
 sender-constrains the access token by its own policy, so a root hop may issue a
 bearer token. A party that captures such a token can call the workload and so
 induce that honest workload's continuation under the workload's own key; the
@@ -2187,8 +2192,9 @@ acceptance evidence. Pull remains a possible companion profile.
 
 The signed assertion lets the CAI attest the authenticated actor, key,
 accepted hop, and any intra-domain policy checks that the IdP cannot observe:
-acceptance is a state of the RAS, and the transaction binding is domain-local,
-so the assertion is the IdP's only evidence of either.
+acceptance is a state of the RAS, and the binding of a handle to an
+authorization context is domain-local, so the assertion is the IdP's only
+evidence of either.
 
 The IdP still authenticates each current actor and checks its authorization
 ({{client-identity}}, {{validation}}); what the assertion removes is not that
@@ -2196,7 +2202,7 @@ step but any need for the IdP to reach into another domain's state. The
 assertion does not authorize target or scope ({{assertion-issuance}}). Where
 domain-local attestation is unnecessary, a recipient-bound direct grant
 remains a possible simplification, at the cost of the acceptance evidence and
-transaction checks that only a party in that domain can provide.
+authorization-context checks that only a party in that domain can provide.
 
 ## Why Asymmetric Signing Only {#rationale-alg}
 
