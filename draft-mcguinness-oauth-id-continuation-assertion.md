@@ -1512,58 +1512,57 @@ transit, from a log, or from a compromised intermediary, continue the chain as
 that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
 every exchange requires live proof of possession of the `cnf` key, a DPoP
 proof {{RFC9449}} for the method this document defines ({{client-identity}}).
-A captured assertion is therefore
-useless without the private key, and because the onward ID-JAG is bound to the
-same key ({{client-identity}}), possession is demonstrated continuously across
-the chain, not once at issuance. At assertion issuance the client proves its
-own key, which the CAI binds to the new assertion; it need not prove possession
-of any key bound to the incoming subject token ({{assertion-token-exchange}}).
-The applicable subject-token validation and every issuance precondition still
-apply.
+A captured assertion is therefore useless without the private key, and because
+the onward ID-JAG is bound to the same key ({{client-identity}}), possession
+is demonstrated continuously across the chain, not once at issuance.
 
-The 300-second ceiling and the single-use (`iss`, `jti`) reservation
-({{validation-replay}}) confine replay to the IdP continuation exchange. The
-request fingerprint bound by that reservation ties each assertion to the one
-request it first authorized; without it, a resubmitted assertion could
-authorize a second, different request within its window.
+At assertion issuance the client proves its own key, which the CAI binds to
+the new assertion; it need not prove possession of any key bound to the
+incoming subject token ({{assertion-token-exchange}}).
+
+Replay of a captured assertion is confined to the IdP continuation exchange,
+where the freshness and replay rules bind each assertion to the one request it
+first authorized ({{validation-replay}}); without that binding, a resubmitted
+assertion could authorize a second, different request within its window.
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
-The envelope bounds every target and authority. The CAI validates
-any offline attenuation segment; the IdP still enforces only the envelope.
-Because the assertion is target-agnostic, a permitted actor may select any
-target within that ceiling.
+The envelope bounds every target and authority. The CAI validates any offline
+attenuation segment ({{assertion-issuance}}); the IdP enforces only the
+envelope. Because the assertion is target-agnostic, a permitted actor may
+select any target within that ceiling.
 
 An envelope that records an authorization basis instead of listing targets
 ({{root-establishment}}) admits every target the basis permits at request
 time; how broad that is depends on the basis, not on its form. A gateway that
-chooses its upstream at request time is the intended
-case and also a confused-deputy surface, since a compromised or misdirected
-workload can steer continuation to any target the basis admits. The IdP's
-per-target evaluation, the tenant policy that forms the basis, and the
-per-authorization fan-out limits bound the damage; a deployment whose targets
-are known at establishment gains more protection by listing them. Because
-policy applies as it stands, reclassifying a service changes the authority of
-every open chain whose basis reads that classification, so a basis should name
-a class the tenant manages for this purpose, such as services marked eligible
+chooses its upstream at request time is the intended case and also a
+confused-deputy surface, since a compromised or misdirected workload can steer
+continuation to any target the basis admits.
+
+The IdP's per-target evaluation, the tenant policy that forms the basis, and
+the per-authorization fan-out limits bound the damage; a deployment whose
+targets are known at establishment gains more protection by listing them.
+
+Reclassifying a service changes the authority of every open chain whose basis
+reads that classification ({{root-establishment}}), so a basis should name a
+class the tenant manages for this purpose, such as services marked eligible
 for agent continuation, rather than an ambient classification.
 
 Wrong-handle association can continue the wrong user's bounded chain. The
 RAS-bound state establishes the authoritative association between the request
 and the handle, whether the CAI reads it directly or through a carrier derived
-from that state ({{handle-propagation}}). A handle a workload supplies is not
-authoritative, and the CAI rejects substitution.
+from that state ({{handle-propagation}}); the CAI rejects substitution
+({{assertion-preconditions}}).
 
-Keeping CAI issuance in-domain ({{assertion-issuance}})
-prevents a handle-holding party from bypassing the RAS-acceptance path.
+Keeping CAI issuance in-domain ({{assertion-issuance}}) prevents a
+handle-holding party from bypassing the RAS-acceptance path.
 
 A CAI MUST derive a scheduled continuation from durable RAS task
 authorization, not from a scheduler-held handle, which would become a durable
 bearer-like credential outside the per-call key proof and RAS binding that
-gate every other use. The
-scheduler holds only a task identifier; each authenticated run re-derives the
-handle from active task state and still requires an assertion from a trusted
-CAI.
+gate every other use. The scheduler holds only a task identifier; each
+authenticated run re-derives the handle from active task state and still
+requires an assertion from a trusted CAI.
 
 Downstream resources may gate access on authentication strength (`acr`) or
 methods (`amr`); if continuation could raise those claims, an actor could reach
@@ -1576,12 +1575,11 @@ unchanged into onward ID-JAGs ({{onward-id-jag}}).
 The `actor_token` authenticates the current actor to the IdP, so a rogue or
 over-scoped actor-token issuer is an impersonation vector: a party controlling
 one issuer could mint a token naming an actor in another domain or tenant and
-continue that actor's chains. The IdP MUST accept actor tokens only from
-issuers trusted for the actor's own domain and tenant, and MUST reject an
-untrusted or out-of-scope issuer even when a valid CAI assertion accompanies
-it. CAI attestation of the hop and actor-token authentication of the actor are
-independent checks ({{security-trust-model}}); neither substitutes for the
-other.
+continue that actor's chains. The current-actor rule of {{validation}}
+requires a trusted issuer for the actor's own domain and tenant, and an
+accompanying CAI assertion does not relax it: CAI attestation of the hop and
+actor-token authentication of the actor are independent checks
+({{security-trust-model}}); neither substitutes for the other.
 
 ## Conjunctive Trust and Issuer Pairing {#security-trust-model}
 
@@ -1601,33 +1599,31 @@ A continuation requires all of these, and no one of them suffices alone:
 The IdP MUST authorize CAI and actor-token issuer pairings per tenant; separate
 trust in each is insufficient. Tenant determination MUST derive from
 authenticated material, not requester-supplied input. The IdP MUST scope CAI
-trust by issuer, keys, tenant, and the RAS it attests for. The IdP MAY learn
-additional issuers from the RAS's advertised `identity_continuation_issuers`
-({{metadata}}). That advertisement is a nomination only: it scopes each RAS to
-naming issuers for its own hops but does not establish issuer or key trust. The
-IdP independently authenticates each CAI issuer and its signing keys
-({{metadata}}), and tenant policy authorizes the resulting RAS, CAI, and
-actor-token-issuer combination. Absent the advertisement, additional mappings
-are configured out of band.
+trust by issuer, keys, tenant, and the RAS it attests for.
+
+The IdP MAY learn additional issuers from the RAS's advertised
+`identity_continuation_issuers` ({{metadata}}). That advertisement is a
+nomination only and establishes no issuer or key trust ({{metadata-ras}});
+absent it, additional mappings are configured out of band.
 
 ## Topology and Trust {#security-topology}
 
-That the issuer-trust rule accepts the accepting RAS's own identifier
-establishes no issuer,
-key, tenant, or issuer-pairing trust. The IdP sees one signed attestation in
-either topology,
-so separating the CAI isolates keys and components but does not create a
-protocol-level quorum. A workload that obtains the assertion by exchanging the
-access token or Transaction Token it holds for the call
-({{assertion-token-exchange}}) presents nothing
-it did not already hold; what it gains is the CAI's attestation, gated by
-policy and the live recheck. A compromised RAS can fabricate acceptance state in
-either topology, since a separate CAI reads that state as authoritative; a
-compromised separate CAI can additionally attest a hop the RAS refused. In
-both topologies, RAS-local authorization revocation after issuance, which the
-IdP cannot observe, leaves the assertion valid for its remaining lifetime;
-a separate CAI adds any delay in RAS state reaching it.
-The root envelope still bounds the result.
+Accepting the RAS's own identifier under the issuer-trust rule establishes no
+issuer, key, tenant, or issuer-pairing trust. Separating the CAI isolates keys
+and components but creates no protocol-level quorum: the IdP still sees one
+signed attestation ({{deployment-topologies}}).
+
+A workload that obtains the assertion by exchanging the access token or
+Transaction Token it holds for the call ({{assertion-token-exchange}})
+presents nothing it did not already hold; what it gains is the CAI's
+attestation, gated by policy and the live recheck.
+
+A compromised RAS can fabricate acceptance state in either topology, since a
+separate CAI reads that state as authoritative; a compromised separate CAI can
+additionally attest a hop the RAS refused. In both topologies, RAS-local
+authorization revocation after issuance, which the IdP cannot observe, leaves
+the assertion valid for its remaining lifetime; a separate CAI adds any delay
+in RAS state reaching it. The root envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -1635,10 +1631,10 @@ The `act` lineage records who has acted in the delegation. A compromised actor
 could try to forge it, to hide its own identity, impersonate a more privileged
 prior actor, or fabricate a delegation that never happened. This profile
 denies that by construction: an assertion names only the current actor, and
-the IdP builds the onward lineage itself by walking the hop's immutable parent
-references ({{onward-id-jag}}), never by copying a chain the assertion
-supplies. The IdP MUST reject any mismatch between the current actor and the
-assertion's `act`.
+the IdP derives the onward lineage from its own hop records
+({{onward-id-jag}}). The IdP MUST reject any mismatch between the current
+actor and the assertion's `act`.
+
 Because lineage derives from IdP-held state rather than assertion input, a
 party cannot rewrite history it does not control; offline-attenuation
 segments, which the IdP does not observe, do not enter lineage. Lineage is
@@ -1649,23 +1645,24 @@ rule such as "deny if a given actor ever participated" cannot be enforced from
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
 An attacker may try to pass one token type off as another, downgrade the
-signature algorithm, or steer verification to a key it controls. The IdP MUST
-verify `typ`, reject `alg=none` and symmetric algorithms, and allowlist
-asymmetric algorithms. It MUST select keys from trusted issuer configuration;
-`kid` MAY select among them. It MUST NOT trust assertion `jku`, `x5u`, embedded
-`jwk`, or other supplied key material.
+signature algorithm, or steer verification to a key it controls. The IdP
+applies these verification rules:
+
+* The IdP MUST verify `typ`, reject `alg=none` and symmetric algorithms, and
+  allowlist asymmetric algorithms.
+* The IdP MUST select keys from trusted issuer configuration; `kid` MAY select
+  among them.
+* The IdP MUST NOT trust assertion `jku`, `x5u`, embedded `jwk`, or other
+  supplied key material.
 
 ## Metadata Disclosure {#security-metadata}
 
 Advertising `identity_continuation_issuers` ({{metadata-ras}}) in publicly
-readable
-authorization server metadata reveals which additional CAIs a Resource
-Authorization Server authorizes to attest its hops, and can thereby disclose
-federation topology, tenant relationships, and deployment structure, the same
-disclosure concern the base ID-JAG profile raises for issuer-specific
-metadata. A deployment whose CAI
-relationships are sensitive SHOULD omit the advertisement and convey the
-nomination out of band or through
+readable authorization server metadata reveals which additional CAIs a
+Resource Authorization Server authorizes to attest its hops, and can thereby
+disclose federation topology, tenant relationships, and deployment structure.
+A deployment whose CAI relationships are sensitive SHOULD omit the
+advertisement and convey the nomination out of band or through
 access-controlled discovery.
 
 # Privacy Considerations {#privacy}
