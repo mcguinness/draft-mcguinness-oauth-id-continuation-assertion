@@ -3399,7 +3399,7 @@ handle as request context (<a href="#rationale-txn" class="auto internal xref">A
           <li class="normal" id="section-8.1-5.2">
             <p id="section-8.1-5.2.1">A signed JWT access token <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> issued by the accepting RAS can carry
 the handle as a claim. The claim records issuance-time state and therefore
-cannot reflect a later revocation; the CAI's liveness recheck
+cannot reflect a later revocation; the CAI's acceptance check
 (<a href="#assertion-preconditions" class="auto internal xref">Section 5.5.2</a>) covers that.<a href="#section-8.1-5.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-8.1-5.3">
@@ -3478,13 +3478,12 @@ or metadata that discloses deployment structure (<a href="#privacy" class="auto 
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
 that actor. The assertion <span class="bcp14">MUST NOT</span> be accepted as a bearer token <span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>;
-every exchange requires live proof of possession of the <code>cnf</code> key, a DPoP
-proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> for the method this document defines (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>).
-A captured assertion is therefore useless without the private key, and because
-the onward ID-JAG is bound to the same key (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>) and the next
-RAS binds its access token to that key (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>), possession is
-demonstrated continuously from the first continuation on, not once at
-issuance.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
+every exchange requires live proof of possession of the <code>cnf</code> key, a DPoP proof
+<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> for the method this document defines (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>). A
+captured assertion is therefore useless without the private key, and because
+the onward ID-JAG is bound to the same proven key (<a href="#client-identity" class="auto internal xref">Section 5.6.2</a>) and the
+next RAS binds its access token to that key (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>), possession is
+demonstrated continuously from the first continuation on, not once at issuance.<a href="#section-9.1-1" class="pilcrow">¶</a></p>
 <p id="section-9.1-2">The root hop is different. The root ID-JAG carries no <code>cnf</code>, and its RAS
 sender-constrains the access token by its own policy, so a root hop may issue
 a bearer token. A party that captures such a token can call the workload and
@@ -3612,7 +3611,7 @@ signed attestation (<a href="#deployment-topologies" class="auto internal xref">
 <p id="section-9.5-2">A workload that obtains the assertion by exchanging the access token or
 Transaction Token it holds for the call (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.5.1</a>)
 presents nothing it did not already hold; what it gains is the CAI's
-attestation, gated by policy and the live recheck.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
+attestation, gated by policy and the acceptance check.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
 <p id="section-9.5-3">A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
 additionally attest a hop the RAS refused. In both topologies, RAS-local

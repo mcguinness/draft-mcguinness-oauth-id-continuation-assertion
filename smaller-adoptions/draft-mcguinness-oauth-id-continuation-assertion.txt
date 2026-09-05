@@ -1818,7 +1818,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    *  A signed JWT access token [RFC9068] issued by the accepting RAS
       can carry the handle as a claim.  The claim records issuance-time
       state and therefore cannot reflect a later revocation; the CAI's
-      liveness recheck (Section 5.5.2) covers that.
+      acceptance check (Section 5.5.2) covers that.
 
    *  For an opaque access token issued by the accepting RAS, its
       introspection response [RFC7662] can carry the handle as a member,
@@ -1885,10 +1885,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    live proof of possession of the cnf key, a DPoP proof [RFC9449] for
    the method this document defines (Section 5.6.2).  A captured
    assertion is therefore useless without the private key, and because
-   the onward ID-JAG is bound to the same key (Section 5.6.2) and the
-   next RAS binds its access token to that key (Section 5.2), possession
-   is demonstrated continuously from the first continuation on, not once
-   at issuance.
+   the onward ID-JAG is bound to the same proven key (Section 5.6.2) and
+   the next RAS binds its access token to that key (Section 5.2),
+   possession is demonstrated continuously from the first continuation
+   on, not once at issuance.
 
    The root hop is different.  The root ID-JAG carries no cnf, and its
    RAS sender-constrains the access token by its own policy, so a root
@@ -2017,7 +2017,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A workload that obtains the assertion by exchanging the access token
    or Transaction Token it holds for the call (Section 5.5.1) presents
    nothing it did not already hold; what it gains is the CAI's
-   attestation, gated by policy and the live recheck.
+   attestation, gated by policy and the acceptance check.
 
    A compromised RAS can fabricate acceptance state in either topology,
    since a separate CAI reads that state as authoritative; a compromised
