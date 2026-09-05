@@ -1383,31 +1383,40 @@ once to obtain an ID-JAG for a target on behalf of one user under one chain,
 then reuses the access token it redeems there while that token remains valid
 and covers the requested access. Calls for another user, tenant, chain, or key
 need their own continuation; reusing a token across chains would attach later
-calls to the earlier chain's handle and lineage. The first call in a context
-therefore costs the assertion exchange, the continuation exchange, and the
-redemption, and later calls in the same context cost nothing more while the
-token lasts. Renewal is another continuation with a fresh assertion, which
-succeeds only if the CAI's preconditions still hold
-({{assertion-preconditions}}); an expired access token does not by itself
-entitle the workload to another.
+calls to the earlier chain's handle and lineage.
+
+The first call in a context therefore costs the assertion exchange, the
+continuation exchange, and the redemption, and later calls in the same
+context cost nothing more while the token lasts.
+
+Renewal is another continuation with a fresh assertion, which succeeds only
+if the CAI's preconditions still hold ({{assertion-preconditions}}); an
+expired access token does not by itself entitle the workload to another.
 
 The online model has an operational price. Every continuation depends on the
 IdP being reachable, and a separate CAI depends on authoritative RAS state as
-well. A call path that cannot tolerate either dependency is a case for offline
-attenuation only where {{decision-rule}} already allows it, that is, where the
-subject and the trusted issuer stay stable across the boundary; availability
-alone does not remove the need for the IdP to resolve the pairwise subject.
-The IdP retains hop records for the chain's
-lifetime and replay reservations for as long as an assertion could still be
-presented, in state consistent enough that concurrent requests yield one grant
-and a retry recovers it ({{validation-replay}}); it prunes expired or revoked
-hop state. Because the actor-chain depth bound counts merged lineage entries,
-a workload that repeatedly continues as itself never trips it; the fan-out,
-rate, and hop-count limits of {{lifecycle-limits}} bound that growth
-instead. Failure paths worth testing before deployment: concurrent redemption
-of one ID-JAG, a crash between issuing an ID-JAG and recording its hop, a
-policy change between two continuations, a credential from the wrong tenant,
-and local revocation after an assertion has been issued.
+well. A call path that cannot tolerate either dependency is a case for
+offline attenuation only where {{decision-rule}} already allows it, that is,
+where the subject and the trusted issuer stay stable across the boundary;
+availability alone does not remove the need for the IdP to resolve the
+pairwise subject.
+
+The IdP retains hop records for the chain's lifetime and replay reservations
+for as long as an assertion could still be presented, in state consistent
+enough that concurrent requests yield one grant and a retry recovers it
+({{validation-replay}}); it prunes expired or revoked hop state.
+
+Because the actor-chain depth bound counts merged lineage entries, a workload
+that repeatedly continues as itself never trips it; the fan-out, rate, and
+hop-count limits of {{lifecycle-limits}} bound that growth instead.
+
+Failure paths worth testing before deployment:
+
+* Concurrent redemption of one ID-JAG.
+* A crash between issuing an ID-JAG and recording its hop.
+* A policy change between two continuations.
+* A credential from the wrong tenant.
+* Local revocation after an assertion has been issued.
 
 An IdP can defer materializing chain state until the first continuation,
 provided the handle still resolves to the same root and envelope; deferral
@@ -1424,19 +1433,19 @@ the hop tree could be replaced by self-verifying handles is an open question
 
 Co-located is the baseline: it needs no CAI configuration at the IdP beyond
 the RAS's own issuer trust and no self-entry in
-`identity_continuation_issuers`.
-The RAS still advertises the continuation
-profile ({{metadata}}), and the IdP still holds the RAS's issuer, key, tenant,
-and issuer-pairing trust ({{security-trust-model}}). Both topologies produce
-the same Identity Continuation Assertion and apply the same CAI requirements;
-they differ only in how the CAI reaches the accepted hop's state. Either CAI
-can issue the assertion from its token endpoint ({{assertion-token-exchange}}):
-a co-located RAS takes the access token it issued as the `subject_token`, and a
-separate CAI takes the token that carries the handle. Both topologies make the
-same three exchanges per continuation, the assertion exchange, the
-continuation exchange, and the redemption; co-location removes configuration
-and trust surface, not calls, while a separate CAI adds the carrier and the
-state lookup behind it.
+`identity_continuation_issuers` ({{metadata-ras}}). The RAS still advertises
+the continuation profile ({{metadata}}), and the IdP still holds the RAS's
+issuer, key, tenant, and issuer-pairing trust ({{security-trust-model}}).
+
+Both topologies produce the same Identity Continuation Assertion and apply
+the same CAI requirements; they differ only in how the CAI reaches the
+accepted hop's state. Either CAI can issue the assertion from its token
+endpoint ({{assertion-token-exchange}}): a co-located RAS takes the access
+token it issued as the `subject_token`, and a separate CAI takes the token
+that carries the handle. Both topologies make the same three exchanges per
+continuation, the assertion exchange, the continuation exchange, and the
+redemption; co-location removes configuration and trust surface, not calls,
+while a separate CAI adds the carrier and the state lookup behind it.
 
 A carrier serves either topology. A co-located RAS may place the handle in
 its own access token as a key into its state, as the gateway example does
@@ -1457,9 +1466,11 @@ The replay reservation ({{validation-replay}}) is typically held in strongly
 consistent state: only one concurrent request reaches ISSUED, a concurrent
 request under a matching fingerprint waits for or retries that result, and the
 IdP retains and expires the reservation by the same clock it uses to evaluate
-`exp`. A RAS can make the handle binding and token issuance of
-{{ras-processing}} one outcome with a local transaction, or with a
-compensating action that revokes a token whose binding did not commit.
+`exp`.
+
+A RAS can make the handle binding and token issuance of {{ras-processing}}
+one outcome with a local transaction, or with a compensating action that
+revokes a token whose binding did not commit.
 
 The CAI accounts for retries separately from fan-out and keeps audit records of
 its issuance and limit enforcement. The IdP performs end-to-end audit
