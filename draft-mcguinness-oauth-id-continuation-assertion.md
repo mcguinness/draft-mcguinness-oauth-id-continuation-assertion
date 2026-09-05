@@ -920,8 +920,9 @@ Pragma: no-cache
 
 ### Error Response {#assertion-error-response}
 
-On failure, the CAI returns an error response ({{RFC6749}}, Section 5.2;
-{{RFC8693}}, Section 2.2.2) with one of the following `error` values:
+On failure, the CAI returns an error response according to {{RFC6749}},
+Section 5.2, and {{RFC8693}}, Section 2.2.2. This document specifies the
+following error mappings:
 
 * `invalid_request` when the `subject_token` is invalid or unacceptable under
   policy, including when it is unknown, expired, revoked, not valid for a
@@ -2091,9 +2092,11 @@ may redeem.
 The IdP's mapping from client to canonical actor identity does not depend on
 the client authentication method: a client that authenticates with an
 {{RFC7523}} client assertion may have a workload identity in another namespace
-as its canonical actor identity, and a sender-constrained JWT from an issuer
-the tenant trusts is the natural form of such a credential, serving as both
-client assertion and `actor_token` ({{client-identity}}). The shared key
+as its canonical actor identity. A sender-constrained JWT from an issuer the
+tenant trusts is the natural form of a workload credential and, when it
+satisfies both profiles, serves as both client assertion and `actor_token`
+({{client-identity}}). The shared key
+
 across the actor's credential, the assertion, and the onward ID-JAG is a
 consequence of a single proof method, not a property continuation requires:
 continuation requires continuity of the actor, and a future confirmation
