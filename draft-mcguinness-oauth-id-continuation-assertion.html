@@ -1520,9 +1520,9 @@ obtains from a Continuation Assertion Issuer (CAI), a party the IdP trusts to
 report what the RAS that issued the workload's access token has accepted. The
 assertion states two facts. First, that RAS redeemed an ID-JAG for this user
 and issued that access token, and the resulting authorization remains active
-and permits continuation. Second, the authenticated workload holding a
-particular key is the party now acting on it. The workload presents the
-assertion to the IdP as the subject token of an OAuth 2.0 Token Exchange
+and permits continuation. Second, the authenticated workload is the party now
+acting on it and names the key it will prove to the IdP. The workload presents
+the assertion to the IdP as the subject token of an OAuth 2.0 Token Exchange
 <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The IdP resolves the user's identity for the next
 service, decides under the tenant's policy whether this workload may continue
 to it, and issues the next ID-JAG.<a href="#section-1-3" class="pilcrow">¶</a></p>
@@ -1541,8 +1541,8 @@ issued an access token for.<a href="#section-1-6.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-1-6.3">
           <p id="section-1-6.3.1">Only a workload that the IdP has authenticated, that tenant policy permits
-to continue from that grant, and that proves possession of its own key can
-obtain the next ID-JAG.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
+to continue from that grant, and that proves possession of its own key to
+the IdP can obtain the next ID-JAG.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-1-7">Each continuation is a new decision by the IdP under the policy in force at
@@ -1759,7 +1759,7 @@ no authority by itself (<a href="#chain-id" class="auto internal xref">Section 4
         <dd style="margin-left: 1.5em" id="section-2-3.26">
           <p id="section-2-3.26.1">One link of a chain: the IdP's record of an ID-JAG it issued, with an
 immutable reference to its parent hop unless it is the root
-(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Its lineage is its path to the root. A hop becomes
+(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Its hop lineage is its path to the root. A hop becomes
 ACCEPTED when a RAS redeems its ID-JAG
 and binds the handle (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>); a hop from
 which no workload continues is terminal, while sibling branches may
@@ -1915,11 +1915,12 @@ assertion serving as the dual-use JWT is, they equal the credential's
 authenticated client and with any <code>actor_token</code> (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-3.2-4.8.2.2.1" class="pilcrow">¶</a></p>
 </li>
               <li class="normal" id="section-3.2-4.8.2.3">
-                <p id="section-3.2-4.8.2.3.1">Additional members <span class="bcp14">MAY</span> carry further identity attributes but are
-non-authoritative and <span class="bcp14">MUST NOT</span> affect identity, authorization, lineage,
-or issuance. A recipient <span class="bcp14">MUST</span> ignore members it does not understand,
-and <code>exp</code>, <code>nbf</code>, <code>aud</code>, <code>scope</code>, <code>cnf</code>, and nested <code>act</code> <span class="bcp14">MUST NOT</span> be
-present.<a href="#section-3.2-4.8.2.3.1" class="pilcrow">¶</a></p>
+                <p id="section-3.2-4.8.2.3.1">Only <code>iss</code> and <code>sub</code> form the canonical actor identity under this
+document. Additional members <span class="bcp14">MAY</span> carry further information about the
+actor but <span class="bcp14">MUST NOT</span> affect processing defined by this document unless
+another specification profiles their use. A recipient <span class="bcp14">MUST</span> ignore
+members it does not understand, and <code>exp</code>, <code>nbf</code>, <code>aud</code>, <code>scope</code>, <code>cnf</code>,
+and nested <code>act</code> <span class="bcp14">MUST NOT</span> be present.<a href="#section-3.2-4.8.2.3.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
 </dd>
@@ -1942,11 +1943,17 @@ maximum it accepts (<a href="#validation" class="auto internal xref">Section 5.5
 </dd>
           <dd class="break"></dd>
 <dt id="section-3.2-4.13">
-<code>jti</code>:</dt>
+<code>nbf</code>:</dt>
           <dd style="margin-left: 1.5em" id="section-3.2-4.14">
-            <p id="section-3.2-4.14.1"><span class="bcp14">REQUIRED</span>. A replay-detection identifier that <span class="bcp14">MUST</span> be unique per <code>iss</code>
+            <p id="section-3.2-4.14.1"><span class="bcp14">OPTIONAL</span>. If present, processed as <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> specifies.<a href="#section-3.2-4.14.1" class="pilcrow">¶</a></p>
+</dd>
+          <dd class="break"></dd>
+<dt id="section-3.2-4.15">
+<code>jti</code>:</dt>
+          <dd style="margin-left: 1.5em" id="section-3.2-4.16">
+            <p id="section-3.2-4.16.1"><span class="bcp14">REQUIRED</span>. A replay-detection identifier that <span class="bcp14">MUST</span> be unique per <code>iss</code>
 during the assertion validity window and <span class="bcp14">MUST</span> contain at least 128 bits
-of entropy.<a href="#section-3.2-4.14.1" class="pilcrow">¶</a></p>
+of entropy.<a href="#section-3.2-4.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -1956,8 +1963,7 @@ contain:<a href="#section-3.2-5" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-3.2-6.1">
             <p id="section-3.2-6.1.1">a top-level <code>sub</code>, <code>auth_time</code>, <code>acr</code>, <code>amr</code>, or <code>sid</code> claim (these come
-from the envelope), or a top-level <code>nbf</code> claim, whose <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>
-semantics would add a validity condition this profile does not define; or<a href="#section-3.2-6.1.1" class="pilcrow">¶</a></p>
+from the envelope); or<a href="#section-3.2-6.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-3.2-6.2">
             <p id="section-3.2-6.2.1">the Token Exchange request parameters <code>audience</code>, <code>resource</code>, <code>scope</code>,
@@ -1995,9 +2001,9 @@ hops.<a href="#section-4-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-4-3.2">
           <p id="section-4-3.2.1"><code>identity_continuation_handle</code> <span class="bcp14">MUST</span> contain at least 128 bits of entropy,
-<span class="bcp14">MUST NOT</span> contain user-identifying information, and <span class="bcp14">MUST</span> consist of 22 to
-256 characters drawn from the base64url alphabet (<code>A</code>-<code>Z</code>, <code>a</code>-<code>z</code>,
-<code>0</code>-<code>9</code>, <code>-</code>, <code>_</code>).<a href="#section-4-3.2.1" class="pilcrow">¶</a></p>
+<span class="bcp14">MUST NOT</span> contain user-identifying information, and <span class="bcp14">MUST</span> consist of
+characters drawn from the base64url alphabet (<code>A</code>-<code>Z</code>, <code>a</code>-<code>z</code>, <code>0</code>-<code>9</code>,
+<code>-</code>, <code>_</code>); it <span class="bcp14">SHOULD NOT</span> exceed 256 characters.<a href="#section-4-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="section-4-3.3">
           <p id="section-4-3.3.1">Across a trust boundary, the handle is accepted only inside an ID-JAG (by
@@ -2126,8 +2132,7 @@ use a confidential client applies to a root exchange that establishes a chain.<a
 <p id="section-5.1.3-2">An optional <code>actor_token</code> <span class="bcp14">MUST</span> be valid, accepted for continuation, and
 sender-constrained to a key the client proves on the exchange with a DPoP
 proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>. It <span class="bcp14">MUST</span> identify that client and designate the IdP where
-applicable. The IdP records the root actor, and that key, only after this
-validation.<a href="#section-5.1.3-2" class="pilcrow">¶</a></p>
+applicable. The IdP records the root actor only after this validation.<a href="#section-5.1.3-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="root-envelope">
@@ -2156,7 +2161,7 @@ permits continuation and, if so, populates the root-chain envelope:<a href="#sec
               </tr>
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">Chain identity</td>
-                <td class="text-left" rowspan="1" colspan="1">The root actor and, where the client proved one on the root exchange, its key</td>
+                <td class="text-left" rowspan="1" colspan="1">The root actor</td>
                 <td class="text-left" rowspan="1" colspan="1">root exchange</td>
                 <td class="text-left" rowspan="1" colspan="1">fixed</td>
               </tr>
@@ -2241,11 +2246,11 @@ continuation is permitted under the RAS's own policy.<a href="#section-5.2-3.2.1
 access token without its binding, and no binding without a token.<a href="#section-5.2-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-5.2-5.2">
-            <p id="section-5.2-5.2.1">Repeated redemption of one ID-JAG, identified by its validated issuer and
-handle within the authenticated tenant binding, <span class="bcp14">MUST</span> bind to the same hop
-authorization record, so a retry cannot create multiple records for one
-grant. A matching handle under another issuer is a different grant, not a
-retry.<a href="#section-5.2-5.2.1" class="pilcrow">¶</a></p>
+            <p id="section-5.2-5.2.1">All successful redemptions of one continuation-capable ID-JAG, identified
+by its validated issuer and handle within the authenticated tenant binding,
+<span class="bcp14">MUST</span> resolve to the same hop binding, so that no redemption creates a
+distinct continuation source. A matching handle under another issuer is a
+different grant, not a retry.<a href="#section-5.2-5.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-5.2-5.3">
             <p id="section-5.2-5.3.1">The RAS exposes the binding, its record linking the handle to authorization
@@ -2366,8 +2371,8 @@ the IdP recorded in the hop's RAS binding (<a href="#ras-processing" class="auto
 semantics.<a href="#section-5.4-3.2.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-5.4-3.3">
-            <p id="section-5.4-3.3.1">The authenticated actor proving a key is the party handling the request
-that hop authorized.<a href="#section-5.4-3.3.1" class="pilcrow">¶</a></p>
+            <p id="section-5.4-3.3.1">The authenticated actor is bound to the authorization context in which it
+received, or was designated to process, the request that hop authorized.<a href="#section-5.4-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
 <p id="section-5.4-4">Whether that actor may continue, and to what, is the IdP's decision under the
@@ -2383,47 +2388,52 @@ CAI, <span class="bcp14">MAY</span> issue assertions from its token endpoint usi
 <span class="bcp14">SHOULD</span> support this method of issuance, so that a workload in its domain has
 one request to implement. Issuance by other means remains deployment-specific
 (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>).<a href="#section-5.4.1-1" class="pilcrow">¶</a></p>
-<p id="section-5.4.1-2">The requesting party is the current actor (<a href="#terms" class="auto internal xref">Section 2</a>), acting as an OAuth
+<p id="section-5.4.1-2">A workload obtains assertions from the token endpoint of the CAI its
+deployment designates. For a RAS acting as its own CAI that is the RAS's token
+endpoint, discoverable through the RAS's metadata (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>); a
+separate CAI is configured within the trust domain, which this document leaves
+to the deployment (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>).<a href="#section-5.4.1-2" class="pilcrow">¶</a></p>
+<p id="section-5.4.1-3">The requesting party is the current actor (<a href="#terms" class="auto internal xref">Section 2</a>), acting as an OAuth
 client of the CAI; this document calls it the client. The client makes a Token
-Exchange request to the CAI's token endpoint with the following parameters:<a href="#section-5.4.1-2" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-5.4.1-3">
-            <dt id="section-5.4.1-3.1">
+Exchange request to the CAI's token endpoint with the following parameters:<a href="#section-5.4.1-3" class="pilcrow">¶</a></p>
+<span class="break"></span><dl class="dlParallel" id="section-5.4.1-4">
+            <dt id="section-5.4.1-4.1">
 <code>grant_type</code>:</dt>
-            <dd style="margin-left: 1.5em" id="section-5.4.1-3.2">
-              <p id="section-5.4.1-3.2.1"><span class="bcp14">REQUIRED</span>. The value <code>urn:ietf:params:oauth:grant-type:token-exchange</code>.<a href="#section-5.4.1-3.2.1" class="pilcrow">¶</a></p>
+            <dd style="margin-left: 1.5em" id="section-5.4.1-4.2">
+              <p id="section-5.4.1-4.2.1"><span class="bcp14">REQUIRED</span>. The value <code>urn:ietf:params:oauth:grant-type:token-exchange</code>.<a href="#section-5.4.1-4.2.1" class="pilcrow">¶</a></p>
 </dd>
             <dd class="break"></dd>
-<dt id="section-5.4.1-3.3">
+<dt id="section-5.4.1-4.3">
 <code>requested_token_type</code>:</dt>
-            <dd style="margin-left: 1.5em" id="section-5.4.1-3.4">
-              <p id="section-5.4.1-3.4.1"><span class="bcp14">REQUIRED</span>. The value
-<code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-5.4.1-3.4.1" class="pilcrow">¶</a></p>
+            <dd style="margin-left: 1.5em" id="section-5.4.1-4.4">
+              <p id="section-5.4.1-4.4.1"><span class="bcp14">REQUIRED</span>. The value
+<code>urn:ietf:params:oauth:token-type:identity-continuation</code>.<a href="#section-5.4.1-4.4.1" class="pilcrow">¶</a></p>
 </dd>
             <dd class="break"></dd>
-<dt id="section-5.4.1-3.5">
+<dt id="section-5.4.1-4.5">
 <code>subject_token</code>:</dt>
-            <dd style="margin-left: 1.5em" id="section-5.4.1-3.6">
-              <p id="section-5.4.1-3.6.1"><span class="bcp14">REQUIRED</span>. Either the access token the client received on the call it is
+            <dd style="margin-left: 1.5em" id="section-5.4.1-4.6">
+              <p id="section-5.4.1-4.6.1"><span class="bcp14">REQUIRED</span>. Either the access token the client received on the call it is
 continuing, or the Transaction Token that carries the hop's handle for that
-call.<a href="#section-5.4.1-3.6.1" class="pilcrow">¶</a></p>
+call.<a href="#section-5.4.1-4.6.1" class="pilcrow">¶</a></p>
 </dd>
             <dd class="break"></dd>
-<dt id="section-5.4.1-3.7">
+<dt id="section-5.4.1-4.7">
 <code>subject_token_type</code>:</dt>
-            <dd style="margin-left: 1.5em" id="section-5.4.1-3.8">
-              <p id="section-5.4.1-3.8.1"><span class="bcp14">REQUIRED</span>. <code>urn:ietf:params:oauth:token-type:access_token</code> or
+            <dd style="margin-left: 1.5em" id="section-5.4.1-4.8">
+              <p id="section-5.4.1-4.8.1"><span class="bcp14">REQUIRED</span>. <code>urn:ietf:params:oauth:token-type:access_token</code> or
 <code>urn:ietf:params:oauth:token-type:txn_token</code>
-                <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span>, matching the <code>subject_token</code>.<a href="#section-5.4.1-3.8.1" class="pilcrow">¶</a></p>
+                <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span>, matching the <code>subject_token</code>.<a href="#section-5.4.1-4.8.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
-<p id="section-5.4.1-4">The <code>audience</code>, <code>resource</code>, <code>scope</code>, <code>actor_token</code>, and <code>actor_token_type</code>
+<p id="section-5.4.1-5">The <code>audience</code>, <code>resource</code>, <code>scope</code>, <code>actor_token</code>, and <code>actor_token_type</code>
 parameters <span class="bcp14">MUST NOT</span> be included: targets and scope are chosen at the IdP
 exchange (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>), and the authenticated client is the actor
-named in <code>act</code>.<a href="#section-5.4.1-4" class="pilcrow">¶</a></p>
-<p id="section-5.4.1-5">The following example carries the client's authentication and its DPoP proof
-(<a href="#assertion-client-auth" class="auto internal xref">Section 5.4.2</a>):<a href="#section-5.4.1-5" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="section-5.4.1-6">
+named in <code>act</code>.<a href="#section-5.4.1-5" class="pilcrow">¶</a></p>
+<p id="section-5.4.1-6">The following example carries the client's authentication and its DPoP proof
+(<a href="#assertion-client-auth" class="auto internal xref">Section 5.4.2</a>):<a href="#section-5.4.1-6" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="section-5.4.1-7">
 <pre>
 POST /token HTTP/1.1
 Host: cai.example
@@ -2436,7 +2446,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;subject_token_type=urn:ietf:params:oauth:token-type:access_token
 &amp;client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &amp;client_assertion=&lt;JWT&gt;
-</pre><a href="#section-5.4.1-6" class="pilcrow">¶</a>
+</pre><a href="#section-5.4.1-7" class="pilcrow">¶</a>
 </div>
 </section>
 </div>
@@ -2447,8 +2457,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
           </h4>
 <p id="section-5.4.2-1">The client <span class="bcp14">MUST</span> authenticate to the CAI's token endpoint (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>,
 Section 2.3). The client <span class="bcp14">MUST</span> include in the request a DPoP proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>
-of the client's own key. The CAI binds the assertion to that key in <code>cnf</code>, and
-does not compare it with any key the <code>subject_token</code> is bound to.<a href="#section-5.4.2-1" class="pilcrow">¶</a></p>
+of the client's own key. The CAI <span class="bcp14">SHOULD</span> verify that proof; it binds the
+assertion to the presented key in <code>cnf</code> in either case, and the actor proves
+possession of that key to the IdP at the continuation exchange
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-5.4.2-1" class="pilcrow">¶</a></p>
 <p id="section-5.4.2-2">The CAI <span class="bcp14">MUST</span> issue only for an actor it is authoritative to associate with the
 RAS-accepted authorization, typically one in the RAS's trust domain; actor
 authentication is deployment-specific.<a href="#section-5.4.2-2" class="pilcrow">¶</a></p>
@@ -2475,51 +2487,55 @@ handle as chain context (<a href="#handle-propagation" class="auto internal xref
 received, the scenario of the example in <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.3. A RAS acting
 as CAI resolves its own token; a separate CAI resolves it as <a href="#separate-cai" class="auto internal xref">Section 5.4.6</a>
 describes.<a href="#section-5.4.3-3" class="pilcrow">¶</a></p>
-<p id="section-5.4.3-4">Either <code>subject_token</code> type supplies the facts below. The CAI <span class="bcp14">MUST</span>
-authenticate the actor and issue only after establishing these facts:<a href="#section-5.4.3-4" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-5.4.3-5">
-<li id="section-5.4.3-5.1">
-              <p id="section-5.4.3-5.1.1">The handle came through an authenticated, confidential,
-integrity-protected chain path or equivalent authenticated state.<a href="#section-5.4.3-5.1.1" class="pilcrow">¶</a></p>
+<p id="section-5.4.3-4">In this exchange the <code>subject_token</code> identifies the RAS authorization context
+from which continuation is requested; its subject is not copied into the
+resulting assertion.<a href="#section-5.4.3-4" class="pilcrow">¶</a></p>
+<p id="section-5.4.3-5">Either <code>subject_token</code> type supplies the facts below. The CAI <span class="bcp14">MUST</span>
+authenticate the actor and issue only after establishing these facts:<a href="#section-5.4.3-5" class="pilcrow">¶</a></p>
+<ol start="1" type="1" class="normal type-1" id="section-5.4.3-6">
+<li id="section-5.4.3-6.1">
+              <p id="section-5.4.3-6.1.1">The handle came through an authenticated, confidential,
+integrity-protected chain path or equivalent authenticated state.<a href="#section-5.4.3-6.1.1" class="pilcrow">¶</a></p>
 </li>
-            <li id="section-5.4.3-5.2">
-              <p id="section-5.4.3-5.2.1">The current actor controls the key placed in <code>cnf</code>.<a href="#section-5.4.3-5.2.1" class="pilcrow">¶</a></p>
+            <li id="section-5.4.3-6.2">
+              <p id="section-5.4.3-6.2.1">The key placed in <code>cnf</code> is the one the actor presented in its DPoP proof;
+the actor proves possession of it to the IdP.<a href="#section-5.4.3-6.2.1" class="pilcrow">¶</a></p>
 </li>
-            <li id="section-5.4.3-5.3">
-              <p id="section-5.4.3-5.3.1"><code>act</code> names that actor and, if offline attenuation reached the actor, the
-attenuated credential it received is valid (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-5.4.3-5.3.1" class="pilcrow">¶</a></p>
+            <li id="section-5.4.3-6.3">
+              <p id="section-5.4.3-6.3.1"><code>act</code> names that actor and, if offline attenuation reached the actor, the
+attenuated credential it received is valid (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-5.4.3-6.3.1" class="pilcrow">¶</a></p>
 </li>
-            <li id="section-5.4.3-5.4">
-              <p id="section-5.4.3-5.4.1">The handle is the one bound to the authorization context the actor
+            <li id="section-5.4.3-6.4">
+              <p id="section-5.4.3-6.4.1">The handle is the one bound to the authorization context the actor
 presents, its access token or carrier, and the actor is a party that
 context was issued or forwarded to (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>,
 <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>). Selecting another intact context is the actor's
 choice; substituting a handle within a context is not. The handle is input
-to verify, never authority in itself (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-5.4.3-5.4.1" class="pilcrow">¶</a></p>
+to verify, never authority in itself (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-5.4.3-6.4.1" class="pilcrow">¶</a></p>
 </li>
-            <li id="section-5.4.3-5.5">
-              <p id="section-5.4.3-5.5.1">Evidence that is authoritative by the RAS's own authorization semantics,
+            <li id="section-5.4.3-6.5">
+              <p id="section-5.4.3-6.5.1">Evidence that is authoritative by the RAS's own authorization semantics,
 whatever the carrier, confirms that the authorization remains active and
 that its binding still records continuation as permitted. That evidence is
 either a recheck of RAS authorization state or, where the RAS's
-authorization is a self-contained short-lived token, that token's validity.<a href="#section-5.4.3-5.5.1" class="pilcrow">¶</a></p>
+authorization is a self-contained short-lived token, that token's validity.<a href="#section-5.4.3-6.5.1" class="pilcrow">¶</a></p>
 </li>
           </ol>
-<p id="section-5.4.3-6">The subject token's integrity protection and the authenticated request
+<p id="section-5.4.3-7">The subject token's integrity protection and the authenticated request
 establish fact 1; the DPoP proof, fact 2; client authentication, fact 3; and
-the bound handle and the RAS's acceptance evidence, facts 4 and 5.<a href="#section-5.4.3-6" class="pilcrow">¶</a></p>
-<p id="section-5.4.3-7">A live recheck <span class="bcp14">SHOULD</span> be used where the tenant requires withdrawal of a hop's
+the bound handle and the RAS's acceptance evidence, facts 4 and 5.<a href="#section-5.4.3-7" class="pilcrow">¶</a></p>
+<p id="section-5.4.3-8">A live recheck <span class="bcp14">SHOULD</span> be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
 as for any OAuth access token. An assertion already issued remains usable
 until its own <code>exp</code>, so the withdrawal tail is the token's remaining lifetime
 plus the assertion lifetime (<a href="#security-topology" class="auto internal xref">Section 9.5</a>). A CAI that caps the
-assertion's <code>exp</code> at the evidence's expiry removes the second term.<a href="#section-5.4.3-7" class="pilcrow">¶</a></p>
-<p id="section-5.4.3-8">A domain may add its own conditions for issuing, for example limiting which of
+assertion's <code>exp</code> at the evidence's expiry removes the second term.<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
+<p id="section-5.4.3-9">A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
 Target or purpose hints can narrow CAI issuance, but neither they nor
 propagated context alter the IdP's target decision or the envelope
-(<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
+(<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4.3-9" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="assertion-response">
@@ -2538,8 +2554,10 @@ the assertion's lifetime. This document adds one parameter:<a href="#section-5.4
 <code>audience</code>:</dt>
             <dd style="margin-left: 1.5em" id="section-5.4.4-2.2">
               <p id="section-5.4.4-2.2.1"><span class="bcp14">REQUIRED</span>. The issuer identifier of the IdP to which the client presents the
-assertion, equal to the assertion's <code>aud</code>. Because the request carries no
-<code>audience</code>, this is how the client learns where the assertion goes.<a href="#section-5.4.4-2.2.1" class="pilcrow">¶</a></p>
+assertion. In this response <code>audience</code> identifies the recipient of the
+issued assertion and therefore equals its <code>aud</code> claim; because the request
+carries no <code>audience</code>, this is how the client learns where to present the
+assertion.<a href="#section-5.4.4-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
@@ -2596,6 +2614,8 @@ type; and<a href="#section-5.4.5-2.2.1" class="pilcrow">¶</a></p>
               <p id="section-5.4.5-2.3.1"><code>invalid_dpop_proof</code> (<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>) for a failed proof.<a href="#section-5.4.5-2.3.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
+<p id="section-5.4.5-3">DPoP nonce processing and the <code>use_dpop_nonce</code> error apply unchanged from
+<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>.<a href="#section-5.4.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="separate-cai">
@@ -2740,9 +2760,12 @@ DPoP mechanics it already implements (<span>[<a href="#RFC9449" class="cite xref
 <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span> is an open question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-5.5.2-7" class="pilcrow">¶</a></p>
 <p id="section-5.5.2-8">A request carries one DPoP proof, so that key is the assertion's <code>cnf</code> key,
 any <code>actor_token</code> is bound to it as well, and the actor's credential, the
-assertion, and the onward ID-JAG share one key (<a href="#rationale-client-id" class="auto internal xref">Appendix A.3</a>). Key
-rotation takes effect when the actor obtains a new assertion and actor token
-bound to the new key.<a href="#section-5.5.2-8" class="pilcrow">¶</a></p>
+assertion, and the onward ID-JAG share one key (<a href="#rationale-client-id" class="auto internal xref">Appendix A.3</a>). This
+version uses the key demonstrated by the request's DPoP proof as both the
+assertion's confirmation key and the confirmation key of the resulting ID-JAG.
+That is a property of the confirmation method this version defines, not an
+identity-continuation invariant. Key rotation takes effect when the actor
+obtains a new assertion and actor token bound to the new key.<a href="#section-5.5.2-8" class="pilcrow">¶</a></p>
 <div id="actor-token">
 <section id="section-5.5.2.1">
             <h5 id="name-additional-actor-credential">
@@ -2809,7 +2832,8 @@ when present, evaluated by the envelope-containment rule; and<a href="#section-5
                 <li class="normal" id="section-5.5.3-2.2.2.3">
                   <p id="section-5.5.3-2.2.2.3.1"><code>iss</code>, <code>aud</code>, <code>identity_continuation_handle</code>, and <code>jti</code> are non-empty
 strings, <code>act</code> and <code>cnf</code> are JSON objects with <code>cnf</code> naming exactly one
-confirmation method, and <code>iat</code> and <code>exp</code> are NumericDate numbers;<a href="#section-5.5.3-2.2.2.3.1" class="pilcrow">¶</a></p>
+confirmation method, and <code>iat</code>, <code>exp</code>, and any <code>nbf</code> are NumericDate
+numbers;<a href="#section-5.5.3-2.2.2.3.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.3-2.2.2.4">
                   <p id="section-5.5.3-2.2.2.4.1">the signature validates under an acceptable algorithm (<span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>)
@@ -2861,7 +2885,7 @@ assertion attests as accepted (<a href="#hop-activation" class="auto internal xr
                 <li class="normal" id="section-5.5.3-2.4.2.3">
                   <p id="section-5.5.3-2.4.2.3.1">the actor lineage that results from merging consecutive same-actor
 entries, as the onward <code>act</code> will (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>), is within its
-depth bound, which counts lineage entries, not hops;<a href="#section-5.5.3-2.4.2.3.1" class="pilcrow">¶</a></p>
+actor-lineage depth bound, which counts lineage entries, not hops;<a href="#section-5.5.3-2.4.2.3.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2900,7 +2924,8 @@ subject and the actor's client identifier (<a href="#onward-id-jag" class="auto 
 <ul class="normal">
 <li class="normal" id="section-5.5.3-2.6.2.1">
                   <p id="section-5.5.3-2.6.2.1.1"><code>iat</code> is within permitted future clock skew (which <span class="bcp14">SHOULD NOT</span> exceed 60
-seconds), <code>exp</code> follows <code>iat</code>, the assertion is unexpired, and its
+seconds), <code>exp</code> follows <code>iat</code>, the assertion is unexpired, any <code>nbf</code> has
+passed within the same skew (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, Section 4.1.5), and its
 lifetime does not exceed the maximum the IdP accepts, which <span class="bcp14">SHOULD</span> be no
 less than 300 seconds so that a CAI using the recommended bound
 interoperates (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>); and<a href="#section-5.5.3-2.6.2.1.1" class="pilcrow">¶</a></p>
@@ -3021,14 +3046,14 @@ history, so concurrent sibling continuations are independent branches.<a href="#
             <li class="normal" id="section-5.5.5-5.3">
               <p id="section-5.5.5-5.3.1">Consecutive identical actors merge into one entry, though the hop record
 remains; policy <span class="bcp14">MAY</span> limit disclosed depth, narrowing what a target sees
-without changing the depth bound the IdP enforces (the chain-state rule of
-<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.5.5-5.3.1" class="pilcrow">¶</a></p>
+without changing the actor-lineage depth bound the IdP enforces (the
+chain-state rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.5.5-5.3.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.5.5-5.4">
               <p id="section-5.5.5-5.4.1">A RAS <span class="bcp14">MUST NOT</span> read the absence of a further nested <code>act</code> as proof that no
-earlier actor exists, because policy may narrow the disclosed lineage: <code>act</code>
-is disclosed lineage, not the authoritative history, which only the IdP's
-hop records hold.<a href="#section-5.5.5-5.4.1" class="pilcrow">¶</a></p>
+earlier actor exists, because policy may narrow what is disclosed: <code>act</code> is
+the disclosed actor lineage, not the authoritative history, which only the
+IdP's hop records hold.<a href="#section-5.5.5-5.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="section-5.5.5-6">The following is a non-normative example of the onward ID-JAG issued by the
@@ -3095,24 +3120,27 @@ unacceptable token, including a lifetime above the maximum the IdP accepts,
 <code>invalid_dpop_proof</code> for a DPoP failure, <code>unauthorized_client</code> for an actor
 that current tenant policy does not permit to continue from the presented
 hop, which leaves the chain continuable by other actors, <code>invalid_grant</code> when
-the continuation would exceed the chain's depth, fan-out, or hop-count limits
-(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>), and <code>invalid_target</code>, <code>invalid_scope</code>, or
+the continuation would exceed the chain's actor-lineage depth, fan-out, or
+hop-count limits (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>), and <code>invalid_target</code>,
+<code>invalid_scope</code>, or
 <code>invalid_authorization_details</code> for a request outside the envelope or for a
 target at which the IdP can resolve no subject or client identity for the
 actor.<a href="#section-5.5.6-2.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="section-5.5.6-3">Recovery from <code>invalid_continuation</code> requires establishing a new chain, and
+<p id="section-5.5.6-3">DPoP nonce processing and the <code>use_dpop_nonce</code> error apply unchanged from
+<span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span>.<a href="#section-5.5.6-3" class="pilcrow">¶</a></p>
+<p id="section-5.5.6-4">Recovery from <code>invalid_continuation</code> requires establishing a new chain, and
 succeeds only where the governing authorization still permits continuation: a
 session-anchored chain re-roots by re-authenticating the user, a
 grant-anchored chain re-roots from its still-valid grant without the user, and
 a handle disabled by withdrawn continuation authorization cannot re-root at
-all.<a href="#section-5.5.6-3" class="pilcrow">¶</a></p>
-<p id="section-5.5.6-4">The other errors leave the chain still continuable, so the client abandons
-only the current request. A depth-bound rejection concerns the particular
-continuation whose resulting lineage would exceed the bound, not the hop
-itself; a continuation that merges into an existing lineage entry, or a later
-policy raising the bound, may still succeed.<a href="#section-5.5.6-4" class="pilcrow">¶</a></p>
+all.<a href="#section-5.5.6-4" class="pilcrow">¶</a></p>
+<p id="section-5.5.6-5">The other errors leave the chain still continuable, so the client abandons
+only the current request. An actor-lineage depth rejection concerns the
+particular continuation whose resulting lineage would exceed the bound, not
+the hop itself; a continuation that merges into an existing lineage entry, or
+a later policy raising the bound, may still succeed.<a href="#section-5.5.6-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="validation-replay">
@@ -3125,7 +3153,8 @@ evidence, the CAI refuses a fresh assertion once the hop's authorization has
 lapsed (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>); with self-contained evidence, issuance
 continues until the RAS token expires, and single-use still keeps each consumed
 assertion from authorizing more than its one grant within that tail
-(<a href="#security-pop" class="auto internal xref">Section 9.1</a>).<a href="#section-5.5.7-1" class="pilcrow">¶</a></p>
+(<a href="#security-pop" class="auto internal xref">Section 9.1</a>). Single-use therefore bounds staleness and multiplicity; it
+does not itself establish that the hop was accepted.<a href="#section-5.5.7-1" class="pilcrow">¶</a></p>
 <p id="section-5.5.7-2">The IdP <span class="bcp14">MUST</span> issue at most one grant per assertion, including under concurrent
 presentations: it reserves the assertion's (<code>iss</code>, <code>jti</code>) once validation
 succeeds and before it issues the grant, and <span class="bcp14">MUST</span> retain the reservation through
@@ -3755,9 +3784,11 @@ envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a>
         <h3 id="name-actor-chain-integrity">
 <a href="#section-9.6" class="section-number selfRef">9.6. </a><a href="#name-actor-chain-integrity" class="section-name selfRef">Actor Chain Integrity</a>
         </h3>
-<p id="section-9.6-1">The <code>act</code> lineage records who has acted in the delegation. A compromised actor
-could try to forge it, to hide its own identity, impersonate a more privileged
-prior actor, or fabricate a delegation that never happened. This profile
+<p id="section-9.6-1">The nested <code>act</code> claim is the disclosed actor lineage, a possibly minimized
+representation of the IdP's hop lineage, which is the authoritative actor
+history. A compromised actor could try to forge it, to hide its own identity,
+impersonate a more privileged prior actor, or fabricate a delegation that
+never happened. This profile
 denies that by construction: an assertion names only the current actor, and
 the IdP derives the onward lineage from its own hop records
 (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). The IdP <span class="bcp14">MUST</span> reject any mismatch between the current
@@ -3814,9 +3845,9 @@ transactions across audiences. For example, an observer comparing ID-JAGs
 issued to two audiences within one short window and carrying the same
 actor-chain shape may infer they belong to one user's transaction, even without
 a shared handle.<a href="#section-10-3" class="pilcrow">¶</a></p>
-<p id="section-10-4">The onward ID-JAG's <code>act</code> chain also names the prior actors to the accepting
-RAS outright, with no correlation needed; policy may limit the depth disclosed
-to each audience (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-10-4" class="pilcrow">¶</a></p>
+<p id="section-10-4">The onward ID-JAG's <code>act</code>, the disclosed actor lineage, also names the prior
+actors to the accepting RAS outright, with no correlation needed; policy may
+limit the depth disclosed to each audience (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-10-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="iana">
@@ -4581,11 +4612,14 @@ actor identity serves item 3; sender constraint of the assertion and the onward
 ID-JAG serves item 4; the envelope under current policy serves item 5, so that
 the effective authority at any continuation is the recorded continuation
 authorization evaluated under current policy, never more; and the anchor serves
-item 6. Single-use of an assertion serves item 1 across time: a consumed
-assertion must not keep authorizing after the RAS's acceptance evidence would no
-longer support a fresh one (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>). Where this document offers a
-choice, such as the form of acceptance evidence or a separate actor token, the
-choice is between mechanisms that satisfy the same item.<a href="#appendix-A.10-3" class="pilcrow">¶</a></p>
+item 6. Single-use limits one accepted-hop attestation to one continuation
+decision, reducing the authority obtainable from acceptance evidence that
+becomes stale before its expiry (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>); it bounds freshness
+and multiplicity rather than establishing acceptance, which the CAI's
+attestation does. The CAI's own verification of the proof is hardening, not
+part of item 4, which the IdP satisfies. Where this document offers a choice,
+such as the form of acceptance evidence or a separate actor token, the choice
+is between mechanisms that satisfy the same item.<a href="#appendix-A.10-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4701,7 +4735,7 @@ GatewayRAS's advertisement of the continuation profile.<a href="#appendix-B.1.1-
               <tr>
                 <td class="text-left" rowspan="1" colspan="1">IdP</td>
                 <td class="text-left" rowspan="1" colspan="1">
-                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; GatewayRAS and <code>https://gateway.example/</code> authorized as a CAI and actor identity authority pair for <code>tenant-123</code>, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised; <code>tool-gateway</code>'s client identifier at WikiRAS recorded for the onward ID-JAG's <code>client_id</code>
+                  <code>agent-app</code> and <code>tool-gateway</code> registered as confidential OAuth clients in <code>tenant-123</code>, with canonical actor identities (<code>https://agent.example/</code>, <code>agent-app</code>) and (<code>https://gateway.example/</code>, <code>tool-gateway</code>), the values their <code>act</code> entries carry; <code>https://gateway.example/</code> authorized as the issuer of <code>tool-gateway</code>'s credential; GatewayRAS's issuer <code>https://ras.gateway.example/</code> and its signing keys trusted for the hops it accepts; GatewayRAS and <code>https://gateway.example/</code> authorized as a CAI and actor identity authority pair for <code>tenant-123</code>, since trust in each alone is not enough; tenant policy granting agents read access to productivity tools and permitting <code>tool-gateway</code> to continue; <code>identity_continuation_supported</code> advertised; <code>tool-gateway</code>'s client identifier at WikiRAS recorded for the onward ID-JAG's <code>client_id</code>
 </td>
                 <td class="text-left" rowspan="1" colspan="1">
                   <a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>
@@ -5138,11 +5172,16 @@ and the workload <code>travel-service</code> behind TravelAPI.<a href="#appendix
 runs the base ID-JAG profile and is terminal in this chain.<a href="#appendix-B.2-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="appendix-B.2-4">The user has a pairwise subject at each RAS, which only the IdP can map. H0 is
+<p id="appendix-B.2-4">Each domain is the identity authority for its own workloads, so the IdP has
+the canonical actor identities (<code>https://expenses.example/</code>, <code>expense-app</code>),
+(<code>https://expenses.example/</code>, <code>expense-service</code>), and
+(<code>https://travel.example/</code>, <code>travel-service</code>) recorded for these clients, the
+values their <code>act</code> entries carry (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#appendix-B.2-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-5">The user has a pairwise subject at each RAS, which only the IdP can map. H0 is
 bound at ExpenseRAS, H1 at TravelRAS; H2 reaches BookingRAS, which never binds
-it.<a href="#appendix-B.2-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.2-5">Hop 0 roots the chain at ExpenseRAS and carries H0 to the workload:<a href="#appendix-B.2-5" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2-6">
+it.<a href="#appendix-B.2-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.2-6">Hop 0 roots the chain at ExpenseRAS and carries H0 to the workload:<a href="#appendix-B.2-6" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2-7">
 <pre>
 ExpenseApp       IdP        ExpenseRAS      Expense TTS  ExpenseService
      |            |              |               |              |
@@ -5155,10 +5194,10 @@ ExpenseApp       IdP        ExpenseRAS      Expense TTS  ExpenseService
      |            |              |&lt;-resolve AT1--|              |
      |            |              |---bound H0---&gt;|              |
      |            |              |               |-TT with H0--&gt;|
-</pre><a href="#appendix-B.2-6" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.2-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2-7">Hop 1 continues to TravelRAS; hop 2 repeats it from Travel to Booking:<a href="#appendix-B.2-7" class="pilcrow">¶</a></p>
-<div class="alignLeft art-text artwork" id="appendix-B.2-8">
+<p id="appendix-B.2-8">Hop 1 continues to TravelRAS; hop 2 repeats it from Travel to Booking:<a href="#appendix-B.2-8" class="pilcrow">¶</a></p>
+<div class="alignLeft art-text artwork" id="appendix-B.2-9">
 <pre>
 ExpenseService    Expense CAI     IdP       TravelRAS  Travel TTS/API
        |               |           |            |             |
@@ -5170,7 +5209,7 @@ ExpenseService    Expense CAI     IdP       TravelRAS  Travel TTS/API
        |&lt;------------------AT2------------------|             |
        |-------------call TravelAPI: AT2 + DPoP--------------&gt;|
        |               |           |            | TT with H1 to workload
-</pre><a href="#appendix-B.2-8" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.2-9" class="pilcrow">¶</a>
 </div>
 <div id="example-first-hop">
 <section id="appendix-B.2.1">
@@ -5549,8 +5588,12 @@ It is terminal in every run.<a href="#appendix-B.3-3.2.1" class="pilcrow">¶</a>
 <a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>; likewise terminal.<a href="#appendix-B.3-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="appendix-B.3-4">H0 is bound at PlatformRAS to the task authorization and outlives Alice's
-session; each run receives a fresh child of H0 for its terminal target.<a href="#appendix-B.3-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-4">The platform domain is the identity authority for its own workloads, so the
+IdP has the canonical actor identity (<code>https://platform.example/</code>,
+<code>briefing-agent</code>) recorded for that client, the value its <code>act</code> entry carries
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#appendix-B.3-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.3-5">H0 is bound at PlatformRAS to the task authorization and outlives Alice's
+session; each run receives a fresh child of H0 for its terminal target.<a href="#appendix-B.3-5" class="pilcrow">¶</a></p>
 <div id="example-background-setup">
 <section id="appendix-B.3.1">
           <h4 id="name-setup-anchoring-the-chain-t">
@@ -5804,9 +5847,11 @@ concurrent retry, or is a rejected second presentation followed by a fresh
 assertion an acceptable recovery path (<a href="#implementation" class="auto internal xref">Section 8</a>)?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.8">
-          <p id="appendix-C-3.8.1"><strong>CAI discovery.</strong> Should RAS metadata advertise that the RAS issues
-assertions from its token endpoint, and how does a workload discover a
-separate CAI's endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>, <a href="#metadata-ras" class="auto internal xref">Section 7.2</a>)?<a href="#appendix-C-3.8.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.8.1"><strong>Response parameter naming.</strong> This document reuses the Token Exchange
+<code>audience</code> parameter in the assertion issuance response
+(<a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>) to name the recipient of the issued assertion.
+Should a profile-specific response member be defined instead, given that
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> registers <code>audience</code> for requests only?<a href="#appendix-C-3.8.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="appendix-C-4">Further questions are tracked in the project's issue list rather than expanded
@@ -5838,12 +5883,29 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Introduction rewritten in plain terms: accepted grant, hop, chain, handle,
-and the CAI are given their meaning where they first appear, and the three
-properties and the two limits no longer rely on terms defined later.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Applied the six-item test to the remaining requirements: the CAI's own
+verification of the DPoP proof is recommended rather than required while
+the IdP's is unchanged;
+the root actor's key is no longer part of chain identity; the shared key
+across credential, assertion, and onward ID-JAG is stated as a property of
+the DPoP method; single-use is described as a freshness and multiplicity
+bound; the <code>audience</code> response parameter is defined as the assertion's
+recipient; examples provision canonical actor identities; <code>act</code> is the
+disclosed actor lineage and depth is actor-lineage depth; the CAI binds the
+actor to its authorization context; redemption dedupe resolves to one hop
+binding; the handle length cap is recommended rather than required;
+assertion discovery is a
+stated rule and its open item is closed; DPoP nonce handling is referenced;
+<code>nbf</code> is permitted; only <code>iss</code> and <code>sub</code> form the canonical actor identity.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
-          <p id="appendix-E-3.2.1">Editorial consolidation: a conceptual Introduction and a shorter Protocol
+          <p id="appendix-E-3.2.1">Introduction rewritten in plain terms:
+ accepted grant, hop, chain, handle,
+and the CAI are given their meaning where they first appear, and the three
+properties and the two limits no longer rely on terms defined later.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.3">
+          <p id="appendix-E-3.3.1">Editorial consolidation: a conceptual Introduction and a shorter Protocol
 Overview; the decision rule moved to Design Rationale; essential terms
 only in Conventions and Definitions; both exchanges given the same request,
 client authentication, validation, response, and error structure, with
@@ -5852,17 +5914,17 @@ acceptance under RAS processing; separate CAI, additional actor
 credentials, and idempotent retry as titled variant subsections; rules
 that lived only in Security Considerations moved to their processing homes;
 Security Considerations and the examples point to rules instead of
-restating them. No requirement changed.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+restating them. No requirement changed.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.3">
-          <p id="appendix-E-3.3.1">Aligned redemption of the key-bound onward ID-JAG with the base profile's
+        <li class="normal" id="appendix-E-3.4">
+          <p id="appendix-E-3.4.1">Aligned redemption of the key-bound onward ID-JAG with the base profile's
 DPoP-bound JWT grant in RAS processing, Onward ID-JAG Construction, RAS
 metadata, and the examples; defined <code>act</code> by the canonical actor identity;
 CAI precondition 4 binds to the authorization context rather than a
-transaction; a root ID-JAG need not carry <code>cnf</code>.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+transaction; a root ID-JAG need not carry <code>cnf</code>.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.4">
-          <p id="appendix-E-3.4.1">Fresh-eyes review fixes: qualified the single-use rationale for
+        <li class="normal" id="appendix-E-3.5">
+          <p id="appendix-E-3.5.1">Fresh-eyes review fixes: qualified the single-use rationale for
 self-contained acceptance evidence; rule 4 now tests the presented hop's
 own revocation; chain establishment requires a resolvable anchor and
 otherwise issues a plain ID-JAG; error codes for a non-permitted actor, an
@@ -5870,237 +5932,237 @@ exhausted depth bound, and prohibited parameters; identity authority
 defined for clients registered directly at the IdP; reservation timing;
 Security Considerations aligned with CAI authority, terminal RAS bearer
 tokens, bearer-ingress reach, and continuer widening; B.2 shows the
-dual-use credential; gateway checklist and provisioning table completed.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.5">
-          <p id="appendix-E-3.5.1">Rewrote Section 5 in plain language with OAuth RFC structure: Establishing a
-Chain gains Root Exchange Request, Chain Establishment, Root Actor, and
-Root-Chain Envelope subsections; rationale moved to Design Rationale and
-Security Considerations; no requirement changed.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+dual-use credential; gateway checklist and provisioning table completed.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.6">
-          <p id="appendix-E-3.6.1">Reduced the Protocol Overview's closing paragraph
- to the one insight the
-walk-through needs, that the IdP learns of acceptance only through the
-assertion; the hop state names now first appear where they are defined.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.6.1">Rewrote Section 5 in plain language with OAuth RFC structure: Establishing a
+Chain gains Root Exchange Request, Chain Establishment, Root Actor, and
+Root-Chain Envelope subsections; rationale moved to Design Rationale and
+Security Considerations; no requirement changed.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.7">
-          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.7.1">
-            <dt id="appendix-E-3.7.1.1">Made the gateway example show the floor</dt>
-            <dd style="margin-left: 1.5em" id="appendix-E-3.7.1.2">
-              <p id="appendix-E-3.7.1.2.1">a root client that proves no key,
+          <p id="appendix-E-3.7.1">Reduced the Protocol Overview's closing paragraph
+ to the one insight the
+walk-through needs, that the IdP learns of acceptance only through the
+assertion; the hop state names now first appear where they are defined.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.8">
+          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.8.1">
+            <dt id="appendix-E-3.8.1.1">Made the gateway example show the floor</dt>
+            <dd style="margin-left: 1.5em" id="appendix-E-3.8.1.2">
+              <p id="appendix-E-3.8.1.2.1">a root client that proves no key,
 a bearer access token at GatewayRAS, and a continuation exchange carrying
 the client credential alone; the SaaS example keeps sender-constrained
-access tokens as the hardened variant.<a href="#appendix-E-3.7.1.2.1" class="pilcrow">¶</a></p>
+access tokens as the hardened variant.<a href="#appendix-E-3.8.1.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
 </li>
-        <li class="normal" id="appendix-E-3.8">
-          <p id="appendix-E-3.8.1">Replaced trust-domain membership
+        <li class="normal" id="appendix-E-3.9">
+          <p id="appendix-E-3.9.1">Replaced trust-domain membership
  with CAI authority over the actor-to-hop
 association; made the 300-second assertion lifetime a recommended upper
 bound with the IdP's own maximum governing; tied chain lifetime to the
 anchor rather than to the session as such; stated the cost of single-use
 without retry; added the six-item test for a requirement to Design
-Rationale.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+Rationale.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.9">
-          <p id="appendix-E-3.9.1">Defined the CAI's acceptance evidence
+        <li class="normal" id="appendix-E-3.10">
+          <p id="appendix-E-3.10.1">Defined the CAI's acceptance evidence
  by the RAS's own authorization
 semantics, so a RAS whose authorization is a self-contained short-lived
 token satisfies the issuance precondition by that token's validity; a live
 recheck is recommended where fresh issuance must stop before the token
-expires.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
+expires.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.10">
-          <p id="appendix-E-3.10.1">Made the <code>actor_token</code> optional on a continuation exchange: the actor
+        <li class="normal" id="appendix-E-3.11">
+          <p id="appendix-E-3.11.1">Made the <code>actor_token</code> optional on a continuation exchange: the actor
 authenticates as an OAuth client with a credential that resolves to its
 canonical actor identity, presenting an <code>actor_token</code> when that credential
 does not identify the actor or as independent evidence; stated that the
 shared key across credential, assertion, and onward ID-JAG is a consequence
 of a single proof method, not a continuation property; defined issuer
-pairing against the actor's identity authority.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
+pairing against the actor's identity authority.<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.11">
-          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.11.1">
-            <dt id="appendix-E-3.11.1.1">Removed the proof-of-possession requirement from the root exchange</dt>
-            <dd style="margin-left: 1.5em" id="appendix-E-3.11.1.2">
-              <p id="appendix-E-3.11.1.2.1">a root
+        <li class="normal" id="appendix-E-3.12">
+          <span class="break"></span><dl class="dlParallel" id="appendix-E-3.12.1">
+            <dt id="appendix-E-3.12.1.1">Removed the proof-of-possession requirement from the root exchange</dt>
+            <dd style="margin-left: 1.5em" id="appendix-E-3.12.1.2">
+              <p id="appendix-E-3.12.1.2.1">a root
 client keeps only the base profile's obligations, and sender constraint is
 required of a continuing actor; an optional root <code>actor_token</code> still needs
 a proof of the key it is bound to. A RAS binds its access token to the
 confirmed key when the ID-JAG carries <code>cnf</code> and otherwise by its own
-policy.<a href="#appendix-E-3.11.1.2.1" class="pilcrow">¶</a></p>
+policy.<a href="#appendix-E-3.12.1.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
 </li>
-        <li class="normal" id="appendix-E-3.12">
-          <p id="appendix-E-3.12.1">Kept single-use of an assertion required
+        <li class="normal" id="appendix-E-3.13">
+          <p id="appendix-E-3.13.1">Kept single-use of an assertion required
  and made idempotent retry
 optional, with the fingerprint rules applying to an IdP that offers retry;
 explained why a consumed assertion is not equivalent to a fresh one; opened
-a question on mandatory retry.<a href="#appendix-E-3.12.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.13">
-          <p id="appendix-E-3.13.1">Defined the canonical actor identity and made it the sole comparand for
-<code>act</code> and <code>actor_token</code>; reworded the CAI's role as attesting the facts the
-IdP's evaluation requires; characterized the handle as security-sensitive
-correlation state.<a href="#appendix-E-3.13.1" class="pilcrow">¶</a></p>
+a question on mandatory retry.<a href="#appendix-E-3.13.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.14">
-          <p id="appendix-E-3.14.1">Named the two parts of the root-chain envelope, chain identity and
+          <p id="appendix-E-3.14.1">Defined the canonical actor identity and made it the sole comparand for
+<code>act</code> and <code>actor_token</code>; reworded the CAI's role as attesting the facts the
+IdP's evaluation requires; characterized the handle as security-sensitive
+correlation state.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.15">
+          <p id="appendix-E-3.15.1">Named the two parts of the root-chain envelope, chain identity and
 continuation authorization, defined the authorization basis as a policy
 reference, and specified that policy narrows a running chain in either
 form but widens its targets only through a recorded basis; stated in Hop
-Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
+Activation why RAS acceptance does not attenuate downstream authority.<a href="#appendix-E-3.15.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.15">
-          <p id="appendix-E-3.15.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
+        <li class="normal" id="appendix-E-3.16">
+          <p id="appendix-E-3.16.1">Gathered durable-chain material into Chain Lifetime and Revocation, with
 anchors, ending, and limits as subsections and a lead that separates the
 shared rules from the grant-specific discussion; moved the anchor list and
 the cross-chain limits there from Establishing a Chain; opened two
-questions on document factoring and stateless hop commitments.<a href="#appendix-E-3.15.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.16">
-          <p id="appendix-E-3.16.1">Added a Design Rationale subsection separating actor identity (<code>act</code>)
-from the target's <code>client_id</code> and explaining why <code>may_act</code> does not
-suffice; restated the confirmation claim as a proof-of-possession property
-with DPoP as the one method this document defines.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
+questions on document factoring and stateless hop commitments.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.17">
-          <p id="appendix-E-3.17.1">Narrowed the CAI contract to attested facts: the RAS accepted the hop,
+          <p id="appendix-E-3.17.1">Added a Design Rationale subsection separating actor identity (<code>act</code>)
+from the target's <code>client_id</code> and explaining why <code>may_act</code> does not
+suffice; restated the confirmation claim as a proof-of-possession property
+with DPoP as the one method this document defines.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.18">
+          <p id="appendix-E-3.18.1">Narrowed the CAI contract to attested facts: the RAS accepted the hop,
 RAS state still shows it continuable, and the authenticated actor proving a
 key is the party handling that request; dropped the "authorized under CAI
 policy" precondition, leaving a domain free to narrow issuance, and moved
-every decision about who may continue and to what to the IdP.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
+every decision about who may continue and to what to the IdP.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.18">
-          <p id="appendix-E-3.18.1">Opened the Introduction with the three core properties the protocol rests
+        <li class="normal" id="appendix-E-3.19">
+          <p id="appendix-E-3.19.1">Opened the Introduction with the three core properties the protocol rests
 on and stated what continuation does not prove; named co-located as the
 baseline deployment and a separate CAI as advanced, with the same exchange
 count in both; said that the handle correlates state and confers nothing
-and that <code>act</code> is disclosed lineage, not authoritative history.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
+and that <code>act</code> is disclosed lineage, not authoritative history.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.19">
-          <p id="appendix-E-3.19.1">Aligned the envelope with ID-JAG's policy model: the facts of the root
+        <li class="normal" id="appendix-E-3.20">
+          <p id="appendix-E-3.20.1">Aligned the envelope with ID-JAG's policy model: the facts of the root
 exchange are fixed, tenant policy for targets, continuers, and limits
 applies as it stands at each continuation in either direction, and
 "consent" wording became tenant policy throughout; dropped the
-narrow-but-not-broaden rule and the consent-scope open question.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
+narrow-but-not-broaden rule and the consent-scope open question.<a href="#appendix-E-3.20.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.20">
-          <p id="appendix-E-3.20.1">Applied a whole-draft review: stated in the Introduction that acceptance
+        <li class="normal" id="appendix-E-3.21">
+          <p id="appendix-E-3.21.1">Applied a whole-draft review: stated in the Introduction that acceptance
 does not make the accepted token's scopes the ceiling for later targets;
 qualified the compatibility claims to root clients with DPoP and a
 resolvable anchor, terminal RASes, and the parties that continue; added a
 worked authorization-basis case to the gateway example; added a
 provisioning table and
 the gateway's dual-use credential to that example; added an operational
-paragraph on availability, state retention, limits, and failure paths.<a href="#appendix-E-3.20.1" class="pilcrow">¶</a></p>
+paragraph on availability, state retention, limits, and failure paths.<a href="#appendix-E-3.21.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.21">
-          <p id="appendix-E-3.21.1">Applied a gateway-vendor review: example hop records show the
+        <li class="normal" id="appendix-E-3.22">
+          <p id="appendix-E-3.22.1">Applied a gateway-vendor review: example hop records show the
 continuation-permitted flag the binding requires; the <code>act</code> claim states
 where its <code>iss</code> and <code>sub</code> come from; carriers are described for either
 topology; the gateway checklist names the registrations it presupposes; the
 redemption dedupe rule names its key; continuation is stated to be per
-authorization context, not per call.<a href="#appendix-E-3.21.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.22">
-          <p id="appendix-E-3.22.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
-deployment, with the figure keyed to the steps, and reduced the Multi-Hop
-Overview to a map from those steps to the sections that specify them.<a href="#appendix-E-3.22.1" class="pilcrow">¶</a></p>
+authorization context, not per call.<a href="#appendix-E-3.22.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.23">
-          <p id="appendix-E-3.23.1">Stated the design goal in the Introduction: an opt-in extension that
-requires no change to existing ID-JAG clients or RASes, keeps chain state at
-the IdP, and lets an ID-JAG ecosystem add multi-hop access at gateways.<a href="#appendix-E-3.23.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.23.1">Rewrote the Protocol Overview as a numbered walk-through of the gateway
+deployment, with the figure keyed to the steps, and reduced the Multi-Hop
+Overview to a map from those steps to the sections that specify them.<a href="#appendix-E-3.23.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.24">
-          <p id="appendix-E-3.24.1">Cited validation rules by name, tabulated the envelope, removed the
-duplicate signals table, merged three short Security subsections into
-their neighbors, trimmed the IdP metadata entry, and reorganized the
-background example by hop.<a href="#appendix-E-3.24.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.24.1">Stated the design goal in the Introduction: an opt-in extension that
+requires no change to existing ID-JAG clients or RASes, keeps chain state at
+the IdP, and lets an ID-JAG ecosystem add multi-hop access at gateways.<a href="#appendix-E-3.24.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.25">
-          <p id="appendix-E-3.25.1">Trimmed the vocabulary: removed the binding, authenticated context, and
-intra-domain carrier entries and the presenting-actor alias, unified on
-"pairwise subject", narrowed continuation-capable to ID-JAGs, and made
-continuable a plain adjective rather than a third hop state.<a href="#appendix-E-3.25.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.25.1">Cited validation rules by name, tabulated the envelope, removed the
+duplicate signals table, merged three short Security subsections into
+their neighbors, trimmed the IdP metadata entry, and reorganized the
+background example by hop.<a href="#appendix-E-3.25.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.26">
-          <p id="appendix-E-3.26.1">Named the CAI as the subject of the carrier and scheduled-task rules, noted
-the confused-deputy surface of an envelope that records a basis rather
-than targets, and showed client
-authentication in every example request.<a href="#appendix-E-3.26.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.26.1">Trimmed the vocabulary: removed the binding, authenticated context, and
+intra-domain carrier entries and the presenting-actor alias, unified on
+"pairwise subject", narrowed continuation-capable to ID-JAGs, and made
+continuable a plain adjective rather than a third hop state.<a href="#appendix-E-3.26.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.27">
-          <p id="appendix-E-3.27.1">Prohibited a refresh token in the continuation response, required envelope
-containment of the effective authorization after defaults, forbade a
-top-level <code>nbf</code> in the assertion, made authentication-context preservation
-unconditional, and corrected the signed-assertion rationale.<a href="#appendix-E-3.27.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.27.1">Named the CAI as the subject of the carrier and scheduled-task rules, noted
+the confused-deputy surface of an envelope that records a basis rather
+than targets, and showed client
+authentication in every example request.<a href="#appendix-E-3.27.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.28">
-          <p id="appendix-E-3.28.1">Ordered the protocol section chronologically: establishing a chain, RAS
-binding and hop activation, handle propagation, assertion issuance, the
-continuation exchange, and replay reservation.<a href="#appendix-E-3.28.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.28.1">Prohibited a refresh token in the continuation response, required envelope
+containment of the effective authorization after defaults, forbade a
+top-level <code>nbf</code> in the assertion, made authentication-context preservation
+unconditional, and corrected the signed-assertion rationale.<a href="#appendix-E-3.28.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.29">
-          <p id="appendix-E-3.29.1">Added a Protocol Overview to the Introduction, regrouped the Overview by
-role, moved Chain Lifetime and Revocation after the protocol section, moved
-replay reservation to the end of that section, and ordered assertion
-issuance as request, preconditions, response.<a href="#appendix-E-3.29.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.29.1">Ordered the protocol section chronologically: establishing a chain, RAS
+binding and hop activation, handle propagation, assertion issuance, the
+continuation exchange, and replay reservation.<a href="#appendix-E-3.29.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.30">
-          <p id="appendix-E-3.30.1">Reorganized the SaaS chain example by hop, trimmed restated specification
-text from it, and moved the trust-boundary note to Design Rationale.<a href="#appendix-E-3.30.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.30.1">Added a Protocol Overview to the Introduction, regrouped the Overview by
+role, moved Chain Lifetime and Revocation after the protocol section, moved
+replay reservation to the end of that section, and ordered assertion
+issuance as request, preconditions, response.<a href="#appendix-E-3.30.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.31">
-          <p id="appendix-E-3.31.1">Added the <code>audience</code> parameter to the assertion issuance response, so the
-client learns which IdP to present the assertion to, and registered its
-token response usage.<a href="#appendix-E-3.31.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.31.1">Reorganized the SaaS chain example by hop, trimmed restated specification
+text from it, and moved the trust-boundary note to Design Rationale.<a href="#appendix-E-3.31.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.32">
-          <p id="appendix-E-3.32.1">Rewrote the gateway example as the first, end-to-end example for gateway
-implementers: co-located RAS and CAI, handle carried in the access token,
-assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
-the terminal RAS.<a href="#appendix-E-3.32.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.32.1">Added the <code>audience</code> parameter to the assertion issuance response, so the
+client learns which IdP to present the assertion to, and registered its
+token response usage.<a href="#appendix-E-3.32.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.33">
-          <p id="appendix-E-3.33.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
-CAI that is an authorization server, with the access token or Transaction
-Token the workload holds as the subject token, resolving the CAI-issuance
-open item; the gateway example uses it.<a href="#appendix-E-3.33.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.33.1">Rewrote the gateway example as the first, end-to-end example for gateway
+implementers: co-located RAS and CAI, handle carried in the access token,
+assertion obtained by Token Exchange, and an ordinary ID-JAG redemption at
+the terminal RAS.<a href="#appendix-E-3.33.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.34">
-          <p id="appendix-E-3.34.1">Made the retry-limit and replay-concurrency requirements self-contained
+          <p id="appendix-E-3.34.1">Defined Token Exchange issuance of the assertion at the token endpoint of a
+CAI that is an authorization server, with the access token or Transaction
+Token the workload holds as the subject token, resolving the CAI-issuance
+open item; the gateway example uses it.<a href="#appendix-E-3.34.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.35">
+          <p id="appendix-E-3.35.1">Made the retry-limit and replay-concurrency requirements self-contained
 rather than pointing into Implementation Considerations, defined
 when a hop is continuable and what continuation-capable means without
 circularity, and moved the
 per-target client registration prerequisite to the Token Exchange
-introduction.<a href="#appendix-E-3.34.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.35">
-          <p id="appendix-E-3.35.1">Annotated the overview diagram with this profile's additions and the
-terminal hop.<a href="#appendix-E-3.35.1" class="pilcrow">¶</a></p>
+introduction.<a href="#appendix-E-3.35.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.36">
-          <p id="appendix-E-3.36.1">Made the accepting RAS a CAI for its own hops without configuration; metadata
+          <p id="appendix-E-3.36.1">Annotated the overview diagram with this profile's additions and the
+terminal hop.<a href="#appendix-E-3.36.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.37">
+          <p id="appendix-E-3.37.1">Made the accepting RAS a CAI for its own hops without configuration; metadata
 now lists only additional CAIs. Added a scope statement to the Overview and a
 non-normative Deployment Topologies subsection holding the carrier
 realizations, added a Topology and Trust security subsection, and switched
-the gateway example to the co-located topology.<a href="#appendix-E-3.36.1" class="pilcrow">¶</a></p>
+the gateway example to the co-located topology.<a href="#appendix-E-3.37.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="appendix-E-3.37">
-          <p id="appendix-E-3.37.1">Removed the prohibition on carrying the handle in an access token, along
+        <li class="normal" id="appendix-E-3.38">
+          <p id="appendix-E-3.38.1">Removed the prohibition on carrying the handle in an access token, along
 with the carrier requirements that restated the CAI preconditions. One rule
 remains: the handle surfaced for a call is the one the RAS bound to the
 authorization that the call's credential or context identifies, read from RAS
 state or from a carrier derived from it. The accepting RAS's own access
 token is now a permitted carrier, and the handle is also registered as an
-introspection response member.<a href="#appendix-E-3.37.1" class="pilcrow">¶</a></p>
+introspection response member.<a href="#appendix-E-3.38.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
