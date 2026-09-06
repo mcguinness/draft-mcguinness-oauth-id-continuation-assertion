@@ -1519,37 +1519,39 @@ sender-constrained JSON Web Token (JWT) <span>[<a href="#RFC7519" class="cite xr
 obtains from a Continuation Assertion Issuer (CAI), a party the IdP trusts to
 report what the RAS that issued the workload's access token has accepted. The
 assertion states two facts. First, that RAS redeemed an ID-JAG for this user
-and issued that access token; this document calls such a grant an accepted
-grant. Second, the authenticated workload holding a particular key is the
-party now acting on it. The workload presents the assertion to the IdP as the
-subject token of an OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The IdP
-resolves the user's identity for the next service, decides under the tenant's
-policy whether this workload may continue to it, and issues the next ID-JAG.
-Each ID-JAG issued this way is a hop, and the hops that descend from one root
+and issued that access token, and the resulting authorization remains active
+and permits continuation. Second, the authenticated workload holding a
+particular key is the party now acting on it. The workload presents the
+assertion to the IdP as the subject token of an OAuth 2.0 Token Exchange
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The IdP resolves the user's identity for the next
+service, decides under the tenant's policy whether this workload may continue
+to it, and issues the next ID-JAG.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">Each ID-JAG issued this way is a hop, and the hops that descend from one root
 ID-JAG form a chain. An opaque handle carried in each ID-JAG names its hop, so
 that the IdP and the RAS can link their records of it. The RAS may perform the
-CAI role itself.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">Three properties hold throughout:<a href="#section-1-4" class="pilcrow">¶</a></p>
+CAI role itself.<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">Three properties hold throughout:<a href="#section-1-5" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-1-5.1">
-          <p id="section-1-5.1.1">Only the IdP names the user for a new audience.<a href="#section-1-5.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-1-6.1">
+          <p id="section-1-6.1.1">Only the IdP names the user for a new audience.<a href="#section-1-6.1.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-1-5.2">
-          <p id="section-1-5.2.1">A workload can continue only from a grant that a RAS has redeemed and
-issued an access token for.<a href="#section-1-5.2.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-1-6.2">
+          <p id="section-1-6.2.1">A workload can continue only from a grant that a RAS has redeemed and
+issued an access token for.<a href="#section-1-6.2.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-1-5.3">
-          <p id="section-1-5.3.1">Only a workload that the IdP has authenticated, that tenant policy permits
+        <li class="normal" id="section-1-6.3">
+          <p id="section-1-6.3.1">Only a workload that the IdP has authenticated, that tenant policy permits
 to continue from that grant, and that proves possession of its own key can
-obtain the next ID-JAG.<a href="#section-1-5.3.1" class="pilcrow">¶</a></p>
+obtain the next ID-JAG.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-1-6">Each continuation is a new decision by the IdP under the policy in force at
+<p id="section-1-7">Each continuation is a new decision by the IdP under the policy in force at
 that moment. The assertion carries no authority forward, and the scopes of the
 access token the workload holds do not bound what the next ID-JAG may grant.
-A workload continues once to obtain an ID-JAG for a service and reuses the
-access token it redeems there; it does not continue for every API call.<a href="#section-1-6" class="pilcrow">¶</a></p>
-<p id="section-1-7">This document is an opt-in extension to ID-JAG. The application that obtains
+Further calls for the same user under the same chain can reuse the access
+token a continuation obtained while it remains valid and covers the requested
+access; continuation is not required for every API call.<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-8">This document is an opt-in extension to ID-JAG. The application that obtains
 the first ID-JAG and any RAS from which no workload continues run unmodified
 ID-JAG, which this document calls the base profile; only the continuing
 workload, its RAS and CAI, and the IdP need support it. The IdP keeps the
@@ -1557,8 +1559,8 @@ chain records and enforces the tenant's policy and replay protection, work it
 is placed for because it already resolves the pairwise subject and holds that
 policy. An ID-JAG deployment can therefore add multi-hop access where a
 request's path is not known in advance, as at a tool gateway for agents,
-including Model Context Protocol (MCP) gateways (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-7" class="pilcrow">¶</a></p>
-<p id="section-1-8">This document complements OAuth Identity Chaining
+including Model Context Protocol (MCP) gateways (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-8" class="pilcrow">¶</a></p>
+<p id="section-1-9">This document complements OAuth Identity Chaining
 <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>), and it is not a
 substitute for narrowing an existing token within one trust domain
 (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>). Its scope is the two exchanges above, the workload's
@@ -1567,7 +1569,7 @@ IdP, together with the assertion and handle they carry and the obligations of
 the IdP, the continuing workload, its RAS, and the CAI. How a handle travels
 inside a trust domain is left to the deployment (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). This
 document defines no new access-token format, and a CAI never names the user
-for the target audience.<a href="#section-1-8" class="pilcrow">¶</a></p>
+for the target audience.<a href="#section-1-9" class="pilcrow">¶</a></p>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">

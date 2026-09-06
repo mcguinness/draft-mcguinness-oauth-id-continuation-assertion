@@ -203,17 +203,18 @@ Table of Contents
    the IdP trusts to report what the RAS that issued the workload's
    access token has accepted.  The assertion states two facts.  First,
    that RAS redeemed an ID-JAG for this user and issued that access
-   token; this document calls such a grant an accepted grant.  Second,
-   the authenticated workload holding a particular key is the party now
-   acting on it.  The workload presents the assertion to the IdP as the
-   subject token of an OAuth 2.0 Token Exchange [RFC8693] request.  The
-   IdP resolves the user's identity for the next service, decides under
-   the tenant's policy whether this workload may continue to it, and
-   issues the next ID-JAG.  Each ID-JAG issued this way is a hop, and
-   the hops that descend from one root ID-JAG form a chain.  An opaque
-   handle carried in each ID-JAG names its hop, so that the IdP and the
-   RAS can link their records of it.  The RAS may perform the CAI role
-   itself.
+   token, and the resulting authorization remains active and permits
+   continuation.  Second, the authenticated workload holding a
+   particular key is the party now acting on it.  The workload presents
+   the assertion to the IdP as the subject token of an OAuth 2.0 Token
+   Exchange [RFC8693] request.  The IdP resolves the user's identity for
+   the next service, decides under the tenant's policy whether this
+   workload may continue to it, and issues the next ID-JAG.
+
+   Each ID-JAG issued this way is a hop, and the hops that descend from
+   one root ID-JAG form a chain.  An opaque handle carried in each ID-
+   JAG names its hop, so that the IdP and the RAS can link their records
+   of it.  The RAS may perform the CAI role itself.
 
    Three properties hold throughout:
 
@@ -229,9 +230,10 @@ Table of Contents
    Each continuation is a new decision by the IdP under the policy in
    force at that moment.  The assertion carries no authority forward,
    and the scopes of the access token the workload holds do not bound
-   what the next ID-JAG may grant.  A workload continues once to obtain
-   an ID-JAG for a service and reuses the access token it redeems there;
-   it does not continue for every API call.
+   what the next ID-JAG may grant.  Further calls for the same user
+   under the same chain can reuse the access token a continuation
+   obtained while it remains valid and covers the requested access;
+   continuation is not required for every API call.
 
    This document is an opt-in extension to ID-JAG.  The application that
    obtains the first ID-JAG and any RAS from which no workload continues
