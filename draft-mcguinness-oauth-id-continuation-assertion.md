@@ -3337,6 +3337,17 @@ this profile builds.
 
 -02
 
+* Editorial consolidation: a conceptual Introduction and a shorter Protocol
+  Overview; the decision rule moved to Design Rationale and the opt-in and
+  scope claims to a new What This Profile Adds subsection; essential terms
+  only in Conventions and Definitions; both exchanges given the same request,
+  client authentication, validation, response, and error structure, with
+  Continuation Exchange replacing Token Exchange as the section name; hop
+  acceptance under RAS processing; separate CAI, additional actor
+  credentials, and idempotent retry as titled variant subsections; rules
+  that lived only in Security Considerations moved to their processing homes;
+  Security Considerations and the examples point to rules instead of
+  restating them. No requirement changed.
 * Aligned redemption of the key-bound onward ID-JAG with the base profile's
   DPoP-bound JWT grant in RAS processing, Onward ID-JAG Construction, RAS
   metadata, and the examples; defined `act` by the canonical actor identity;
