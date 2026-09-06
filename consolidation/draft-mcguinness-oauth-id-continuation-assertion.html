@@ -1296,10 +1296,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
             <p id="section-toc.1-1.8.1"><a href="#section-8" class="auto internal xref">8</a>.  <a href="#name-implementation-consideratio" class="internal xref">Implementation Considerations</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.1">
-                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-what-this-profile-adds" class="internal xref">What This Profile Adds</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.8.2.2">
-                <p id="section-toc.1-1.8.2.2.1"><a href="#section-8.2" class="auto internal xref">8.2</a>.  <a href="#name-deployment-topologies" class="internal xref">Deployment Topologies</a></p>
+                <p id="section-toc.1-1.8.2.1.1"><a href="#section-8.1" class="auto internal xref">8.1</a>.  <a href="#name-deployment-topologies" class="internal xref">Deployment Topologies</a></p>
 </li>
             </ul>
 </li>
@@ -1502,47 +1499,72 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">The Identity Assertion JWT Authorization Grant (ID-JAG)
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> turns a user's own
-credential into an OAuth 2.0 <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span> grant for one downstream audience. A
-workload that received a request for a user often has to reach a further
-service on that user's behalf, and cannot obtain that service's grant the same
-way, because it never held the user's credential. Where each Resource
-Authorization Server (RAS) knows the user by a pairwise subject only an IdP
-Authorization Server (IdP) can resolve, the workload cannot even name the user
-for the next audience.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">This document lets the workload continue the request instead: it obtains a
-short-lived Identity Continuation Assertion from a Continuation Assertion
-Issuer (CAI) that identifies an authorization the workload's RAS has accepted
-and binds it to the authenticated workload and its key. The workload exchanges
-that assertion at the IdP for an ID-JAG for the next service; the IdP resolves
-the user's identity for that audience and decides whether the continuation is
-permitted. A handle ties these exchanges to the state the IdP and the RAS hold
-for the chain, one hop per grant, branching where several
-continuations share a hop. The RAS may perform the CAI role itself, as
-in the baseline deployment.<a href="#section-1-2" class="pilcrow">¶</a></p>
-<p id="section-1-3">Two limits apply throughout. The IdP's continuation policy, not the scopes of
-the access token the workload received, decides what a continuation may reach
-(<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Continuation obtains credentials for an authorization
+<p id="section-1-1">In many deployments, applications and the APIs they call are configured for
+single sign-on to a common identity provider, and the Identity Assertion JWT
+Authorization Grant (ID-JAG) <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>
+lets an application exchange the user's identity assertion at that IdP
+Authorization Server (IdP) for an authorization grant that one downstream
+Resource Authorization Server (RAS) accepts. Each RAS knows the user by a
+pairwise subject that only the IdP can resolve, so the IdP mediates every
+cross-application grant.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">ID-JAG assumes that the party requesting the grant holds the user's identity
+assertion. A workload that received a request on the user's behalf often has
+to reach a further service for the same user, after the user is no longer
+present or at an audience the user's credential never addressed, and it holds
+no credential of the user's to exchange. It cannot name the user for the next
+audience, and forwarding or attenuating the access token it received gives the
+next RAS nothing it trusts.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-3">This document defines the Identity Continuation Assertion, a short-lived,
+sender-constrained JWT that such a workload obtains from a Continuation
+Assertion Issuer (CAI) in its own trust domain and presents to the IdP as the
+subject token of an OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The
+assertion identifies an authorization that the workload's RAS has accepted and
+binds it to the authenticated workload and its key. The IdP resolves the
+user's identity for the next audience, decides under the tenant's policy
+whether the continuation is permitted, and issues the next ID-JAG. A handle
+carried in each ID-JAG ties these exchanges to the chain state that the IdP
+and the RAS hold, one hop per grant. The RAS may perform the CAI role itself.<a href="#section-1-3" class="pilcrow">¶</a></p>
+<p id="section-1-4">Two limits apply throughout. The IdP's continuation policy, not the scopes of
+the access token the workload received, bounds what a continuation may reach
+(<a href="#validation" class="auto internal xref">Section 5.5.3</a>); acceptance at a RAS gates continuation but confers no
+downstream authority. Continuation obtains credentials for an authorization
 context rather than for every API call: a workload continues once for a user
 and a target, then reuses the access token it redeems there
-(<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, and ID-JAG
-(<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
-<p id="section-1-5">Three properties are at the core of the protocol:<a href="#section-1-5" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-1-6">
-<li id="section-1-6.1">
-          <p id="section-1-6.1.1">Only the IdP names the user for a new audience.<a href="#section-1-6.1.1" class="pilcrow">¶</a></p>
+(<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-5">This document is an opt-in extension to ID-JAG. A root client keeps its
+exchange unchanged (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>). A RAS from which no workload
+continues runs unmodified ID-JAG, which this document calls the base profile,
+and need not know that a chain exists (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>). Support is needed
+only where continuation proceeds: at the continuing workload, its RAS and CAI,
+and the IdP, which already resolves the pairwise subject and holds the tenant
+policy. An ID-JAG deployment can therefore add multi-hop access where a
+request's path is not known in advance, as at a tool gateway for agents,
+including Model Context Protocol (MCP) gateways, that selects its upstream at
+request time (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, and
+ID-JAG, and complements OAuth Identity Chaining
+<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>). Its scope is
+narrow. It assigns obligations to the RAS that accepts an ID-JAG and binds the
+hop and to the CAI that issues the assertion, defines their cross-domain
+artifacts and one request for obtaining the assertion at a CAI token endpoint,
+and leaves intra-domain handle transport to the deployment
+(<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). It defines no new access-token format, a Resource
+Server never consumes the assertion, and a CAI never names the user for the
+target audience.<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">Three properties are at the core of the protocol:<a href="#section-1-7" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-1-8.1">
+          <p id="section-1-8.1.1">Only the IdP names the user for a new audience.<a href="#section-1-8.1.1" class="pilcrow">¶</a></p>
 </li>
-        <li id="section-1-6.2">
-          <p id="section-1-6.2.1">Only an accepted authorization may be continued.<a href="#section-1-6.2.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-1-8.2">
+          <p id="section-1-8.2.1">Only an accepted authorization may be continued.<a href="#section-1-8.2.1" class="pilcrow">¶</a></p>
 </li>
-        <li id="section-1-6.3">
-          <p id="section-1-6.3.1">Only an authenticated actor that the IdP permits to continue from that
+        <li class="normal" id="section-1-8.3">
+          <p id="section-1-8.3.1">Only an authenticated actor that the IdP permits to continue from that
 accepted authorization, and that proves possession of its own key, may
-request continuation.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
+request continuation.<a href="#section-1-8.3.1" class="pilcrow">¶</a></p>
 </li>
-      </ol>
+      </ul>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">
@@ -2596,7 +2618,7 @@ type; and<a href="#section-5.4.5-2.2.1" class="pilcrow">¶</a></p>
           </h4>
 <p id="section-5.4.6-1">A CAI that is not the accepting RAS obtains the handle and the evidence of
 acceptance from a source authoritative for that RAS, within its own domain
-(<a href="#deployment-topologies" class="auto internal xref">Section 8.2</a>).<a href="#section-5.4.6-1" class="pilcrow">¶</a></p>
+(<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>).<a href="#section-5.4.6-1" class="pilcrow">¶</a></p>
 <p id="section-5.4.6-2">Where the <code>subject_token</code> is an access token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>), a
 separate CAI resolves it through introspection <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> or, for a
 self-contained token, by validating it. Where the <code>subject_token</code> is a
@@ -3452,44 +3474,13 @@ provided the handle still resolves to the same root and envelope; deferral
 does not relax the replay rules of <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>. Whether
 the hop tree could be replaced by self-verifying handles is an open question
 (<a href="#open-items" class="auto internal xref">Appendix C</a>), not a realization this document describes.<a href="#section-8-10" class="pilcrow">¶</a></p>
-<div id="applicability">
-<section id="section-8.1">
-        <h3 id="name-what-this-profile-adds">
-<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-what-this-profile-adds" class="section-name selfRef">What This Profile Adds</a>
-        </h3>
-<p id="section-8.1-1">This profile is an opt-in extension to ID-JAG. A root client whose subject
-token resolves to a grant or session keeps its exchange unchanged
-(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>); this profile asks nothing new of it, not even sender
-constraint. A RAS from which no workload continues runs unmodified ID-JAG,
-which this document calls the base profile, including its redemption of a
-key-bound ID-JAG, and need not know that a chain exists (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>).
-Support is needed only where continuation proceeds: at the continuing
-workload, its RAS and CAI, and the IdP. Chain state, envelope enforcement, and
-replay protection sit at the IdP, which already resolves the pairwise subject
-and holds the tenant policy; a continuation-aware RAS adds only the binding of
-its own hops and the assertion that a workload may continue them, so an
-existing ID-JAG ecosystem can add multi-hop access where a request's path is
-not known in advance. The motivating case is a request that reaches an
-audience the user's credential never addressed, as at a tool gateway for
-agents, including Model Context Protocol (MCP) gateways, that selects its
-upstream at request time (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-8.1-1" class="pilcrow">¶</a></p>
-<p id="section-8.1-2">This document's scope is deliberately narrow. It assigns obligations to two
-roles in the trust domain a chain continues from: the RAS that accepts an
-ID-JAG and binds the hop, and the CAI that mints the assertion. It defines
-their cross-domain artifacts and one request for obtaining the assertion at a
-CAI token endpoint, leaving intra-domain handle transport to the deployment
-(<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). It defines no new access-token format, a Resource
-Server never consumes the assertion directly, and a CAI never names the user
-for the target audience.<a href="#section-8.1-2" class="pilcrow">¶</a></p>
-</section>
-</div>
 <div id="deployment-topologies">
-<section id="section-8.2">
+<section id="section-8.1">
         <h3 id="name-deployment-topologies">
-<a href="#section-8.2" class="section-number selfRef">8.2. </a><a href="#name-deployment-topologies" class="section-name selfRef">Deployment Topologies</a>
+<a href="#section-8.1" class="section-number selfRef">8.1. </a><a href="#name-deployment-topologies" class="section-name selfRef">Deployment Topologies</a>
         </h3>
-<p id="section-8.2-1">The two topologies differ only in where the CAI role sits and how it reaches
-the hop's state:<a href="#section-8.2-1" class="pilcrow">¶</a></p>
+<p id="section-8.1-1">The two topologies differ only in where the CAI role sits and how it reaches
+the hop's state:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
 <table class="center" id="table-4">
           <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
@@ -3515,12 +3506,12 @@ the hop's state:<a href="#section-8.2-1" class="pilcrow">¶</a></p>
             </tr>
           </tbody>
         </table>
-<p id="section-8.2-3">Co-located is the baseline: it needs no CAI configuration at the IdP beyond
+<p id="section-8.1-3">Co-located is the baseline: it needs no CAI configuration at the IdP beyond
 the RAS's own issuer trust and no self-entry in
 <code>identity_continuation_issuers</code> (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>). The RAS still advertises
 the continuation profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's
-issuer, key, tenant, and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-8.2-3" class="pilcrow">¶</a></p>
-<p id="section-8.2-4">Both topologies produce the same Identity Continuation Assertion and apply
+issuer, key, tenant, and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-8.1-3" class="pilcrow">¶</a></p>
+<p id="section-8.1-4">Both topologies produce the same Identity Continuation Assertion and apply
 the same CAI requirements; they differ only in how the CAI reaches the
 accepted hop's state. Either CAI can issue the assertion from its token
 endpoint (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>): a co-located RAS takes the access
@@ -3528,44 +3519,44 @@ token it issued as the <code>subject_token</code>, and a separate CAI takes the 
 that carries the handle. Both topologies make the same three exchanges per
 continuation, the assertion exchange, the continuation exchange, and the
 redemption; co-location removes configuration and trust surface, not calls,
-while a separate CAI adds the carrier and the state lookup behind it.<a href="#section-8.2-4" class="pilcrow">¶</a></p>
-<p id="section-8.2-5">A carrier serves either topology. A co-located RAS may place the handle in
+while a separate CAI adds the carrier and the state lookup behind it.<a href="#section-8.1-4" class="pilcrow">¶</a></p>
+<p id="section-8.1-5">A carrier serves either topology. A co-located RAS may place the handle in
 its own access token as a key into its state, as the gateway example does
 (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>); a separate CAI needs a carrier to receive the handle at
-all. Three carriers are common:<a href="#section-8.2-5" class="pilcrow">¶</a></p>
+all. Three carriers are common:<a href="#section-8.1-5" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-8.2-6.1">
-            <p id="section-8.2-6.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> can carry the
-handle as request context (<a href="#rationale-txn" class="auto internal xref">Appendix A.4</a>).<a href="#section-8.2-6.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-8.1-6.1">
+            <p id="section-8.1-6.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> can carry the
+handle as request context (<a href="#rationale-txn" class="auto internal xref">Appendix A.4</a>).<a href="#section-8.1-6.1.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-8.2-6.2">
-            <p id="section-8.2-6.2.1">A signed JWT access token <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> issued by the accepting RAS can carry
+          <li class="normal" id="section-8.1-6.2">
+            <p id="section-8.1-6.2.1">A signed JWT access token <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> issued by the accepting RAS can carry
 the handle as a claim. The claim records issuance-time state and therefore
 cannot reflect a later revocation; the CAI's acceptance check
-(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>) covers that.<a href="#section-8.2-6.2.1" class="pilcrow">¶</a></p>
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>) covers that.<a href="#section-8.1-6.2.1" class="pilcrow">¶</a></p>
 </li>
-          <li class="normal" id="section-8.2-6.3">
-            <p id="section-8.2-6.3.1">For an opaque access token issued by the accepting RAS, its introspection
+          <li class="normal" id="section-8.1-6.3">
+            <p id="section-8.1-6.3.1">For an opaque access token issued by the accepting RAS, its introspection
 response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> can carry the handle as a member, generated when
-introspection occurs and present only when <code>active</code> is <code>true</code>.<a href="#section-8.2-6.3.1" class="pilcrow">¶</a></p>
+introspection occurs and present only when <code>active</code> is <code>true</code>.<a href="#section-8.1-6.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-8.2-7">The replay reservation (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>) needs an atomic first-writer
+<p id="section-8.1-7">The replay reservation (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>) needs an atomic first-writer
 decision so that only one concurrent request reaches ISSUED, and the IdP
 retains and expires it by the same clock it uses to evaluate <code>exp</code>. An IdP
 that offers idempotent retry also holds the fingerprint and result in state
 consistent enough that a concurrent request under a matching fingerprint waits
 for or retries that result; one that does not offer retry rejects the second
-presentation and needs no more than the reservation itself.<a href="#section-8.2-7" class="pilcrow">¶</a></p>
-<p id="section-8.2-8">A RAS can make the handle binding and token issuance of <a href="#ras-processing" class="auto internal xref">Section 5.2</a>
+presentation and needs no more than the reservation itself.<a href="#section-8.1-7" class="pilcrow">¶</a></p>
+<p id="section-8.1-8">A RAS can make the handle binding and token issuance of <a href="#ras-processing" class="auto internal xref">Section 5.2</a>
 one outcome with a local transaction, or with a compensating action that
-revokes a token whose binding did not commit.<a href="#section-8.2-8" class="pilcrow">¶</a></p>
-<p id="section-8.2-9">The CAI accounts for retries separately from fan-out and keeps audit records of
+revokes a token whose binding did not commit.<a href="#section-8.1-8" class="pilcrow">¶</a></p>
+<p id="section-8.1-9">The CAI accounts for retries separately from fan-out and keeps audit records of
 its issuance and limit enforcement. The IdP performs end-to-end audit
-correlation across a chain, while each RAS logs only its local subject.<a href="#section-8.2-9" class="pilcrow">¶</a></p>
-<p id="section-8.2-10">An IdP can derive handles from an internal delegation identifier using a
+correlation across a chain, while each RAS logs only its local subject.<a href="#section-8.1-9" class="pilcrow">¶</a></p>
+<p id="section-8.1-10">An IdP can derive handles from an internal delegation identifier using a
 keyed one-way function, provided the derived handles still satisfy rules 1
-and 2 of <a href="#chain-id" class="auto internal xref">Section 4</a> and remain unlinkable.<a href="#section-8.2-10" class="pilcrow">¶</a></p>
+and 2 of <a href="#chain-id" class="auto internal xref">Section 4</a> and remain unlinkable.<a href="#section-8.1-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3751,7 +3742,7 @@ absent it, additional mappings are configured out of band.<a href="#section-9.4-
 issuer, key, tenant, or issuer-pairing trust (<a href="#validation" class="auto internal xref">Section 5.5.3</a>,
 <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>). Separating the CAI isolates keys
 and components but creates no protocol-level quorum: the IdP still sees one
-signed attestation (<a href="#deployment-topologies" class="auto internal xref">Section 8.2</a>).<a href="#section-9.5-1" class="pilcrow">¶</a></p>
+signed attestation (<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>).<a href="#section-9.5-1" class="pilcrow">¶</a></p>
 <p id="section-9.5-2">A workload that obtains the assertion by exchanging the access token or
 Transaction Token it holds for the call (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>)
 presents nothing it did not already hold; what it gains is the CAI's
@@ -4886,7 +4877,7 @@ carried no <code>cnf</code>, so there is no key to record.<a href="#appendix-B.1
 </pre><a href="#appendix-B.1.3-5" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.1.3-6">GatewayRAS issues the access token as a signed JWT that carries H0 as a claim,
-the access-token carrier of <a href="#deployment-topologies" class="auto internal xref">Section 8.2</a>.<a href="#appendix-B.1.3-6" class="pilcrow">¶</a></p>
+the access-token carrier of <a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>.<a href="#appendix-B.1.3-6" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.3-7">On the wire (decoded access token):<a href="#appendix-B.1.3-7" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.3-8">
 <pre>
@@ -5853,8 +5844,7 @@ this profile builds.<a href="#appendix-D-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
           <p id="appendix-E-3.1.1">Editorial consolidation: a conceptual Introduction and a shorter Protocol
-Overview; the decision rule moved to Design Rationale and the opt-in and
-scope claims to a new What This Profile Adds subsection; essential terms
+Overview; the decision rule moved to Design Rationale; essential terms
 only in Conventions and Definitions; both exchanges given the same request,
 client authentication, validation, response, and error structure, with
 Continuation Exchange replacing Token Exchange as the section name; hop
