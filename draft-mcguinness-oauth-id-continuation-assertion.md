@@ -793,8 +793,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 The client MUST authenticate to the CAI's token endpoint ({{RFC6749}},
 Section 2.3). The client MUST include in the request a DPoP proof {{RFC9449}}
 of the client's own key. The CAI SHOULD verify that proof; it binds the
-assertion to the presented key in `cnf` in either case, and the IdP proves
-possession of that key at the continuation exchange ({{client-identity}}).
+assertion to the presented key in `cnf` in either case, and the actor proves
+possession of that key to the IdP at the continuation exchange
+({{client-identity}}).
 
 The CAI MUST issue only for an actor it is authoritative to associate with the
 RAS-accepted authorization, typically one in the RAS's trust domain; actor
@@ -873,10 +874,10 @@ the assertion's lifetime. This document adds one parameter:
 
 `audience`:
 : REQUIRED. The issuer identifier of the IdP to which the client presents the
-  assertion, equal to the assertion's `aud`. In this response `audience`
-  identifies the recipient of the issued assertion and therefore equals its
-  `aud` claim; because the request carries no `audience`, this is how the
-  client learns where to present the assertion.
+  assertion. In this response `audience` identifies the recipient of the
+  issued assertion and therefore equals its `aud` claim; because the request
+  carries no `audience`, this is how the client learns where to present the
+  assertion.
 
 The client obtains that IdP's `token_endpoint` from its authorization server
 metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
@@ -3401,7 +3402,20 @@ this profile builds.
 
 -02
 
-* Introduction rewritten in plain terms: accepted grant, hop, chain, handle,
+* Applied the six-item test to the remaining requirements: the CAI's own
+  verification of the DPoP proof is a SHOULD while the IdP's is unchanged;
+  the root actor's key is no longer part of chain identity; the shared key
+  across credential, assertion, and onward ID-JAG is stated as a property of
+  the DPoP method; single-use is described as a freshness and multiplicity
+  bound; the `audience` response parameter is defined as the assertion's
+  recipient; examples provision canonical actor identities; `act` is the
+  disclosed actor lineage and depth is actor-lineage depth; the CAI binds the
+  actor to its authorization context; redemption dedupe resolves to one hop
+  binding; the handle length cap is a SHOULD NOT; assertion discovery is a
+  stated rule and its open item is closed; DPoP nonce handling is referenced;
+  `nbf` is permitted; only `iss` and `sub` form the canonical actor identity.
+* Introduction rewritten in plain terms:
+ accepted grant, hop, chain, handle,
   and the CAI are given their meaning where they first appear, and the three
   properties and the two limits no longer rely on terms defined later.
 * Editorial consolidation: a conceptual Introduction and a shorter Protocol
