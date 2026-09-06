@@ -115,10 +115,11 @@ This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) {{RFC7519}} that such a workload
 obtains from a Continuation Assertion Issuer (CAI), a party the IdP trusts to
 report what the RAS that issued the workload's access token has accepted. The
-assertion states two facts. First, that RAS redeemed an ID-JAG for this user
-and issued that access token, and the resulting authorization remains active
+assertion states two facts. First, the RAS accepted the referenced ID-JAG,
+established an authorization from it, and that authorization remains active
 and permits continuation. Second, the authenticated workload is the party now
-acting on it and names the key it will prove to the IdP. The workload presents
+acting on that authorization and identifies the key it will prove to the IdP.
+The workload presents
 the assertion to the IdP as the subject token of an OAuth 2.0 Token Exchange
 {{RFC8693}} request. The IdP resolves the user's identity for the next
 service, decides under the tenant's policy whether this workload may continue
@@ -139,8 +140,11 @@ Three properties hold throughout:
   the IdP can obtain the next ID-JAG.
 
 Each continuation is a new decision by the IdP under the policy in force at
-that moment. The assertion carries no authority forward, and the scopes of the
-access token the workload holds do not bound what the next ID-JAG may grant.
+that moment. The assertion carries no target authority: it identifies the
+accepted authorization being continued and its current actor, while the
+continuation request selects the target and the requested authority. The
+scopes of the access token the workload holds do not bound what the next
+ID-JAG may grant.
 Further calls for the same user under the same chain can reuse the access
 token a continuation obtained while it remains valid and covers the requested
 access; continuation is not required for every API call.
@@ -442,8 +446,8 @@ The claims have the following meanings and requirements:
 
 `jti`:
 : REQUIRED. A replay-detection identifier that MUST be unique per `iss`
-  during the assertion validity window and MUST contain at least 128 bits
-  of entropy.
+  during the assertion validity window, with negligible probability of
+  collision; unpredictability is not required.
 
 The assertion is a subject token whose subject the IdP resolves from the
 referenced hop, not an {{RFC7523}} JWT-profile assertion. It MUST NOT
@@ -478,7 +482,8 @@ The following rules apply:
    ID-JAG, for that root or child hop, and MUST NOT reuse a handle across
    hops.
 
-2. `identity_continuation_handle` MUST contain at least 128 bits of entropy,
+2. `identity_continuation_handle` MUST provide at least 128 bits of
+   unpredictability,
    MUST NOT contain user-identifying information, and MUST consist of
    characters drawn from the base64url alphabet (`A`-`Z`, `a`-`z`, `0`-`9`,
    `-`, `_`); it SHOULD NOT exceed 256 characters.
@@ -593,8 +598,9 @@ permits continuation and, if so, populates the root-chain envelope:
 Token claims cannot supply these values. The chain identity is fixed: no later
 policy or request changes the user, the authentication context, the root
 actor, or the anchor a chain is bound to. The continuation authorization is
-the tenant's to change (as in ID-JAG, the IdP rather than the user authorizes
-each grant). How a change reaches a running chain depends on the form the IdP
+the tenant's to change; the IdP authorizes each grant subject to the governing
+authorization and current tenant policy, as in ID-JAG. How a change reaches a
+running chain depends on the form the IdP
 recorded.
 
 A policy change that narrows a chain, a target or continuer withdrawn or a
@@ -606,7 +612,10 @@ Target authority widens only through an authorization basis. An envelope that
 enumerates its targets MUST NOT admit a target the tenant adds after
 establishment ({{example-dynamic}}). A basis-referenced envelope admits
 whatever the basis currently reads, such as a service's classification or a
-group's membership ({{example-gateway-root}}).
+group's membership ({{example-gateway-root}}). A basis names a class of
+targets. A policy change may alter the class's membership but not what the
+class means; a tenant that wants a different authorization defines a new
+basis rather than redefining an existing one ({{security-envelope}}).
 
 What the root request asked for is not a ceiling either: its audience and
 scope bound only the root ID-JAG.
@@ -647,16 +656,17 @@ Three rules govern binding the handle:
 
 ### Hop Acceptance {#hop-activation}
 
-A hop has two states, PENDING and ACCEPTED, conceptual states rather than
-values carried on the wire.
+Two parties hold facts about a hop, neither carried on the wire:
 
-| State | Where it lives | Meaning |
+| Fact | Held by | Meaning |
 |---|---|---|
-| PENDING | IdP | the IdP issued the ID-JAG and has not yet received an attestation of acceptance |
+| Issued | IdP | the IdP issued the ID-JAG and recorded the hop |
 | ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
 
-A CAI attests a hop only once it is ACCEPTED; a PENDING hop yields no
-assertion and reaches no continuation exchange. A hop is continuable while a
+The IdP keeps no synchronized copy of acceptance; it learns of it only through
+a trusted CAI's attestation. A CAI attests a hop only once the RAS has
+ACCEPTED it, so an issued hop that no trusted CAI attests yields no assertion
+and reaches no continuation exchange. A hop is continuable while a
 CAI trusted for its RAS can attest it as ACCEPTED and still active, and
 neither it nor any ancestor is revoked; whether a particular continuation from
 it succeeds is decided by the validation rules of the continuation exchange
@@ -792,9 +802,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 The client MUST authenticate to the CAI's token endpoint ({{RFC6749}},
 Section 2.3). The client MUST include in the request a DPoP proof {{RFC9449}}
-of the client's own key. The CAI SHOULD verify that proof; it binds the
-assertion to the presented key in `cnf` in either case, and the actor proves
-possession of that key to the IdP at the continuation exchange
+of the client's own key. The CAI MUST verify that proof and binds the
+assertion to the proven key in `cnf`. The CAI's verification is defense in
+depth: the actor proves possession of that key again to the IdP at the
+continuation exchange, which is the security boundary for continuation
 ({{client-identity}}).
 
 The CAI MUST issue only for an actor it is authoritative to associate with the
@@ -826,8 +837,7 @@ authenticate the actor and issue only after establishing these facts:
 1. The handle came through an authenticated, confidential,
    integrity-protected chain path or equivalent authenticated state.
 
-2. The key placed in `cnf` is the one the actor presented in its DPoP proof;
-   the actor proves possession of it to the IdP.
+2. The current actor controls the key placed in `cnf`.
 
 3. `act` names that actor and, if offline attenuation reached the actor, the
    attenuated credential it received is valid ({{decision-rule}}).
@@ -1059,8 +1069,9 @@ DPoP mechanics it already implements ({{RFC9449}}); a mutual-TLS method
 {{RFC8705}} is an open question ({{open-items}}).
 
 A request carries one DPoP proof, so that key is the assertion's `cnf` key,
-any `actor_token` is bound to it as well, and the actor's credential, the
-assertion, and the onward ID-JAG share one key ({{rationale-client-id}}). This
+and the assertion, any `actor_token`, and the onward ID-JAG share one key
+({{rationale-client-id}}); client authentication may use an independent
+credential. This
 version uses the key demonstrated by the request's DPoP proof as both the
 assertion's confirmation key and the confirmation key of the resulting ID-JAG.
 That is a property of the confirmation method this version defines, not an
@@ -1069,9 +1080,9 @@ obtains a new assertion and actor token bound to the new key.
 
 #### Additional Actor Credentials {#actor-token}
 
-A separate `actor_token` is OPTIONAL. A deployment presents one when the
-client credential does not itself identify the actor and prove its key, or
-when it wants independent evidence of the actor.
+A separate `actor_token` is OPTIONAL. Client authentication alone resolves to
+the canonical actor identity ({{client-identity}}); a deployment presents an
+`actor_token` only as independent evidence of that same actor.
 
 An `actor_token` MUST NOT be a bearer token: for a JWT the IdP verifies its
 `cnf` confirmation (`jkt` in this version), and for an opaque token it obtains
@@ -1223,7 +1234,7 @@ at the IdP ({{lifecycle}}), and a deployment needing advance warning conveys
 it through task or authorization state, an optional ID-JAG claim, or a
 management API.
 
-On success, the IdP records a PENDING child ({{hop-activation}}) of the
+On success, the IdP records a child hop ({{hop-activation}}) of the
 presented hop and issues an ID-JAG carrying the resolved target `sub` and a
 fresh handle. An idempotent retry (the freshness rule; {{idempotent-retry}})
 instead returns the previously issued grant unchanged, creating no new hop or
@@ -1373,7 +1384,7 @@ offers idempotent retry.
 
 An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
-ISSUED, or FAILED (distinct from the hop states of {{hop-activation}}). Such
+ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). Such
 an IdP MUST return the previously issued grant for a presentation matching the
 fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 
@@ -2297,7 +2308,8 @@ What must be true for the IdP to issue the next ID-JAG safely is a short list,
 and a requirement that serves none of its items is deployment hardening rather
 than part of the profile:
 
-1. the hop being continued was legitimately accepted;
+1. the hop being continued was legitimately accepted, and the evidence
+   permitting continuation is sufficiently fresh;
 2. a party trusted for that hop says the current actor now holds it;
 3. the IdP can authenticate that actor;
 4. the actor proves possession of the key bound to this continuation;
@@ -2306,17 +2318,17 @@ than part of the profile:
 6. the chain is within its governing authorization and lifecycle.
 
 The profile's requirements follow from these. Acceptance evidence by the RAS's
-own semantics serves item 1 and the CAI's attestation item 2; the canonical
+own semantics, the assertion's lifetime bound, and single-use serve item 1,
+and the CAI's attestation item 2; the canonical
 actor identity serves item 3; sender constraint of the assertion and the onward
 ID-JAG serves item 4; the envelope under current policy serves item 5, so that
 the effective authority at any continuation is the recorded continuation
 authorization evaluated under current policy, never more; and the anchor serves
-item 6. Single-use limits one accepted-hop attestation to one continuation
-decision, reducing the authority obtainable from acceptance evidence that
-becomes stale before its expiry ({{validation-replay}}); it bounds freshness
-and multiplicity rather than establishing acceptance, which the CAI's
-attestation does. The CAI's own verification of the proof is hardening, not
-part of item 4, which the IdP satisfies. Where this document offers a choice,
+item 6. Single-use limits one attestation to one continuation decision, and
+the lifetime bound limits how stale that attestation can be
+({{validation-replay}}); together they are the freshness half of item 1. The
+CAI's verification of the proof is defense in depth; item 4 is satisfied at
+the IdP. Where this document offers a choice,
 such as the form of acceptance evidence or a separate actor token, the choice
 is between mechanisms that satisfy the same item.
 
@@ -3405,7 +3417,17 @@ this profile builds.
 
 -02
 
-* Applied the six-item test to the remaining requirements: the CAI's own
+* CAI verification of the DPoP proof is again required, as defense in depth
+  behind the IdP's verification; the hop model is two facts, issued at the
+  IdP and accepted at the RAS, with no synchronized state and no PENDING
+  term; freshness is part of the first item of the test for a requirement;
+  the assertion carries no target authority; the shared key covers the
+  assertion, any actor token, and the onward ID-JAG but not client
+  authentication; an actor token is only independent evidence; a basis may
+  change membership but not meaning; `jti` needs collision resistance rather
+  than unpredictability, and the handle unpredictability rather than entropy.
+* Applied the six-item test to the remaining requirements:
+ the CAI's own
   verification of the DPoP proof is recommended rather than required while
   the IdP's is unchanged;
   the root actor's key is no longer part of chain identity; the shared key
