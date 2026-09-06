@@ -144,14 +144,17 @@ need support it. Chain state, envelope enforcement, and replay protection sit
 at the IdP, which already resolves the pairwise subject and holds the tenant
 policy. An ID-JAG deployment can therefore add multi-hop access where a
 request's path is not known in advance, as at a tool gateway for agents,
-including Model Context Protocol (MCP) gateways ({{example-gateway}}). This
-document complements OAuth Identity Chaining
+including Model Context Protocol (MCP) gateways ({{example-gateway}}).
+
+This document complements OAuth Identity Chaining
 {{I-D.ietf-oauth-identity-chaining}} ({{rationale-idjag}}) and offline
-attenuation within a trust domain ({{decision-rule}}). Its scope is the
-obligations of the RAS and the CAI, their cross-domain artifacts, and one
-request for obtaining the assertion; intra-domain handle transport is left to
-the deployment ({{handle-propagation}}). It defines no new access-token
-format, and a CAI never names the user for the target audience.
+attenuation within a trust domain ({{decision-rule}}). Its scope is the two
+continuation exchanges, the assertion and handle they carry, and the
+obligations of the roles that take part in them: the IdP, the continuing
+workload, its RAS, and the CAI. Intra-domain handle transport is left to the
+deployment ({{handle-propagation}}). This document defines no new
+access-token format, and a CAI never names the user for the target audience.
+
 
 ## Protocol Overview {#protocol-overview}
 
