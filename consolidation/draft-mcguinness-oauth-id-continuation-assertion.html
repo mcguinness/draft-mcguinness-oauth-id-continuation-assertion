@@ -1551,14 +1551,15 @@ need support it. Chain state, envelope enforcement, and replay protection sit
 at the IdP, which already resolves the pairwise subject and holds the tenant
 policy. An ID-JAG deployment can therefore add multi-hop access where a
 request's path is not known in advance, as at a tool gateway for agents,
-including Model Context Protocol (MCP) gateways (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>). This
-document complements OAuth Identity Chaining
+including Model Context Protocol (MCP) gateways (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-8">This document complements OAuth Identity Chaining
 <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>) and offline
-attenuation within a trust domain (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>). Its scope is the
-obligations of the RAS and the CAI, their cross-domain artifacts, and one
-request for obtaining the assertion; intra-domain handle transport is left to
-the deployment (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). It defines no new access-token
-format, and a CAI never names the user for the target audience.<a href="#section-1-7" class="pilcrow">¶</a></p>
+attenuation within a trust domain (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>). Its scope is the two
+continuation exchanges, the assertion and handle they carry, and the
+obligations of the roles that take part in them: the IdP, the continuing
+workload, its RAS, and the CAI. Intra-domain handle transport is left to the
+deployment (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). This document defines no new
+access-token format, and a CAI never names the user for the target audience.<a href="#section-1-8" class="pilcrow">¶</a></p>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">
