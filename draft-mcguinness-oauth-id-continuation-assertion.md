@@ -3403,7 +3403,8 @@ this profile builds.
 -02
 
 * Applied the six-item test to the remaining requirements: the CAI's own
-  verification of the DPoP proof is a SHOULD while the IdP's is unchanged;
+  verification of the DPoP proof is recommended rather than required while
+  the IdP's is unchanged;
   the root actor's key is no longer part of chain identity; the shared key
   across credential, assertion, and onward ID-JAG is stated as a property of
   the DPoP method; single-use is described as a freshness and multiplicity
@@ -3411,7 +3412,8 @@ this profile builds.
   recipient; examples provision canonical actor identities; `act` is the
   disclosed actor lineage and depth is actor-lineage depth; the CAI binds the
   actor to its authorization context; redemption dedupe resolves to one hop
-  binding; the handle length cap is a SHOULD NOT; assertion discovery is a
+  binding; the handle length cap is recommended rather than required;
+  assertion discovery is a
   stated rule and its open item is closed; DPoP nonce handling is referenced;
   `nbf` is permitted; only `iss` and `sub` form the canonical actor identity.
 * Introduction rewritten in plain terms:
