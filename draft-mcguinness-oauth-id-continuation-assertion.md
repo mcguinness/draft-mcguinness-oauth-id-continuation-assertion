@@ -97,44 +97,71 @@ attenuation for intra-domain fan-out that does not change the subject.
 
 # Introduction
 
-The Identity Assertion JWT Authorization Grant (ID-JAG)
-{{I-D.ietf-oauth-identity-assertion-authz-grant}} turns a user's own
-credential into an OAuth 2.0 {{RFC6749}} grant for one downstream audience. A
-workload that received a request for a user often has to reach a further
-service on that user's behalf, and cannot obtain that service's grant the same
-way, because it never held the user's credential. Where each Resource
-Authorization Server (RAS) knows the user by a pairwise subject only an IdP
-Authorization Server (IdP) can resolve, the workload cannot even name the user
-for the next audience.
+In many deployments, applications and the APIs they call are configured for
+single sign-on to a common identity provider, and the Identity Assertion JWT
+Authorization Grant (ID-JAG) {{I-D.ietf-oauth-identity-assertion-authz-grant}}
+lets an application exchange the user's identity assertion at that IdP
+Authorization Server (IdP) for an authorization grant that one downstream
+Resource Authorization Server (RAS) accepts. Each RAS knows the user by a
+pairwise subject that only the IdP can resolve, so the IdP mediates every
+cross-application grant.
 
-This document lets the workload continue the request instead: it obtains a
-short-lived Identity Continuation Assertion from a Continuation Assertion
-Issuer (CAI) that identifies an authorization the workload's RAS has accepted
-and binds it to the authenticated workload and its key. The workload exchanges
-that assertion at the IdP for an ID-JAG for the next service; the IdP resolves
-the user's identity for that audience and decides whether the continuation is
-permitted. A handle ties these exchanges to the state the IdP and the RAS hold
-for the chain, one hop per grant, branching where several
-continuations share a hop. The RAS may perform the CAI role itself, as
-in the baseline deployment.
+ID-JAG assumes that the party requesting the grant holds the user's identity
+assertion. A workload that received a request on the user's behalf often has
+to reach a further service for the same user, after the user is no longer
+present or at an audience the user's credential never addressed, and it holds
+no credential of the user's to exchange. It cannot name the user for the next
+audience, and forwarding or attenuating the access token it received gives the
+next RAS nothing it trusts.
+
+This document defines the Identity Continuation Assertion, a short-lived,
+sender-constrained JWT that such a workload obtains from a Continuation
+Assertion Issuer (CAI) in its own trust domain and presents to the IdP as the
+subject token of an OAuth 2.0 Token Exchange {{RFC8693}} request. The
+assertion identifies an authorization that the workload's RAS has accepted and
+binds it to the authenticated workload and its key. The IdP resolves the
+user's identity for the next audience, decides under the tenant's policy
+whether the continuation is permitted, and issues the next ID-JAG. A handle
+carried in each ID-JAG ties these exchanges to the chain state that the IdP
+and the RAS hold, one hop per grant. The RAS may perform the CAI role itself.
 
 Two limits apply throughout. The IdP's continuation policy, not the scopes of
-the access token the workload received, decides what a continuation may reach
-({{validation}}). Continuation obtains credentials for an authorization
+the access token the workload received, bounds what a continuation may reach
+({{validation}}); acceptance at a RAS gates continuation but confers no
+downstream authority. Continuation obtains credentials for an authorization
 context rather than for every API call: a workload continues once for a user
 and a target, then reuses the access token it redeems there
 ({{implementation}}).
 
-This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, and ID-JAG
-({{rationale-idjag}}).
+This document is an opt-in extension to ID-JAG. A root client keeps its
+exchange unchanged ({{root-establishment}}). A RAS from which no workload
+continues runs unmodified ID-JAG, which this document calls the base profile,
+and need not know that a chain exists ({{ras-processing}}). Support is needed
+only where continuation proceeds: at the continuing workload, its RAS and CAI,
+and the IdP, which already resolves the pairwise subject and holds the tenant
+policy. An ID-JAG deployment can therefore add multi-hop access where a
+request's path is not known in advance, as at a tool gateway for agents,
+including Model Context Protocol (MCP) gateways, that selects its upstream at
+request time ({{example-gateway}}).
+
+This document profiles Token Exchange {{RFC8693}}, JWT {{RFC7519}}, and
+ID-JAG, and complements OAuth Identity Chaining
+{{I-D.ietf-oauth-identity-chaining}} ({{rationale-idjag}}). Its scope is
+narrow. It assigns obligations to the RAS that accepts an ID-JAG and binds the
+hop and to the CAI that issues the assertion, defines their cross-domain
+artifacts and one request for obtaining the assertion at a CAI token endpoint,
+and leaves intra-domain handle transport to the deployment
+({{handle-propagation}}). It defines no new access-token format, a Resource
+Server never consumes the assertion, and a CAI never names the user for the
+target audience.
 
 Three properties are at the core of the protocol:
 
-1. Only the IdP names the user for a new audience.
-2. Only an accepted authorization may be continued.
-3. Only an authenticated actor that the IdP permits to continue from that
-   accepted authorization, and that proves possession of its own key, may
-   request continuation.
+* Only the IdP names the user for a new audience.
+* Only an accepted authorization may be continued.
+* Only an authenticated actor that the IdP permits to continue from that
+  accepted authorization, and that proves possession of its own key, may
+  request continuation.
 
 ## Protocol Overview {#protocol-overview}
 
@@ -1554,34 +1581,6 @@ provided the handle still resolves to the same root and envelope; deferral
 does not relax the replay rules of {{validation-replay}}. Whether
 the hop tree could be replaced by self-verifying handles is an open question
 ({{open-items}}), not a realization this document describes.
-
-## What This Profile Adds {#applicability}
-
-This profile is an opt-in extension to ID-JAG. A root client whose subject
-token resolves to a grant or session keeps its exchange unchanged
-({{root-establishment}}); this profile asks nothing new of it, not even sender
-constraint. A RAS from which no workload continues runs unmodified ID-JAG,
-which this document calls the base profile, including its redemption of a
-key-bound ID-JAG, and need not know that a chain exists ({{ras-processing}}).
-Support is needed only where continuation proceeds: at the continuing
-workload, its RAS and CAI, and the IdP. Chain state, envelope enforcement, and
-replay protection sit at the IdP, which already resolves the pairwise subject
-and holds the tenant policy; a continuation-aware RAS adds only the binding of
-its own hops and the assertion that a workload may continue them, so an
-existing ID-JAG ecosystem can add multi-hop access where a request's path is
-not known in advance. The motivating case is a request that reaches an
-audience the user's credential never addressed, as at a tool gateway for
-agents, including Model Context Protocol (MCP) gateways, that selects its
-upstream at request time ({{example-gateway}}).
-
-This document's scope is deliberately narrow. It assigns obligations to two
-roles in the trust domain a chain continues from: the RAS that accepts an
-ID-JAG and binds the hop, and the CAI that mints the assertion. It defines
-their cross-domain artifacts and one request for obtaining the assertion at a
-CAI token endpoint, leaving intra-domain handle transport to the deployment
-({{handle-propagation}}). It defines no new access-token format, a Resource
-Server never consumes the assertion directly, and a CAI never names the user
-for the target audience.
 
 ## Deployment Topologies {#deployment-topologies}
 
@@ -3351,8 +3350,7 @@ this profile builds.
 -02
 
 * Editorial consolidation: a conceptual Introduction and a shorter Protocol
-  Overview; the decision rule moved to Design Rationale and the opt-in and
-  scope claims to a new What This Profile Adds subsection; essential terms
+  Overview; the decision rule moved to Design Rationale; essential terms
   only in Conventions and Definitions; both exchanges given the same request,
   client authentication, validation, response, and error structure, with
   Continuation Exchange replacing Token Exchange as the section name; hop
