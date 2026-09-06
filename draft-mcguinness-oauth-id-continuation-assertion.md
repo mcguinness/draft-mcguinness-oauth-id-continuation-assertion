@@ -862,10 +862,9 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
-as for any OAuth access token. An assertion already issued remains usable
-until its own `exp`, so the withdrawal tail is the token's remaining lifetime
-plus the assertion lifetime ({{security-topology}}). A CAI that caps the
-assertion's `exp` at the evidence's expiry removes the second term.
+as for any OAuth access token. A CAI that caps the assertion's `exp` at the
+evidence's expiry shortens the resulting withdrawal window
+({{lifecycle-ending}}).
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
@@ -1422,10 +1421,8 @@ A chain is continuable only while active at the IdP. Each cross-boundary hop
 is a fresh policy check, and revoking a hop stops its subtree at the next
 continuation, fail-closed; an offline-attenuated token, by contrast, stays
 usable for its lifetime without contacting an authority. Revocation does not
-invalidate an already-issued ID-JAG, so the revocation window is the ID-JAG's
-remaining redemption window plus the lifetime of the access token a late
-redemption obtains; any refresh token the RAS issues, which the base profile
-recommends against, extends it further.
+invalidate an already-issued ID-JAG; {{lifecycle-ending}} gives the resulting
+window for each way authority is withdrawn.
 
 Three independent lifetimes govern a continuation: the ID-JAG's short
 redemption window; the access-token lifetime the accepting RAS sets, which
@@ -1484,6 +1481,33 @@ The IdP has these duties over chain lifetime:
 * it MUST support administrative revocation of an entire chain and MAY
   revoke an individual hop's subtree; and
 * it MUST reject continuation on a revoked, expired, or ended chain.
+
+Two parties observe withdrawal, and each sees only its own kind. The CAI sees
+the RAS's authorization state, so it governs fresh assertions for a hop; the
+IdP sees anchors, tenant policy, and its own revocations, so it governs
+continuation. Withdrawing at one of them changes only what that party
+governs. Tokens already issued are unaffected in every case: an assertion is
+usable until its `exp`, an ID-JAG until its redemption window closes, and the
+access tokens a RAS issues, which this profile does not constrain, for their
+own lifetime; any refresh token the RAS issues, which the base profile
+recommends against, extends that further. The table summarizes each way
+authority is withdrawn.
+
+| Withdrawn by | Fresh assertions for the hop | Continuation at the IdP | A new chain |
+|---|---|---|---|
+| Session ends (session anchor) | Unaffected until the RAS withdraws | Chain ends when observed; `invalid_continuation` | After the user re-authenticates, if policy still permits |
+| Grant revoked or expired (grant anchor) | Unaffected until the RAS withdraws | Chain ends when observed; logout alone does not end it | From a new grant |
+| Tenant withdraws continuation permission | Unaffected until the RAS withdraws | Chain ends when observed; not revived by restoring the policy | Not possible for that authorization |
+| Tenant removes a permitted continuer | Unaffected | That actor fails with `unauthorized_client`; others continue | Not needed |
+| Tenant narrows a basis or an enumerated target | Unaffected | Continuation to the removed target fails ({{error-response}}); others continue | Not needed |
+| IdP administrator revokes the chain or a hop's subtree | Unaffected | Stops from the revoked hops at the next attempt; `invalid_continuation` | Chain: as for its anchor; subtree: the rest continues |
+| RAS withdraws the accepted authorization | Live recheck: at once. Self-contained evidence: at that token's expiry, plus the assertion lifetime unless the CAI caps `exp` at the evidence's expiry ({{assertion-preconditions}}); a separate CAI adds its propagation delay | Not observed: the hop stays active and descendants accepted at other RASes continue | Not needed; the RAS re-accepts |
+| IdP removes a CAI or its keys ({{metadata-ras}}) | The CAI's assertions are no longer accepted | Fails issuer trust at the next evaluation, for existing chains too | Not needed; configure a replacement CAI |
+| IdP removes an actor identity authority pairing ({{issuer-trust}}) | Unaffected | That actor fails for the tenant; others continue | Not needed |
+
+Because a RAS is authoritative only for its own authorization, its withdrawal
+reaches no other RAS; administrative revocation of the chain or a subtree is
+the tool for withdrawing across RASes.
 
 How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
@@ -1847,12 +1871,9 @@ attestation, gated by policy and the acceptance check.
 A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
 additionally attest a hop the RAS refused. In both topologies, RAS-local
-authorization revocation after issuance, which the IdP cannot observe, leaves
-the assertion valid for its remaining lifetime; a separate CAI adds any delay
-in RAS state reaching it, and where the RAS's acceptance evidence is a
-self-contained token ({{assertion-preconditions}}) fresh issuance continues
-for that token's remaining lifetime, on top of the assertion's own lifetime,
-so a tenant that needs faster withdrawal configures a live recheck. The root
+authorization revocation after issuance is not observed by the IdP, and a
+separate CAI adds any delay in RAS state reaching it; {{lifecycle-ending}}
+gives the resulting window and the live recheck that closes it. The root
 envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
@@ -3628,6 +3649,12 @@ this profile builds.
   state or from a carrier derived from it. The accepting RAS's own access
   token is now a permitted carrier, and the handle is also registered as an
   introspection response member.
+* Ending a Chain is the single home for what stops when authority is
+  withdrawn: a table of withdrawal sources against fresh assertions,
+  continuation, and re-establishment, and the two observers (the CAI sees
+  RAS state; the IdP sees anchors, policy, and its own revocations). The
+  Assertion Preconditions, Chain Lifetime, and Topology and Trust passages
+  cross-reference it instead of each restating the window.
 
 -01
 
