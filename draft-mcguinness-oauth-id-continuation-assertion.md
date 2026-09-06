@@ -395,8 +395,7 @@ The claims have the following meanings and requirements:
 `iat`, `exp`:
 : REQUIRED. `exp` MUST follow `iat`. The assertion is short-lived: `exp - iat`
   SHOULD NOT exceed 300 seconds, and the IdP rejects a lifetime longer than the
-  maximum it accepts, which SHOULD be no less than 300 seconds so that a CAI
-  using the recommended bound interoperates ({{validation}}).
+  maximum it accepts ({{validation}}).
 
 `jti`:
 : REQUIRED. A replay-detection identifier that MUST be unique per `iss`
@@ -657,8 +656,11 @@ What identifies the authorization depends on where the call lands:
   proof of possession where the token is sender-constrained.
 * For a downstream call, a carrier forwarded from that ingress.
 * For a scheduled run, the task named by an authenticated actor, resolved to
-  the task authorization for which that actor is designated
-  ({{security-envelope}}).
+  the task authorization for which that actor is designated. The CAI MUST
+  derive a scheduled continuation from durable RAS task authorization, not
+  from a scheduler-held handle ({{security-envelope}}). The scheduler holds
+  only a task identifier; each authenticated run re-derives the handle from
+  active task state and still requires an assertion from a trusted CAI.
 
 The CAI's acceptance check ({{assertion-preconditions}}) covers staleness for
 every carrier.
@@ -803,8 +805,9 @@ assertion's `exp` at the evidence's expiry removes the second term.
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
-Target or purpose hints can narrow CAI issuance but MUST NOT control the IdP's
-target decision, and propagated context MUST NOT override the envelope.
+Target or purpose hints can narrow CAI issuance, but neither they nor
+propagated context alter the IdP's target decision or the envelope
+({{validation}}).
 
 ### Successful Response {#assertion-response}
 
@@ -944,9 +947,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 The continuation request, never the assertion, supplies the requested
 `audience`, `resource`, `scope`, `requested_token_type`, and any
 `authorization_details` {{RFC9396}} ({{assertion-claims}}). A request can
-carry multiple `resource` indicators {{RFC8707}}, which the IdP treats as an
-order-independent set. The envelope-containment rule ({{validation}}) applies
-to `authorization_details` and to scope alike.
+carry multiple `resource` indicators {{RFC8707}}. The envelope-containment
+rule ({{validation}}) applies to `authorization_details` and to scope alike.
 
 ### Client Authentication {#client-identity}
 
@@ -1031,9 +1033,9 @@ from another's resolution.
      `requested_token_type`, and `audience`; zero or one `actor_token`, with
      `actor_token_type` present exactly when `actor_token` is ({{RFC8693}},
      Section 2.1);
-   * zero or more `resource`, and at most one each of `scope` and
-     `authorization_details`, all OPTIONAL and, when present, evaluated by
-     the envelope-containment rule; and
+   * zero or more `resource`, treated as an order-independent set, and at
+     most one each of `scope` and `authorization_details`, all OPTIONAL and,
+     when present, evaluated by the envelope-containment rule; and
    * `grant_type` is `urn:ietf:params:oauth:grant-type:token-exchange`,
      `subject_token_type` is
      `urn:ietf:params:oauth:token-type:identity-continuation`, and
@@ -1047,10 +1049,15 @@ from another's resolution.
    * `iss`, `aud`, `identity_continuation_handle`, and `jti` are non-empty
      strings, `act` and `cnf` are JSON objects with `cnf` naming exactly one
      confirmation method, and `iat` and `exp` are NumericDate numbers;
-   * the signature validates under an acceptable algorithm ({{security-alg}},
-     {{RFC8725}}) with the issuer's resolved signing keys ({{metadata}});
-   * `aud` exactly matches the IdP's issuer identifier; and
-   * the JOSE header checks of {{security-alg}} pass;
+   * the signature validates under an acceptable algorithm ({{RFC8725}})
+     with the issuer's resolved signing keys ({{metadata}});
+   * `aud` exactly matches the IdP's issuer identifier;
+   * the IdP MUST verify `typ`, reject `alg=none` and symmetric algorithms,
+     and allowlist asymmetric algorithms;
+   * the IdP MUST select keys from trusted issuer configuration; `kid` MAY
+     select among them; and
+   * the IdP MUST NOT trust assertion `jku`, `x5u`, embedded `jwk`, or other
+     supplied key material;
 
 3. **Issuer trust.**
    * the assertion `iss` is either the accepting RAS itself, identified by the
@@ -1079,6 +1086,7 @@ from another's resolution.
      domain and tenant, is valid for that type, is accepted, designates the
      IdP where applicable, identifies the same actor, and is sender-constrained
      to a key the actor proves in the request ({{client-identity}});
+   * the assertion MUST NOT be accepted as a bearer token {{RFC7800}};
    * the request proves possession of the `cnf` key with a matching DPoP
      proof ({{client-identity}}, {{RFC9449}});
    * the actor is permitted by the chain's continuation authorization
@@ -1089,8 +1097,9 @@ from another's resolution.
 6. **Freshness and replay.**
    * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
      seconds), `exp` follows `iat`, the assertion is unexpired, and its
-     lifetime does not exceed the maximum the IdP accepts
-     ({{assertion-claims}}); and
+     lifetime does not exceed the maximum the IdP accepts, which SHOULD be no
+     less than 300 seconds so that a CAI using the recommended bound
+     interoperates ({{assertion-claims}}); and
    * `jti` is not yet reserved for the assertion issuer or, where the IdP
      offers idempotent retry ({{idempotent-retry}}), is RESERVED or ISSUED
      under a fingerprint matching this request; any other reserved `jti` is
@@ -1109,9 +1118,12 @@ from another's resolution.
    The issued ID-JAG carries the `scope`, `resource`, and
    `authorization_details` values that express that authorization, and the IdP
    rejects a request whose effective authority it cannot establish within the
-   envelope. Because {{RFC9396}} defines no generic comparison, containment of
-   authorization details uses the comparison rules of each detail type, and the
-   IdP rejects a detail type whose rules it does not implement.
+   envelope. Target or purpose hints reaching the CAI
+   ({{assertion-preconditions}}) MUST NOT control the IdP's target decision,
+   and propagated context MUST NOT override the envelope. Because {{RFC9396}}
+   defines no generic comparison, containment of authorization details uses
+   the comparison rules of each detail type, and the IdP rejects a detail type
+   whose rules it does not implement.
 
 ### Successful Response {#success-response}
 
@@ -1461,6 +1473,12 @@ so the IdP can discover them rather than be configured out of band:
   against its current trusted issuer and key state, removing an issuer or
   revoking its keys de-authorizes it for existing chains.
 
+The IdP MUST authorize CAI and actor identity authority pairings per tenant;
+separate trust in each is insufficient ({{security-trust-model}}). Tenant
+determination MUST derive from authenticated material, not requester-supplied
+input. The IdP MUST scope CAI trust by issuer, keys, tenant, and the RAS it
+attests for.
+
 When a CAI's issuer identifier is that of an OAuth authorization server, the
 IdP obtains its signing keys from the `jwks_uri` in that server's metadata
 ({{RFC8414}}); a CAI without such a `jwks_uri`, like any other CAI, uses
@@ -1643,9 +1661,9 @@ adversaries:
 A continuation assertion names the actor the IdP will treat as the chain's
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
-that actor. The assertion MUST NOT be accepted as a bearer token {{RFC7800}};
-every exchange requires live proof of possession of the `cnf` key, a DPoP proof
-{{RFC9449}} for the method this document defines ({{client-identity}}). A
+that actor. The assertion is not a bearer token; every exchange requires live
+proof of possession of the `cnf` key, a DPoP proof {{RFC9449}} for the method
+this document defines ({{validation}}, {{client-identity}}). A
 captured assertion is therefore useless without the private key, and because the
 onward ID-JAG and the accepting RAS's access token are bound to that same key
 ({{client-identity}}, {{ras-processing}}), possession is demonstrated
@@ -1714,12 +1732,10 @@ Because the CAI issues only for an actor it is authoritative to associate with
 the accepted authorization ({{assertion-issuance}}), a party that merely holds a
 handle cannot bypass the RAS-acceptance path.
 
-A CAI MUST derive a scheduled continuation from durable RAS task
-authorization, not from a scheduler-held handle, which would become a durable
-bearer-like credential outside the per-call key proof and RAS binding that
-gate every other use. The scheduler holds only a task identifier; each
-authenticated run re-derives the handle from active task state and still
-requires an assertion from a trusted CAI.
+A scheduler-held handle would become a durable bearer-like credential outside
+the per-call key proof and RAS binding that gate every other use, so a
+scheduled continuation derives from durable RAS task authorization
+({{handle-propagation}}).
 
 Downstream resources may gate access on authentication strength (`acr`) or
 methods (`amr`); if continuation could raise those claims, an actor could reach
@@ -1752,10 +1768,7 @@ of them suffices alone:
 * live proof of possession of the confirmed key; and
 * the IdP's own envelope and current-actor policy.
 
-The IdP MUST authorize CAI and actor identity authority pairings per tenant;
-separate trust in each is insufficient. Tenant determination MUST derive from
-authenticated material, not requester-supplied input. The IdP MUST scope CAI
-trust by issuer, keys, tenant, and the RAS it attests for.
+The IdP's trust configuration records these pairings ({{metadata-ras}}).
 
 The IdP MAY learn additional issuers from the RAS's advertised
 `identity_continuation_issuers` ({{metadata}}). That advertisement is a
@@ -1805,15 +1818,9 @@ participated" cannot be enforced from `act` alone.
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
 An attacker may try to pass one token type off as another, downgrade the
-signature algorithm, or steer verification to a key it controls. The IdP
-applies these verification rules:
-
-* The IdP MUST verify `typ`, reject `alg=none` and symmetric algorithms, and
-  allowlist asymmetric algorithms.
-* The IdP MUST select keys from trusted issuer configuration; `kid` MAY select
-  among them.
-* The IdP MUST NOT trust assertion `jku`, `x5u`, embedded `jwk`, or other
-  supplied key material.
+signature algorithm, or steer verification to a key it controls. The JOSE
+verification rules that deny this are stated in the well-formedness rule of
+{{validation}}.
 
 ## Metadata Disclosure {#security-metadata}
 
