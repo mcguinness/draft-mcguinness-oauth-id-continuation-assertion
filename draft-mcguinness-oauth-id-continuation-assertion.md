@@ -210,12 +210,12 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    to ({{ras-processing}}); a RAS that does not implement this profile ignores
    the claim.
 3. AgentApp calls the gateway with the access token.
-4. New: the gateway exchanges that access token at its RAS's token endpoint
+4. **New:** the gateway exchanges that access token at its RAS's token endpoint
    for an Identity Continuation Assertion ({{assertion}}). The RAS finds the
    hop bound to the token and, if the authorization is still active, issues
    the assertion attesting that H0 is active and that this gateway holds it
    ({{assertion-issuance}}).
-5. New: the gateway presents the assertion to the IdP as the `subject_token`
+5. **New:** the gateway presents the assertion to the IdP as the `subject_token`
    of a continuation exchange, with its own credential and a DPoP proof
    ({{token-exchange}}). The IdP checks the wiki and the gateway against what
    it recorded in step 1, resolves Alice's subject for the wiki, and issues an
