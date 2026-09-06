@@ -551,20 +551,21 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    (Section 5.1) and the continuation exchange that extends it
    (Section 5.5).  Each role's requirements are in these sections:
 
-           +====================+==============================+
-           | Role               | Requirements                 |
-           +====================+==============================+
-           | IdP                | Section 5.1, Section 5.5,    |
-           |                    | Section 6, Section 7.1       |
-           +--------------------+------------------------------+
-           | Continuation-aware | Section 5.2, Section 5.3,    |
-           | RAS                | Section 7.2                  |
-           +--------------------+------------------------------+
-           | CAI                | Section 5.4, Section 5.3     |
-           +--------------------+------------------------------+
-           | Continuing         | Section 5.4.1,               |
-           | workload           | Section 5.5.1, Section 5.5.2 |
-           +--------------------+------------------------------+
+        +====================+====================================+
+        | Role               | Requirements                       |
+        +====================+====================================+
+        | IdP                | Section 5.1, Section 5.5,          |
+        |                    | Section 6, Section 7.1, and the    |
+        |                    | trust configuration in Section 7.2 |
+        +--------------------+------------------------------------+
+        | Continuation-aware | Section 5.2, Section 5.3,          |
+        | RAS                | Section 7.2                        |
+        +--------------------+------------------------------------+
+        | CAI                | Section 5.4, Section 5.3           |
+        +--------------------+------------------------------------+
+        | Continuing         | Section 5.4.1, Section 5.5.1,      |
+        | workload           | Section 5.5.2                      |
+        +--------------------+------------------------------------+
 
                                   Table 1
 
@@ -1060,9 +1061,9 @@ Pragma: no-cache
 
 5.4.6.  Separate CAI
 
-   A CAI that is not the accepting RAS holds none of the hop's
-   authorization state itself, so both the handle and the acceptance
-   evidence reach it through its own domain (Section 8.2).
+   A CAI that is not the accepting RAS obtains the handle and the
+   evidence of acceptance from a source authoritative for that RAS,
+   within its own domain (Section 8.2).
 
    Where the subject_token is an access token (Section 5.4.1), a
    separate CAI resolves it through introspection [RFC7662] or, for a
@@ -2558,12 +2559,12 @@ A.1.  When to Use This Profile Versus Offline Attenuation
 
 A.2.  Relationship to ID-JAG
 
-   The assertion is the continuation exchange's input  its audience is
-      the IdP and it has no top-level sub.  The resulting ID-JAG is the
-      target Resource Authorization Server's grant and contains the IdP-
-      resolved subject and, when applicable, a continuation handle.  The
-      artifacts therefore have different issuers, audiences, subjects,
-      and consumers.
+   The assertion is the continuation exchange's input: its audience is
+   the IdP and it has no top-level sub.  The resulting ID-JAG is the
+   target Resource Authorization Server's grant and contains the IdP-
+   resolved subject and, when applicable, a continuation handle.  The
+   artifacts therefore have different issuers, audiences, subjects, and
+   consumers.
 
    This document complements OAuth Identity Chaining
    [I-D.ietf-oauth-identity-chaining].

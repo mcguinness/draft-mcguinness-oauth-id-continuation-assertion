@@ -2007,7 +2007,7 @@ subject, and policy, never as authority.<a href="#section-4-3.4.1" class="pilcro
           <tr>
             <td class="text-left" rowspan="1" colspan="1">IdP</td>
             <td class="text-left" rowspan="1" colspan="1">
-              <a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#token-exchange" class="auto internal xref">Section 5.5</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>, <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>
+              <a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#token-exchange" class="auto internal xref">Section 5.5</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>, <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>, and the trust configuration in <a href="#metadata-ras" class="auto internal xref">Section 7.2</a>
 </td>
           </tr>
           <tr>
@@ -2594,9 +2594,9 @@ type; and<a href="#section-5.4.5-2.2.1" class="pilcrow">¶</a></p>
           <h4 id="name-separate-cai">
 <a href="#section-5.4.6" class="section-number selfRef">5.4.6. </a><a href="#name-separate-cai" class="section-name selfRef">Separate CAI</a>
           </h4>
-<p id="section-5.4.6-1">A CAI that is not the accepting RAS holds none of the hop's authorization
-state itself, so both the handle and the acceptance evidence reach it through
-its own domain (<a href="#deployment-topologies" class="auto internal xref">Section 8.2</a>).<a href="#section-5.4.6-1" class="pilcrow">¶</a></p>
+<p id="section-5.4.6-1">A CAI that is not the accepting RAS obtains the handle and the evidence of
+acceptance from a source authoritative for that RAS, within its own domain
+(<a href="#deployment-topologies" class="auto internal xref">Section 8.2</a>).<a href="#section-5.4.6-1" class="pilcrow">¶</a></p>
 <p id="section-5.4.6-2">Where the <code>subject_token</code> is an access token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>), a
 separate CAI resolves it through introspection <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span> or, for a
 self-contained token, by validating it. Where the <code>subject_token</code> is a
@@ -4392,17 +4392,12 @@ trust domain, continuation where a boundary re-mints the subject.<a href="#appen
         <h3 id="name-relationship-to-id-jag">
 <a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-relationship-to-id-jag" class="section-name selfRef">Relationship to ID-JAG</a>
         </h3>
-<span class="break"></span><dl class="dlParallel" id="appendix-A.2-1">
-          <dt id="appendix-A.2-1.1">The assertion is the continuation exchange's input</dt>
-          <dd style="margin-left: 1.5em" id="appendix-A.2-1.2">
-            <p id="appendix-A.2-1.2.1">its audience is the IdP and it has
-no top-level <code>sub</code>. The resulting ID-JAG is the target Resource Authorization
+<p id="appendix-A.2-1">The assertion is the continuation exchange's input: its audience is the IdP
+and it has no top-level <code>sub</code>. The resulting ID-JAG is the target Resource
+Authorization
 Server's grant and contains the IdP-resolved subject and, when applicable, a
 continuation handle. The artifacts therefore have different issuers,
-audiences, subjects, and consumers.<a href="#appendix-A.2-1.2.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-</dl>
+audiences, subjects, and consumers.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
 <p id="appendix-A.2-2">This document complements OAuth Identity Chaining
 <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>.<a href="#appendix-A.2-2" class="pilcrow">¶</a></p>
 </section>
