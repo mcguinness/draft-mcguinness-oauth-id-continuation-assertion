@@ -457,7 +457,9 @@ The following rules apply:
 # Multi-Hop Cross-Domain Access {#access}
 
 This section specifies the processing requirements for the flow introduced in
-{{protocol-overview}}.
+{{protocol-overview}}: the root exchange that establishes a chain
+({{root-establishment}}) and the continuation exchange that extends it
+({{token-exchange}}).
 
 ## Establishing a Chain {#root-establishment}
 
@@ -596,7 +598,7 @@ Three rules govern binding the handle:
   state, only within its trust domain; the handle itself travels in the access
   token or another carrier as {{handle-propagation}} describes.
 
-## Hop Activation {#hop-activation}
+### Hop Acceptance {#hop-activation}
 
 A hop has two states, PENDING and ACCEPTED, conceptual states rather than
 values carried on the wire.
@@ -633,13 +635,7 @@ propagates authorization provenance, not the accepting RAS's authorization
 vocabulary: a scope at one audience says nothing about a scope at another
 ({{rationale-boundary}}).
 
-## Intra-Domain Handle Propagation {#handle-propagation}
-
-When the accepting RAS holds the CAI role, it reads the handle directly from
-its authorization state and needs no carrier. Otherwise, a carrier derived
-from the RAS binding conveys the handle within the trust domain
-({{ras-processing}}) and is accepted only within that domain
-({{assertion-issuance}}).
+## Handle Carriers Within the Domain {#handle-propagation}
 
 One rule applies to direct reads and every carrier. Each call arrives with a
 credential or context that identifies exactly one RAS-bound authorization. The
@@ -648,6 +644,12 @@ state directly or receives a carrier derived from it. A requester chooses
 which credential to present, but cannot supply or override its handle
 separately. A session or subject alone is not enough to select the
 authorization: doing so could attach another user's handle to the call.
+
+When the accepting RAS holds the CAI role, it reads the handle directly from
+its authorization state and needs no carrier. Otherwise, a carrier derived
+from the RAS binding conveys the handle within the trust domain
+({{ras-processing}}) and is accepted only within that domain
+({{assertion-issuance}}).
 
 What identifies the authorization depends on where the call lands:
 
@@ -669,12 +671,9 @@ and responses.
 ## Assertion Issuance {#assertion-issuance}
 
 The CAI issues the Identity Continuation Assertion that a workload presents to
-continue a chain across a boundary. The CAI MUST issue only for an actor it is
-authoritative to associate with the RAS-accepted authorization, typically one
-in the RAS's trust domain; actor authentication is deployment-specific. It
-MUST set the assertion's `aud` to the IdP recorded in the hop's RAS binding
-({{ras-processing}}), and it MUST NOT accept an IdP audience supplied by the
-requester.
+continue a chain across a boundary. The CAI MUST set the assertion's `aud` to
+the IdP recorded in the hop's RAS binding ({{ras-processing}}). The CAI
+MUST NOT accept an IdP audience supplied by the requester.
 
 The CAI attests three facts about its own domain:
 
@@ -687,7 +686,7 @@ The CAI attests three facts about its own domain:
 Whether that actor may continue, and to what, is the IdP's decision under the
 envelope ({{root-establishment}}, {{validation}}).
 
-### Request {#assertion-token-exchange}
+### Assertion Issuance Request {#assertion-token-exchange}
 
 A CAI that is an OAuth authorization server, including a RAS acting as its own
 CAI, MAY issue assertions from its token endpoint using Token Exchange
@@ -722,10 +721,8 @@ parameters MUST NOT be included: targets and scope are chosen at the IdP
 exchange ({{assertion-claims}}), and the authenticated client is the actor
 named in `act`.
 
-The client MUST authenticate to the token endpoint ({{RFC6749}}, Section 2.3),
-and the request MUST include a DPoP proof {{RFC9449}} of the client's own key;
-the CAI binds the assertion to that key in `cnf` and does not compare it with
-any key the `subject_token` is bound to. For example:
+The following example carries the client's authentication and its DPoP proof
+({{assertion-client-auth}}):
 
 ~~~
 POST /token HTTP/1.1
@@ -747,15 +744,25 @@ The CAI MUST verify that the `subject_token` is one of the following:
   valid for a protected resource that the authenticated client operates; or
 * a Transaction Token valid for the CAI's trust domain under
   {{I-D.ietf-oauth-transaction-tokens}}, Section 12.2, and carrying the hop's
-  handle as chain context ({{handle-propagation}}). The Transaction Token is
-  the carrier.
+  handle as chain context ({{handle-propagation}}, {{separate-cai}}).
 
 With an access token, the client is a resource server exchanging a token it
 received, the scenario of the example in {{RFC8693}}, Section 2.3. A RAS acting
-as CAI resolves its own token; a separate CAI resolves it through introspection
-{{RFC7662}} or, for a self-contained token, by validating it.
+as CAI resolves its own token; a separate CAI resolves it as {{separate-cai}}
+describes.
 
-### Preconditions {#assertion-preconditions}
+### Client Authentication {#assertion-client-auth}
+
+The client MUST authenticate to the CAI's token endpoint ({{RFC6749}},
+Section 2.3). The client MUST include in the request a DPoP proof {{RFC9449}}
+of the client's own key. The CAI binds the assertion to that key in `cnf`, and
+does not compare it with any key the `subject_token` is bound to.
+
+The CAI MUST issue only for an actor it is authoritative to associate with the
+RAS-accepted authorization, typically one in the RAS's trust domain; actor
+authentication is deployment-specific.
+
+### Request Validation {#assertion-preconditions}
 
 Either `subject_token` type ({{assertion-token-exchange}}) supplies the facts
 below. The CAI MUST authenticate the actor and issue only after establishing
@@ -822,8 +829,8 @@ identifier ({{metadata}}). The client SHOULD present the assertion only to an
 IdP it is configured to trust; the `audience` parameter tells it where, not
 whether.
 
-The response MUST NOT include a `refresh_token`, which would let a client
-obtain further assertions without presenting a token or passing the
+The CAI MUST NOT include a `refresh_token` in the response, which would let a
+client obtain further assertions without presenting a token or passing the
 acceptance check.
 
 ~~~
@@ -856,19 +863,37 @@ following error mappings:
   type; and
 * `invalid_dpop_proof` ({{RFC9449}}) for a failed proof.
 
-## Token Exchange {#token-exchange}
+### Separate CAI {#separate-cai}
 
-An Identity Continuation Assertion is the `subject_token` of an OAuth 2.0
-Token Exchange request {{RFC8693}}. The root exchange and a continuation
-exchange use the same Token Exchange framework: a continuation exchange
-substitutes an Identity Continuation Assertion for the root credential and
-adds the actor authentication and DPoP proof described below.
+A CAI that is not the accepting RAS holds none of the hop's authorization
+state itself, so both the handle and the acceptance evidence reach it through
+its own domain ({{deployment-topologies}}).
+
+Where the `subject_token` is an access token ({{assertion-token-exchange}}), a
+separate CAI resolves it through introspection {{RFC7662}} or, for a
+self-contained token, by validating it. Where the `subject_token` is a
+Transaction Token, that Transaction Token is the carrier
+({{handle-propagation}}), so the handle reaches the CAI from the RAS binding
+rather than from the requester.
+
+The IdP accepts a separate CAI's attestation only where it trusts that CAI to
+attest the accepting RAS's hops, from tenant configuration or the RAS's
+nomination ({{metadata-ras}}, the issuer-trust rule of {{validation}}).
+
+## Continuation Exchange {#token-exchange}
+
+A continuation exchange is an OAuth 2.0 Token Exchange request {{RFC8693}}
+whose `subject_token` is an Identity Continuation Assertion. The root exchange
+and a continuation exchange use the same Token Exchange framework: a
+continuation exchange substitutes an Identity Continuation Assertion for the
+root credential and adds the actor authentication and DPoP proof described
+below.
 
 Before a chain can continue to a target, the current actor needs a client
 registration or resolvable client identity at that target's RAS
 ({{onward-id-jag}}).
 
-### Request {#request}
+### Continuation Request {#request}
 
 The root exchange is shown in {{root-establishment}}. A continuation exchange
 presents an Identity Continuation Assertion, a DPoP proof of the `cnf` key,
@@ -916,14 +941,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<sender-constrained JWT identifying the actor>
 ~~~
 
-The Token Exchange request, never the assertion, supplies the requested
+The continuation request, never the assertion, supplies the requested
 `audience`, `resource`, `scope`, `requested_token_type`, and any
 `authorization_details` {{RFC9396}} ({{assertion-claims}}). A request can
 carry multiple `resource` indicators {{RFC8707}}, which the IdP treats as an
 order-independent set. The envelope-containment rule ({{validation}}) applies
 to `authorization_details` and to scope alike.
 
-### Presenter Authentication {#client-identity}
+### Client Authentication {#client-identity}
 
 The current actor MUST authenticate as an OAuth client with a credential that
 resolves to its canonical actor identity. The canonical actor identity is the
@@ -946,21 +971,6 @@ unconditional proof-of-possession requirement ({{root-establishment}}). On a
 continuation exchange ({{request}}), the IdP MUST also match the canonical
 actor identity to the assertion's `act` and, where an `actor_token` is
 present, to that token.
-
-A separate `actor_token` is OPTIONAL. A deployment presents one when the
-client credential does not itself identify the actor and prove its key, or
-when it wants independent evidence of the actor.
-
-An `actor_token` MUST NOT be a bearer token: for a JWT the IdP verifies its
-`cnf` confirmation (`jkt` in this version), and for an opaque token it obtains
-equivalent confirmation from authoritative metadata such as introspection
-{{RFC7662}}. Its key is one the actor proves in the request.
-
-A sender-constrained JWT MAY serve as both client assertion and `actor_token`
-when it satisfies both profiles. For {{RFC7523}}, its `sub` is the
-`client_id`, the canonical actor identity is then the assertion's issuer and
-that `client_id`, and the IdP MUST authorize its issuer for that client
-({{rationale-client-id}}).
 
 The comparison runs between actor identities, never between a raw OAuth
 client identifier and an `act` value:
@@ -992,6 +1002,23 @@ any `actor_token` is bound to it as well, and the actor's credential, the
 assertion, and the onward ID-JAG share one key ({{rationale-client-id}}). Key
 rotation takes effect when the actor obtains a new assertion and actor token
 bound to the new key.
+
+#### Additional Actor Credentials {#actor-token}
+
+A separate `actor_token` is OPTIONAL. A deployment presents one when the
+client credential does not itself identify the actor and prove its key, or
+when it wants independent evidence of the actor.
+
+An `actor_token` MUST NOT be a bearer token: for a JWT the IdP verifies its
+`cnf` confirmation (`jkt` in this version), and for an opaque token it obtains
+equivalent confirmation from authoritative metadata such as introspection
+{{RFC7662}}. Its key is one the actor proves in the request.
+
+A sender-constrained JWT MAY serve as both client assertion and `actor_token`
+when it satisfies both profiles. For {{RFC7523}}, its `sub` is the
+`client_id`, the canonical actor identity is then the assertion's issuer and
+that `client_id`, and the IdP MUST authorize its issuer for that client
+({{rationale-client-id}}).
 
 ### Request Validation {#validation}
 
@@ -1065,7 +1092,7 @@ from another's resolution.
      lifetime does not exceed the maximum the IdP accepts
      ({{assertion-claims}}); and
    * `jti` is not yet reserved for the assertion issuer or, where the IdP
-     offers idempotent retry ({{validation-replay}}), is RESERVED or ISSUED
+     offers idempotent retry ({{idempotent-retry}}), is RESERVED or ISSUED
      under a fingerprint matching this request; any other reserved `jti` is
      rejected;
 
@@ -1088,12 +1115,12 @@ from another's resolution.
 
 ### Successful Response {#success-response}
 
-The Token Exchange response follows the base ID-JAG profile: the ID-JAG is
-returned in `access_token`, with `token_type` `N_A` (not applicable;
-{{RFC8693}}, Section 2.2.1). The response MUST NOT include a `refresh_token`:
-a renewable credential would let the workload obtain further grants without
-fresh CAI attestation, or root a new chain through the refresh-token anchor,
-outside the hop's revocation dependencies.
+The response to a continuation exchange follows the base ID-JAG profile: the
+IdP returns the ID-JAG in `access_token`, with `token_type` `N_A` (not
+applicable; {{RFC8693}}, Section 2.2.1). The IdP MUST NOT include a
+`refresh_token`: a renewable credential would let the workload obtain further
+grants without fresh CAI attestation, or root a new chain through the
+refresh-token anchor, outside the hop's revocation dependencies.
 
 ~~~
 HTTP/1.1 200 OK
@@ -1122,7 +1149,7 @@ management API.
 
 On success, the IdP records a PENDING child ({{hop-activation}}) of the
 presented hop and issues an ID-JAG carrying the resolved target `sub` and a
-fresh handle. An idempotent retry (the freshness rule; {{validation-replay}})
+fresh handle. An idempotent retry (the freshness rule; {{idempotent-retry}})
 instead returns the previously issued grant unchanged, creating no new hop or
 handle.
 
@@ -1238,7 +1265,7 @@ continuation whose resulting lineage would exceed the bound, not the hop
 itself; a continuation that merges into an existing lineage entry, or a later
 policy raising the bound, may still succeed.
 
-## Replay Reservation and Retry {#validation-replay}
+### Replay Reservation and Retry {#validation-replay}
 
 A consumed assertion is not equivalent to a fresh one. With live acceptance
 evidence, the CAI refuses a fresh assertion once the hop's authorization has
@@ -1258,13 +1285,16 @@ the set of (`iss`, `jti`) values presented within that window.
 A request that fails validation creates no reservation and does not modify
 any existing reservation.
 
-A second presentation of a reserved assertion MUST be rejected unless the IdP
-offers idempotent retry. An IdP MAY offer it by binding the reservation to a
-fingerprint of the request first authorized and recording the reservation as
-RESERVED, ISSUED, or FAILED (distinct from the hop states of
-{{hop-activation}}). Such an IdP MUST return the previously issued grant for a
-presentation matching the fingerprint and MUST reject one that does not. The
-fingerprint MUST cover:
+The IdP MUST reject a second presentation of a reserved assertion unless it
+offers idempotent retry.
+
+#### Idempotent Retry {#idempotent-retry}
+
+An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
+of the request first authorized and recording the reservation as RESERVED,
+ISSUED, or FAILED (distinct from the hop states of {{hop-activation}}). Such
+an IdP MUST return the previously issued grant for a presentation matching the
+fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 
 * `audience` as an exact string;
 * the `resource` values as an order-independent set;
