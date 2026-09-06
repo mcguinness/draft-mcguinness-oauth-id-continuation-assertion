@@ -1616,7 +1616,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    An IdP MAY offer idempotent retry by binding the reservation to a
    fingerprint of the request first authorized and recording the
    reservation as RESERVED, ISSUED, or FAILED (distinct from the hop
-   states of Section 5.2.1).  Such an IdP MUST return the previously
+   facts of Section 5.2.1).  Such an IdP MUST return the previously
    issued grant for a presentation matching the fingerprint, and MUST
    reject one that does not.  The fingerprint MUST cover:
 
