@@ -467,7 +467,7 @@ This section specifies the processing requirements for the flow introduced in
 
 | Role | Requirements |
 |---|---|
-| IdP | {{root-establishment}}, {{token-exchange}}, {{lifecycle}}, {{metadata-idp}} |
+| IdP | {{root-establishment}}, {{token-exchange}}, {{lifecycle}}, {{metadata-idp}}, and the trust configuration in {{metadata-ras}} |
 | Continuation-aware RAS | {{ras-processing}}, {{handle-propagation}}, {{metadata-ras}} |
 | CAI | {{assertion-issuance}}, {{handle-propagation}} |
 | Continuing workload | {{assertion-token-exchange}}, {{request}}, {{client-identity}} |
@@ -880,9 +880,9 @@ following error mappings:
 
 ### Separate CAI {#separate-cai}
 
-A CAI that is not the accepting RAS holds none of the hop's authorization
-state itself, so both the handle and the acceptance evidence reach it through
-its own domain ({{deployment-topologies}}).
+A CAI that is not the accepting RAS obtains the handle and the evidence of
+acceptance from a source authoritative for that RAS, within its own domain
+({{deployment-topologies}}).
 
 Where the `subject_token` is an access token ({{assertion-token-exchange}}), a
 separate CAI resolves it through introspection {{RFC7662}} or, for a
@@ -2111,9 +2111,9 @@ trust domain, continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG {#rationale-idjag}
 
-The assertion is the continuation exchange's input
-: its audience is the IdP and it has
-no top-level `sub`. The resulting ID-JAG is the target Resource Authorization
+The assertion is the continuation exchange's input: its audience is the IdP
+and it has no top-level `sub`. The resulting ID-JAG is the target Resource
+Authorization
 Server's grant and contains the IdP-resolved subject and, when applicable, a
 continuation handle. The artifacts therefore have different issuers,
 audiences, subjects, and consumers.
