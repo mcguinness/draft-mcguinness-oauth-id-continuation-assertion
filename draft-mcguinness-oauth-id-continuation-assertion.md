@@ -114,7 +114,8 @@ and binds it to the authenticated workload and its key. The workload exchanges
 that assertion at the IdP for an ID-JAG for the next service; the IdP resolves
 the user's identity for that audience and decides whether the continuation is
 permitted. A handle ties these exchanges to the state the IdP and the RAS hold
-for the chain, one hop per grant. The RAS may perform the CAI role itself, as
+for the chain, one hop per grant, branching where several
+continuations share a hop. The RAS may perform the CAI role itself, as
 in the baseline deployment.
 
 Two limits apply throughout. The IdP's continuation policy, not the scopes of
@@ -179,9 +180,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 
 1. As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
    for the gateway's RAS. New: the IdP records that grant as a chain's first
-   hop, H0, with the targets, continuing parties, and limits tenant policy
-   permits, and carries a handle for H0 in the ID-JAG's
-   `identity_continuation_handle` claim ({{root-establishment}},
+   hop, H0, together with the tenant policy under which it may continue, read
+   as it stands at each continuation, and carries a handle for H0 in the
+   ID-JAG's `identity_continuation_handle` claim ({{root-establishment}},
    {{chain-id}}).
 2. As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS and
    receives an access token. New: the RAS keeps the handle alongside the
@@ -195,7 +196,7 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    the assertion attesting that H0 is active and that this gateway holds it
    ({{assertion-issuance}}).
 5. New: the gateway presents the assertion to the IdP as the `subject_token`
-   of a Token Exchange request, with its own credential and a DPoP proof
+   of a continuation exchange, with its own credential and a DPoP proof
    ({{token-exchange}}). The IdP checks the wiki and the gateway against what
    it recorded in step 1, resolves Alice's subject for the wiki, and issues an
    ID-JAG as hop H1, a child of H0 ({{validation}}).
@@ -290,6 +291,10 @@ Governing authorization:
 : The tenant policy decision that permits continuation, together with the
   grant or session anchor resolved from the root subject token, that anchors a
   chain and bounds every continuation under it ({{lifecycle}}).
+
+Lifecycle anchor:
+: The IdP session or OAuth grant that the root subject token resolves to
+  and that bounds the chain's lifetime ({{lifecycle-anchors}}).
 
 Root-chain envelope:
 : The IdP's recorded chain context and continuation policy for a chain: the
@@ -458,7 +463,14 @@ The following rules apply:
 This section specifies the processing requirements for the flow introduced in
 {{protocol-overview}}: the root exchange that establishes a chain
 ({{root-establishment}}) and the continuation exchange that extends it
-({{token-exchange}}).
+({{token-exchange}}). Each role's requirements are in these sections:
+
+| Role | Requirements |
+|---|---|
+| IdP | {{root-establishment}}, {{token-exchange}}, {{lifecycle}}, {{metadata-idp}} |
+| Continuation-aware RAS | {{ras-processing}}, {{handle-propagation}}, {{metadata-ras}} |
+| CAI | {{assertion-issuance}}, {{handle-propagation}} |
+| Continuing workload | {{assertion-token-exchange}}, {{request}}, {{client-identity}} |
 
 ## Establishing a Chain {#root-establishment}
 
@@ -2099,7 +2111,8 @@ trust domain, continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG {#rationale-idjag}
 
-The assertion is the Token Exchange input: its audience is the IdP and it has
+The assertion is the continuation exchange's input
+: its audience is the IdP and it has
 no top-level `sub`. The resulting ID-JAG is the target Resource Authorization
 Server's grant and contains the IdP-resolved subject and, when applicable, a
 continuation handle. The artifacts therefore have different issuers,
