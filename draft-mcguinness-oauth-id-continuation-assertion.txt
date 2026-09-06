@@ -192,60 +192,72 @@ Table of Contents
    ID-JAG assumes that the requester holds the user's identity
    assertion.  A workload that received a request on the user's behalf
    often has to reach a further service for the same user, after the
-   user has gone or at an audience the credential never addressed, and
+   user has gone or at an audience the credential never addressed.  It
    holds no credential of the user's to exchange.  It cannot name the
    user for the next audience, and the access token it received gives
    the next RAS nothing it trusts.
 
    This document defines the Identity Continuation Assertion, a short-
    lived, sender-constrained JSON Web Token (JWT) [RFC7519] that such a
-   workload obtains from a Continuation Assertion Issuer (CAI) trusted
-   to attest the accepting RAS's authorizations, and presents to the IdP
-   as the subject token of an OAuth 2.0 Token Exchange [RFC8693]
-   request.  The assertion identifies an authorization the workload's
-   RAS has accepted and binds it to the authenticated workload and its
-   key.  The IdP resolves the user's identity for the next audience,
-   decides under tenant policy whether the continuation is permitted,
-   and issues the next ID-JAG.  A handle in each ID-JAG ties the
-   exchanges to the chain state the IdP and the RAS hold.  The RAS may
-   perform the CAI role itself.
+   workload obtains from a Continuation Assertion Issuer (CAI), a party
+   the IdP trusts to report what the RAS that issued the workload's
+   access token has accepted.  The assertion states two facts.  First,
+   that RAS redeemed an ID-JAG for this user and issued that access
+   token, and the resulting authorization remains active and permits
+   continuation.  Second, the authenticated workload holding a
+   particular key is the party now acting on it.  The workload presents
+   the assertion to the IdP as the subject token of an OAuth 2.0 Token
+   Exchange [RFC8693] request.  The IdP resolves the user's identity for
+   the next service, decides under the tenant's policy whether this
+   workload may continue to it, and issues the next ID-JAG.
+
+   Each ID-JAG issued this way is a hop, and the hops that descend from
+   one root ID-JAG form a chain.  An opaque handle carried in each ID-
+   JAG names its hop, so that the IdP and the RAS can link their records
+   of it.  The RAS may perform the CAI role itself.
 
    Three properties hold throughout:
 
    *  Only the IdP names the user for a new audience.
 
-   *  Only an accepted authorization may be continued.
+   *  A workload can continue only from a grant that a RAS has redeemed
+      and issued an access token for.
 
-   *  Only an authenticated actor that the IdP permits to continue from
-      that authorization, and that proves possession of its own key, may
-      request continuation.
+   *  Only a workload that the IdP has authenticated, that tenant policy
+      permits to continue from that grant, and that proves possession of
+      its own key can obtain the next ID-JAG.
 
-   Continuation is a fresh IdP decision at every boundary, not a reused
-   token or attenuated delegation, and the assertion confers no standing
-   authority.  The IdP's continuation policy, not the scopes of the
-   access token the workload received, bounds what a continuation may
-   reach.  Continuation obtains credentials for an authorization
-   context, not for every API call.
+   Each continuation is a new decision by the IdP under the policy in
+   force at that moment.  The assertion carries no authority forward,
+   and the scopes of the access token the workload holds do not bound
+   what the next ID-JAG may grant.  Further calls for the same user
+   under the same chain can reuse the access token a continuation
+   obtained while it remains valid and covers the requested access;
+   continuation is not required for every API call.
 
-   This document is an opt-in extension to ID-JAG.  A root client and a
-   RAS from which no workload continues run unmodified ID-JAG, which
-   this document calls the base profile; only the continuing workload,
-   its RAS and CAI, and the IdP need support it.  Chain state, envelope
-   enforcement, and replay protection sit at the IdP, which already
-   resolves the pairwise subject and holds the tenant policy.  An ID-JAG
-   deployment can therefore add multi-hop access where a request's path
-   is not known in advance, as at a tool gateway for agents, including
-   Model Context Protocol (MCP) gateways (Appendix B.1).
+   This document is an opt-in extension to ID-JAG.  The application that
+   obtains the first ID-JAG and any RAS from which no workload continues
+   run unmodified ID-JAG, which this document calls the base profile;
+   only the continuing workload, its RAS and CAI, and the IdP need
+   support it.  The IdP keeps the chain records and enforces the
+   tenant's policy and replay protection, work it is placed for because
+   it already resolves the pairwise subject and holds that policy.  An
+   ID-JAG deployment can therefore add multi-hop access where a
+   request's path is not known in advance, as at a tool gateway for
+   agents, including Model Context Protocol (MCP) gateways
+   (Appendix B.1).
 
    This document complements OAuth Identity Chaining
-   [I-D.ietf-oauth-identity-chaining] (Appendix A.2) and offline
-   attenuation within a trust domain (Appendix A.1).  Its scope is the
-   two continuation exchanges, the assertion and handle they carry, and
-   the obligations of the roles that take part in them: the IdP, the
-   continuing workload, its RAS, and the CAI.  Intra-domain handle
-   transport is left to the deployment (Section 5.3).  This document
-   defines no new access-token format, and a CAI never names the user
-   for the target audience.
+   [I-D.ietf-oauth-identity-chaining] (Appendix A.2), and it is not a
+   substitute for narrowing an existing token within one trust domain
+   (Appendix A.1).  Its scope is the two exchanges above, the workload's
+   request to the CAI for an assertion and its exchange of that
+   assertion at the IdP, together with the assertion and handle they
+   carry and the obligations of the IdP, the continuing workload, its
+   RAS, and the CAI.  How a handle travels inside a trust domain is left
+   to the deployment (Section 5.3).  This document defines no new
+   access-token format, and a CAI never names the user for the target
+   audience.
 
 1.1.  Protocol Overview
 
@@ -3845,6 +3857,11 @@ Document History
    [[ To be removed before publication as an RFC ]]
 
    -02
+
+   *  Introduction rewritten in plain terms: accepted grant, hop, chain,
+      handle, and the CAI are given their meaning where they first
+      appear, and the three properties and the two limits no longer rely
+      on terms defined later.
 
    *  Editorial consolidation: a conceptual Introduction and a shorter
       Protocol Overview; the decision rule moved to Design Rationale;
