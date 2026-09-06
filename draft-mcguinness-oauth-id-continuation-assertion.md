@@ -107,24 +107,26 @@ Each RAS knows the user by a pairwise subject that only the IdP can resolve.
 ID-JAG assumes that the requester holds the user's identity assertion. A
 workload that received a request on the user's behalf often has to reach a
 further service for the same user, after the user has gone or at an audience
-the credential never addressed, and holds no credential of the user's to
+the credential never addressed. It holds no credential of the user's to
 exchange. It cannot name the user for the next audience, and the access token
 it received gives the next RAS nothing it trusts.
 
 This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) {{RFC7519}} that such a workload
 obtains from a Continuation Assertion Issuer (CAI), a party the IdP trusts to
-speak for the RAS that issued the workload its access token. The assertion
-states two facts: that the RAS redeemed an ID-JAG for this user and issued
-that access token, which this document calls an accepted grant, and that the
-authenticated workload holding a particular key is the party now acting on it.
-The workload presents the assertion to the IdP as the subject token of an
-OAuth 2.0 Token Exchange {{RFC8693}} request. The IdP resolves the user's
-identity for the next service, decides under the tenant's policy whether this
-workload may continue to it, and issues the next ID-JAG. Each ID-JAG issued
-this way is a hop; the hops that descend from one root ID-JAG form a chain;
-and a handle carried in each ID-JAG names its hop, so that the IdP and the RAS
-can link their records of it. The RAS may perform the CAI role itself.
+report what the RAS that issued the workload's access token has accepted. The
+assertion states two facts. First, that RAS redeemed an ID-JAG for this user
+and issued that access token; this document calls such a grant an accepted
+grant. Second, the authenticated workload holding a particular key is the
+party now acting on it. The workload presents the assertion to the IdP as the
+subject token of an OAuth 2.0 Token Exchange {{RFC8693}} request. The IdP
+resolves the user's identity for the next service, decides under the tenant's
+policy whether this workload may continue to it, and issues the next ID-JAG.
+Each ID-JAG issued this way is a hop, and the hops that descend from one root
+ID-JAG form a chain. An opaque handle carried in each ID-JAG names its hop, so
+that the IdP and the RAS can link their records of it. The RAS may perform the
+CAI role itself.
+
 
 Three properties hold throughout:
 
