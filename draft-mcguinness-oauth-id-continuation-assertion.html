@@ -1623,14 +1623,14 @@ the claim.<a href="#section-1.1-5.2.1" class="pilcrow">¶</a></p>
             <p id="section-1.1-5.3.1">AgentApp calls the gateway with the access token.<a href="#section-1.1-5.3.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.4">
-            <p id="section-1.1-5.4.1">New: the gateway exchanges that access token at its RAS's token endpoint
+            <p id="section-1.1-5.4.1"><strong>New:</strong> the gateway exchanges that access token at its RAS's token endpoint
 for an Identity Continuation Assertion (<a href="#assertion" class="auto internal xref">Section 3</a>). The RAS finds the
 hop bound to the token and, if the authorization is still active, issues
 the assertion attesting that H0 is active and that this gateway holds it
 (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-1.1-5.4.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.5">
-            <p id="section-1.1-5.5.1">New: the gateway presents the assertion to the IdP as the <code>subject_token</code>
+            <p id="section-1.1-5.5.1"><strong>New:</strong> the gateway presents the assertion to the IdP as the <code>subject_token</code>
 of a continuation exchange, with its own credential and a DPoP proof
 (<a href="#token-exchange" class="auto internal xref">Section 5.5</a>). The IdP checks the wiki and the gateway against what
 it recorded in step 1, resolves Alice's subject for the wiki, and issues an
