@@ -1500,7 +1500,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
 <p id="section-1-1">In many deployments, applications and the APIs they call are configured for
-single sign-on to a common identity provider, and the Identity Assertion JWT
+single sign-on to a common identity provider. The Identity Assertion JWT
 Authorization Grant (ID-JAG) <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>
 lets an application exchange the user's identity assertion at that IdP
 Authorization Server (IdP) for an authorization grant that one downstream
@@ -1510,12 +1510,13 @@ cross-application grant.<a href="#section-1-1" class="pilcrow">¶</a></p>
 <p id="section-1-2">ID-JAG assumes that the party requesting the grant holds the user's identity
 assertion. A workload that received a request on the user's behalf often has
 to reach a further service for the same user, after the user is no longer
-present or at an audience the user's credential never addressed, and it holds
-no credential of the user's to exchange. It cannot name the user for the next
+present or at an audience the user's credential never addressed. It holds no
+credential of the user's to exchange. It cannot name the user for the next
 audience, and forwarding or attenuating the access token it received gives the
 next RAS nothing it trusts.<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">This document defines the Identity Continuation Assertion, a short-lived,
-sender-constrained JWT that such a workload obtains from a Continuation
+sender-constrained JSON Web Token (JWT) <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> that such a workload
+obtains from a Continuation
 Assertion Issuer (CAI) in its own trust domain and presents to the IdP as the
 subject token of an OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The
 assertion identifies an authorization that the workload's RAS has accepted and
@@ -1524,47 +1525,36 @@ user's identity for the next audience, decides under the tenant's policy
 whether the continuation is permitted, and issues the next ID-JAG. A handle
 carried in each ID-JAG ties these exchanges to the chain state that the IdP
 and the RAS hold, one hop per grant. The RAS may perform the CAI role itself.<a href="#section-1-3" class="pilcrow">¶</a></p>
-<p id="section-1-4">Two limits apply throughout. The IdP's continuation policy, not the scopes of
-the access token the workload received, bounds what a continuation may reach
-(<a href="#validation" class="auto internal xref">Section 5.5.3</a>); acceptance at a RAS gates continuation but confers no
-downstream authority. Continuation obtains credentials for an authorization
-context rather than for every API call: a workload continues once for a user
-and a target, then reuses the access token it redeems there
-(<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
+<p id="section-1-4">Three properties hold throughout: only the IdP names the user for a new
+audience; only an accepted authorization may be continued; and only an
+authenticated actor that the IdP permits to continue from that authorization,
+and that proves possession of its own key, may request continuation. Two
+limits follow. The IdP's continuation policy, not the scopes of the access
+token the workload received, bounds what a continuation may reach; acceptance
+at a RAS gates continuation but confers no downstream authority. Continuation
+obtains credentials for an authorization context rather than for every API
+call: a workload continues once for a user and a target, then reuses the
+access token it redeems there.<a href="#section-1-4" class="pilcrow">¶</a></p>
 <p id="section-1-5">This document is an opt-in extension to ID-JAG. A root client keeps its
 exchange unchanged (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>). A RAS from which no workload
 continues runs unmodified ID-JAG, which this document calls the base profile,
 and need not know that a chain exists (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>). Support is needed
 only where continuation proceeds: at the continuing workload, its RAS and CAI,
 and the IdP, which already resolves the pairwise subject and holds the tenant
-policy. An ID-JAG deployment can therefore add multi-hop access where a
-request's path is not known in advance, as at a tool gateway for agents,
-including Model Context Protocol (MCP) gateways, that selects its upstream at
-request time (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-5" class="pilcrow">¶</a></p>
-<p id="section-1-6">This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, JWT <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, and
-ID-JAG, and complements OAuth Identity Chaining
-<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>). Its scope is
-narrow. It assigns obligations to the RAS that accepts an ID-JAG and binds the
-hop and to the CAI that issues the assertion, defines their cross-domain
-artifacts and one request for obtaining the assertion at a CAI token endpoint,
-and leaves intra-domain handle transport to the deployment
-(<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). It defines no new access-token format, a Resource
-Server never consumes the assertion, and a CAI never names the user for the
-target audience.<a href="#section-1-6" class="pilcrow">¶</a></p>
-<p id="section-1-7">Three properties are at the core of the protocol:<a href="#section-1-7" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-1-8.1">
-          <p id="section-1-8.1.1">Only the IdP names the user for a new audience.<a href="#section-1-8.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-1-8.2">
-          <p id="section-1-8.2.1">Only an accepted authorization may be continued.<a href="#section-1-8.2.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-1-8.3">
-          <p id="section-1-8.3.1">Only an authenticated actor that the IdP permits to continue from that
-accepted authorization, and that proves possession of its own key, may
-request continuation.<a href="#section-1-8.3.1" class="pilcrow">¶</a></p>
-</li>
-      </ul>
+policy.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">An ID-JAG deployment can therefore add multi-hop access where a request's
+path is not known in advance, as at a tool gateway for agents, including
+Model Context Protocol (MCP) gateways, that selects its upstream at request
+time (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>). This document profiles Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>,
+JWT, and ID-JAG, and complements OAuth Identity Chaining
+<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span> (<a href="#rationale-idjag" class="auto internal xref">Appendix A.2</a>).<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">The scope of this document is narrow. It assigns obligations to the RAS that
+accepts an ID-JAG and binds the hop and to the CAI that issues the assertion.
+It defines their cross-domain artifacts and one request for obtaining the
+assertion at a CAI token endpoint, and leaves intra-domain handle transport to
+the deployment (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). It defines no new access-token
+format, a Resource Server never consumes the assertion, and a CAI never names
+the user for the target audience.<a href="#section-1-7" class="pilcrow">¶</a></p>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">
