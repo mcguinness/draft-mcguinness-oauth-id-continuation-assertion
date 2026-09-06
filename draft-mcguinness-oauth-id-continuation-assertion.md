@@ -1384,7 +1384,7 @@ offers idempotent retry.
 
 An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
-ISSUED, or FAILED (distinct from the hop states of {{hop-activation}}). Such
+ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). Such
 an IdP MUST return the previously issued grant for a presentation matching the
 fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 
