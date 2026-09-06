@@ -1110,7 +1110,8 @@ from another's resolution.
      {{assertion-claims}} and none of the claims that section forbids;
    * `iss`, `aud`, `identity_continuation_handle`, and `jti` are non-empty
      strings, `act` and `cnf` are JSON objects with `cnf` naming exactly one
-     confirmation method, and `iat` and `exp` are NumericDate numbers;
+     confirmation method, and `iat`, `exp`, and any `nbf` are NumericDate
+     numbers;
    * the signature validates under an acceptable algorithm ({{RFC8725}})
      with the issuer's resolved signing keys ({{metadata}});
    * `aud` exactly matches the IdP's issuer identifier;
@@ -1157,10 +1158,12 @@ from another's resolution.
 
 6. **Freshness and replay.**
    * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
-     seconds), `exp` follows `iat`, the assertion is unexpired, and its
+     seconds), `exp` follows `iat`, the assertion is unexpired, any `nbf` has
+     passed within the same skew ({{RFC7519}}, Section 4.1.5), and its
      lifetime does not exceed the maximum the IdP accepts, which SHOULD be no
      less than 300 seconds so that a CAI using the recommended bound
      interoperates ({{assertion-claims}}); and
+
    * `jti` is not yet reserved for the assertion issuer or, where the IdP
      offers idempotent retry ({{idempotent-retry}}), is RESERVED or ISSUED
      under a fingerprint matching this request; any other reserved `jti` is
