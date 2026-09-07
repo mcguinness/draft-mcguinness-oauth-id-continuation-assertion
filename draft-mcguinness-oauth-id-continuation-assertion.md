@@ -862,8 +862,9 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
-as for any OAuth access token. A CAI that caps the assertion's `exp` at the
-evidence's expiry shortens the resulting withdrawal window
+as for any OAuth access token. Where the evidence is a self-contained token,
+the assertion's `exp` SHOULD NOT exceed that token's expiry, so that an
+assertion is not presentable after the evidence that supported it has lapsed
 ({{lifecycle-ending}}).
 
 A domain may add its own conditions for issuing, for example limiting which of
@@ -3632,6 +3633,10 @@ this profile builds.
   introspection response member.
 * Clarified the effects of RAS-local withdrawal in Ending a Chain and
   cross-referenced it from Assertion Preconditions and Topology and Trust.
+* Where the RAS's acceptance evidence is a self-contained token, the
+  assertion's expiration is now recommended not to exceed that token's
+  expiration (previously an option), so an assertion is not presentable
+  after its evidence has lapsed.
 
 -01
 
