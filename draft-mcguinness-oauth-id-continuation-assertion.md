@@ -556,8 +556,9 @@ establish a chain, the IdP MUST include the root handle in the ID-JAG. Absent
 the continuation authorization, the IdP MUST NOT establish a chain or include an
 `identity_continuation_handle`.
 
-The lifecycle anchor is the user's active IdP session or, for a durable
-chain, a refresh token's OAuth grant ({{lifecycle-anchors}}).
+The lifecycle anchor is the user's active IdP session ({{lifecycle-anchors}});
+a refresh token's OAuth grant is the optional grant anchor
+({{lifecycle-grant}}).
 
 This document places no proof-of-possession requirement on the root exchange.
 The root client's obligations are those of the base profile, and sender
@@ -1161,8 +1162,9 @@ The response to a continuation exchange follows the base ID-JAG profile: the
 IdP returns the ID-JAG in `access_token`, with `token_type` `N_A` (not
 applicable; {{RFC8693}}, Section 2.2.1). The IdP MUST NOT include a
 `refresh_token`: a renewable credential would let the workload obtain further
-grants without fresh CAI attestation, or root a new chain through the
-refresh-token anchor, outside the hop's revocation dependencies.
+grants without fresh CAI attestation, or root a new chain through the grant
+anchor where the IdP supports it ({{lifecycle-grant}}), outside the hop's
+revocation dependencies.
 
 ~~~
 HTTP/1.1 200 OK
@@ -1191,9 +1193,8 @@ management API.
 
 On success, the IdP records a child hop ({{hop-activation}}) of the
 presented hop and issues an ID-JAG carrying the resolved target `sub` and a
-fresh handle. An idempotent retry (the freshness rule; {{idempotent-retry}})
-instead returns the previously issued grant unchanged, creating no new hop or
-handle.
+fresh handle. An idempotent retry creates no new hop or handle
+({{idempotent-retry}}).
 
 ### Onward ID-JAG Construction {#onward-id-jag}
 
@@ -1284,8 +1285,10 @@ On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
   or ancestor, or on a chain whose continuation authorization the tenant has
   withdrawn ({{lifecycle-ending}}).
 * The IdP SHOULD use `invalid_request` for a malformed, inconsistent, or
-  unacceptable token, including a lifetime above the maximum the IdP accepts
-  or a request carrying `actor_token` or `actor_token_type`,
+  unacceptable token, including a lifetime above the maximum the IdP accepts,
+  a request carrying `actor_token` or `actor_token_type`, or a second
+  presentation of a reserved assertion where the IdP does not offer
+  idempotent retry ({{idempotent-retry}}),
   `invalid_dpop_proof` for a DPoP failure, `unauthorized_client` for an actor
   that current tenant policy does not permit to continue from the presented
   hop, which leaves the chain continuable by other actors, `invalid_grant` when
@@ -1302,7 +1305,7 @@ DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
 Recovery from `invalid_continuation` requires establishing a new chain, and
 succeeds only where the governing authorization still permits continuation: a
 session-anchored chain re-roots by re-authenticating the user, a
-grant-anchored chain re-roots from its still-valid grant without the user, and
+grant-anchored chain re-roots without the user ({{lifecycle-grant}}), and
 a handle disabled by withdrawn continuation authorization cannot re-root at
 all.
 
@@ -1311,6 +1314,17 @@ only the current request. An actor-lineage depth rejection concerns the
 particular continuation whose resulting lineage would exceed the bound, not
 the hop itself; a continuation that merges into an existing lineage entry, or
 a later policy raising the bound, may still succeed.
+
+Two situations call for different client behavior. After a known lost
+response, the client MAY retry the same assertion where the IdP offers
+idempotent retry ({{idempotent-retry}}), or obtain a fresh assertion from the
+CAI, which is not guaranteed: the subject token may have expired, or the lost
+success may have consumed the remaining depth, fan-out, or hop budget
+({{lifecycle-limits}}). A fresh assertion may create an equivalent grant and
+sibling hop but no additional authority. On `invalid_request` in general the
+client corrects or abandons the request, since a malformed request or a
+prohibited parameter fails again with a fresh assertion, and blind
+reacquisition loops and loads the CAI.
 
 ### Replay Reservation and Retry {#validation-replay}
 
@@ -1338,6 +1352,9 @@ offers idempotent retry.
 
 #### Idempotent Retry {#idempotent-retry}
 
+An IdP that does not offer idempotent retry implements nothing in this
+subsection: it rejects every second presentation ({{validation-replay}}).
+
 An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). Such
@@ -1357,22 +1374,19 @@ fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 A reservation that does not reach ISSUED before `exp` becomes FAILED, which is
 final and requires a fresh assertion.
 
-After a lost response, a client MAY retry the same assertion where the IdP
-offers retry, or obtain a fresh assertion. A fresh assertion may create an
-equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. Realization guidance is in
+The client's choice after a lost response is in {{error-response}}.
+Application idempotency remains out of scope. Realization guidance is in
 {{implementation}}; whether idempotent retry should be mandatory is an open
 question ({{open-items}}).
 
 # Chain Lifetime and Revocation {#lifecycle}
 
-A chain anchored to the user's IdP session is the core case: it lives while
-the session does. A chain anchored to a refresh token's grant is a durable
-chain that outlives the session, as an unattended agent needs
-({{example-background}}). The anchors, ending rules, and limits below apply
-to both forms; an implementation of session-bounded continuation alone needs
-the shared rules but not the grant-specific discussion or the background
-example.
+A chain is anchored to the user's IdP session and lives while the session
+does. The anchors, ending rules, and limits of this section apply to every
+chain. A chain may instead be anchored to a refresh token's OAuth grant, an
+optional feature that an unattended agent needs; {{lifecycle-grant}} is its
+single home, and an implementation of session-bounded continuation alone can
+skip it.
 
 A chain is continuable only while active at the IdP. Each cross-boundary hop
 is a fresh policy check, and revoking a hop stops its subtree at the next
@@ -1402,12 +1416,12 @@ The root subject token resolves to one of these anchors
   session for that user and client;
 * a SAML `SessionIndex` {{SAML2.Core}} resolving to an active IdP session
   for that user and client; or
-* for a durable chain, a refresh token's OAuth grant.
+* a refresh token's OAuth grant, the optional grant anchor
+  ({{lifecycle-grant}}).
 
 The IdP MUST NOT root a chain from an unresolved anchor or an access token;
 non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
-only for resolution and MUST NOT enter assertions or chain context. Rotation
-of a refresh token does not affect the grant anchor.
+only for resolution and MUST NOT enter assertions or chain context.
 
 ## Ending a Chain {#lifecycle-ending}
 
@@ -1418,11 +1432,7 @@ A chain ends when:
 * tenant policy withdraws permission to continue it.
 
 A chain MUST NOT outlive its anchor ({{lifecycle-anchors}}): a session-anchored
-chain ends with the session, and only a grant-anchored chain may outlive
-logout. An authorization that a session produced but that has its own
-lifecycle, such as a refresh token's grant, is a grant anchor, so logout ends
-a chain only when the session itself is the anchor. Ending a chain this way
-bounds only new
+chain ends with the session. Ending a chain this way bounds only new
 continuations; an ID-JAG already issued remains redeemable for its own
 lifetime, since redemption is not a continuation.
 
@@ -1454,7 +1464,7 @@ extends their reach. The table summarizes each way authority is withdrawn.
 | Withdrawn by | Fresh assertions for the hop | Continuation at the IdP | A new chain |
 |---|---|---|---|
 | Session ends (session anchor) | Unaffected until the RAS withdraws | Chain ends when observed; `invalid_continuation` | After the user re-authenticates, if policy still permits |
-| Grant revoked or expired (grant anchor) | Unaffected until the RAS withdraws | Chain ends when observed; logout alone does not end it | From a new grant |
+| Grant revoked or expired (grant anchor, {{lifecycle-grant}}) | Unaffected until the RAS withdraws | Chain ends when observed; logout alone does not end it | From a new grant |
 | Tenant withdraws continuation permission | Unaffected until the RAS withdraws | Chain ends when observed; not revived by restoring the policy | Not possible for that authorization |
 | Tenant removes a permitted continuer | Unaffected | That actor fails with `unauthorized_client`; others continue | Not needed |
 | Tenant narrows a basis or an enumerated target | Unaffected | Continuation to the removed target fails ({{error-response}}); others continue | Not needed |
@@ -1478,6 +1488,31 @@ it, and the actor-chain depth bound is enforced per branch. Fan-out, rate, or
 hop-count limits configured for a governing authorization apply across every
 chain rooted in it, so sibling chains share one budget; a retried
 establishment ({{root-establishment}}) MUST NOT evade them.
+
+## Grant-Anchored Chains {#lifecycle-grant}
+
+Support for the grant anchor is optional. An IdP that implements session
+anchors only treats a refresh token presented as the root subject token as
+resolving no supported anchor, and issues an ordinary ID-JAG without a handle
+({{chain-establishment}}), so a session-only implementation never blocks base
+ID-JAG issuance.
+
+Where the IdP implements the grant anchor, a refresh token presented as the
+root subject token anchors the chain to that token's grant. The base profile
+permits `urn:ietf:params:oauth:token-type:refresh_token` as a subject token
+({{I-D.ietf-oauth-identity-assertion-authz-grant}}, Section 4.3). Such a
+chain outlives logout and ends when the grant expires or is revoked
+({{lifecycle-ending}}). An authorization that a session produced but that has
+its own lifecycle, such as a refresh token's grant, is a grant anchor, so
+logout ends a chain only when the session itself is the anchor. Rotation of
+the refresh token does not affect the anchor, which is the grant and not the
+token.
+
+A grant-anchored chain re-roots from its still-valid grant without the user,
+which is what an unattended agent needs. No user is present at such a run,
+and it still derives the handle from durable RAS task authorization rather
+than from a scheduler-held handle ({{handle-propagation}},
+{{security-envelope}}). {{example-background}} shows the whole pattern.
 
 # Authorization Server Metadata and Trust Configuration {#metadata}
 
@@ -1570,9 +1605,7 @@ subject.
 The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It keeps each assertion's (`iss`, `jti`) reservation for as
 long as the assertion could still be presented, in state consistent enough
-that concurrent presentations yield one grant; an IdP that offers idempotent
-retry also keeps the fingerprint and result so that a retry recovers it
-({{validation-replay}}).
+that concurrent presentations yield one grant ({{validation-replay}}).
 
 Because the actor-chain depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
@@ -1635,10 +1668,11 @@ all. Three carriers are common:
 The replay reservation ({{validation-replay}}) needs an atomic first-writer
 decision so that only one concurrent request reaches ISSUED, and the IdP
 retains and expires it by the same clock it uses to evaluate `exp`. An IdP
-that offers idempotent retry also holds the fingerprint and result in state
-consistent enough that a concurrent request under a matching fingerprint waits
-for or retries that result; one that does not offer retry rejects the second
-presentation and needs no more than the reservation itself.
+that offers idempotent retry ({{idempotent-retry}}) also holds the fingerprint
+and result in state consistent enough that a concurrent request under a
+matching fingerprint waits for or retries that result; one that does not offer
+retry rejects the second presentation and needs no more than the reservation
+itself.
 
 A RAS can make the handle binding and token issuance of {{ras-processing}}
 one outcome with a local transaction, or with a compensating action that
@@ -1714,7 +1748,8 @@ error names, depth counting, handle syntax, comparison rules, and one DPoP
 proof per continuation request ({{assertion-claims}}, {{request}},
 {{validation}}). Recovery rests on `invalid_continuation` meaning a
 permanently unusable handle, failed validation consuming nothing, and retry
-being optional ({{error-response}}, {{validation-replay}}).
+being optional ({{error-response}}, {{validation-replay}},
+{{idempotent-retry}}).
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
@@ -1752,7 +1787,7 @@ grant it first obtained: without it, an actor whose RAS-local authorization had
 lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
 continuing from a consumed one, to any target the envelope permits, until it
 expired. Idempotent recovery after a lost response is optional and does not
-reopen replay ({{validation-replay}}).
+reopen replay ({{idempotent-retry}}).
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
@@ -3116,10 +3151,12 @@ BookingAPI with AT3.
 
 ## Background Agent Example (Scheduled Continuation) {#example-background}
 
-Alice sets up a daily calendar briefing and is absent at every run. Compared
-with the SaaS chain example, this one anchors the chain to a grant rather
-than a session; {{example-background-differences}} lists what differs. It
-also shows a target that tenant policy still excludes being refused.
+This example exercises the optional grant-anchored feature of
+{{lifecycle-grant}}. Alice sets up a daily calendar briefing and is absent at
+every run. Compared with the SaaS chain example, this one anchors the chain to
+a grant rather than a session; {{example-background-differences}} lists what
+differs. It also shows a target that tenant policy still excludes being
+refused.
 
 Topology: separate CAI with a Transaction Token carrier.
 
@@ -3146,8 +3183,8 @@ Alice authorizes "summarize my calendar every morning." Because the task must
 outlive her session, `briefing-agent` presents a refresh token from a grant
 that permits continuation as the root exchange's subject token, so the chain
 is anchored to that grant rather than to her session ({{root-establishment}},
-{{lifecycle}}). The root ID-JAG targets PlatformRAS, and the envelope records
-both that target and the Calendar target the task needs.
+{{lifecycle-grant}}). The root ID-JAG targets PlatformRAS, and the envelope
+records both that target and the Calendar target the task needs.
 
 Server-side state (root envelope excerpt):
 
@@ -3275,7 +3312,7 @@ other authorized targets.
 ### What Differs from the SaaS Chain Example {#example-background-differences}
 
 * The root subject token is a refresh token, so the chain anchors to a grant
-  and survives logout ({{lifecycle}}).
+  and survives logout ({{lifecycle-grant}}).
 * H0 is bound to a durable task authorization that PlatformRAS keys by task
   identifier; the Scheduler holds only that identifier, which is not a secret
   and authorizes nothing.
@@ -3330,10 +3367,11 @@ This non-normative appendix lists unresolved design questions.
    Dynamic ceilings might instead use an authorization detail {{RFC9396}} or
    a policy reference.
 
-5. **Document factoring.** Should durable chains ({{lifecycle}},
-   {{example-background}}) become a separate profile, leaving this document
-   with session-bounded continuation, or does one document with a stoppable
-   core serve implementers better?
+5. **Document factoring.** Grant-anchored chains are now one optional
+   section ({{lifecycle-grant}}) with its own example ({{example-background}}).
+   Should they become a separate profile, leaving this document with
+   session-bounded continuation, or does one document with a stoppable core
+   serve implementers better?
 
 6. **Stateless hop commitments.** Could a handle be a self-verifying
    commitment carrying the root, parent, RAS, and actor, so that the IdP
@@ -3347,7 +3385,8 @@ This non-normative appendix lists unresolved design questions.
    ({{privacy}}).
 
 7. **Mandatory idempotent retry.** {{validation-replay}} requires single-use
-   and makes idempotent retry optional; an earlier draft required both. Should
+   and idempotent retry is optional ({{idempotent-retry}}); an earlier draft
+   required both. Should
    retry be mandatory, so that a client can rely on recovering a lost response
    at any IdP, at the cost of fingerprint state consistent enough to serve a
    concurrent retry, or is a rejected second presentation followed by a fresh
@@ -3620,6 +3659,11 @@ this profile builds.
   processing for one on the root exchange, where the base profile leaves a
   presented actor token out of scope. Additional actor evidence, and policy
   that can require it, is left to an extension.
+* Gathered the optional features into skippable subsections: Grant-Anchored
+  Chains is the single home for the refresh-token grant anchor, and a
+  session-only implementation issues an ordinary ID-JAG for such a root;
+  Idempotent Retry says an IdP not offering it implements nothing there; and
+  Error Response and Recovery states the client's two recovery situations.
 
 -01
 
