@@ -3243,8 +3243,10 @@ example.<a href="#section-6-1" class="pilcrow">¶</a></p>
 is a fresh policy check, and revoking a hop stops its subtree at the next
 continuation, fail-closed; an offline-attenuated token, by contrast, stays
 usable for its lifetime without contacting an authority. Revocation does not
-invalidate an already-issued ID-JAG; <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> gives the resulting
-window for each way authority is withdrawn.<a href="#section-6-2" class="pilcrow">¶</a></p>
+invalidate an already-issued ID-JAG, so the revocation window is the ID-JAG's
+remaining redemption window plus the lifetime of the access token a late
+redemption obtains; any refresh token the RAS issues, which the base profile
+recommends against, extends it further.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <p id="section-6-3">Three independent lifetimes govern a continuation: the ID-JAG's short
 redemption window; the access-token lifetime the accepting RAS sets, which
 this profile does not constrain; and the IdP-held continuation chain.
@@ -3326,92 +3328,16 @@ revoke an individual hop's subtree; and<a href="#section-6.2-6.2.1" class="pilcr
             <p id="section-6.2-6.3.1">it <span class="bcp14">MUST</span> reject continuation on a revoked, expired, or ended chain.<a href="#section-6.2-6.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-6.2-7">Two parties observe withdrawal, and each sees only its own kind. The CAI sees
-the RAS's authorization state, so it governs fresh assertions for a hop; the
-IdP sees anchors, tenant policy, and its own revocations, so it governs
-continuation. Withdrawing at one of them changes only what that party
-governs. An unexpired assertion remains subject to every rule of
-<a href="#validation" class="auto internal xref">Section 5.5.3</a> when presented: RAS-local withdrawal alone does not invalidate
-an assertion already issued, while withdrawal the IdP observes prevents its
-use at once, before its <code>exp</code>. This profile does not revoke the access tokens
-a RAS issues; their issuing RAS may revoke them under its own rules, and any
-refresh token the RAS issues, which the base profile recommends against,
-extends their reach. The table summarizes each way authority is withdrawn.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
-<table class="center" id="table-4">
-          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Withdrawn by</th>
-              <th class="text-left" rowspan="1" colspan="1">Fresh assertions for the hop</th>
-              <th class="text-left" rowspan="1" colspan="1">Continuation at the IdP</th>
-              <th class="text-left" rowspan="1" colspan="1">A new chain</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Session ends (session anchor)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; <code>invalid_continuation</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">After the user re-authenticates, if policy still permits</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Grant revoked or expired (grant anchor)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; logout alone does not end it</td>
-              <td class="text-left" rowspan="1" colspan="1">From a new grant</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant withdraws continuation permission</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; not revived by restoring the policy</td>
-              <td class="text-left" rowspan="1" colspan="1">Not possible for that authorization</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant removes a permitted continuer</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">That actor fails with <code>unauthorized_client</code>; others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant narrows a basis or an enumerated target</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">Continuation to the removed target fails (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>); others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP administrator revokes the chain or a hop's subtree</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">Stops from the revoked hops at the next attempt; <code>invalid_continuation</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain: as for its anchor; subtree: the rest continues</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">RAS withdraws the accepted authorization</td>
-              <td class="text-left" rowspan="1" colspan="1">Live recheck: stops at once. Self-contained evidence: stops when that token expires; a separate CAI adds its propagation delay (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Not observed: the hop stays active and descendants accepted at other RASes continue; an assertion issued before the evidence expired stays presentable until its own <code>exp</code>, which a CAI may cap at the evidence's expiry</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed; the RAS re-accepts</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP removes a CAI or its keys (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected: the CAI may keep issuing</td>
-              <td class="text-left" rowspan="1" colspan="1">Fails issuer trust at the next evaluation, for existing chains and for assertions already issued</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed; configure a replacement CAI</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP removes an actor identity authority pairing (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">That actor fails for the tenant; others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="section-6.2-9">Because a RAS is authoritative only for its own authorization, its withdrawal
-reaches no other RAS; administrative revocation of the chain or a subtree is
-the tool for withdrawing across RASes.<a href="#section-6.2-9" class="pilcrow">¶</a></p>
-<p id="section-6.2-10">How an IdP surfaces chains to users and administrators for review and
+<p id="section-6.2-7">RAS-local withdrawal stops fresh assertions once the CAI observes it;
+self-contained acceptance evidence may remain usable until its expiry
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>). Previously issued assertions remain subject to
+the IdP's current chain, trust, and authorization checks (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
+RAS-local withdrawal does not revoke descendants accepted at other RASes;
+stopping their continuation requires IdP revocation of the chain or affected
+subtree.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
+<p id="section-6.2-8">How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> describes OAuth grant
-management for that purpose.<a href="#section-6.2-10" class="pilcrow">¶</a></p>
+management for that purpose.<a href="#section-6.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="lifecycle-limits">
@@ -3590,8 +3516,8 @@ the hop tree could be replaced by self-verifying handles is an open question
         </h3>
 <p id="section-8.1-1">The two topologies differ only in where the CAI role sits and how it reaches
 the hop's state:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-5">
-          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<table class="center" id="table-4">
+          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Topology</th>
@@ -3860,11 +3786,9 @@ presents nothing it did not already hold; what it gains is the CAI's
 attestation, gated by policy and the acceptance check.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
 <p id="section-9.5-3">A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
-additionally attest a hop the RAS refused. In both topologies, RAS-local
-authorization revocation after issuance is not observed by the IdP, and a
-separate CAI adds any delay in RAS state reaching it; <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>
-gives the resulting window and the live recheck that closes it. The root
-envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
+additionally attest a hop the RAS refused. <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> describes the
+effects of RAS-local withdrawal, including delayed observation by a separate
+CAI. The root envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -4811,8 +4735,8 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 ordinary OAuth or ID-JAG registration except the three the profile adds: the
 IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
 GatewayRAS's advertisement of the continuation profile.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-6">
-            <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
+<table class="center" id="table-5">
+            <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Party</th>
@@ -6266,12 +6190,8 @@ token is now a permitted carrier, and the handle is also registered as an
 introspection response member.<a href="#appendix-E-3.39.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.40">
-          <p id="appendix-E-3.40.1">Ending a Chain is the single home for what stops when authority is
-withdrawn: a table of withdrawal sources against fresh assertions,
-continuation, and re-establishment, and the two observers (the CAI sees
-RAS state; the IdP sees anchors, policy, and its own revocations). The
-Assertion Preconditions, Chain Lifetime, and Topology and Trust passages
-cross-reference it instead of each restating the window.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.40.1">Clarified the effects of RAS-local withdrawal in Ending a Chain and
+cross-referenced it from Assertion Preconditions and Topology and Trust.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>

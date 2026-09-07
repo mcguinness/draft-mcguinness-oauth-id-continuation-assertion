@@ -1661,8 +1661,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    subtree at the next continuation, fail-closed; an offline-attenuated
    token, by contrast, stays usable for its lifetime without contacting
    an authority.  Revocation does not invalidate an already-issued ID-
-   JAG; Section 6.2 gives the resulting window for each way authority is
-   withdrawn.
+   JAG, so the revocation window is the ID-JAG's remaining redemption
+   window plus the lifetime of the access token a late redemption
+   obtains; any refresh token the RAS issues, which the base profile
+   recommends against, extends it further.
 
    Three independent lifetimes govern a continuation: the ID-JAG's short
    redemption window; the access-token lifetime the accepting RAS sets,
@@ -1727,90 +1729,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    *  it MUST reject continuation on a revoked, expired, or ended chain.
 
-   Two parties observe withdrawal, and each sees only its own kind.  The
-   CAI sees the RAS's authorization state, so it governs fresh
-   assertions for a hop; the IdP sees anchors, tenant policy, and its
-   own revocations, so it governs continuation.  Withdrawing at one of
-   them changes only what that party governs.  An unexpired assertion
-   remains subject to every rule of Section 5.5.3 when presented: RAS-
-   local withdrawal alone does not invalidate an assertion already
-   issued, while withdrawal the IdP observes prevents its use at once,
-   before its exp.  This profile does not revoke the access tokens a RAS
-   issues; their issuing RAS may revoke them under its own rules, and
-   any refresh token the RAS issues, which the base profile recommends
-   against, extends their reach.  The table summarizes each way
-   authority is withdrawn.
-
-   +=============+==============+====================+=================+
-   |Withdrawn by |Fresh         |Continuation at the |A new chain      |
-   |             |assertions for|IdP                 |                 |
-   |             |the hop       |                    |                 |
-   +=============+==============+====================+=================+
-   |Session ends |Unaffected    |Chain ends when     |After the user   |
-   |(session     |until the RAS |observed;           |re-authenticates,|
-   |anchor)      |withdraws     |invalid_continuation|if policy still  |
-   |             |              |                    |permits          |
-   +-------------+--------------+--------------------+-----------------+
-   |Grant revoked|Unaffected    |Chain ends when     |From a new grant |
-   |or expired   |until the RAS |observed; logout    |                 |
-   |(grant       |withdraws     |alone does not end  |                 |
-   |anchor)      |              |it                  |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |Tenant       |Unaffected    |Chain ends when     |Not possible for |
-   |withdraws    |until the RAS |observed; not       |that             |
-   |continuation |withdraws     |revived by restoring|authorization    |
-   |permission   |              |the policy          |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |Tenant       |Unaffected    |That actor fails    |Not needed       |
-   |removes a    |              |with                |                 |
-   |permitted    |              |unauthorized_client;|                 |
-   |continuer    |              |others continue     |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |Tenant       |Unaffected    |Continuation to the |Not needed       |
-   |narrows a    |              |removed target fails|                 |
-   |basis or an  |              |(Section 5.5.6);    |                 |
-   |enumerated   |              |others continue     |                 |
-   |target       |              |                    |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |IdP          |Unaffected    |Stops from the      |Chain: as for its|
-   |administrator|              |revoked hops at the |anchor; subtree: |
-   |revokes the  |              |next attempt;       |the rest         |
-   |chain or a   |              |invalid_continuation|continues        |
-   |hop's subtree|              |                    |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |RAS withdraws|Live recheck: |Not observed: the   |Not needed; the  |
-   |the accepted |stops at once.|hop stays active and|RAS re-accepts   |
-   |authorization|Self-contained|descendants accepted|                 |
-   |             |evidence:     |at other RASes      |                 |
-   |             |stops when    |continue; an        |                 |
-   |             |that token    |assertion issued    |                 |
-   |             |expires; a    |before the evidence |                 |
-   |             |separate CAI  |expired stays       |                 |
-   |             |adds its      |presentable until   |                 |
-   |             |propagation   |its own exp, which a|                 |
-   |             |delay (Section|CAI may cap at the  |                 |
-   |             |5.4.3)        |evidence's expiry   |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |IdP removes a|Unaffected:   |Fails issuer trust  |Not needed;      |
-   |CAI or its   |the CAI may   |at the next         |configure a      |
-   |keys         |keep issuing  |evaluation, for     |replacement CAI  |
-   |(Section 7.2)|              |existing chains and |                 |
-   |             |              |for assertions      |                 |
-   |             |              |already issued      |                 |
-   +-------------+--------------+--------------------+-----------------+
-   |IdP removes  |Unaffected    |That actor fails for|Not needed       |
-   |an actor     |              |the tenant; others  |                 |
-   |identity     |              |continue            |                 |
-   |authority    |              |                    |                 |
-   |pairing      |              |                    |                 |
-   |(Section 7.3)|              |                    |                 |
-   +-------------+--------------+--------------------+-----------------+
-
-                                  Table 4
-
-   Because a RAS is authoritative only for its own authorization, its
-   withdrawal reaches no other RAS; administrative revocation of the
-   chain or a subtree is the tool for withdrawing across RASes.
+   RAS-local withdrawal stops fresh assertions once the CAI observes it;
+   self-contained acceptance evidence may remain usable until its expiry
+   (Section 5.4.3).  Previously issued assertions remain subject to the
+   IdP's current chain, trust, and authorization checks (Section 5.5.3).
+   RAS-local withdrawal does not revoke descendants accepted at other
+   RASes; stopping their continuation requires IdP revocation of the
+   chain or affected subtree.
 
    How an IdP surfaces chains to users and administrators for review and
    revocation is deployment-specific; [GRANT-MGMT] describes OAuth grant
@@ -1987,7 +1912,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       |            |             |           | audit need isolation |
       +------------+-------------+-----------+----------------------+
 
-                                  Table 5
+                                  Table 4
 
    Co-located is the baseline: it needs no CAI configuration at the IdP
    beyond the RAS's own issuer trust and no self-entry in
@@ -2228,11 +2153,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    A compromised RAS can fabricate acceptance state in either topology,
    since a separate CAI reads that state as authoritative; a compromised
-   separate CAI can additionally attest a hop the RAS refused.  In both
-   topologies, RAS-local authorization revocation after issuance is not
-   observed by the IdP, and a separate CAI adds any delay in RAS state
-   reaching it; Section 6.2 gives the resulting window and the live
-   recheck that closes it.  The root envelope still bounds the result.
+   separate CAI can additionally attest a hop the RAS refused.
+   Section 6.2 describes the effects of RAS-local withdrawal, including
+   delayed observation by a separate CAI.  The root envelope still
+   bounds the result.
 
 9.6.  Actor Chain Integrity
 
@@ -3023,7 +2947,7 @@ B.1.1.  Provisioning
    |              | requires for a key-bound ID-JAG        |           |
    +--------------+----------------------------------------+-----------+
 
-                                  Table 6
+                                  Table 5
 
    The credential that tool-gateway presents to the IdP as its
    client_assertion (Appendix B.1.5) is, in this example, a JWT issued
@@ -4257,13 +4181,9 @@ Document History
       now a permitted carrier, and the handle is also registered as an
       introspection response member.
 
-   *  Ending a Chain is the single home for what stops when authority is
-      withdrawn: a table of withdrawal sources against fresh assertions,
-      continuation, and re-establishment, and the two observers (the CAI
-      sees RAS state; the IdP sees anchors, policy, and its own
-      revocations).  The Assertion Preconditions, Chain Lifetime, and
-      Topology and Trust passages cross-reference it instead of each
-      restating the window.
+   *  Clarified the effects of RAS-local withdrawal in Ending a Chain
+      and cross-referenced it from Assertion Preconditions and Topology
+      and Trust.
 
    -01
 
