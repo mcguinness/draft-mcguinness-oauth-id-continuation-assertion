@@ -588,7 +588,7 @@ permits continuation and, if so, populates the root-chain envelope:
 | Chain identity | The governing authorization's anchor and the chain's expiry ({{lifecycle}}) | the root subject token's anchor | fixed |
 | Continuation authorization | Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or recorded as an authorization basis | tenant policy | enumerated: narrows only; basis: as policy stands |
 | Continuation authorization | The actors or trust domains permitted to continue, and the basis for that permission | tenant policy | as policy stands |
-| Continuation authorization | Any maximum actor-chain depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
+| Continuation authorization | Any maximum actor-lineage depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
 
 Token claims cannot supply these values. The chain identity is fixed: no later
 policy or request changes the user, the authentication context, the root
@@ -1465,7 +1465,7 @@ management for that purpose.
 ## Limits {#lifecycle-limits}
 
 Revocation of the governing authorization applies to every chain rooted in
-it, and the actor-chain depth bound is enforced per branch. Fan-out, rate, or
+it, and the actor-lineage depth bound is enforced per branch. Fan-out, rate, or
 hop-count limits configured for a governing authorization apply across every
 chain rooted in it, so sibling chains share one budget; a retried
 establishment ({{root-establishment}}) MUST NOT evade them.
@@ -1563,7 +1563,7 @@ that concurrent presentations yield one grant; an IdP that offers idempotent
 retry also keeps the fingerprint and result so that a retry recovers it
 ({{validation-replay}}).
 
-Because the actor-chain depth bound counts merged lineage entries, a workload
+Because the actor-lineage depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
 hop-count limits of {{lifecycle-limits}} bound that growth instead.
 
