@@ -3241,8 +3241,10 @@ example.<a href="#section-6-1" class="pilcrow">¶</a></p>
 is a fresh policy check, and revoking a hop stops its subtree at the next
 continuation, fail-closed; an offline-attenuated token, by contrast, stays
 usable for its lifetime without contacting an authority. Revocation does not
-invalidate an already-issued ID-JAG; <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> gives the resulting
-window for each way authority is withdrawn.<a href="#section-6-2" class="pilcrow">¶</a></p>
+invalidate an already-issued ID-JAG, so the revocation window is the ID-JAG's
+remaining redemption window plus the lifetime of the access token a late
+redemption obtains; any refresh token the RAS issues, which the base profile
+recommends against, extends it further.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <p id="section-6-3">Three independent lifetimes govern a continuation: the ID-JAG's short
 redemption window; the access-token lifetime the accepting RAS sets, which
 this profile does not constrain; and the IdP-held continuation chain.
@@ -3324,92 +3326,16 @@ revoke an individual hop's subtree; and<a href="#section-6.2-6.2.1" class="pilcr
             <p id="section-6.2-6.3.1">it <span class="bcp14">MUST</span> reject continuation on a revoked, expired, or ended chain.<a href="#section-6.2-6.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-6.2-7">Two parties observe withdrawal, and each sees only its own kind. The CAI sees
-the RAS's authorization state, so it governs fresh assertions for a hop; the
-IdP sees anchors, tenant policy, and its own revocations, so it governs
-continuation. Withdrawing at one of them changes only what that party
-governs. An unexpired assertion remains subject to every rule of
-<a href="#validation" class="auto internal xref">Section 5.5.3</a> when presented: RAS-local withdrawal alone does not invalidate
-an assertion already issued, while withdrawal the IdP observes prevents its
-use at once, before its <code>exp</code>. This profile does not revoke the access tokens
-a RAS issues; their issuing RAS may revoke them under its own rules, and any
-refresh token the RAS issues, which the base profile recommends against,
-extends their reach. The table summarizes each way authority is withdrawn.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
-<table class="center" id="table-4">
-          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
-<thead>
-            <tr>
-              <th class="text-left" rowspan="1" colspan="1">Withdrawn by</th>
-              <th class="text-left" rowspan="1" colspan="1">Fresh assertions for the hop</th>
-              <th class="text-left" rowspan="1" colspan="1">Continuation at the IdP</th>
-              <th class="text-left" rowspan="1" colspan="1">A new chain</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Session ends (session anchor)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; <code>invalid_continuation</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">After the user re-authenticates, if policy still permits</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Grant revoked or expired (grant anchor)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; logout alone does not end it</td>
-              <td class="text-left" rowspan="1" colspan="1">From a new grant</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant withdraws continuation permission</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected until the RAS withdraws</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain ends when observed; not revived by restoring the policy</td>
-              <td class="text-left" rowspan="1" colspan="1">Not possible for that authorization</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant removes a permitted continuer</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">That actor fails with <code>unauthorized_client</code>; others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">Tenant narrows a basis or an enumerated target</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">Continuation to the removed target fails (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>); others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP administrator revokes the chain or a hop's subtree</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">Stops from the revoked hops at the next attempt; <code>invalid_continuation</code>
-</td>
-              <td class="text-left" rowspan="1" colspan="1">Chain: as for its anchor; subtree: the rest continues</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">RAS withdraws the accepted authorization</td>
-              <td class="text-left" rowspan="1" colspan="1">Live recheck: stops at once. Self-contained evidence: stops when that token expires; a separate CAI adds its propagation delay (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Not observed: the hop stays active and descendants accepted at other RASes continue; an assertion issued before the evidence expired stays presentable until its own <code>exp</code>, which the recommended cap holds to the evidence's expiry (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed; the RAS re-accepts</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP removes a CAI or its keys (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected: the CAI may keep issuing</td>
-              <td class="text-left" rowspan="1" colspan="1">Fails issuer trust at the next evaluation, for existing chains and for assertions already issued</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed; configure a replacement CAI</td>
-            </tr>
-            <tr>
-              <td class="text-left" rowspan="1" colspan="1">IdP removes an actor identity authority pairing (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">Unaffected</td>
-              <td class="text-left" rowspan="1" colspan="1">That actor fails for the tenant; others continue</td>
-              <td class="text-left" rowspan="1" colspan="1">Not needed</td>
-            </tr>
-          </tbody>
-        </table>
-<p id="section-6.2-9">Because a RAS is authoritative only for its own authorization, its withdrawal
-reaches no other RAS; administrative revocation of the chain or a subtree is
-the tool for withdrawing across RASes.<a href="#section-6.2-9" class="pilcrow">¶</a></p>
-<p id="section-6.2-10">How an IdP surfaces chains to users and administrators for review and
+<p id="section-6.2-7">RAS-local withdrawal stops fresh assertions once the CAI observes it;
+self-contained acceptance evidence may remain usable until its expiry
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>). Previously issued assertions remain subject to
+the IdP's current chain, trust, and authorization checks (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
+RAS-local withdrawal does not revoke descendants accepted at other RASes;
+stopping their continuation requires IdP revocation of the chain or affected
+subtree.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
+<p id="section-6.2-8">How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> describes OAuth grant
-management for that purpose.<a href="#section-6.2-10" class="pilcrow">¶</a></p>
+management for that purpose.<a href="#section-6.2-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="lifecycle-limits">
@@ -3496,10 +3422,8 @@ validating once the refresh takes effect.<a href="#section-7.3-2" class="pilcrow
 <p id="section-7.3-3">The IdP evaluates issuer trust and keys against its current trusted issuer
 and key state, so removing an issuer or revoking its keys de-authorizes it
 for existing chains (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-7.3-3" class="pilcrow">¶</a></p>
-<p id="section-7.3-4">Provisioning is out of band and deployment-specific. A tenant registers a CAI
-at the IdP as the record of that trust scope: the issuer identifier, its keys
-or <code>jwks_uri</code>, the RAS whose hops it attests, the tenant, and the actor
-identity authority it pairs with. A tenant withdraws the CAI the same way.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
+<p id="section-7.3-4">CAI trust is provisioned and withdrawn through deployment-specific
+configuration at the IdP.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3569,8 +3493,8 @@ the hop tree could be replaced by self-verifying handles is an open question
         </h3>
 <p id="section-8.1-1">The two topologies differ only in where the CAI role sits and how it reaches
 the hop's state:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-5">
-          <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
+<table class="center" id="table-4">
+          <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
             <tr>
               <th class="text-left" rowspan="1" colspan="1">Topology</th>
@@ -3654,99 +3578,9 @@ and 2 of <a href="#chain-id" class="auto internal xref">Section 4</a> and remain
 <a href="#section-9" class="section-number selfRef">9. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
       </h2>
 <p id="section-9-1">This profile assumes TLS, a correct IdP subject map and root-chain envelope,
-and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. It principally addresses these
-adversaries; each entry names the guarantee and where the rules are stated:<a href="#section-9-1" class="pilcrow">¶</a></p>
-<ol start="1" type="1" class="normal type-1" id="section-9-2">
-<li id="section-9-2.1">
-          <p id="section-9-2.1.1"><strong>Assertion replayer.</strong> One grant per assertion, only to the actor proving
-the <code>cnf</code> key, within a short window (<a href="#validation" class="auto internal xref">Section 5.5.3</a>,
-<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>, <a href="#security-pop" class="auto internal xref">Section 9.1</a>).<a href="#section-9-2.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.2">
-          <p id="section-9-2.2.1"><strong>Token, type, or algorithm confuser.</strong> Fixed <code>typ</code>, unencrypted JWS, an
-allowed asymmetric algorithm, keys from configured issuers only
-(<a href="#names" class="auto internal xref">Section 3.1</a>, <a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#security-alg" class="auto internal xref">Section 9.7</a>).<a href="#section-9-2.2.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.3">
-          <p id="section-9-2.3.1"><strong>Mix-up attacker.</strong> <code>aud</code> is the IdP the CAI designates, never a requester
-input; the client confirms it against discovered metadata
-(<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>).<a href="#section-9-2.3.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.4">
-          <p id="section-9-2.4.1"><strong>CAI outside its trust scope.</strong> Only the accepting RAS, or an issuer
-configured per tenant for that RAS, is accepted. A compromised RAS or CAI
-can fabricate acceptance; the profile bounds that rather than defeating it
-(<a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#issuer-trust" class="auto internal xref">Section 7.3</a>, <a href="#security-topology" class="auto internal xref">Section 9.5</a>).<a href="#section-9-2.4.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.5">
-          <p id="section-9-2.5.1"><strong>Actor impersonator.</strong> Actor identity is the IdP's per-tenant mapping from
-client authentication; <code>act</code> and any <code>actor_token</code> must match it
-(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#actor-token" class="auto internal xref">Section 5.5.2.1</a>, <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.6">
-          <p id="section-9-2.6.1"><strong>Lineage forger.</strong> The onward <code>act</code> is built from the IdP's own hop
-records; extra <code>act</code> members carry no authority (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>,
-<a href="#security-actor-chain" class="auto internal xref">Section 9.6</a>).<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.7">
-          <p id="section-9-2.7.1"><strong>Authentication-context escalator.</strong> The assertion carries no
-authentication-context claims; the onward ID-JAG copies the root's
-unchanged (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.8">
-          <p id="section-9-2.8.1"><strong>Target or scope widener.</strong> No target authority in the assertion or the
-CAI request; an enumerated envelope never gains targets; every request is
-contained in the envelope (<a href="#root-envelope" class="auto internal xref">Section 5.1.4</a>, <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>,
-<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9-2.8.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.9">
-          <p id="section-9-2.9.1"><strong>Handle abuser.</strong> Unpredictable, bound at the RAS to one authorization,
-crosses a boundary only inside an ID-JAG or an assertion, confers nothing
-alone (<a href="#chain-id" class="auto internal xref">Section 4</a>, <a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#handle-propagation" class="auto internal xref">Section 5.3</a>).<a href="#section-9-2.9.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.10">
-          <p id="section-9-2.10.1"><strong>Acceptance bypasser.</strong> The continued hop was accepted by the RAS, and
-every redemption of one ID-JAG resolves to one hop binding
-(<a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>).<a href="#section-9-2.10.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.11">
-          <p id="section-9-2.11.1"><strong>Revocation evader.</strong> The withdrawal table gives what stops, and when,
-for each source (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-9-2.11.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.12">
-          <p id="section-9-2.12.1"><strong>Refresh-token escalator.</strong> Neither exchange response carries a refresh
-token (<a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>, <a href="#success-response" class="auto internal xref">Section 5.5.4</a>).<a href="#section-9-2.12.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.13">
-          <p id="section-9-2.13.1"><strong>Non-user-rooted chain establisher.</strong> A chain roots only from a
-user-rooted anchor under tenant policy (<a href="#chain-establishment" class="auto internal xref">Section 5.1.2</a>,
-<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).<a href="#section-9-2.13.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.14">
-          <p id="section-9-2.14.1"><strong>Unlisted continuer or budget resetter.</strong> Only permitted continuers;
-limits apply across every chain and retry of one authorization
-(<a href="#root-envelope" class="auto internal xref">Section 5.1.4</a>, <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>).<a href="#section-9-2.14.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.15">
-          <p id="section-9-2.15.1"><strong>Retry substituter.</strong> A retried presentation is honored only when every
-fingerprinted field matches (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>).<a href="#section-9-2.15.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.16">
-          <p id="section-9-2.16.1"><strong>Parameter polluter.</strong> Each request parameter appears once, <code>resource</code>
-excepted (<a href="#request" class="auto internal xref">Section 5.5.1</a>, <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9-2.16.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="section-9-2.17">
-          <p id="section-9-2.17.1"><strong>Correlator.</strong> Per-hop handles without user data, pairwise subjects,
-<code>sid</code> never carried, lineage narrowable (<a href="#chain-id" class="auto internal xref">Section 4</a>,
-<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>, <a href="#privacy" class="auto internal xref">Section 10</a>).<a href="#section-9-2.17.1" class="pilcrow">¶</a></p>
-</li>
-      </ol>
-<p id="section-9-3">Interoperability rests on the claim set, request parameters, response shape,
-error names, depth counting, handle syntax, comparison rules, and one DPoP
-proof per continuation request (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#request" class="auto internal xref">Section 5.5.1</a>,
-<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Recovery rests on <code>invalid_continuation</code> meaning a
-permanently unusable handle, failed validation consuming nothing, and retry
-being optional (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>, <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>).<a href="#section-9-3" class="pilcrow">¶</a></p>
+and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. The following sections discuss replay,
+compromised workloads and issuers, authorization and actor-lineage integrity,
+and token confusion. <a href="#privacy" class="auto internal xref">Section 10</a> addresses correlation and disclosure risks.<a href="#section-9-1" class="pilcrow">¶</a></p>
 <div id="security-pop">
 <section id="section-9.1">
         <h3 id="name-sender-constraint-and-proof">
@@ -3755,8 +3589,10 @@ being optional (<a href="#error-response" class="auto internal xref">Section 5.5
 <p id="section-9.1-1">A continuation assertion names the actor the IdP will treat as the chain's
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
-that actor. A captured assertion is instead useless without the private key
-(<a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#client-identity" class="auto internal xref">Section 5.5.2</a>), and because the
+that actor. The assertion is not a bearer token; every exchange requires live
+proof of possession of the <code>cnf</code> key, a DPoP proof <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> for the method
+this document defines (<a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#client-identity" class="auto internal xref">Section 5.5.2</a>). A
+captured assertion is therefore useless without the private key, and because the
 onward ID-JAG and the accepting RAS's access token are bound to that same key
 (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#ras-processing" class="auto internal xref">Section 5.2</a>), possession is demonstrated
 continuously from the first continuation on, not once at issuance. A terminal
@@ -3776,8 +3612,8 @@ rests on the continuing actor's key, the RAS binding, and the CAI's
 attestation, not on the root client's key.<a href="#section-9.1-2" class="pilcrow">¶</a></p>
 <p id="section-9.1-3">At assertion issuance the actor proves only its own key, not any key the
 incoming subject token is bound to (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>).<a href="#section-9.1-3" class="pilcrow">¶</a></p>
-<p id="section-9.1-4">Replay of a captured assertion is confined to the IdP continuation exchange.
-The freshness rule bounds the window, and
+<p id="section-9.1-4">Replay of a captured assertion is confined to the IdP continuation exchange
+and requires the actor's key. The freshness rule bounds the window, and
 single-use (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>) confines a consumed assertion to the one
 grant it first obtained: without it, an actor whose RAS-local authorization had
 lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
@@ -3791,9 +3627,9 @@ reopen replay (<a href="#validation-replay" class="auto internal xref">Section 5
         <h3 id="name-envelope-enforcement-and-of">
 <a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-envelope-enforcement-and-of" class="section-name selfRef">Envelope Enforcement and Offline Attenuation</a>
         </h3>
-<p id="section-9.2-1">The IdP enforces the envelope and nothing else, and the CAI, not the IdP,
-checks any offline attenuation segment (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>,
-<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Because the assertion is
+<p id="section-9.2-1">The envelope bounds every target and authority; the IdP enforces it and nothing
+else, and the CAI, not the IdP, checks any offline attenuation segment
+(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>, <a href="#validation" class="auto internal xref">Section 5.5.3</a>). Because the assertion is
 target-agnostic, a permitted actor may select any target within that ceiling.<a href="#section-9.2-1" class="pilcrow">¶</a></p>
 <p id="section-9.2-2">A basis-form envelope admits whatever the basis currently permits
 (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>), and how broad that is depends on the policy it
@@ -3811,7 +3647,9 @@ for agent continuation, rather than an ambient classification.<a href="#section-
 <p id="section-9.2-5">Continuers and limits are read as policy stands (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>), so
 adding a continuer admits a new actor into every running chain that policy
 governs. A tenant manages that list with the same care as a basis.<a href="#section-9.2-5" class="pilcrow">¶</a></p>
-<p id="section-9.2-6">Wrong-handle association can continue the wrong user's bounded chain
+<p id="section-9.2-6">Wrong-handle association can continue the wrong user's bounded chain. The
+RAS-bound state, read directly or through a carrier derived from it, is what
+associates a request with a handle, and the CAI rejects a substituted one
 (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>, <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>).<a href="#section-9.2-6" class="pilcrow">¶</a></p>
 <p id="section-9.2-7">Because the CAI issues only for an actor it is authoritative to associate with
 the accepted authorization (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>), a party that merely holds a
@@ -3832,8 +3670,10 @@ unchanged into onward ID-JAGs (<a href="#onward-id-jag" class="auto internal xre
         <h3 id="name-trust-in-actor-identity-aut">
 <a href="#section-9.3" class="section-number selfRef">9.3. </a><a href="#name-trust-in-actor-identity-aut" class="section-name selfRef">Trust in Actor Identity Authorities</a>
         </h3>
-<p id="section-9.3-1">A rogue or over-scoped actor identity authority is an impersonation vector: a
-party controlling one could name an actor in another domain or tenant
+<p id="section-9.3-1">The actor's identity authority is the <code>iss</code> of its canonical actor identity,
+which the IdP resolves from its own configuration rather than from the request
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>). A rogue or over-scoped authority is an impersonation
+vector: a party controlling one could name an actor in another domain or tenant
 and continue that actor's chains. <a href="#validation" class="auto internal xref">Section 5.5.3</a> therefore requires an authority
 trusted for the actor's own domain and tenant and paired with the CAI, and an
 accompanying CAI assertion does not relax that: CAI attestation of the hop and
@@ -3846,13 +3686,28 @@ neither substitutes for the other.<a href="#section-9.3-1" class="pilcrow">¶</a
         <h3 id="name-conjunctive-trust-and-issue">
 <a href="#section-9.4" class="section-number selfRef">9.4. </a><a href="#name-conjunctive-trust-and-issue" class="section-name selfRef">Conjunctive Trust and Issuer Pairing</a>
         </h3>
-<p id="section-9.4-1">A continuation requires all of these, and no one of them suffices alone: a CAI
-the IdP trusts for the presented hop's accepting Resource Authorization Server,
-which attests the chain-to-actor transition; the actor's identity authority,
-which vouches for the actor; live proof of possession of the confirmed key; and
-the IdP's own envelope and current-actor policy (the issuer-trust,
-current-actor, and envelope-containment rules of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9.4-1" class="pilcrow">¶</a></p>
-<p id="section-9.4-2">The IdP's trust configuration records these pairings (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-9.4-2" class="pilcrow">¶</a></p>
+<p id="section-9.4-1">A continuation requires all of these, and no one of them suffices alone:<a href="#section-9.4-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-9.4-2.1">
+            <p id="section-9.4-2.1.1">a CAI the IdP trusts for the presented hop's accepting Resource
+Authorization Server, which attests the chain-to-actor transition (the
+issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>);<a href="#section-9.4-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-9.4-2.2">
+            <p id="section-9.4-2.2.1">the actor's identity authority, trusted for the current actor's domain and
+tenant, which vouches for the actor through an <code>actor_token</code> or the mapping
+of its client credential (the current-actor rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>);<a href="#section-9.4-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-9.4-2.3">
+            <p id="section-9.4-2.3.1">live proof of possession of the confirmed key (the current-actor rule of
+<a href="#validation" class="auto internal xref">Section 5.5.3</a>); and<a href="#section-9.4-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="section-9.4-2.4">
+            <p id="section-9.4-2.4.1">the IdP's own envelope and current-actor policy (the envelope-containment
+rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9.4-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="section-9.4-3">The IdP's trust configuration records these pairings (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-9.4-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-topology">
@@ -3871,11 +3726,9 @@ presents nothing it did not already hold; what it gains is the CAI's
 attestation, gated by policy and the acceptance check.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
 <p id="section-9.5-3">A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
-additionally attest a hop the RAS refused. In both topologies, RAS-local
-authorization revocation after issuance is not observed by the IdP, and a
-separate CAI adds any delay in RAS state reaching it; <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>
-gives the resulting window and the live recheck that closes it. The root
-envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
+additionally attest a hop the RAS refused. <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> describes the
+effects of RAS-local withdrawal, including delayed observation by a separate
+CAI. The root envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -3887,9 +3740,11 @@ envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a>
 representation of the IdP's hop lineage, which is the authoritative actor
 history. A compromised actor could try to forge it, to hide its own identity,
 impersonate a more privileged prior actor, or fabricate a delegation that
-never happened. This profile denies that by construction: an assertion names
-only the current actor (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). The IdP <span class="bcp14">MUST</span>
-reject any mismatch between the current actor and the assertion's <code>act</code>.<a href="#section-9.6-1" class="pilcrow">¶</a></p>
+never happened. This profile
+denies that by construction: an assertion names only the current actor, and
+the IdP derives the onward lineage from its own hop records
+(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). The IdP <span class="bcp14">MUST</span> reject any mismatch between the current
+actor and the assertion's <code>act</code>.<a href="#section-9.6-1" class="pilcrow">¶</a></p>
 <p id="section-9.6-2">A party therefore cannot rewrite history it does not control, and
 offline-attenuation segments, which the IdP does not observe, do not enter
 lineage. Lineage is disclosed, not exhaustive: policy may narrow it
@@ -3903,8 +3758,8 @@ participated" cannot be enforced from <code>act</code> alone.<a href="#section-9
 <a href="#section-9.7" class="section-number selfRef">9.7. </a><a href="#name-token-type-and-algorithm-co" class="section-name selfRef">Token, Type, and Algorithm Confusion</a>
         </h3>
 <p id="section-9.7-1">An attacker may try to pass one token type off as another, downgrade the
-signature algorithm, or steer verification to a key it controls; the JOSE
-verification rules that deny this are the well-formedness rule of
+signature algorithm, or steer verification to a key it controls. The JOSE
+verification rules that deny this are stated in the well-formedness rule of
 <a href="#validation" class="auto internal xref">Section 5.5.3</a>.<a href="#section-9.7-1" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -4682,12 +4537,6 @@ CAI's verification of the proof is defense in depth; item 4 is satisfied at
 the IdP. Where this document offers a choice,
 such as the form of acceptance evidence or a separate actor token, the choice
 is between mechanisms that satisfy the same item.<a href="#appendix-A.10-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.10-4">A change to this profile is acceptable when it preserves each guarantee listed
-in <a href="#security" class="auto internal xref">Section 9</a> under the same attacker capabilities and trust assumptions. A
-removal that does not preserve one is recorded as the deliberate removal of an
-optional capability or as a changed assumption, never presented as an
-equivalent design. Showing that each requirement covers something is
-traceability, not proof that the mechanism is minimal.<a href="#appendix-A.10-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4790,8 +4639,8 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 ordinary OAuth or ID-JAG registration except the three the profile adds: the
 IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
 GatewayRAS's advertisement of the continuation profile.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
-<table class="center" id="table-6">
-            <caption><a href="#table-6" class="selfRef">Table 6</a></caption>
+<table class="center" id="table-5">
+            <caption><a href="#table-5" class="selfRef">Table 5</a></caption>
 <thead>
               <tr>
                 <th class="text-left" rowspan="1" colspan="1">Party</th>
@@ -6243,12 +6092,8 @@ token is now a permitted carrier, and the handle is also registered as an
 introspection response member.<a href="#appendix-E-3.39.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.40">
-          <p id="appendix-E-3.40.1">Ending a Chain is the single home for what stops when authority is
-withdrawn: a table of withdrawal sources against fresh assertions,
-continuation, and re-establishment, and the two observers (the CAI sees
-RAS state; the IdP sees anchors, policy, and its own revocations). The
-Assertion Preconditions, Chain Lifetime, and Topology and Trust passages
-cross-reference it instead of each restating the window.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.40.1">Clarified the effects of RAS-local withdrawal in Ending a Chain and
+cross-referenced it from Assertion Preconditions and Topology and Trust.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.41">
           <p id="appendix-E-3.41.1">Where the RAS's acceptance evidence is a self-contained token, the
@@ -6257,19 +6102,13 @@ expiration (previously an option), so an assertion is not presentable
 after its evidence has lapsed.<a href="#appendix-E-3.41.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.42">
-          <p id="appendix-E-3.42.1">Security Considerations open with a fixed record of what the profile
-guarantees against each adversary, plus the interoperability and recovery
-guarantees, each entry pointing to the sections that state the rules
-instead of restating them; the test for a requirement adds that a change
-preserves those guarantees or records what it gives up. No requirement
-changed.<a href="#appendix-E-3.42.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.42.1">Shortened the Security Considerations introduction; detailed threats and
+mitigations remain in their existing subsections.<a href="#appendix-E-3.42.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.43">
-          <p id="appendix-E-3.43.1">Removed the RAS metadata parameter <code>identity_continuation_issuers</code>, its
-IANA entry, and the Metadata Disclosure considerations: out-of-band trust
-configuration is now the only way an IdP learns a CAI. Issuer Trust
-Configuration keeps the general controls advertisement carried, current-state
-evaluation and key sources, and how a tenant provisions and withdraws one.<a href="#appendix-E-3.43.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.43.1">Removed the RAS metadata parameter <code>identity_continuation_issuers</code> and
+its registration. CAI trust is configured at the IdP; key acquisition,
+refresh, and withdrawal rules remain in Issuer Trust Configuration.<a href="#appendix-E-3.43.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
