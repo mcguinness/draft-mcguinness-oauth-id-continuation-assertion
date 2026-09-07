@@ -1697,26 +1697,9 @@ and 2 of {{chain-id}} and remain unlinkable.
 # Security Considerations {#security}
 
 This profile assumes TLS, a correct IdP subject map and root-chain envelope,
-and the OAuth guidance of {{RFC9700}}. It principally addresses these
-adversaries:
-
-* an on-path attacker replaying or presenting a captured assertion
-  ({{security-pop}});
-* a compromised intermediate workload broadening authority, continuing the
-  wrong user's chain, or raising authentication context ({{security-envelope}},
-  {{security-actor-chain}});
-* a compromised CAI or actor identity authority, in either deployment topology
-  ({{security-trust-model}}, {{security-topology}},
-  {{security-actor-issuers}});
-* a party influencing the client-to-actor mapping, which is the sole
-  authenticator of an actor that presents no `actor_token`
-  ({{client-identity}});
-* token, type, or algorithm confusion ({{security-alg}});
-* a malicious Resource Server or audience attempting cross-domain correlation,
-  or metadata that discloses deployment structure ({{privacy}},
-  {{security-metadata}}); and
-* a faulty carrier or RAS state lookup ({{handle-propagation}},
-  {{security-topology}}).
+and the OAuth guidance of {{RFC9700}}. The following sections discuss replay,
+compromised workloads and issuers, authorization and actor-lineage integrity,
+and token confusion. {{privacy}} addresses correlation and disclosure risks.
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
@@ -3637,6 +3620,8 @@ this profile builds.
   assertion's expiration is now recommended not to exceed that token's
   expiration (previously an option), so an assertion is not presentable
   after its evidence has lapsed.
+* Shortened the Security Considerations introduction; detailed threats and
+  mitigations remain in their existing subsections.
 
 -01
 
