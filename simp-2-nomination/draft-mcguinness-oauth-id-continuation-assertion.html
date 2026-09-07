@@ -2534,10 +2534,10 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.<a href="#sect
 <p id="section-5.4.3-8">A live recheck <span class="bcp14">SHOULD</span> be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
-as for any OAuth access token. Where the evidence is a self-contained token,
-the assertion's <code>exp</code> <span class="bcp14">SHOULD NOT</span> exceed that token's expiry, so that an
-assertion is not presentable after the evidence that supported it has lapsed
-(<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
+as for any OAuth access token. An assertion already issued remains usable
+until its own <code>exp</code>, so the withdrawal tail is the token's remaining lifetime
+plus the assertion lifetime (<a href="#security-topology" class="auto internal xref">Section 9.5</a>). A CAI that caps the
+assertion's <code>exp</code> at the evidence's expiry removes the second term.<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
 <p id="section-5.4.3-9">A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
 Target or purpose hints can narrow CAI issuance, but neither they nor
@@ -3326,16 +3326,9 @@ revoke an individual hop's subtree; and<a href="#section-6.2-6.2.1" class="pilcr
             <p id="section-6.2-6.3.1">it <span class="bcp14">MUST</span> reject continuation on a revoked, expired, or ended chain.<a href="#section-6.2-6.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="section-6.2-7">RAS-local withdrawal stops fresh assertions once the CAI observes it;
-self-contained acceptance evidence may remain usable until its expiry
-(<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>). Previously issued assertions remain subject to
-the IdP's current chain, trust, and authorization checks (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
-RAS-local withdrawal does not revoke descendants accepted at other RASes;
-stopping their continuation requires IdP revocation of the chain or affected
-subtree.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
-<p id="section-6.2-8">How an IdP surfaces chains to users and administrators for review and
+<p id="section-6.2-7">How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; <span>[<a href="#GRANT-MGMT" class="cite xref">GRANT-MGMT</a>]</span> describes OAuth grant
-management for that purpose.<a href="#section-6.2-8" class="pilcrow">¶</a></p>
+management for that purpose.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="lifecycle-limits">
@@ -3578,9 +3571,40 @@ and 2 of <a href="#chain-id" class="auto internal xref">Section 4</a> and remain
 <a href="#section-9" class="section-number selfRef">9. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
       </h2>
 <p id="section-9-1">This profile assumes TLS, a correct IdP subject map and root-chain envelope,
-and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. The following sections discuss replay,
-compromised workloads and issuers, authorization and actor-lineage integrity,
-and token confusion. <a href="#privacy" class="auto internal xref">Section 10</a> addresses correlation and disclosure risks.<a href="#section-9-1" class="pilcrow">¶</a></p>
+and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. It principally addresses these
+adversaries:<a href="#section-9-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="section-9-2.1">
+          <p id="section-9-2.1.1">an on-path attacker replaying or presenting a captured assertion
+(<a href="#security-pop" class="auto internal xref">Section 9.1</a>);<a href="#section-9-2.1.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.2">
+          <p id="section-9-2.2.1">a compromised intermediate workload broadening authority, continuing the
+wrong user's chain, or raising authentication context (<a href="#security-envelope" class="auto internal xref">Section 9.2</a>,
+<a href="#security-actor-chain" class="auto internal xref">Section 9.6</a>);<a href="#section-9-2.2.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.3">
+          <p id="section-9-2.3.1">a compromised CAI or actor identity authority, in either deployment topology
+(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#security-topology" class="auto internal xref">Section 9.5</a>,
+<a href="#security-actor-issuers" class="auto internal xref">Section 9.3</a>);<a href="#section-9-2.3.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.4">
+          <p id="section-9-2.4.1">a party influencing the client-to-actor mapping, which is the sole
+authenticator of an actor that presents no <code>actor_token</code>
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>);<a href="#section-9-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.5">
+          <p id="section-9-2.5.1">token, type, or algorithm confusion (<a href="#security-alg" class="auto internal xref">Section 9.7</a>);<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.6">
+          <p id="section-9-2.6.1">a malicious Resource Server or audience attempting cross-domain correlation
+(<a href="#privacy" class="auto internal xref">Section 10</a>); and<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="section-9-2.7">
+          <p id="section-9-2.7.1">a faulty carrier or RAS state lookup (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>,
+<a href="#security-topology" class="auto internal xref">Section 9.5</a>).<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
+</li>
+      </ul>
 <div id="security-pop">
 <section id="section-9.1">
         <h3 id="name-sender-constraint-and-proof">
@@ -3726,9 +3750,14 @@ presents nothing it did not already hold; what it gains is the CAI's
 attestation, gated by policy and the acceptance check.<a href="#section-9.5-2" class="pilcrow">¶</a></p>
 <p id="section-9.5-3">A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
-additionally attest a hop the RAS refused. <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> describes the
-effects of RAS-local withdrawal, including delayed observation by a separate
-CAI. The root envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
+additionally attest a hop the RAS refused. In both topologies, RAS-local
+authorization revocation after issuance, which the IdP cannot observe, leaves
+the assertion valid for its remaining lifetime; a separate CAI adds any delay
+in RAS state reaching it, and where the RAS's acceptance evidence is a
+self-contained token (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>) fresh issuance continues
+for that token's remaining lifetime, on top of the assertion's own lifetime,
+so a tenant that needs faster withdrawal configures a live recheck. The root
+envelope still bounds the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -6092,23 +6121,8 @@ token is now a permitted carrier, and the handle is also registered as an
 introspection response member.<a href="#appendix-E-3.39.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.40">
-          <p id="appendix-E-3.40.1">Clarified the effects of RAS-local withdrawal in Ending a Chain and
-cross-referenced it from Assertion Preconditions and Topology and Trust.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.41">
-          <p id="appendix-E-3.41.1">Where the RAS's acceptance evidence is a self-contained token, the
-assertion's expiration is now recommended not to exceed that token's
-expiration (previously an option), so an assertion is not presentable
-after its evidence has lapsed.<a href="#appendix-E-3.41.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.42">
-          <p id="appendix-E-3.42.1">Shortened the Security Considerations introduction; detailed threats and
-mitigations remain in their existing subsections.<a href="#appendix-E-3.42.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.43">
-          <p id="appendix-E-3.43.1">Removed the RAS metadata parameter <code>identity_continuation_issuers</code> and
-its registration. CAI trust is configured at the IdP; key acquisition,
-refresh, and withdrawal rules remain in Issuer Trust Configuration.<a href="#appendix-E-3.43.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.40.1">Removed CAI nomination metadata and its registration; CAI trust is configured
+at the IdP.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>

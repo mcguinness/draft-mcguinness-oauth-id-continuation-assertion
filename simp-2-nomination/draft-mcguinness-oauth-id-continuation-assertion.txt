@@ -1045,10 +1045,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A live recheck SHOULD be used where the tenant requires withdrawal of
    a hop's authorization to stop fresh assertions before the RAS's token
    would expire.  With self-contained evidence, the CAI stops issuing
-   when that token expires, as for any OAuth access token.  Where the
-   evidence is a self-contained token, the assertion's exp SHOULD NOT
-   exceed that token's expiry, so that an assertion is not presentable
-   after the evidence that supported it has lapsed (Section 6.2).
+   when that token expires, as for any OAuth access token.  An assertion
+   already issued remains usable until its own exp, so the withdrawal
+   tail is the token's remaining lifetime plus the assertion lifetime
+   (Section 9.5).  A CAI that caps the assertion's exp at the evidence's
+   expiry removes the second term.
 
    A domain may add its own conditions for issuing, for example limiting
    which of its workloads may obtain assertions, but such conditions
@@ -1726,14 +1727,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    *  it MUST reject continuation on a revoked, expired, or ended chain.
 
-   RAS-local withdrawal stops fresh assertions once the CAI observes it;
-   self-contained acceptance evidence may remain usable until its expiry
-   (Section 5.4.3).  Previously issued assertions remain subject to the
-   IdP's current chain, trust, and authorization checks (Section 5.5.3).
-   RAS-local withdrawal does not revoke descendants accepted at other
-   RASes; stopping their continuation requires IdP revocation of the
-   chain or affected subtree.
-
    How an IdP surfaces chains to users and administrators for review and
    revocation is deployment-specific; [GRANT-MGMT] describes OAuth grant
    management for that purpose.
@@ -1953,10 +1946,29 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 9.  Security Considerations
 
    This profile assumes TLS, a correct IdP subject map and root-chain
-   envelope, and the OAuth guidance of [RFC9700].  The following
-   sections discuss replay, compromised workloads and issuers,
-   authorization and actor-lineage integrity, and token confusion.
-   Section 10 addresses correlation and disclosure risks.
+   envelope, and the OAuth guidance of [RFC9700].  It principally
+   addresses these adversaries:
+
+   *  an on-path attacker replaying or presenting a captured assertion
+      (Section 9.1);
+
+   *  a compromised intermediate workload broadening authority,
+      continuing the wrong user's chain, or raising authentication
+      context (Section 9.2, Section 9.6);
+
+   *  a compromised CAI or actor identity authority, in either
+      deployment topology (Section 9.4, Section 9.5, Section 9.3);
+
+   *  a party influencing the client-to-actor mapping, which is the sole
+      authenticator of an actor that presents no actor_token
+      (Section 5.5.2);
+
+   *  token, type, or algorithm confusion (Section 9.7);
+
+   *  a malicious Resource Server or audience attempting cross-domain
+      correlation (Section 10); and
+
+   *  a faulty carrier or RAS state lookup (Section 5.3, Section 9.5).
 
 9.1.  Sender Constraint and Proof of Possession
 
@@ -2106,10 +2118,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    A compromised RAS can fabricate acceptance state in either topology,
    since a separate CAI reads that state as authoritative; a compromised
-   separate CAI can additionally attest a hop the RAS refused.
-   Section 6.2 describes the effects of RAS-local withdrawal, including
-   delayed observation by a separate CAI.  The root envelope still
-   bounds the result.
+   separate CAI can additionally attest a hop the RAS refused.  In both
+   topologies, RAS-local authorization revocation after issuance, which
+   the IdP cannot observe, leaves the assertion valid for its remaining
+   lifetime; a separate CAI adds any delay in RAS state reaching it, and
+   where the RAS's acceptance evidence is a self-contained token
+   (Section 5.4.3) fresh issuance continues for that token's remaining
+   lifetime, on top of the assertion's own lifetime, so a tenant that
+   needs faster withdrawal configures a live recheck.  The root envelope
+   still bounds the result.
 
 9.6.  Actor Chain Integrity
 
@@ -4112,22 +4129,8 @@ Document History
       now a permitted carrier, and the handle is also registered as an
       introspection response member.
 
-   *  Clarified the effects of RAS-local withdrawal in Ending a Chain
-      and cross-referenced it from Assertion Preconditions and Topology
-      and Trust.
-
-   *  Where the RAS's acceptance evidence is a self-contained token, the
-      assertion's expiration is now recommended not to exceed that
-      token's expiration (previously an option), so an assertion is not
-      presentable after its evidence has lapsed.
-
-   *  Shortened the Security Considerations introduction; detailed
-      threats and mitigations remain in their existing subsections.
-
-   *  Removed the RAS metadata parameter identity_continuation_issuers
-      and its registration.  CAI trust is configured at the IdP; key
-      acquisition, refresh, and withdrawal rules remain in Issuer Trust
-      Configuration.
+   *  Removed CAI nomination metadata and its registration; CAI trust is
+      configured at the IdP.
 
    -01
 
