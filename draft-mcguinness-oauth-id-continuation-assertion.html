@@ -1056,7 +1056,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">McGuinness</td>
-<td class="center">Expires 10 March 2027</td>
+<td class="center">Expires 11 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-06" class="published">6 September 2026</time>
+<time datetime="2026-09-07" class="published">7 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-10">10 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-11">11 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1131,7 +1131,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 10 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 11 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1326,9 +1326,6 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.7">
                 <p id="section-toc.1-1.9.2.7.1"><a href="#section-9.7" class="auto internal xref">9.7</a>.  <a href="#name-token-type-and-algorithm-co" class="internal xref">Token, Type, and Algorithm Confusion</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.9.2.8">
-                <p id="section-toc.1-1.9.2.8.1"><a href="#section-9.8" class="auto internal xref">9.8</a>.  <a href="#name-metadata-disclosure" class="internal xref">Metadata Disclosure</a></p>
 </li>
             </ul>
 </li>
@@ -2120,7 +2117,7 @@ root client's obligations are those of the base profile, and sender constraint
 becomes a requirement for an actor that continues (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-5.1.2-3" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-4">For every hop it creates, root or child, the IdP records the RAS audience
 placed in the ID-JAG and any other issuers it trusts to attest that RAS's hops,
-whether from tenant configuration or the RAS's nomination (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>).<a href="#section-5.1.2-4" class="pilcrow">¶</a></p>
+from tenant configuration (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-5.1.2-4" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-5">Establishment is at-least-once. Retrying a lost response <span class="bcp14">MAY</span> create a second
 chain, and the limits of <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a> apply across every chain rooted
 in one governing authorization.<a href="#section-5.1.2-5" class="pilcrow">¶</a></p>
@@ -2643,8 +2640,8 @@ Transaction Token, that Transaction Token is the carrier
 (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>), so the handle reaches the CAI from the RAS binding
 rather than from the requester.<a href="#section-5.4.6-2" class="pilcrow">¶</a></p>
 <p id="section-5.4.6-3">The IdP accepts a separate CAI's attestation only where it trusts that CAI to
-attest the accepting RAS's hops, from tenant configuration or the RAS's
-nomination (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>, the issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4.6-3" class="pilcrow">¶</a></p>
+attest the accepting RAS's hops, from tenant configuration
+(<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>, the issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4.6-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2873,7 +2870,7 @@ ID-JAG <code>aud</code> recorded for the hop as a string or one-element array;<a
 </li>
                 <li class="normal" id="section-5.5.3-2.3.2.2">
                   <p id="section-5.5.3-2.3.2.2.1">or another issuer the IdP trusts to attest that RAS's hops, recorded from
-tenant configuration or the RAS's nomination (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>); and<a href="#section-5.5.3-2.3.2.2.1" class="pilcrow">¶</a></p>
+tenant configuration (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>); and<a href="#section-5.5.3-2.3.2.2.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.3-2.3.2.3">
                   <p id="section-5.5.3-2.3.2.3.1">in either case, that issuer is trusted for the chain's tenant, recorded at
@@ -3397,38 +3394,6 @@ the base <code>urn:ietf:params:oauth:grant-profile:id-jag</code> profile and the
 depends (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>). It <span class="bcp14">MUST</span> also
 advertise <code>urn:ietf:params:oauth:grant-type:jwt-dpop</code>, since every onward
 ID-JAG it redeems carries <code>cnf</code> (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-7.2-2" class="pilcrow">¶</a></p>
-<p id="section-7.2-3">A Resource Authorization Server does not list itself as a CAI for its own
-hops; the issuer-trust rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a> accepts it directly, subject to
-the IdP's issuer trust (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>). It <span class="bcp14">MAY</span> advertise
-additional Continuation Assertion Issuers it authorizes to attest those hops,
-so the IdP can discover them rather than be configured out of band:<a href="#section-7.2-3" class="pilcrow">¶</a></p>
-<span class="break"></span><dl class="dlParallel" id="section-7.2-4">
-          <dt id="section-7.2-4.1">
-<code>identity_continuation_issuers</code>:</dt>
-          <dd style="margin-left: 1.5em" id="section-7.2-4.2">
-            <p id="section-7.2-4.2.1"><span class="bcp14">OPTIONAL</span>. A JSON array of additional CAI issuer identifiers, each a
-<code>StringOrURI</code> <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, that this Resource Authorization Server
-authorizes to attest hops it accepts; an empty array authorizes no
-additional CAIs. Values are compared with the assertion <code>iss</code> as exact,
-case-sensitive strings, and duplicates are ignored.<a href="#section-7.2-4.2.1" class="pilcrow">¶</a></p>
-<p id="section-7.2-4.2.2">The advertisement is a nomination only: the IdP <span class="bcp14">MUST</span> establish each
-issuer's identity and signing keys independently, and the advertisement
-alone <span class="bcp14">MUST NOT</span> establish key trust or override the IdP's tenant
-issuer-pairing policy. Because the IdP evaluates issuer trust and keys
-against its current trusted issuer and key state, removing an issuer or
-revoking its keys de-authorizes it for existing chains.<a href="#section-7.2-4.2.2" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-</dl>
-<p id="section-7.2-5">When a CAI's issuer identifier is that of an OAuth authorization server, the
-IdP obtains its signing keys from the <code>jwks_uri</code> in that server's metadata
-(<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>); a CAI without such a <code>jwks_uri</code>, like any other CAI, uses
-authenticated configuration. A RAS nomination <span class="bcp14">MUST NOT</span> by itself trigger
-that retrieval or authorize the issuer; the IdP applies its own issuer
-policy first.<a href="#section-7.2-5" class="pilcrow">¶</a></p>
-<p id="section-7.2-6">The IdP <span class="bcp14">MUST</span> refresh remotely obtained keys under a bounded cache policy, so
-a key removed from the JWK Set stops validating once the refresh takes
-effect.<a href="#section-7.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="issuer-trust">
@@ -3441,6 +3406,17 @@ separate trust in each is insufficient (<a href="#security-trust-model" class="a
 determination <span class="bcp14">MUST</span> derive from authenticated material, not requester-supplied
 input. The IdP <span class="bcp14">MUST</span> scope CAI trust by issuer, keys, tenant, and the RAS it
 attests for.<a href="#section-7.3-1" class="pilcrow">¶</a></p>
+<p id="section-7.3-2">When a CAI's issuer identifier is that of an OAuth authorization server, the
+IdP obtains its signing keys from the <code>jwks_uri</code> in that server's metadata
+(<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>); a CAI without such a <code>jwks_uri</code>, like any other CAI, uses
+authenticated configuration. The IdP <span class="bcp14">MUST</span> refresh remotely obtained keys
+under a bounded cache policy, so a key removed from the JWK Set stops
+validating once the refresh takes effect.<a href="#section-7.3-2" class="pilcrow">¶</a></p>
+<p id="section-7.3-3">The IdP evaluates issuer trust and keys against its current trusted issuer
+and key state, so removing an issuer or revoking its keys de-authorizes it
+for existing chains (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-7.3-3" class="pilcrow">¶</a></p>
+<p id="section-7.3-4">CAI trust is provisioned and withdrawn through deployment-specific
+configuration at the IdP.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -3536,9 +3512,8 @@ the hop's state:<a href="#section-8.1-1" class="pilcrow">¶</a></p>
           </tbody>
         </table>
 <p id="section-8.1-3">Co-located is the baseline: it needs no CAI configuration at the IdP beyond
-the RAS's own issuer trust and no self-entry in
-<code>identity_continuation_issuers</code> (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>). The RAS still advertises
-the continuation profile (<a href="#metadata" class="auto internal xref">Section 7</a>), and the IdP still holds the RAS's
+the RAS's own issuer trust (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>). The RAS still advertises the
+continuation profile (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>), and the IdP still holds the RAS's
 issuer, key, tenant, and issuer-pairing trust (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-8.1-3" class="pilcrow">¶</a></p>
 <p id="section-8.1-4">Both topologies produce the same Identity Continuation Assertion and apply
 the same CAI requirements; they differ only in how the CAI reaches the
@@ -3622,9 +3597,8 @@ authenticator of an actor that presents no <code>actor_token</code>
           <p id="section-9-2.5.1">token, type, or algorithm confusion (<a href="#security-alg" class="auto internal xref">Section 9.7</a>);<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-9-2.6">
-          <p id="section-9-2.6.1">a malicious Resource Server or audience attempting cross-domain correlation,
-or metadata that discloses deployment structure (<a href="#privacy" class="auto internal xref">Section 10</a>,
-<a href="#security-metadata" class="auto internal xref">Section 9.8</a>); and<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
+          <p id="section-9-2.6.1">a malicious Resource Server or audience attempting cross-domain correlation
+(<a href="#privacy" class="auto internal xref">Section 10</a>); and<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-9-2.7">
           <p id="section-9-2.7.1">a faulty carrier or RAS state lookup (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>,
@@ -3758,10 +3732,6 @@ rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a h
 </li>
         </ul>
 <p id="section-9.4-3">The IdP's trust configuration records these pairings (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-9.4-3" class="pilcrow">¶</a></p>
-<p id="section-9.4-4">The IdP <span class="bcp14">MAY</span> learn additional issuers from the RAS's advertised
-<code>identity_continuation_issuers</code> (<a href="#metadata" class="auto internal xref">Section 7</a>). That advertisement is a
-nomination only and establishes no issuer or key trust (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>);
-absent it, additional mappings are configured out of band.<a href="#section-9.4-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-topology">
@@ -3820,20 +3790,6 @@ participated" cannot be enforced from <code>act</code> alone.<a href="#section-9
 signature algorithm, or steer verification to a key it controls. The JOSE
 verification rules that deny this are stated in the well-formedness rule of
 <a href="#validation" class="auto internal xref">Section 5.5.3</a>.<a href="#section-9.7-1" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="security-metadata">
-<section id="section-9.8">
-        <h3 id="name-metadata-disclosure">
-<a href="#section-9.8" class="section-number selfRef">9.8. </a><a href="#name-metadata-disclosure" class="section-name selfRef">Metadata Disclosure</a>
-        </h3>
-<p id="section-9.8-1">Advertising <code>identity_continuation_issuers</code> (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>) in publicly
-readable authorization server metadata reveals which additional CAIs a
-Resource Authorization Server authorizes to attest its hops, and can thereby
-disclose federation topology, tenant relationships, and deployment structure.
-A deployment whose CAI relationships are sensitive <span class="bcp14">SHOULD</span> omit the
-advertisement and convey the nomination out of band or through
-access-controlled discovery.<a href="#section-9.8-1" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -4168,7 +4124,7 @@ exposure within the issuing server's trust domain<a href="#section-11.6-2.4.1" c
         <h3 id="name-oauth-authorization-server-">
 <a href="#section-11.7" class="section-number selfRef">11.7. </a><a href="#name-oauth-authorization-server-" class="section-name selfRef">OAuth Authorization Server Metadata Registration</a>
         </h3>
-<p id="section-11.7-1">IANA is requested to register the following values in the "OAuth Authorization
+<p id="section-11.7-1">IANA is requested to register the following value in the "OAuth Authorization
 Server Metadata" registry established by <span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>.<a href="#section-11.7-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-11.7-2">
           <dt id="section-11.7-2.1">Metadata Name:</dt>
@@ -4190,28 +4146,6 @@ profile<a href="#section-11.7-2.4.1" class="pilcrow">¶</a></p>
 <dt id="section-11.7-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.7-2.8">
             <p id="section-11.7-2.8.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.7-2.8.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.7-2.9">Metadata Name:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.7-2.10">
-            <p id="section-11.7-2.10.1">identity_continuation_issuers<a href="#section-11.7-2.10.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.7-2.11">Metadata Description:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.7-2.12">
-            <p id="section-11.7-2.12.1">Array of issuer identifiers for additional Continuation Assertion Issuers
-(CAIs) a Resource Authorization Server authorizes to attest hops it accepts
-(a nomination; the IdP establishes issuer key trust independently)<a href="#section-11.7-2.12.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.7-2.13">Change Controller:</dt>
-          <dd style="margin-left: 1.5em" id="section-11.7-2.14">
-            <p id="section-11.7-2.14.1">IETF<a href="#section-11.7-2.14.1" class="pilcrow">¶</a></p>
-</dd>
-          <dd class="break"></dd>
-<dt id="section-11.7-2.15">Specification Document(s):</dt>
-          <dd style="margin-left: 1.5em" id="section-11.7-2.16">
-            <p id="section-11.7-2.16.1">This document, <a href="#metadata" class="auto internal xref">Section 7</a><a href="#section-11.7-2.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -5376,11 +5310,9 @@ it. Being a separate service rather than the RAS itself, it rechecks with
 ExpenseRAS that H0's binding is still active and records continuation as
 permitted, then issues the assertion bound to the proven key
 (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>). The IdP accepts its assertions for hops
-ExpenseRAS accepts because
-it trusts Expense CAI for that RAS, learned through
-<code>identity_continuation_issuers</code> or tenant configuration; the rest of the
-conjunctive trust rule applies as it does to a co-located RAS
-(<a href="#metadata" class="auto internal xref">Section 7</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#appendix-B.2.3-3" class="pilcrow">¶</a></p>
+ExpenseRAS accepts because it trusts Expense CAI for that RAS by
+configuration at the IdP; the rest of the conjunctive trust rule applies as
+it does to a co-located RAS (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#appendix-B.2.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.3-4">On the wire (decoded assertion):<a href="#appendix-B.2.3-4" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.2.3-5">
 <pre>
@@ -5547,9 +5479,9 @@ BookingAPI with AT3.<a href="#appendix-B.2.5-7" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.2.6-1.1">
               <p id="appendix-B.2.6-1.1.1">The CAI is a separate service in each continuing domain, which the IdP
-trusts for that domain's RAS by configuration or nomination; a co-located
-RAS needs no such record, though the same conjunctive trust applies to both
-(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#appendix-B.2.6-1.1.1" class="pilcrow">¶</a></p>
+trusts for that domain's RAS by configuration at the IdP
+(<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>); a co-located RAS needs no such record, though the same
+conjunctive trust applies to both (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#appendix-B.2.6-1.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.2.6-1.2">
               <p id="appendix-B.2.6-1.2.1">The handle never enters an access token; a Transaction Token Service derives
@@ -6187,6 +6119,10 @@ authorization that the call's credential or context identifies, read from RAS
 state or from a carrier derived from it. The accepting RAS's own access
 token is now a permitted carrier, and the handle is also registered as an
 introspection response member.<a href="#appendix-E-3.39.1" class="pilcrow">¶</a></p>
+</li>
+        <li class="normal" id="appendix-E-3.40">
+          <p id="appendix-E-3.40.1">Removed CAI nomination metadata and its registration; CAI trust is configured
+at the IdP.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
