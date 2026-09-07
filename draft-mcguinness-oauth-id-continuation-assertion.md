@@ -862,10 +862,9 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
-as for any OAuth access token. An assertion already issued remains usable
-until its own `exp`, so the withdrawal tail is the token's remaining lifetime
-plus the assertion lifetime ({{security-topology}}). A CAI that caps the
-assertion's `exp` at the evidence's expiry removes the second term.
+as for any OAuth access token. A CAI that caps the assertion's `exp` at the
+evidence's expiry shortens the resulting withdrawal window
+({{lifecycle-ending}}).
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
@@ -1485,6 +1484,14 @@ The IdP has these duties over chain lifetime:
   revoke an individual hop's subtree; and
 * it MUST reject continuation on a revoked, expired, or ended chain.
 
+RAS-local withdrawal stops fresh assertions once the CAI observes it;
+self-contained acceptance evidence may remain usable until its expiry
+({{assertion-preconditions}}). Previously issued assertions remain subject to
+the IdP's current chain, trust, and authorization checks ({{validation}}).
+RAS-local withdrawal does not revoke descendants accepted at other RASes;
+stopping their continuation requires IdP revocation of the chain or affected
+subtree.
+
 How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
 management for that purpose.
@@ -1846,14 +1853,9 @@ attestation, gated by policy and the acceptance check.
 
 A compromised RAS can fabricate acceptance state in either topology, since a
 separate CAI reads that state as authoritative; a compromised separate CAI can
-additionally attest a hop the RAS refused. In both topologies, RAS-local
-authorization revocation after issuance, which the IdP cannot observe, leaves
-the assertion valid for its remaining lifetime; a separate CAI adds any delay
-in RAS state reaching it, and where the RAS's acceptance evidence is a
-self-contained token ({{assertion-preconditions}}) fresh issuance continues
-for that token's remaining lifetime, on top of the assertion's own lifetime,
-so a tenant that needs faster withdrawal configures a live recheck. The root
-envelope still bounds the result.
+additionally attest a hop the RAS refused. {{lifecycle-ending}} describes the
+effects of RAS-local withdrawal, including delayed observation by a separate
+CAI. The root envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -3628,6 +3630,8 @@ this profile builds.
   state or from a carrier derived from it. The accepting RAS's own access
   token is now a permitted carrier, and the handle is also registered as an
   introspection response member.
+* Clarified the effects of RAS-local withdrawal in Ending a Chain and
+  cross-referenced it from Assertion Preconditions and Topology and Trust.
 
 -01
 
