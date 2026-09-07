@@ -1486,12 +1486,13 @@ Two parties observe withdrawal, and each sees only its own kind. The CAI sees
 the RAS's authorization state, so it governs fresh assertions for a hop; the
 IdP sees anchors, tenant policy, and its own revocations, so it governs
 continuation. Withdrawing at one of them changes only what that party
-governs. Tokens already issued are unaffected in every case: an assertion is
-usable until its `exp`, an ID-JAG until its redemption window closes, and the
-access tokens a RAS issues, which this profile does not constrain, for their
-own lifetime; any refresh token the RAS issues, which the base profile
-recommends against, extends that further. The table summarizes each way
-authority is withdrawn.
+governs. An unexpired assertion remains subject to every rule of
+{{validation}} when presented: RAS-local withdrawal alone does not invalidate
+an assertion already issued, while withdrawal the IdP observes prevents its
+use at once, before its `exp`. This profile does not revoke the access tokens
+a RAS issues; their issuing RAS may revoke them under its own rules, and any
+refresh token the RAS issues, which the base profile recommends against,
+extends their reach. The table summarizes each way authority is withdrawn.
 
 | Withdrawn by | Fresh assertions for the hop | Continuation at the IdP | A new chain |
 |---|---|---|---|
@@ -1501,8 +1502,8 @@ authority is withdrawn.
 | Tenant removes a permitted continuer | Unaffected | That actor fails with `unauthorized_client`; others continue | Not needed |
 | Tenant narrows a basis or an enumerated target | Unaffected | Continuation to the removed target fails ({{error-response}}); others continue | Not needed |
 | IdP administrator revokes the chain or a hop's subtree | Unaffected | Stops from the revoked hops at the next attempt; `invalid_continuation` | Chain: as for its anchor; subtree: the rest continues |
-| RAS withdraws the accepted authorization | Live recheck: at once. Self-contained evidence: at that token's expiry, plus the assertion lifetime unless the CAI caps `exp` at the evidence's expiry ({{assertion-preconditions}}); a separate CAI adds its propagation delay | Not observed: the hop stays active and descendants accepted at other RASes continue | Not needed; the RAS re-accepts |
-| IdP removes a CAI or its keys ({{metadata-ras}}) | The CAI's assertions are no longer accepted | Fails issuer trust at the next evaluation, for existing chains too | Not needed; configure a replacement CAI |
+| RAS withdraws the accepted authorization | Live recheck: stops at once. Self-contained evidence: stops when that token expires; a separate CAI adds its propagation delay ({{assertion-preconditions}}) | Not observed: the hop stays active and descendants accepted at other RASes continue; an assertion issued before the evidence expired stays presentable until its own `exp`, which a CAI may cap at the evidence's expiry | Not needed; the RAS re-accepts |
+| IdP removes a CAI or its keys ({{metadata-ras}}) | Unaffected: the CAI may keep issuing | Fails issuer trust at the next evaluation, for existing chains and for assertions already issued | Not needed; configure a replacement CAI |
 | IdP removes an actor identity authority pairing ({{issuer-trust}}) | Unaffected | That actor fails for the tenant; others continue | Not needed |
 
 Because a RAS is authoritative only for its own authorization, its withdrawal
