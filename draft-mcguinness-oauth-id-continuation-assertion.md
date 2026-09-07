@@ -243,8 +243,8 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 The IdP is never told that a RAS redeemed a grant; the assertion of step 4 is
 how it learns that the hop was accepted and is still active. That is why it
 accepts an assertion about a hop only from that hop's RAS or from a CAI it
-trusts to speak for that RAS. No party other than the IdP names Alice for the
-wiki.
+trusts to speak for that RAS (the issuer-trust rule of {{validation}}). No
+party other than the IdP names Alice for the wiki.
 
 # Conventions and Definitions {#terms}
 
@@ -549,10 +549,10 @@ the governing authorization for a root exchange permits continuation and the
 root subject token resolves to a lifecycle anchor ({{lifecycle-anchors}}). When
 the subject token resolves no anchor, the IdP issues the ID-JAG without a
 handle, as under the base profile. No request parameter asks for it, and
-advertised support ({{metadata-idp}}) signals capability, not authority. To
-establish a chain, the IdP MUST include the root handle in the ID-JAG. Absent
-permission to continue, the IdP MUST NOT establish a chain or include an
-`identity_continuation_handle`.
+advertised support ({{metadata-idp}}) signals capability, not authority. The
+chain is established by issuing the root ID-JAG with a fresh root handle
+({{chain-id}}). Absent permission to continue, the IdP MUST NOT establish a
+chain or include an `identity_continuation_handle`.
 
 The lifecycle anchor is the user's active IdP session ({{lifecycle-anchors}});
 a refresh token's OAuth grant is the optional grant anchor
@@ -662,15 +662,14 @@ Two parties hold facts about a hop, neither carried on the wire:
 | ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
 
 The IdP keeps no synchronized copy of acceptance; it learns of it only through
-a trusted CAI's attestation. A CAI attests a hop only once the RAS has
-ACCEPTED it, so an issued hop that no trusted CAI attests yields no assertion
-and reaches no continuation exchange. A hop is continuable while a
-CAI trusted for its RAS can attest it as ACCEPTED and still active, and
-neither it nor any ancestor is revoked; whether a particular continuation from
-it succeeds is decided by the validation rules of the continuation exchange
-({{validation}}).
+a trusted CAI's attestation ({{protocol-overview}}). A CAI attests a hop only
+once the RAS has ACCEPTED it, so an issued hop that no trusted CAI attests
+yields no assertion and reaches no continuation exchange. A hop is continuable
+while a CAI trusted for its RAS can attest it as ACCEPTED and still active,
+and neither it nor any ancestor is revoked; whether a particular continuation
+from it succeeds is decided by the validation rules of the continuation
+exchange ({{validation}}).
 
-The IdP learns of acceptance only through attestation ({{protocol-overview}}).
 The accepting RAS attests its own hops first-hand, and any other trusted CAI
 confirms acceptance and activity by the RAS's authorization semantics before
 attesting ({{assertion-issuance}}). Absent CAI compromise
@@ -1049,14 +1048,12 @@ version defines, so a target validates the onward ID-JAG's confirmation with the
 DPoP mechanics it already implements ({{RFC9449}}); a mutual-TLS method
 {{RFC8705}} is an open question ({{open-items}}).
 
-A request carries one DPoP proof, so that key is the assertion's `cnf` key, and
-the assertion and the onward ID-JAG share one key ({{rationale-client-id}});
-client authentication may use an independent credential. This version uses the
-key demonstrated by the request's DPoP proof as both the assertion's
-confirmation key and the confirmation key of the resulting ID-JAG.
-That is a property of the confirmation method this version defines, not an
-identity-continuation invariant. Key rotation takes effect when the actor
-obtains a new assertion bound to the new key.
+A request carries one DPoP proof, so the key it demonstrates is both the
+assertion's `cnf` key and the confirmation key of the resulting ID-JAG; client
+authentication may use an independent credential. That single shared key
+follows from the confirmation method this version defines, not from
+continuation itself ({{rationale-client-id}}). Key rotation takes effect when
+the actor obtains a new assertion bound to the new key.
 
 ### Request Validation {#validation}
 
@@ -1106,7 +1103,8 @@ from another's resolution.
 4. **Chain state.**
    * the handle identifies a hop the IdP issued, on an active chain, that the
      assertion attests as accepted ({{hop-activation}});
-   * neither the presented hop nor any ancestor is revoked; and
+   * neither the presented hop nor any ancestor is revoked
+     ({{lifecycle-ending}}); and
    * the actor lineage that results from merging consecutive same-actor
      entries, as the onward `act` will ({{onward-id-jag}}), is within its
      actor-lineage depth bound, which counts lineage entries, not hops;
@@ -1131,10 +1129,10 @@ from another's resolution.
      less than 300 seconds so that a CAI using the recommended bound
      interoperates ({{assertion-claims}}); and
 
-   * `jti` is not yet reserved for the assertion issuer or, where the IdP
-     offers idempotent retry ({{idempotent-retry}}), is RESERVED or ISSUED
-     under a fingerprint matching this request; any other reserved `jti` is
-     rejected;
+   * `jti` is not yet reserved for the assertion issuer
+     ({{validation-replay}}) or, where the IdP offers idempotent retry
+     ({{idempotent-retry}}), is RESERVED or ISSUED under a fingerprint
+     matching this request; any other reserved `jti` is rejected;
 
 7. **Envelope containment.** The effective authorization the IdP would grant,
    after applying any default scope and policy to the requested audience,
@@ -1420,7 +1418,8 @@ The root subject token resolves to one of these anchors
 
 The IdP MUST NOT root a chain from an unresolved anchor or an access token;
 non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
-only for resolution and MUST NOT enter assertions or chain context.
+only for resolution: an assertion never carries them ({{assertion-claims}}),
+and they MUST NOT enter chain context.
 
 ## Ending a Chain {#lifecycle-ending}
 
@@ -1443,10 +1442,12 @@ needed.
 
 The IdP has these duties over chain lifetime:
 
-* it MUST bound chain lifetime by the governing authorization;
+* it MUST bound chain lifetime by the governing authorization; and
 * it MUST support administrative revocation of an entire chain and may
-  revoke an individual hop's subtree; and
-* it MUST reject continuation on a revoked, expired, or ended chain.
+  revoke an individual hop's subtree.
+
+Continuation on a chain that is revoked, expired, or ended is rejected by the
+chain-state rule of {{validation}}.
 
 Two parties observe withdrawal, and each sees only its own kind. The CAI sees
 the RAS's authorization state, so it governs fresh assertions for a hop; the
@@ -1883,8 +1884,9 @@ representation of the IdP's hop lineage, which is the authoritative actor
 history. A compromised actor could try to forge it, to hide its own identity,
 impersonate a more privileged prior actor, or fabricate a delegation that
 never happened. This profile denies that by construction: an assertion names
-only the current actor ({{assertion-claims}}, {{onward-id-jag}}). The IdP MUST
-reject any mismatch between the current actor and the assertion's `act`.
+only the current actor ({{assertion-claims}}, {{onward-id-jag}}), and the IdP
+rejects any mismatch between the actor it authenticated and the assertion's
+`act` (the current-actor rule of {{validation}}).
 
 A party therefore cannot rewrite history it does not control, and
 offline-attenuation segments, which the IdP does not observe, do not enter
@@ -3666,6 +3668,12 @@ this profile builds.
   rationale is gone, and the two part names are table labels rather than
   defined terms. Three permissions that name an extension point or a scope
   rather than behavior are plain prose.
+
+* Single-statement pass: three duplicate statements of an obligation lost
+  their keyword and now cross-reference the one home (the root handle in the
+  issued ID-JAG, rejection on a revoked or ended chain, rejection of an
+  actor mismatch); the shared-key paragraph in Client Authentication no
+  longer states the same fact twice.
 
 -01
 
