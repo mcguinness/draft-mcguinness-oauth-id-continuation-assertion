@@ -1716,35 +1716,72 @@ and 2 of {{chain-id}} and remain unlinkable.
 
 This profile assumes TLS, a correct IdP subject map and root-chain envelope,
 and the OAuth guidance of {{RFC9700}}. It principally addresses these
-adversaries:
+adversaries; each entry names the guarantee and where the rules are stated:
 
-* an on-path attacker replaying or presenting a captured assertion
-  ({{security-pop}});
-* a compromised intermediate workload broadening authority, continuing the
-  wrong user's chain, or raising authentication context ({{security-envelope}},
-  {{security-actor-chain}});
-* a compromised CAI or actor identity authority, in either deployment topology
-  ({{security-trust-model}}, {{security-topology}},
-  {{security-actor-issuers}});
-* a party influencing the client-to-actor mapping, which is the sole
-  authenticator of an actor that presents no `actor_token`
-  ({{client-identity}});
-* token, type, or algorithm confusion ({{security-alg}});
-* a malicious Resource Server or audience attempting cross-domain correlation,
-  or metadata that discloses deployment structure ({{privacy}},
-  {{security-metadata}}); and
-* a faulty carrier or RAS state lookup ({{handle-propagation}},
-  {{security-topology}}).
+1. **Assertion replayer.** One grant per assertion, only to the actor proving
+   the `cnf` key, within a short window ({{validation}},
+   {{validation-replay}}, {{security-pop}}).
+2. **Token, type, or algorithm confuser.** Fixed `typ`, unencrypted JWS, an
+   allowed asymmetric algorithm, keys from configured issuers only
+   ({{names}}, {{validation}}, {{security-alg}}).
+3. **Mix-up attacker.** `aud` is the IdP the CAI designates, never a requester
+   input; the client confirms it against discovered metadata
+   ({{assertion-claims}}, {{assertion-response}}).
+4. **CAI outside its trust scope.** Only the accepting RAS, or an issuer
+   configured per tenant for that RAS, is accepted. A compromised RAS or CAI
+   can fabricate acceptance; the profile bounds that rather than defeating it
+   ({{validation}}, {{issuer-trust}}, {{security-topology}}).
+5. **Actor impersonator.** Actor identity is the IdP's per-tenant mapping from
+   client authentication; `act` and any `actor_token` must match it
+   ({{client-identity}}, {{actor-token}}, {{validation}}).
+6. **Lineage forger.** The onward `act` is built from the IdP's own hop
+   records; extra `act` members carry no authority ({{onward-id-jag}},
+   {{security-actor-chain}}).
+7. **Authentication-context escalator.** The assertion carries no
+   authentication-context claims; the onward ID-JAG copies the root's
+   unchanged ({{assertion-claims}}, {{onward-id-jag}}).
+8. **Target or scope widener.** No target authority in the assertion or the
+   CAI request; an enumerated envelope never gains targets; every request is
+   contained in the envelope ({{root-envelope}}, {{assertion-preconditions}},
+   {{validation}}).
+9. **Handle abuser.** Unpredictable, bound at the RAS to one authorization,
+   crosses a boundary only inside an ID-JAG or an assertion, confers nothing
+   alone ({{chain-id}}, {{ras-processing}}, {{handle-propagation}}).
+10. **Acceptance bypasser.** The continued hop was accepted by the RAS, and
+    every redemption of one ID-JAG resolves to one hop binding
+    ({{ras-processing}}, {{hop-activation}}).
+11. **Revocation evader.** The withdrawal table gives what stops, and when,
+    for each source ({{lifecycle-ending}}).
+12. **Refresh-token escalator.** Neither exchange response carries a refresh
+    token ({{assertion-response}}, {{success-response}}).
+13. **Non-user-rooted chain establisher.** A chain roots only from a
+    user-rooted anchor under tenant policy ({{chain-establishment}},
+    {{lifecycle-anchors}}).
+14. **Unlisted continuer or budget resetter.** Only permitted continuers;
+    limits apply across every chain and retry of one authorization
+    ({{root-envelope}}, {{lifecycle-limits}}).
+15. **Retry substituter.** A retried presentation is honored only when every
+    fingerprinted field matches ({{idempotent-retry}}).
+16. **Parameter polluter.** Each request parameter appears once, `resource`
+    excepted ({{request}}, {{validation}}).
+17. **Correlator.** Per-hop handles without user data, pairwise subjects,
+    `sid` never carried, lineage narrowable, advertisement omittable
+    ({{chain-id}}, {{onward-id-jag}}, {{security-metadata}}, {{privacy}}).
+
+Interoperability rests on the claim set, request parameters, response shape,
+error names, depth counting, handle syntax, comparison rules, and one DPoP
+proof per continuation request ({{assertion-claims}}, {{request}},
+{{validation}}). Recovery rests on `invalid_continuation` meaning a
+permanently unusable handle, failed validation consuming nothing, and retry
+being optional ({{error-response}}, {{validation-replay}}).
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
 A continuation assertion names the actor the IdP will treat as the chain's
 current holder. As a bearer token it would let any party that captured it, in
 transit, from a log, or from a compromised intermediary, continue the chain as
-that actor. The assertion is not a bearer token; every exchange requires live
-proof of possession of the `cnf` key, a DPoP proof {{RFC9449}} for the method
-this document defines ({{validation}}, {{client-identity}}). A
-captured assertion is therefore useless without the private key, and because the
+that actor. A captured assertion is instead useless without the private key
+({{validation}}, {{client-identity}}), and because the
 onward ID-JAG and the accepting RAS's access token are bound to that same key
 ({{client-identity}}, {{ras-processing}}), possession is demonstrated
 continuously from the first continuation on, not once at issuance. A terminal
@@ -1767,8 +1804,8 @@ attestation, not on the root client's key.
 At assertion issuance the actor proves only its own key, not any key the
 incoming subject token is bound to ({{assertion-token-exchange}}).
 
-Replay of a captured assertion is confined to the IdP continuation exchange
-and requires the actor's key. The freshness rule bounds the window, and
+Replay of a captured assertion is confined to the IdP continuation exchange.
+The freshness rule bounds the window, and
 single-use ({{validation-replay}}) confines a consumed assertion to the one
 grant it first obtained: without it, an actor whose RAS-local authorization had
 lapsed, and whom the CAI would therefore refuse a fresh assertion, could keep
@@ -1778,9 +1815,9 @@ reopen replay ({{validation-replay}}).
 
 ## Envelope Enforcement and Offline Attenuation {#security-envelope}
 
-The envelope bounds every target and authority; the IdP enforces it and nothing
-else, and the CAI, not the IdP, checks any offline attenuation segment
-({{assertion-preconditions}}, {{validation}}). Because the assertion is
+The IdP enforces the envelope and nothing else, and the CAI, not the IdP,
+checks any offline attenuation segment ({{assertion-preconditions}},
+{{validation}}). Because the assertion is
 target-agnostic, a permitted actor may select any target within that ceiling.
 
 A basis-form envelope admits whatever the basis currently permits
@@ -1803,9 +1840,7 @@ Continuers and limits are read as policy stands ({{root-establishment}}), so
 adding a continuer admits a new actor into every running chain that policy
 governs. A tenant manages that list with the same care as a basis.
 
-Wrong-handle association can continue the wrong user's bounded chain. The
-RAS-bound state, read directly or through a carrier derived from it, is what
-associates a request with a handle, and the CAI rejects a substituted one
+Wrong-handle association can continue the wrong user's bounded chain
 ({{handle-propagation}}, {{assertion-preconditions}}).
 
 Because the CAI issues only for an actor it is authoritative to associate with
@@ -1825,10 +1860,8 @@ unchanged into onward ID-JAGs ({{onward-id-jag}}).
 
 ## Trust in Actor Identity Authorities {#security-actor-issuers}
 
-The actor's identity authority is the `iss` of its canonical actor identity,
-which the IdP resolves from its own configuration rather than from the request
-({{client-identity}}). A rogue or over-scoped authority is an impersonation
-vector: a party controlling one could name an actor in another domain or tenant
+A rogue or over-scoped actor identity authority is an impersonation vector: a
+party controlling one could name an actor in another domain or tenant
 and continue that actor's chains. {{validation}} therefore requires an authority
 trusted for the actor's own domain and tenant and paired with the CAI, and an
 accompanying CAI assertion does not relax that: CAI attestation of the hop and
@@ -1837,18 +1870,12 @@ neither substitutes for the other.
 
 ## Conjunctive Trust and Issuer Pairing {#security-trust-model}
 
-A continuation requires all of these, and no one of them suffices alone:
-
-* a CAI the IdP trusts for the presented hop's accepting Resource
-  Authorization Server, which attests the chain-to-actor transition (the
-  issuer-trust rule of {{validation}});
-* the actor's identity authority, trusted for the current actor's domain and
-  tenant, which vouches for the actor through an `actor_token` or the mapping
-  of its client credential (the current-actor rule of {{validation}});
-* live proof of possession of the confirmed key (the current-actor rule of
-  {{validation}}); and
-* the IdP's own envelope and current-actor policy (the envelope-containment
-  rule of {{validation}}).
+A continuation requires all of these, and no one of them suffices alone: a CAI
+the IdP trusts for the presented hop's accepting Resource Authorization Server,
+which attests the chain-to-actor transition; the actor's identity authority,
+which vouches for the actor; live proof of possession of the confirmed key; and
+the IdP's own envelope and current-actor policy (the issuer-trust,
+current-actor, and envelope-containment rules of {{validation}}).
 
 The IdP's trust configuration records these pairings ({{issuer-trust}}).
 
@@ -1884,11 +1911,9 @@ The nested `act` claim is the disclosed actor lineage, a possibly minimized
 representation of the IdP's hop lineage, which is the authoritative actor
 history. A compromised actor could try to forge it, to hide its own identity,
 impersonate a more privileged prior actor, or fabricate a delegation that
-never happened. This profile
-denies that by construction: an assertion names only the current actor, and
-the IdP derives the onward lineage from its own hop records
-({{onward-id-jag}}). The IdP MUST reject any mismatch between the current
-actor and the assertion's `act`.
+never happened. This profile denies that by construction: an assertion names
+only the current actor ({{assertion-claims}}, {{onward-id-jag}}). The IdP MUST
+reject any mismatch between the current actor and the assertion's `act`.
 
 A party therefore cannot rewrite history it does not control, and
 offline-attenuation segments, which the IdP does not observe, do not enter
@@ -1899,8 +1924,8 @@ participated" cannot be enforced from `act` alone.
 ## Token, Type, and Algorithm Confusion {#security-alg}
 
 An attacker may try to pass one token type off as another, downgrade the
-signature algorithm, or steer verification to a key it controls. The JOSE
-verification rules that deny this are stated in the well-formedness rule of
+signature algorithm, or steer verification to a key it controls; the JOSE
+verification rules that deny this are the well-formedness rule of
 {{validation}}.
 
 ## Metadata Disclosure {#security-metadata}
@@ -2354,6 +2379,13 @@ CAI's verification of the proof is defense in depth; item 4 is satisfied at
 the IdP. Where this document offers a choice,
 such as the form of acceptance evidence or a separate actor token, the choice
 is between mechanisms that satisfy the same item.
+
+A change to this profile is acceptable when it preserves each guarantee listed
+in {{security}} under the same attacker capabilities and trust assumptions. A
+removal that does not preserve one is recorded as the deliberate removal of an
+optional capability or as a changed assumption, never presented as an
+equivalent design. Showing that each requirement covers something is
+traceability, not proof that the mechanism is minimal.
 
 # Examples {#examples}
 
@@ -3661,6 +3693,12 @@ this profile builds.
   assertion's expiration is now recommended not to exceed that token's
   expiration (previously an option), so an assertion is not presentable
   after its evidence has lapsed.
+* Security Considerations open with a fixed record of what the profile
+  guarantees against each adversary, plus the interoperability and recovery
+  guarantees, each entry pointing to the sections that state the rules
+  instead of restating them; the test for a requirement adds that a change
+  preserves those guarantees or records what it gives up. No requirement
+  changed.
 
 -01
 
