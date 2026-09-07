@@ -501,13 +501,10 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
       request, encoded as a single-level act claim per [RFC8693]:
 
       *  iss and sub are REQUIRED, non-empty strings: the actor's
-         canonical actor identity as Section 5.5.2 defines it.  Where
-         the actor's credential is issued under that identity, as an
-         [RFC7523] client assertion serving as the dual-use JWT is, they
-         equal the credential's iss and sub.
+         canonical actor identity as Section 5.5.2 defines it.
 
       *  The IdP compares both with the canonical actor identity of the
-         authenticated client and with any actor_token (Section 5.5.2).
+         authenticated client (Section 5.5.2).
 
       *  Only iss and sub form the canonical actor identity under this
          document.  Additional members MAY carry further information
@@ -644,8 +641,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    The root exchange and its ID-JAG conform to the base ID-JAG profile
    ([I-D.ietf-oauth-identity-assertion-authz-grant]) except where this
-   document extends it to issue a continuation-capable ID-JAG.  On the
-   root exchange, actor_token is OPTIONAL.
+   document extends it to issue a continuation-capable ID-JAG.  This
+   document defines no processing for an actor_token on the root
+   exchange: the base profile leaves a presented one outside its scope
+   ([I-D.ietf-oauth-identity-assertion-authz-grant], Section 4.3.3), and
+   the root actor is the authenticated client (Section 5.1.3).
 
 5.1.2.  Chain Establishment
 
@@ -664,8 +664,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    durable chain, a refresh token's OAuth grant (Section 6.1).
 
    This document places no proof-of-possession requirement on the root
-   exchange beyond the one an optional actor_token brings with it
-   (Section 5.1.3).  The root client's obligations are those of the base
+   exchange.  The root client's obligations are those of the base
    profile, and sender constraint becomes a requirement for an actor
    that continues (Section 5.5.2).
 
@@ -683,12 +682,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    entirely on the mapping in Section 5.5.2.  The base profile's
    recommendation to use a confidential client applies to a root
    exchange that establishes a chain.
-
-   An optional actor_token MUST be valid, accepted for continuation, and
-   sender-constrained to a key the client proves on the exchange with a
-   DPoP proof [RFC9449].  It MUST identify that client and designate the
-   IdP where applicable.  The IdP records the root actor only after this
-   validation.
 
 5.1.4.  Root-Chain Envelope
 
@@ -739,7 +732,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    |               | that permission   |                |              |
    +---------------+-------------------+----------------+--------------+
    | Continuation  | Any maximum       | tenant policy  | as policy    |
-   | authorization | actor-chain       |                | stands       |
+   | authorization | actor-lineage     |                | stands       |
    |               | depth and the     |                |              |
    |               | fan-out, rate,    |                |              |
    |               | or hop-count      |                |              |
@@ -1045,11 +1038,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A live recheck SHOULD be used where the tenant requires withdrawal of
    a hop's authorization to stop fresh assertions before the RAS's token
    would expire.  With self-contained evidence, the CAI stops issuing
-   when that token expires, as for any OAuth access token.  An assertion
-   already issued remains usable until its own exp, so the withdrawal
-   tail is the token's remaining lifetime plus the assertion lifetime
-   (Section 9.5).  A CAI that caps the assertion's exp at the evidence's
-   expiry removes the second term.
+   when that token expires, as for any OAuth access token.  Where the
+   evidence is a self-contained token, the assertion's exp SHOULD NOT
+   exceed that token's expiry, so that an assertion is not presentable
+   after the evidence that supported it has lapsed (Section 6.2).
 
    A domain may add its own conditions for issuing, for example limiting
    which of its workloads may obtain assertions, but such conditions
@@ -1153,9 +1145,7 @@ Pragma: no-cache
 
    The root exchange is shown in Section 5.1.  A continuation exchange
    presents an Identity Continuation Assertion, a DPoP proof of the cnf
-   key, and the actor's authentication (Section 5.5.2).  The following
-   example presents a client assertion and a separate actor_token,
-   though one JWT can serve as both:
+   key, and the actor's client authentication (Section 5.5.2):
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -1169,29 +1159,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &scope=trips.read
 &subject_token=<identity-continuation-assertion>
 &subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
-&actor_token=<sender-constrained-current-actor-credential>
-&actor_token_type=<actor-token-type>
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<JWT>
 
-   A client whose client assertion is itself a sender-constrained
-   credential that resolves to the canonical actor identity omits the
-   actor token (Section 5.5.2):
-
-POST /token HTTP/1.1
-Host: idp.example
-Content-Type: application/x-www-form-urlencoded
-DPoP: <proof of possession of the cnf key>
-
-grant_type=urn:ietf:params:oauth:grant-type:token-exchange
-&requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-&audience=https://ras.travel.example/
-&resource=https://api.travel.example/
-&scope=trips.read
-&subject_token=<identity-continuation-assertion>
-&subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
-&client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<sender-constrained JWT identifying the actor>
+   The request carries no actor_token or actor_token_type: the actor
+   named in act is the authenticated client (Section 5.5.2), and a
+   request carrying either parameter is rejected with invalid_request
+   (Section 5.5.6).
 
    The continuation request, never the assertion, supplies the requested
    audience, resource, scope, requested_token_type, and any
@@ -1219,12 +1193,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    client authentication method, and MUST NOT accept a self-asserted
    mapping.
 
+   For [RFC7523] client authentication, the IdP MUST authorize the
+   assertion's issuer for the authenticated client.  The canonical actor
+   identity remains the pair derived from the IdP's configuration
+   (Appendix A.3).
+
    This mapping applies to every exchange.  On a root exchange, client
    authentication alone identifies the root actor.  A root exchange
    carries no unconditional proof-of-possession requirement
    (Section 5.1).  On a continuation exchange (Section 5.5.1), the IdP
-   MUST also match the canonical actor identity to the assertion's act
-   and, where an actor_token is present, to that token.
+   MUST also match the canonical actor identity to the assertion's act.
 
    The comparison runs between actor identities, never between a raw
    OAuth client identifier and an act value:
@@ -1233,15 +1211,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
            |  authoritative mapping (IdP registration)
            v
    canonical actor identity (iss, sub)
-           ^                        ^
-           |  equal                 |  equal
-      actor_token (if present)     act
+           ^
+           |  equal
+          act
 
    The IdP MUST compare the actor iss and sub as case-sensitive strings
    with no transformation or canonicalization ([RFC7519]): the
-   assertion's act, and the identity in any actor_token, are each
-   compared with the canonical actor identity, and identities in
-   different tenants never compare equal.
+   assertion's act is compared with the canonical actor identity, and
+   identities in different tenants never compare equal.
 
    The actor MUST prove possession of the key in cnf; for the jkt
    method, that proof is a DPoP proof [RFC9449].  The IdP MUST bind the
@@ -1251,34 +1228,13 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    implements ([RFC9449]); a mutual-TLS method [RFC8705] is an open
    question (Appendix C).
 
-   A request carries one DPoP proof, so that key is the assertion's cnf
-   key, and the assertion, any actor_token, and the onward ID-JAG share
-   one key (Appendix A.3); client authentication may use an independent
-   credential.  This version uses the key demonstrated by the request's
-   DPoP proof as both the assertion's confirmation key and the
-   confirmation key of the resulting ID-JAG.  That is a property of the
-   confirmation method this version defines, not an identity-
-   continuation invariant.  Key rotation takes effect when the actor
-   obtains a new assertion and actor token bound to the new key.
-
-5.5.2.1.  Additional Actor Credentials
-
-   A separate actor_token is OPTIONAL.  Client authentication alone
-   resolves to the canonical actor identity (Section 5.5.2); a
-   deployment presents an actor_token only as independent evidence of
-   that same actor.
-
-   An actor_token MUST NOT be a bearer token: for a JWT the IdP verifies
-   its cnf confirmation (jkt in this version), and for an opaque token
-   it obtains equivalent confirmation from authoritative metadata such
-   as introspection [RFC7662].  Its key is one the actor proves in the
-   request.
-
-   A sender-constrained JWT MAY serve as both client assertion and
-   actor_token when it satisfies both profiles.  For [RFC7523], its sub
-   is the client_id, the canonical actor identity is then the
-   assertion's issuer and that client_id, and the IdP MUST authorize its
-   issuer for that client (Appendix A.3).
+   A request carries one DPoP proof, so the key it demonstrates is both
+   the assertion's cnf key and the confirmation key of the resulting ID-
+   JAG; client authentication may use an independent credential.  That
+   single shared key follows from the confirmation method this version
+   defines, not from continuation itself (Appendix A.3).  Key rotation
+   takes effect when the actor obtains a new assertion bound to the new
+   key.
 
 5.5.3.  Request Validation
 
@@ -1289,9 +1245,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    1.  *Request parameters.*
 
        *  exactly one each of grant_type, subject_token,
-          subject_token_type, requested_token_type, and audience; zero
-          or one actor_token, with actor_token_type present exactly when
-          actor_token is ([RFC8693], Section 2.1);
+          subject_token_type, requested_token_type, and audience, and no
+          actor_token or actor_token_type ([RFC8693], Section 2.1);
 
        *  zero or more resource, treated as an order-independent set,
           and at most one each of scope and authorization_details, all
@@ -1340,9 +1295,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
        *  in either case, that issuer is trusted for the chain's tenant,
           recorded at establishment, and authorized to pair, for that
-          tenant, with the actor's identity authority (Section 5.5.2),
-          whether an actor_token or the IdP's mapping of the client
-          credential supplied that authority;
+          tenant, with the actor's identity authority (Section 5.5.2);
 
    4.  *Chain state.*
 
@@ -1361,13 +1314,6 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
        *  act is present, conforms to the schema of Section 3.2, and
           identifies the current actor, the canonical actor identity of
           the authenticated client (Section 5.5.2);
-
-       *  where an actor_token is present, actor_token_type names a
-          token type the IdP supports, and the token has a trusted
-          issuer for the actor's domain and tenant, is valid for that
-          type, is accepted, designates the IdP where applicable,
-          identifies the same actor, and is sender-constrained to a key
-          the actor proves in the request (Section 5.5.2);
 
        *  the request proves possession of the cnf key with a matching
           DPoP proof (Section 5.5.2, [RFC9449]); the assertion is never
@@ -1552,17 +1498,27 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       ended chain, on a revoked hop or ancestor, or on a chain whose
       continuation authorization the tenant has withdrawn (Section 6.2).
 
-   *  The IdP SHOULD use invalid_request for a malformed, inconsistent,
-      or unacceptable token, including a lifetime above the maximum the
-      IdP accepts, invalid_dpop_proof for a DPoP failure,
-      unauthorized_client for an actor that current tenant policy does
-      not permit to continue from the presented hop, which leaves the
-      chain continuable by other actors, invalid_grant when the
-      continuation would exceed the chain's actor-lineage depth, fan-
-      out, or hop-count limits (Section 6.3), and invalid_target,
-      invalid_scope, or invalid_authorization_details for a request
-      outside the envelope or for a target at which the IdP can resolve
-      no subject or client identity for the actor.
+   *  The IdP SHOULD use:
+
+      -  invalid_request for a malformed, inconsistent, or unacceptable
+         token, including a lifetime above the maximum the IdP accepts,
+         a request carrying actor_token or actor_token_type, or a second
+         presentation of a reserved assertion where the IdP does not
+         offer idempotent retry (Section 5.5.7.1);
+
+      -  invalid_dpop_proof for a DPoP failure;
+
+      -  unauthorized_client for an actor that current tenant policy
+         does not permit to continue from the presented hop, which
+         leaves the chain continuable by other actors;
+
+      -  invalid_grant when the continuation would exceed the chain's
+         actor-lineage depth, fan-out, or hop-count limits
+         (Section 6.3); and
+
+      -  invalid_target, invalid_scope, or invalid_authorization_details
+         for a request outside the envelope or for a target at which the
+         IdP can resolve no subject or client identity for the actor.
 
    DPoP nonce processing and the use_dpop_nonce error apply unchanged
    from [RFC9449].
@@ -1580,6 +1536,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    exceed the bound, not the hop itself; a continuation that merges into
    an existing lineage entry, or a later policy raising the bound, may
    still succeed.
+
+   After a lost response, the client MAY retry the same assertion where
+   the IdP offers idempotent retry (Section 5.5.7.1), or obtain a fresh
+   assertion.  Expired acceptance evidence can prevent fresh assertion
+   issuance; shared fan-out or hop-count limits can prevent a subsequent
+   exchange (Section 6.3).  A fresh assertion may create an equivalent
+   grant and sibling hop but no additional authority.  Other
+   invalid_request failures, such as malformed requests or prohibited
+   parameters, require correcting or abandoning the request.
 
 5.5.7.  Replay Reservation and Retry
 
@@ -1637,12 +1602,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    A reservation that does not reach ISSUED before exp becomes FAILED,
    which is final and requires a fresh assertion.
 
-   After a lost response, a client MAY retry the same assertion where
-   the IdP offers retry, or obtain a fresh assertion.  A fresh assertion
-   may create an equivalent grant and sibling hop but no additional
-   authority.  Application idempotency remains out of scope.
-   Realization guidance is in Section 8; whether idempotent retry should
-   be mandatory is an open question (Appendix C).
+   Application idempotency remains out of scope.  Realization guidance
+   is in Section 8; whether idempotent retry should be mandatory is an
+   open question (Appendix C).
 
 6.  Chain Lifetime and Revocation
 
@@ -1693,6 +1655,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    assertions or chain context.  Rotation of a refresh token does not
    affect the grant anchor.
 
+   Grant-anchor support is optional.  Without it, base processing of a
+   refresh-token subject is unchanged; any otherwise-authorized ID-JAG
+   omits the continuation handle (Section 5.1.2).
+
 6.2.  Ending a Chain
 
    A chain ends when:
@@ -1727,6 +1693,14 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    *  it MUST reject continuation on a revoked, expired, or ended chain.
 
+   RAS-local withdrawal stops fresh assertions once the CAI observes it;
+   self-contained acceptance evidence may remain usable until its expiry
+   (Section 5.4.3).  Previously issued assertions remain subject to the
+   IdP's current chain, trust, and authorization checks (Section 5.5.3).
+   RAS-local withdrawal does not revoke descendants accepted at other
+   RASes; stopping their continuation requires IdP revocation of the
+   chain or affected subtree.
+
    How an IdP surfaces chains to users and administrators for review and
    revocation is deployment-specific; [GRANT-MGMT] describes OAuth grant
    management for that purpose.
@@ -1734,11 +1708,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 6.3.  Limits
 
    Revocation of the governing authorization applies to every chain
-   rooted in it, and the actor-chain depth bound is enforced per branch.
-   Fan-out, rate, or hop-count limits configured for a governing
-   authorization apply across every chain rooted in it, so sibling
-   chains share one budget; a retried establishment (Section 5.1) MUST
-   NOT evade them.
+   rooted in it, and the actor-lineage depth bound is enforced per
+   branch.  Fan-out, rate, or hop-count limits configured for a
+   governing authorization apply across every chain rooted in it, so
+   sibling chains share one budget; a retried establishment
+   (Section 5.1) MUST NOT evade them.
 
 7.  Authorization Server Metadata and Trust Configuration
 
@@ -1839,9 +1813,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    grant; an IdP that offers idempotent retry also keeps the fingerprint
    and result so that a retry recovers it (Section 5.5.7).
 
-   Because the actor-chain depth bound counts merged lineage entries, a
-   workload that repeatedly continues as itself never trips it; the fan-
-   out, rate, and hop-count limits of Section 6.3 bound that growth
+   Because the actor-lineage depth bound counts merged lineage entries,
+   a workload that repeatedly continues as itself never trips it; the
+   fan-out, rate, and hop-count limits of Section 6.3 bound that growth
    instead.
 
    Failure paths worth testing before deployment:
@@ -1946,29 +1920,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 9.  Security Considerations
 
    This profile assumes TLS, a correct IdP subject map and root-chain
-   envelope, and the OAuth guidance of [RFC9700].  It principally
-   addresses these adversaries:
-
-   *  an on-path attacker replaying or presenting a captured assertion
-      (Section 9.1);
-
-   *  a compromised intermediate workload broadening authority,
-      continuing the wrong user's chain, or raising authentication
-      context (Section 9.2, Section 9.6);
-
-   *  a compromised CAI or actor identity authority, in either
-      deployment topology (Section 9.4, Section 9.5, Section 9.3);
-
-   *  a party influencing the client-to-actor mapping, which is the sole
-      authenticator of an actor that presents no actor_token
-      (Section 5.5.2);
-
-   *  token, type, or algorithm confusion (Section 9.7);
-
-   *  a malicious Resource Server or audience attempting cross-domain
-      correlation (Section 10); and
-
-   *  a faulty carrier or RAS state lookup (Section 5.3, Section 9.5).
+   envelope, and the OAuth guidance of [RFC9700].  The following
+   sections discuss replay, compromised workloads and issuers,
+   authorization and actor-lineage integrity, and token confusion.
+   Section 10 addresses correlation and disclosure risks.
 
 9.1.  Sender Constraint and Proof of Possession
 
@@ -2070,16 +2025,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 9.3.  Trust in Actor Identity Authorities
 
-   The actor's identity authority is the iss of its canonical actor
-   identity, which the IdP resolves from its own configuration rather
-   than from the request (Section 5.5.2).  A rogue or over-scoped
-   authority is an impersonation vector: a party controlling one could
-   name an actor in another domain or tenant and continue that actor's
-   chains.  Section 5.5.3 therefore requires an authority trusted for
-   the actor's own domain and tenant and paired with the CAI, and an
-   accompanying CAI assertion does not relax that: CAI attestation of
-   the hop and authentication of the actor are independent checks
-   (Section 9.4); neither substitutes for the other.
+   A rogue or over-scoped actor identity authority is an impersonation
+   vector: a party controlling one could name an actor in another domain
+   or tenant and continue that actor's chains.  The IdP therefore takes
+   that authority from its own registration of the client or its
+   configuration of the client's credential issuer, never from the
+   request, and accepts it only where it is paired with the CAI for the
+   chain's tenant (Section 5.5.2, Section 5.5.3); an accompanying CAI
+   assertion does not relax that: CAI attestation of the hop and
+   authentication of the actor are independent checks (Section 9.4);
+   neither substitutes for the other.
 
 9.4.  Conjunctive Trust and Issuer Pairing
 
@@ -2091,9 +2046,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
       (the issuer-trust rule of Section 5.5.3);
 
    *  the actor's identity authority, trusted for the current actor's
-      domain and tenant, which vouches for the actor through an
-      actor_token or the mapping of its client credential (the current-
-      actor rule of Section 5.5.3);
+      domain and tenant, which vouches for the actor through the mapping
+      of its client credential (the current-actor rule of
+      Section 5.5.3);
 
    *  live proof of possession of the confirmed key (the current-actor
       rule of Section 5.5.3); and
@@ -2117,15 +2072,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    attestation, gated by policy and the acceptance check.
 
    A compromised RAS can fabricate acceptance state in either topology,
-   since a separate CAI reads that state as authoritative; a compromised
-   separate CAI can additionally attest a hop the RAS refused.  In both
-   topologies, RAS-local authorization revocation after issuance, which
-   the IdP cannot observe, leaves the assertion valid for its remaining
-   lifetime; a separate CAI adds any delay in RAS state reaching it, and
-   where the RAS's acceptance evidence is a self-contained token
-   (Section 5.4.3) fresh issuance continues for that token's remaining
-   lifetime, on top of the assertion's own lifetime, so a tenant that
-   needs faster withdrawal configures a live recheck.  The root envelope
+   since a separate CAI reads that state as authoritative.  A
+   compromised separate CAI can additionally attest a hop the RAS
+   refused.  Section 6.2 describes the effects of RAS-local withdrawal,
+   including delayed observation by a separate CAI.  The root envelope
    still bounds the result.
 
 9.6.  Actor Chain Integrity
@@ -2591,17 +2541,14 @@ A.3.  Actor Identity and Target client_id
    The IdP's mapping from client to canonical actor identity does not
    depend on the client authentication method: a client that
    authenticates with an [RFC7523] client assertion may have a workload
-   identity in another namespace as its canonical actor identity.  A
-   sender-constrained JWT from an issuer the tenant trusts is the
-   natural form of a workload credential and, when it satisfies both
-   profiles, serves as both client assertion and actor_token
-   (Section 5.5.2).  The shared key
-
-   across the actor's credential, the assertion, and the onward ID-JAG
-   is a consequence of a single proof method, not a property
-   continuation requires: continuation requires continuity of the actor,
-   and a future confirmation method could bind these artifacts to
-   different proven keys (Appendix C).
+   identity in another namespace as its canonical actor identity
+   (Section 5.5.2).  An extension may define additional actor evidence
+   that tenant policy can require, naming the same actor as the
+   authenticated client.  The shared key across the assertion and the
+   onward ID-JAG is a consequence of a single proof method, not a
+   property continuation requires: continuation requires continuity of
+   the actor, and a future confirmation method could bind these
+   artifacts to different proven keys (Appendix C).
 
    The may_act claim of [RFC8693] does not remove the need for this
    profile.  It lets an issuer state, inside a token the target already
@@ -2750,8 +2697,8 @@ A.10.  The Test for a Requirement
    they are the freshness half of item 1.  The CAI's verification of the
    proof is defense in depth; item 4 is satisfied at the IdP.  Where
    this document offers a choice, such as the form of acceptance
-   evidence or a separate actor token, the choice is between mechanisms
-   that satisfy the same item.
+   evidence, the choice is between mechanisms that satisfy the same
+   item.
 
 Appendix B.  Examples
 
@@ -2882,10 +2829,9 @@ B.1.1.  Provisioning
    |              | access tokens presented to that        |           |
    |              | resource                               |           |
    +--------------+----------------------------------------+-----------+
-   | tool-gateway | one key pair, used for its             | Section   |
-   |              | credential's cnf, its DPoP proofs,     | 5.5.2     |
-   |              | and the assertion's cnf; a             |           |
-   |              | credential issued at                   |           |
+   | tool-gateway | a DPoP key pair for the continuation   | Section   |
+   |              | assertion's cnf; a client-             | 5.5.2     |
+   |              | authentication credential issued at    |           |
    |              | https://gateway.example/               |           |
    +--------------+----------------------------------------+-----------+
    | WikiRAS      | tool-gateway registered as a client,   | base      |
@@ -2898,23 +2844,17 @@ B.1.1.  Provisioning
 
                                   Table 5
 
-   The credential that tool-gateway presents to the IdP as its
-   client_assertion (Appendix B.1.5) is, in this example, a JWT issued
-   by the gateway domain and bound to the gateway's key; it resolves to
-   the canonical actor identity, so no separate actor_token is needed.
-   Any sender-constrained credential the IdP accepts under Section 5.5.2
-   would serve; this choice is illustrative.  It is addressed to the IdP
-   alone: the earlier exchange at GatewayRAS (Appendix B.1.4) uses a
-   separate client assertion addressed to GatewayRAS, as [RFC7523]
-   requires.
+   The client_assertion that tool-gateway presents to the IdP
+   (Appendix B.1.5) is an [RFC7523] JWT issued by the gateway domain;
+   the IdP maps the authenticated client to its configured actor
+   identity.  It is addressed to the IdP alone: the earlier exchange at
+   GatewayRAS (Appendix B.1.4) uses a separate client assertion
+   addressed to GatewayRAS.
 
    {
      "iss": "https://gateway.example/",
      "sub": "tool-gateway",
      "aud": "https://idp.example/",
-     "cnf": {
-       "jkt": "base64url-tool-gateway-key-thumbprint"
-     },
      "iat": 1710000230,
      "exp": 1710000290,
      "jti": "tg-cred-01"
@@ -3114,10 +3054,9 @@ B.1.5.  ToolGateway Continues to WikiRAS
    ToolGateway resolves the token endpoint of https://idp.example/, the
    audience it was given, from that IdP's metadata and presents the
    assertion there as the subject_token of a continuation exchange, with
-   its client credential and a DPoP proof of the same key, requesting an
-   ID-JAG for WikiRAS. tool-gateway is a registered client of the IdP
-   whose sender-constrained credential resolves to its canonical actor
-   identity, so it presents no separate actor_token (Section 5.5.2):
+   client authentication and a DPoP proof of the assertion's cnf key,
+   requesting an ID-JAG for WikiRAS.  The IdP maps the registered client
+   tool-gateway to its canonical actor identity (Section 5.5.2):
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -3132,7 +3071,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &subject_token=<identity-continuation-assertion>
 &subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<sender-constrained tool-gateway credential>
+&client_assertion=<tool-gateway client assertion>
 
    The IdP validates the exchange (Section 5.5.3):
 
@@ -3456,10 +3395,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 B.2.4.  Continuation to TravelRAS (H1)
 
-   expense-service presents the assertion to the IdP with its credential
-   and a DPoP proof of the same key, requesting an ID-JAG for TravelRAS.
-   That one sender-constrained credential serves as both client
-   assertion and actor_token under the dual-use rule (Section 5.5.2):
+   expense-service presents the assertion to the IdP with an [RFC7523]
+   client assertion and a DPoP proof of the continuation assertion's cnf
+   key, requesting an ID-JAG for TravelRAS.  The IdP maps the
+   authenticated client to its canonical actor identity (Section 5.5.2):
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -3473,10 +3412,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &scope=trips.read
 &subject_token=<identity-continuation-assertion>
 &subject_token_type=urn:ietf:params:oauth:token-type:identity-continuation
-&actor_token=<sender-constrained expense-service credential>
-&actor_token_type=urn:ietf:params:oauth:token-type:jwt
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
-&client_assertion=<the same expense-service credential>
+&client_assertion=<expense-service client assertion>
 
    The IdP validates the exchange (Section 5.5.3): Expense CAI is
    trusted for ExpenseRAS, the RAS recorded for H0, rather than being
@@ -3545,10 +3482,10 @@ B.2.5.  The Pattern Repeats to BookingRAS (H2)
    exchanges it for an ID-JAG with
    audience=https://ras.booking.example/,
    resource=https://api.booking.example/, and scope=stays.book, all
-   within the envelope's Booking entry.  It presents its own sender-
-   constrained credential as both client assertion and actor_token, as
-   expense-service did (Section 5.5.2).  The IdP creates H2 under H1 and
-   extends the lineage:
+   within the envelope's Booking entry.  It authenticates with its own
+   client assertion and proves the key in the continuation assertion's
+   cnf.  The IdP resolves its canonical actor identity (Section 5.5.2),
+   creates H2 under H1, and extends the lineage:
 
    On the wire (selected claims from the decoded ID-JAG):
 
@@ -3711,10 +3648,10 @@ B.3.3.  Each Run: Continuing to CalendarRAS
 
    BriefingAgent exchanges the Transaction Token at Platform CAI's token
    endpoint and presents the assertion to the IdP the response's
-   audience names, with its actor credential and a DPoP proof.  Platform
-   CAI applies the preconditions of Section 5.4.3 to durable task state
-   rather than to a live user's request: it authenticates briefing-
-   agent, verifies its key and transaction, and rechecks that
+   audience names, with its client credential and a DPoP proof.
+   Platform CAI applies the preconditions of Section 5.4.3 to durable
+   task state rather than to a live user's request: it authenticates
+   briefing-agent, verifies its key and transaction, and rechecks that
    PlatformRAS's H0 authorization remains active.
 
    The assertion and onward ID-JAG have the shapes shown in
@@ -3788,15 +3725,15 @@ Appendix C.  Open Items for Working Group Discussion
    1.  *Signed assertion versus a recipient-bound direct profile.* Could
        the IdP bind a continuation credential to an intended actor,
        actor class, trust domain, or key and accept it with client
-       authentication, sender-constrained actor_token, and live key
-       proof?  Are the CAI's actor/key attestation and domain-local gate
-       worth the added trust configuration (Appendix A.7)?
+       authentication and live key proof?  Are the CAI's actor/key
+       attestation and domain-local gate worth the added trust
+       configuration (Appendix A.7)?
 
    2.  *Mutual-TLS confirmation.* Should this profile define a mutual-
        TLS confirmation method (x5t#S256, [RFC8705]) alongside jkt, and
        should it do so together with ID-JAG (Section 5.5.2)?  With a
-       second proof method available, may the actor_token and the onward
-       ID-JAG be bound to a different proven key than the assertion?
+       second proof method available, may the onward ID-JAG be bound to
+       a different proven key than the assertion?
 
    3.  *A client establishment parameter.* Should a client be able to
        require or suppress chain establishment, or negotiate lifetime,
@@ -3849,9 +3786,9 @@ Appendix C.  Open Items for Working Group Discussion
    ([I-D.mcguinness-oauth-actor-receipts],
    [I-D.mcguinness-oauth-actor-proofs]); a pull topology with target-
    side resolution (Appendix A.6); IdP discovery metadata for accepted
-   actor-token types, issuers, and proof methods (Section 7); a non-user
-   root profile (Appendix A.1); and RAS-derived narrowing with a signed
-   intersection model (Section 5.2.1).
+   proof methods (Section 7); a non-user root profile (Appendix A.1);
+   and RAS-derived narrowing with a signed intersection model
+   (Section 5.2.1).
 
 Acknowledgments
 
@@ -4131,6 +4068,14 @@ Document History
 
    *  Removed CAI nomination metadata and its registration; CAI trust is
       configured at the IdP.
+
+   *  Removed additional actor-token processing; client authentication
+      resolves the actor identity, and DPoP binds the continuation
+      assertion and onward ID-JAG.
+
+   *  Clarified lifecycle and recovery rules, recommended capping
+      assertion expiry at evidence expiry, and shortened repeated
+      explanations.
 
    -01
 
