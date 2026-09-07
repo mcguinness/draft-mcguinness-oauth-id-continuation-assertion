@@ -588,7 +588,7 @@ permits continuation and, if so, populates the root-chain envelope:
 | Chain identity | The governing authorization's anchor and the chain's expiry ({{lifecycle}}) | the root subject token's anchor | fixed |
 | Continuation authorization | Onward targets, either enumerated as permitted audiences with their resources, scopes, and authorization details {{RFC9396}}, or recorded as an authorization basis | tenant policy | enumerated: narrows only; basis: as policy stands |
 | Continuation authorization | The actors or trust domains permitted to continue, and the basis for that permission | tenant policy | as policy stands |
-| Continuation authorization | Any maximum actor-chain depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
+| Continuation authorization | Any maximum actor-lineage depth and the fan-out, rate, or hop-count limits | tenant policy | as policy stands |
 
 Token claims cannot supply these values. The chain identity is fixed: no later
 policy or request changes the user, the authentication context, the root
@@ -857,10 +857,10 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
-as for any OAuth access token. An assertion already issued remains usable
-until its own `exp`, so the withdrawal tail is the token's remaining lifetime
-plus the assertion lifetime ({{security-topology}}). A CAI that caps the
-assertion's `exp` at the evidence's expiry removes the second term.
+as for any OAuth access token. Where the evidence is a self-contained token,
+the assertion's `exp` SHOULD NOT exceed that token's expiry, so that an
+assertion is not presentable after the evidence that supported it has lapsed
+({{lifecycle-ending}}).
 
 A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
@@ -1045,14 +1045,12 @@ version defines, so a target validates the onward ID-JAG's confirmation with the
 DPoP mechanics it already implements ({{RFC9449}}); a mutual-TLS method
 {{RFC8705}} is an open question ({{open-items}}).
 
-A request carries one DPoP proof, so that key is the assertion's `cnf` key, and
-the assertion and the onward ID-JAG share one key ({{rationale-client-id}});
-client authentication may use an independent credential. This version uses the
-key demonstrated by the request's DPoP proof as both the assertion's
-confirmation key and the confirmation key of the resulting ID-JAG.
-That is a property of the confirmation method this version defines, not an
-identity-continuation invariant. Key rotation takes effect when the actor
-obtains a new assertion bound to the new key.
+A request carries one DPoP proof, so the key it demonstrates is both the
+assertion's `cnf` key and the confirmation key of the resulting ID-JAG; client
+authentication may use an independent credential. That single shared key
+follows from the confirmation method this version defines, not from
+continuation itself ({{rationale-client-id}}). Key rotation takes effect when
+the actor obtains a new assertion bound to the new key.
 
 ### Request Validation {#validation}
 
@@ -1280,18 +1278,22 @@ On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
   permanently unusable: unknown, on an expired or ended chain, on a revoked hop
   or ancestor, or on a chain whose continuation authorization the tenant has
   withdrawn ({{lifecycle-ending}}).
-* The IdP SHOULD use `invalid_request` for a malformed, inconsistent, or
-  unacceptable token, including a lifetime above the maximum the IdP accepts
-  or a request carrying `actor_token` or `actor_token_type`,
-  `invalid_dpop_proof` for a DPoP failure, `unauthorized_client` for an actor
-  that current tenant policy does not permit to continue from the presented
-  hop, which leaves the chain continuable by other actors, `invalid_grant` when
-  the continuation would exceed the chain's actor-lineage depth, fan-out, or
-  hop-count limits ({{lifecycle-limits}}), and `invalid_target`,
-  `invalid_scope`, or
-  `invalid_authorization_details` for a request outside the envelope or for a
-  target at which the IdP can resolve no subject or client identity for the
-  actor.
+* The IdP SHOULD use:
+  * `invalid_request` for a malformed, inconsistent, or unacceptable token,
+    including a lifetime above the maximum the IdP accepts, a request
+    carrying `actor_token` or `actor_token_type`, or a second presentation of
+    a reserved assertion where the IdP does not offer idempotent retry
+    ({{idempotent-retry}});
+  * `invalid_dpop_proof` for a DPoP failure;
+  * `unauthorized_client` for an actor that current tenant policy does not
+    permit to continue from the presented hop, which leaves the chain
+    continuable by other actors;
+  * `invalid_grant` when the continuation would exceed the chain's
+    actor-lineage depth, fan-out, or hop-count limits
+    ({{lifecycle-limits}}); and
+  * `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for
+    a request outside the envelope or for a target at which the IdP can
+    resolve no subject or client identity for the actor.
 
 DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
 {{RFC9449}}.
@@ -1308,6 +1310,15 @@ only the current request. An actor-lineage depth rejection concerns the
 particular continuation whose resulting lineage would exceed the bound, not
 the hop itself; a continuation that merges into an existing lineage entry, or
 a later policy raising the bound, may still succeed.
+
+After a lost response, the client MAY retry the same assertion where the IdP
+offers idempotent retry ({{idempotent-retry}}), or obtain a fresh assertion.
+Expired acceptance evidence can prevent fresh assertion issuance; shared
+fan-out or hop-count limits can prevent a subsequent exchange
+({{lifecycle-limits}}). A fresh assertion may create an equivalent grant and
+sibling hop but no additional authority. Other `invalid_request` failures,
+such as malformed requests or prohibited parameters, require correcting or
+abandoning the request.
 
 ### Replay Reservation and Retry {#validation-replay}
 
@@ -1354,10 +1365,7 @@ fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 A reservation that does not reach ISSUED before `exp` becomes FAILED, which is
 final and requires a fresh assertion.
 
-After a lost response, a client MAY retry the same assertion where the IdP
-offers retry, or obtain a fresh assertion. A fresh assertion may create an
-equivalent grant and sibling hop but no additional authority. Application
-idempotency remains out of scope. Realization guidance is in
+Application idempotency remains out of scope. Realization guidance is in
 {{implementation}}; whether idempotent retry should be mandatory is an open
 question ({{open-items}}).
 
@@ -1408,6 +1416,10 @@ non-user-rooted authority is out of scope. `sid` and `SessionIndex` are used
 only for resolution and MUST NOT enter assertions or chain context. Rotation
 of a refresh token does not affect the grant anchor.
 
+Grant-anchor support is optional. Without it, base processing of a
+refresh-token subject is unchanged; any otherwise-authorized ID-JAG omits the
+continuation handle ({{chain-establishment}}).
+
 ## Ending a Chain {#lifecycle-ending}
 
 A chain ends when:
@@ -1438,6 +1450,14 @@ The IdP has these duties over chain lifetime:
   revoke an individual hop's subtree; and
 * it MUST reject continuation on a revoked, expired, or ended chain.
 
+RAS-local withdrawal stops fresh assertions once the CAI observes it;
+self-contained acceptance evidence may remain usable until its expiry
+({{assertion-preconditions}}). Previously issued assertions remain subject to
+the IdP's current chain, trust, and authorization checks ({{validation}}).
+RAS-local withdrawal does not revoke descendants accepted at other RASes;
+stopping their continuation requires IdP revocation of the chain or affected
+subtree.
+
 How an IdP surfaces chains to users and administrators for review and
 revocation is deployment-specific; {{GRANT-MGMT}} describes OAuth grant
 management for that purpose.
@@ -1445,7 +1465,7 @@ management for that purpose.
 ## Limits {#lifecycle-limits}
 
 Revocation of the governing authorization applies to every chain rooted in
-it, and the actor-chain depth bound is enforced per branch. Fan-out, rate, or
+it, and the actor-lineage depth bound is enforced per branch. Fan-out, rate, or
 hop-count limits configured for a governing authorization apply across every
 chain rooted in it, so sibling chains share one budget; a retried
 establishment ({{root-establishment}}) MUST NOT evade them.
@@ -1543,7 +1563,7 @@ that concurrent presentations yield one grant; an IdP that offers idempotent
 retry also keeps the fingerprint and result so that a retry recovers it
 ({{validation-replay}}).
 
-Because the actor-chain depth bound counts merged lineage entries, a workload
+Because the actor-lineage depth bound counts merged lineage entries, a workload
 that repeatedly continues as itself never trips it; the fan-out, rate, and
 hop-count limits of {{lifecycle-limits}} bound that growth instead.
 
@@ -1624,24 +1644,9 @@ and 2 of {{chain-id}} and remain unlinkable.
 # Security Considerations {#security}
 
 This profile assumes TLS, a correct IdP subject map and root-chain envelope,
-and the OAuth guidance of {{RFC9700}}. It principally addresses these
-adversaries:
-
-* an on-path attacker replaying or presenting a captured assertion
-  ({{security-pop}});
-* a compromised intermediate workload broadening authority, continuing the
-  wrong user's chain, or raising authentication context ({{security-envelope}},
-  {{security-actor-chain}});
-* a compromised CAI or actor identity authority, in either deployment topology
-  ({{security-trust-model}}, {{security-topology}},
-  {{security-actor-issuers}});
-* a party influencing the configured mapping from the authenticated client
-  to its canonical actor identity ({{client-identity}});
-* token, type, or algorithm confusion ({{security-alg}});
-* a malicious Resource Server or audience attempting cross-domain correlation
-  ({{privacy}}); and
-* a faulty carrier or RAS state lookup ({{handle-propagation}},
-  {{security-topology}}).
+and the OAuth guidance of {{RFC9700}}. The following sections discuss replay,
+compromised workloads and issuers, authorization and actor-lineage integrity,
+and token confusion. {{privacy}} addresses correlation and disclosure risks.
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
@@ -1773,15 +1778,10 @@ presents nothing it did not already hold; what it gains is the CAI's
 attestation, gated by policy and the acceptance check.
 
 A compromised RAS can fabricate acceptance state in either topology, since a
-separate CAI reads that state as authoritative; a compromised separate CAI can
-additionally attest a hop the RAS refused. In both topologies, RAS-local
-authorization revocation after issuance, which the IdP cannot observe, leaves
-the assertion valid for its remaining lifetime; a separate CAI adds any delay
-in RAS state reaching it, and where the RAS's acceptance evidence is a
-self-contained token ({{assertion-preconditions}}) fresh issuance continues
-for that token's remaining lifetime, on top of the assertion's own lifetime,
-so a tenant that needs faster withdrawal configures a live recheck. The root
-envelope still bounds the result.
+separate CAI reads that state as authoritative. A compromised separate CAI can
+additionally attest a hop the RAS refused. {{lifecycle-ending}} describes the
+effects of RAS-local withdrawal, including delayed observation by a separate
+CAI. The root envelope still bounds the result.
 
 ## Actor Chain Integrity {#security-actor-chain}
 
@@ -3525,6 +3525,8 @@ this profile builds.
   at the IdP.
 * Removed additional actor-token processing; client authentication resolves the
   actor identity, and DPoP binds the continuation assertion and onward ID-JAG.
+* Clarified lifecycle and recovery rules, recommended capping assertion expiry
+  at evidence expiry, and shortened repeated explanations.
 
 -01
 
