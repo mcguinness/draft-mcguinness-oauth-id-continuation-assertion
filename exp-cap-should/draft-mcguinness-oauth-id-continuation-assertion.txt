@@ -4,8 +4,8 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                        6 September 2026
-Expires: 10 March 2027
+Intended status: Standards Track                        7 September 2026
+Expires: 11 March 2027
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -59,7 +59,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 10 March 2027.
+   This Internet-Draft will expire on 11 March 2027.
 
 Copyright Notice
 
@@ -1048,10 +1048,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    a hop's authorization to stop fresh assertions before the RAS's token
    would expire.  With self-contained evidence, the CAI stops issuing
    when that token expires, as for any OAuth access token.  Where the
-   evidence is a self-contained token, the CAI SHOULD cap the
-   assertion's exp at that token's expiry, so that the withdrawal window
-   ends with the evidence rather than one assertion lifetime later
-   (Section 6.2).
+   evidence is a self-contained token, the assertion's exp SHOULD NOT
+   exceed that token's expiry, so that an assertion is not presentable
+   after the evidence that supported it has lapsed (Section 6.2).
 
    A domain may add its own conditions for issuing, for example limiting
    which of its workloads may obtain assertions, but such conditions
@@ -1733,13 +1732,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    CAI sees the RAS's authorization state, so it governs fresh
    assertions for a hop; the IdP sees anchors, tenant policy, and its
    own revocations, so it governs continuation.  Withdrawing at one of
-   them changes only what that party governs.  Tokens already issued are
-   unaffected in every case: an assertion is usable until its exp, an
-   ID-JAG until its redemption window closes, and the access tokens a
-   RAS issues, which this profile does not constrain, for their own
-   lifetime; any refresh token the RAS issues, which the base profile
-   recommends against, extends that further.  The table summarizes each
-   way authority is withdrawn.
+   them changes only what that party governs.  An unexpired assertion
+   remains subject to every rule of Section 5.5.3 when presented: RAS-
+   local withdrawal alone does not invalidate an assertion already
+   issued, while withdrawal the IdP observes prevents its use at once,
+   before its exp.  This profile does not revoke the access tokens a RAS
+   issues; their issuing RAS may revoke them under its own rules, and
+   any refresh token the RAS issues, which the base profile recommends
+   against, extends their reach.  The table summarizes each way
+   authority is withdrawn.
 
    +=============+==============+====================+=================+
    |Withdrawn by |Fresh         |Continuation at the |A new chain      |
@@ -1779,28 +1780,26 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    |hop's subtree|              |                    |                 |
    +-------------+--------------+--------------------+-----------------+
    |RAS withdraws|Live recheck: |Not observed: the   |Not needed; the  |
-   |the accepted |at once.      |hop stays active and|RAS re-accepts   |
+   |the accepted |stops at once.|hop stays active and|RAS re-accepts   |
    |authorization|Self-contained|descendants accepted|                 |
-   |             |evidence: at  |at other RASes      |                 |
-   |             |that token's  |continue            |                 |
-   |             |expiry, plus  |                    |                 |
-   |             |the assertion |                    |                 |
-   |             |lifetime where|                    |                 |
-   |             |the CAI does  |                    |                 |
-   |             |not apply the |                    |                 |
-   |             |recommended   |                    |                 |
-   |             |exp cap       |                    |                 |
-   |             |(Section      |                    |                 |
-   |             |5.4.3); a     |                    |                 |
-   |             |separate CAI  |                    |                 |
-   |             |adds its      |                    |                 |
-   |             |propagation   |                    |                 |
-   |             |delay         |                    |                 |
+   |             |evidence:     |at other RASes      |                 |
+   |             |stops when    |continue; an        |                 |
+   |             |that token    |assertion issued    |                 |
+   |             |expires; a    |before the evidence |                 |
+   |             |separate CAI  |expired stays       |                 |
+   |             |adds its      |presentable until   |                 |
+   |             |propagation   |its own exp, which  |                 |
+   |             |delay (Section|the recommended cap |                 |
+   |             |5.4.3)        |holds to the        |                 |
+   |             |              |evidence's expiry   |                 |
+   |             |              |(Section 5.4.3)     |                 |
    +-------------+--------------+--------------------+-----------------+
-   |IdP removes a|The CAI's     |Fails issuer trust  |Not needed;      |
-   |CAI or its   |assertions are|at the next         |configure a      |
-   |keys         |no longer     |evaluation, for     |replacement CAI  |
-   |(Section 7.2)|accepted      |existing chains too |                 |
+   |IdP removes a|Unaffected:   |Fails issuer trust  |Not needed;      |
+   |CAI or its   |the CAI may   |at the next         |configure a      |
+   |keys         |keep issuing  |evaluation, for     |replacement CAI  |
+   |(Section 7.2)|              |existing chains and |                 |
+   |             |              |for assertions      |                 |
+   |             |              |already issued      |                 |
    +-------------+--------------+--------------------+-----------------+
    |IdP removes  |Unaffected    |That actor fails for|Not needed       |
    |an actor     |              |the tenant; others  |                 |
@@ -4270,9 +4269,9 @@ Document History
       restating the window.
 
    *  Where the RAS's acceptance evidence is a self-contained token, the
-      CAI is now recommended to cap the assertion's exp at that token's
-      expiry (previously an option), so the withdrawal window ends with
-      the evidence.
+      assertion's expiration is now recommended not to exceed that
+      token's expiration (previously an option), so an assertion is not
+      presentable after its evidence has lapsed.
 
    -01
 

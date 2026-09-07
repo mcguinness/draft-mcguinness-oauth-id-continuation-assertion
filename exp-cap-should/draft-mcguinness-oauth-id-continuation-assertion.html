@@ -1056,7 +1056,7 @@ svg {
 </tr></thead>
 <tfoot><tr>
 <td class="left">McGuinness</td>
-<td class="center">Expires 10 March 2027</td>
+<td class="center">Expires 11 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1069,12 +1069,12 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-06" class="published">6 September 2026</time>
+<time datetime="2026-09-07" class="published">7 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-10">10 March 2027</time></dd>
+<dd class="expires"><time datetime="2027-03-11">11 March 2027</time></dd>
 <dt class="label-authors">Author:</dt>
 <dd class="authors">
 <div class="author">
@@ -1131,7 +1131,7 @@ attenuation for intra-domain fan-out that does not change the subject.<a href="#
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 10 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 11 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -2538,9 +2538,9 @@ the bound handle and the RAS's acceptance evidence, facts 4 and 5.<a href="#sect
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
 as for any OAuth access token. Where the evidence is a self-contained token,
-the CAI <span class="bcp14">SHOULD</span> cap the assertion's <code>exp</code> at that token's expiry, so that the
-withdrawal window ends with the evidence rather than one assertion lifetime
-later (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
+the assertion's <code>exp</code> <span class="bcp14">SHOULD NOT</span> exceed that token's expiry, so that an
+assertion is not presentable after the evidence that supported it has lapsed
+(<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
 <p id="section-5.4.3-9">A domain may add its own conditions for issuing, for example limiting which of
 its workloads may obtain assertions, but such conditions narrow issuance only.
 Target or purpose hints can narrow CAI issuance, but neither they nor
@@ -3331,12 +3331,13 @@ revoke an individual hop's subtree; and<a href="#section-6.2-6.2.1" class="pilcr
 the RAS's authorization state, so it governs fresh assertions for a hop; the
 IdP sees anchors, tenant policy, and its own revocations, so it governs
 continuation. Withdrawing at one of them changes only what that party
-governs. Tokens already issued are unaffected in every case: an assertion is
-usable until its <code>exp</code>, an ID-JAG until its redemption window closes, and the
-access tokens a RAS issues, which this profile does not constrain, for their
-own lifetime; any refresh token the RAS issues, which the base profile
-recommends against, extends that further. The table summarizes each way
-authority is withdrawn.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
+governs. An unexpired assertion remains subject to every rule of
+<a href="#validation" class="auto internal xref">Section 5.5.3</a> when presented: RAS-local withdrawal alone does not invalidate
+an assertion already issued, while withdrawal the IdP observes prevents its
+use at once, before its <code>exp</code>. This profile does not revoke the access tokens
+a RAS issues; their issuing RAS may revoke them under its own rules, and any
+refresh token the RAS issues, which the base profile recommends against,
+extends their reach. The table summarizes each way authority is withdrawn.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
 <table class="center" id="table-4">
           <caption><a href="#table-4" class="selfRef">Table 4</a></caption>
 <thead>
@@ -3388,14 +3389,14 @@ authority is withdrawn.<a href="#section-6.2-7" class="pilcrow">¶</a></p>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">RAS withdraws the accepted authorization</td>
-              <td class="text-left" rowspan="1" colspan="1">Live recheck: at once. Self-contained evidence: at that token's expiry, plus the assertion lifetime where the CAI does not apply the recommended <code>exp</code> cap (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>); a separate CAI adds its propagation delay</td>
-              <td class="text-left" rowspan="1" colspan="1">Not observed: the hop stays active and descendants accepted at other RASes continue</td>
+              <td class="text-left" rowspan="1" colspan="1">Live recheck: stops at once. Self-contained evidence: stops when that token expires; a separate CAI adds its propagation delay (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)</td>
+              <td class="text-left" rowspan="1" colspan="1">Not observed: the hop stays active and descendants accepted at other RASes continue; an assertion issued before the evidence expired stays presentable until its own <code>exp</code>, which the recommended cap holds to the evidence's expiry (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)</td>
               <td class="text-left" rowspan="1" colspan="1">Not needed; the RAS re-accepts</td>
             </tr>
             <tr>
               <td class="text-left" rowspan="1" colspan="1">IdP removes a CAI or its keys (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>)</td>
-              <td class="text-left" rowspan="1" colspan="1">The CAI's assertions are no longer accepted</td>
-              <td class="text-left" rowspan="1" colspan="1">Fails issuer trust at the next evaluation, for existing chains too</td>
+              <td class="text-left" rowspan="1" colspan="1">Unaffected: the CAI may keep issuing</td>
+              <td class="text-left" rowspan="1" colspan="1">Fails issuer trust at the next evaluation, for existing chains and for assertions already issued</td>
               <td class="text-left" rowspan="1" colspan="1">Not needed; configure a replacement CAI</td>
             </tr>
             <tr>
@@ -6274,9 +6275,10 @@ Assertion Preconditions, Chain Lifetime, and Topology and Trust passages
 cross-reference it instead of each restating the window.<a href="#appendix-E-3.40.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.41">
-          <p id="appendix-E-3.41.1">Where the RAS's acceptance evidence is a self-contained token, the CAI is
-now recommended to cap the assertion's <code>exp</code> at that token's expiry
-(previously an option), so the withdrawal window ends with the evidence.<a href="#appendix-E-3.41.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.41.1">Where the RAS's acceptance evidence is a self-contained token, the
+assertion's expiration is now recommended not to exceed that token's
+expiration (previously an option), so an assertion is not presentable
+after its evidence has lapsed.<a href="#appendix-E-3.41.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
