@@ -564,7 +564,7 @@ becomes a requirement for an actor that continues ({{client-identity}}).
 
 For every hop it creates, root or child, the IdP records the RAS audience
 placed in the ID-JAG and any other issuers it trusts to attest that RAS's hops,
-whether from tenant configuration or the RAS's nomination ({{metadata-ras}}).
+from tenant configuration ({{issuer-trust}}).
 
 Establishment is at-least-once. Retrying a lost response MAY create a second
 chain, and the limits of {{lifecycle-limits}} apply across every chain rooted
@@ -949,8 +949,8 @@ Transaction Token, that Transaction Token is the carrier
 rather than from the requester.
 
 The IdP accepts a separate CAI's attestation only where it trusts that CAI to
-attest the accepting RAS's hops, from tenant configuration or the RAS's
-nomination ({{metadata-ras}}, the issuer-trust rule of {{validation}}).
+attest the accepting RAS's hops, from tenant configuration
+({{issuer-trust}}, the issuer-trust rule of {{validation}}).
 
 ## Continuation Exchange {#token-exchange}
 
@@ -1136,7 +1136,7 @@ from another's resolution.
    * the assertion `iss` is either the accepting RAS itself, identified by the
      ID-JAG `aud` recorded for the hop as a string or one-element array;
    * or another issuer the IdP trusts to attest that RAS's hops, recorded from
-     tenant configuration or the RAS's nomination ({{metadata-ras}}); and
+     tenant configuration ({{issuer-trust}}); and
    * in either case, that issuer is trusted for the chain's tenant, recorded at
      establishment, and authorized to pair, for that tenant, with the actor's
      identity authority ({{client-identity}}), whether an `actor_token` or the
@@ -1541,37 +1541,6 @@ depends ({{I-D.ietf-oauth-identity-assertion-authz-grant}}). It MUST also
 advertise `urn:ietf:params:oauth:grant-type:jwt-dpop`, since every onward
 ID-JAG it redeems carries `cnf` ({{onward-id-jag}}).
 
-A Resource Authorization Server does not list itself as a CAI for its own
-hops; the issuer-trust rule of {{validation}} accepts it directly, subject to
-the IdP's issuer trust ({{security-trust-model}}). It MAY advertise
-additional Continuation Assertion Issuers it authorizes to attest those hops,
-so the IdP can discover them rather than be configured out of band:
-
-`identity_continuation_issuers`:
-: OPTIONAL. A JSON array of additional CAI issuer identifiers, each a
-  `StringOrURI` {{RFC7519}}, that this Resource Authorization Server
-  authorizes to attest hops it accepts; an empty array authorizes no
-  additional CAIs. Values are compared with the assertion `iss` as exact,
-  case-sensitive strings, and duplicates are ignored.
-
-  The advertisement is a nomination only: the IdP MUST establish each
-  issuer's identity and signing keys independently, and the advertisement
-  alone MUST NOT establish key trust or override the IdP's tenant
-  issuer-pairing policy. Because the IdP evaluates issuer trust and keys
-  against its current trusted issuer and key state, removing an issuer or
-  revoking its keys de-authorizes it for existing chains.
-
-When a CAI's issuer identifier is that of an OAuth authorization server, the
-IdP obtains its signing keys from the `jwks_uri` in that server's metadata
-({{RFC8414}}); a CAI without such a `jwks_uri`, like any other CAI, uses
-authenticated configuration. A RAS nomination MUST NOT by itself trigger
-that retrieval or authorize the issuer; the IdP applies its own issuer
-policy first.
-
-The IdP MUST refresh remotely obtained keys under a bounded cache policy, so
-a key removed from the JWK Set stops validating once the refresh takes
-effect.
-
 ## Issuer Trust Configuration {#issuer-trust}
 
 The IdP MUST authorize CAI and actor identity authority pairings per tenant;
@@ -1579,6 +1548,20 @@ separate trust in each is insufficient ({{security-trust-model}}). Tenant
 determination MUST derive from authenticated material, not requester-supplied
 input. The IdP MUST scope CAI trust by issuer, keys, tenant, and the RAS it
 attests for.
+
+When a CAI's issuer identifier is that of an OAuth authorization server, the
+IdP obtains its signing keys from the `jwks_uri` in that server's metadata
+({{RFC8414}}); a CAI without such a `jwks_uri`, like any other CAI, uses
+authenticated configuration. The IdP MUST refresh remotely obtained keys
+under a bounded cache policy, so a key removed from the JWK Set stops
+validating once the refresh takes effect.
+
+The IdP evaluates issuer trust and keys against its current trusted issuer
+and key state, so removing an issuer or revoking its keys de-authorizes it
+for existing chains ({{lifecycle-ending}}).
+
+CAI trust is provisioned and withdrawn through deployment-specific
+configuration at the IdP.
 
 # Implementation Considerations {#implementation}
 
@@ -1644,9 +1627,8 @@ the hop's state:
 | Separate | a separate CAI the IdP trusts for the RAS | a carrier inside the domain | the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation |
 
 Co-located is the baseline: it needs no CAI configuration at the IdP beyond
-the RAS's own issuer trust and no self-entry in
-`identity_continuation_issuers` ({{metadata-ras}}). The RAS still advertises
-the continuation profile ({{metadata}}), and the IdP still holds the RAS's
+the RAS's own issuer trust ({{issuer-trust}}). The RAS still advertises the
+continuation profile ({{metadata-ras}}), and the IdP still holds the RAS's
 issuer, key, tenant, and issuer-pairing trust ({{security-trust-model}}).
 
 Both topologies produce the same Identity Continuation Assertion and apply
@@ -1817,11 +1799,6 @@ A continuation requires all of these, and no one of them suffices alone:
 
 The IdP's trust configuration records these pairings ({{issuer-trust}}).
 
-The IdP MAY learn additional issuers from the RAS's advertised
-`identity_continuation_issuers` ({{metadata}}). That advertisement is a
-nomination only and establishes no issuer or key trust ({{metadata-ras}});
-absent it, additional mappings are configured out of band.
-
 ## Topology and Trust {#security-topology}
 
 Accepting the RAS's own identifier under the issuer-trust rule establishes no
@@ -1865,16 +1842,6 @@ An attacker may try to pass one token type off as another, downgrade the
 signature algorithm, or steer verification to a key it controls. The JOSE
 verification rules that deny this are stated in the well-formedness rule of
 {{validation}}.
-
-## Metadata Disclosure {#security-metadata}
-
-Advertising `identity_continuation_issuers` ({{metadata-ras}}) in publicly
-readable authorization server metadata reveals which additional CAIs a
-Resource Authorization Server authorizes to attest its hops, and can thereby
-disclose federation topology, tenant relationships, and deployment structure.
-A deployment whose CAI relationships are sensitive SHOULD omit the
-advertisement and convey the nomination out of band or through
-access-controlled discovery.
 
 # Privacy Considerations {#privacy}
 
@@ -2080,7 +2047,7 @@ Specification Document(s):
 
 ## OAuth Authorization Server Metadata Registration
 
-IANA is requested to register the following values in the "OAuth Authorization
+IANA is requested to register the following value in the "OAuth Authorization
 Server Metadata" registry established by {{RFC8414}}.
 
 Metadata Name:
@@ -2089,20 +2056,6 @@ Metadata Name:
 Metadata Description:
 : Boolean value indicating support for the Identity Continuation Assertion
   profile
-
-Change Controller:
-: IETF
-
-Specification Document(s):
-: This document, {{metadata}}
-
-Metadata Name:
-: identity_continuation_issuers
-
-Metadata Description:
-: Array of issuer identifiers for additional Continuation Assertion Issuers
-  (CAIs) a Resource Authorization Server authorizes to attest hops it accepts
-  (a nomination; the IdP establishes issuer key trust independently)
 
 Change Controller:
 : IETF
@@ -2962,11 +2915,9 @@ it. Being a separate service rather than the RAS itself, it rechecks with
 ExpenseRAS that H0's binding is still active and records continuation as
 permitted, then issues the assertion bound to the proven key
 ({{assertion-preconditions}}). The IdP accepts its assertions for hops
-ExpenseRAS accepts because
-it trusts Expense CAI for that RAS, learned through
-`identity_continuation_issuers` or tenant configuration; the rest of the
-conjunctive trust rule applies as it does to a co-located RAS
-({{metadata}}, {{security-trust-model}}).
+ExpenseRAS accepts because it trusts Expense CAI for that RAS by
+configuration at the IdP; the rest of the conjunctive trust rule applies as
+it does to a co-located RAS ({{issuer-trust}}, {{security-trust-model}}).
 
 On the wire (decoded assertion):
 
@@ -3121,9 +3072,9 @@ BookingAPI with AT3.
 ### What Differs from the Gateway Example {#example-differences}
 
 * The CAI is a separate service in each continuing domain, which the IdP
-  trusts for that domain's RAS by configuration or nomination; a co-located
-  RAS needs no such record, though the same conjunctive trust applies to both
-  ({{security-trust-model}}).
+  trusts for that domain's RAS by configuration at the IdP
+  ({{issuer-trust}}); a co-located RAS needs no such record, though the same
+  conjunctive trust applies to both ({{security-trust-model}}).
 * The handle never enters an access token; a Transaction Token Service derives
   it from the RAS binding for each request, and the workload presents that
   token to obtain the assertion.
@@ -3622,6 +3573,9 @@ this profile builds.
   after its evidence has lapsed.
 * Shortened the Security Considerations introduction; detailed threats and
   mitigations remain in their existing subsections.
+* Removed the RAS metadata parameter `identity_continuation_issuers` and
+  its registration. CAI trust is configured at the IdP; key acquisition,
+  refresh, and withdrawal rules remain in Issuer Trust Configuration.
 
 -01
 
