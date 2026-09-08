@@ -54,3 +54,18 @@ technical issues needs to occur on the mailing list.
 
 You might also like to familiarize yourself with other
 [Working Group documents](https://datatracker.ietf.org/wg/oauth/documents/).
+
+## Reviewing Protocol Requirements
+
+When editing the draft, identify which property each requirement protects:
+
+1. The prior hop was accepted, and continuation evidence is sufficiently fresh.
+2. A party trusted for that hop attests the current actor's association with it.
+3. The IdP authenticates that actor.
+4. The actor proves possession of the continuation key.
+5. The IdP authorizes the actor, target, and effective permissions.
+6. The chain remains within its governing authorization and lifecycle.
+
+Also check interoperability and recovery behavior. Prefer requirements on
+observable behavior over storage or traversal methods, and keep each obligation
+in one processing section with references from examples and security rationale.
