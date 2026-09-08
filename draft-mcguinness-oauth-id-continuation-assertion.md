@@ -137,7 +137,8 @@ Three properties hold throughout:
   issued an access token for.
 * Only a workload that the IdP has authenticated, that the grant's governing
   authorization and tenant policy permit to continue from that grant, and
-  that proves possession of its own key to the IdP can obtain the next ID-JAG.
+  that proves possession of its own key to the IdP can obtain the next
+  ID-JAG.
 
 Each continuation is a new decision by the IdP under the governing
 authorization and the policy in force at that moment. The assertion carries no target authority: it identifies the
