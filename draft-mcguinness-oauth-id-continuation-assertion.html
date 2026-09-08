@@ -5629,65 +5629,56 @@ for this document.<a href="#appendix-B.3.5-2" class="pilcrow">¶</a></p>
       <h2 id="name-open-items-for-working-grou">
 <a href="#appendix-C" class="section-number selfRef">Appendix C. </a><a href="#name-open-items-for-working-grou" class="section-name selfRef">Open Items for Working Group Discussion</a>
       </h2>
-<p id="appendix-C-1">This non-normative appendix lists unresolved design questions.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
+<p id="appendix-C-1">This non-normative appendix identifies questions for Working Group review.<a href="#appendix-C-1" class="pilcrow">¶</a></p>
 <p id="appendix-C-2">[[ To be removed before publication as an RFC ]]<a href="#appendix-C-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="appendix-C-3">
 <li id="appendix-C-3.1">
-          <p id="appendix-C-3.1.1"><strong>Signed assertion versus a recipient-bound direct profile.</strong>
-Could the IdP bind a continuation credential to an intended actor, actor
-class, trust domain, or key and accept it with client authentication and
-live key proof? Are the CAI's actor/key attestation and domain-local gate
-worth the added trust configuration (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.1.1"><strong>Acceptance attestation.</strong> Could a recipient-bound design, in which the IdP
+binds a continuation credential to an intended actor, actor class, trust
+domain, or key, or a target-resolved design replace the CAI assertion while
+still supplying evidence of RAS acceptance and of the actor's association
+with that context, which today only a party in the RAS's domain can provide
+(<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.2">
-          <p id="appendix-C-3.2.1"><strong>Mutual-TLS confirmation.</strong> Should this profile define a mutual-TLS
-confirmation method (<code>x5t#S256</code>, <span>[<a href="#RFC8705" class="cite xref">RFC8705</a>]</span>) alongside <code>jkt</code>, and should
-it do so together with ID-JAG (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>)? With a second proof
-method available, may the onward ID-JAG be bound to a different proven key
-than the assertion?<a href="#appendix-C-3.2.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.2.1"><strong>Sender constraint.</strong> Should mutual-TLS confirmation be defined jointly
+with ID-JAG? Should the assertion and ID-JAG permit different proven keys,
+and how should supported methods be advertised (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>)?<a href="#appendix-C-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.3">
-          <p id="appendix-C-3.3.1"><strong>A client establishment parameter.</strong> Should a client be able to require
-or suppress chain establishment, or negotiate lifetime, depth, or
-permitted continuers (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>)?<a href="#appendix-C-3.3.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.3.1"><strong>Client establishment control.</strong> Should root clients be able to require or
+suppress chain establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>)? The author's current
+position is that establishment remains a tenant policy decision, so that
+existing clients need no change to participate in a chain.<a href="#appendix-C-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.4">
-          <p id="appendix-C-3.4.1"><strong>Document factoring.</strong> Should durable chains (<a href="#lifecycle" class="auto internal xref">Section 6</a>,
-<a href="#example-background" class="auto internal xref">Appendix B.3</a>) become a separate profile, leaving this document
-with session-bounded continuation, or does one document with a stoppable
-core serve implementers better?<a href="#appendix-C-3.4.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.4.1"><strong>Durable chains.</strong> Should grant-anchored chains remain optional in this
+document or move to a separate profile (<a href="#lifecycle" class="auto internal xref">Section 6</a>)?<a href="#appendix-C-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.5">
-          <p id="appendix-C-3.5.1"><strong>Stateless hop commitments.</strong> Could a self-verifying handle let the IdP
-retain only root, revocation, and reservation state while preserving
-ancestry and ancestor-revocation checks (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>)?
-How would it fit the handle's recommended 256-character bound
-(<a href="#chain-id" class="auto internal xref">Section 4</a>), and what would subtree revocation and unlinkability cost
-(<a href="#privacy" class="auto internal xref">Section 10</a>)?<a href="#appendix-C-3.5.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.5.1"><strong>Stateless handles.</strong> Can self-verifying handles preserve ancestry and
+subtree revocation within the recommended size bound, and at what privacy
+and operational cost (<a href="#chain-id" class="auto internal xref">Section 4</a>, <a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>)?<a href="#appendix-C-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.6">
-          <p id="appendix-C-3.6.1"><strong>Mandatory idempotent retry.</strong> <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a> requires single-use
-and makes idempotent retry optional; an earlier draft required both. Should
-retry be mandatory, so that a client can rely on recovering a lost response
-at any IdP, at the cost of fingerprint state consistent enough to serve a
-concurrent retry, or is a rejected second presentation followed by a fresh
-assertion an acceptable recovery path (<a href="#implementation" class="auto internal xref">Section 8</a>)?<a href="#appendix-C-3.6.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.6.1"><strong>Idempotent recovery.</strong> Should every supporting IdP be required to offer
+idempotent recovery, or should optional support be discoverable
+(<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>)?<a href="#appendix-C-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.7">
-          <p id="appendix-C-3.7.1"><strong>Numeric bounds.</strong> This document sets a 3600-second ceiling on assertion
-lifetime (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>) and requires a finite hop-count limit without
-fixing a default (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>). Both are policy choices rather than
-consequences of validation: should the ceiling be lower, should a default hop
-count be specified, and should either be discoverable in IdP metadata?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.7.1"><strong>Limits.</strong> The document currently sets a 3600-second ceiling on assertion
+lifetime and requires a finite hop-count limit without fixing a default
+(<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>). Should either change, and which
+values should be advertised in metadata?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
-<p id="appendix-C-4">Further questions are listed here without discussion: nested own-domain <code>act</code>
-segments and offline-actor audit (<span>[<a href="#I-D.mcguinness-oauth-actor-receipts" class="cite xref">I-D.mcguinness-oauth-actor-receipts</a>]</span>,
-<span>[<a href="#I-D.mcguinness-oauth-actor-proofs" class="cite xref">I-D.mcguinness-oauth-actor-proofs</a>]</span>); a pull topology with target-side
-resolution (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>); IdP discovery metadata for accepted proof
-methods (<a href="#metadata" class="auto internal xref">Section 7</a>); a non-user root profile (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>); and
-RAS-derived narrowing with a signed intersection model
-(<a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>).<a href="#appendix-C-4" class="pilcrow">¶</a></p>
+<p id="appendix-C-4">The project issue tracker also records WG questions on authorization bounds
+(#106), acceptance freshness (#107), actor identity evidence (#108), CAI
+discovery (#109), bearer ingress (#110), and acceptance accountability (#41).<a href="#appendix-C-4" class="pilcrow">¶</a></p>
+<p id="appendix-C-5">Further extension topics include client-requested limits or permitted actors,
+intra-domain actor lineage and audit (<span>[<a href="#I-D.mcguinness-oauth-actor-receipts" class="cite xref">I-D.mcguinness-oauth-actor-receipts</a>]</span>,
+<span>[<a href="#I-D.mcguinness-oauth-actor-proofs" class="cite xref">I-D.mcguinness-oauth-actor-proofs</a>]</span>), non-user roots, and RAS-derived
+narrowing (<a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>).<a href="#appendix-C-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="acknowledgments">
