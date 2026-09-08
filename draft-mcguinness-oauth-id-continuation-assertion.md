@@ -151,11 +151,12 @@ the requested authority. The scopes of the access token the workload holds do
 not bound what the next ID-JAG may grant.
 
 Continuation is not required for every API call. Further calls under the same
-source hop and authorization context can reuse the access token a continuation
+hop and authorization context can reuse the access token a continuation
 obtained while it remains valid and covers the requested access
 ({{implementation}}).
 
-This document extends the base ID-JAG profile on an opt-in basis.
+This document extends ID-JAG, which it calls the base profile, on an opt-in
+basis.
 Only the continuing workload, its RAS and CAI, and the IdP need support this
 extension. The root client uses the base exchange, but chain establishment
 requires a resolvable session or grant anchor ({{lifecycle-anchors}}); without
@@ -1142,8 +1143,10 @@ that order around the dependencies between rules.
    and permit the authority represented by the resulting ID-JAG. This
    evaluation includes the audience, resources, scopes, and authorization
    details, including any default scope or other defaults the IdP applies
-   under its policy. The IdP MUST reject the request if it cannot establish
-   that authorization.
+   under its policy. On an idempotent retry the IdP evaluates the authority
+   granted at issuance, including the defaults applied then
+   ({{idempotent-retry}}). The IdP MUST reject the request if it cannot
+   establish that authorization.
 
    The issued ID-JAG carries the `scope`, `resource`, and
    `authorization_details` values that express the granted authority.
@@ -1392,13 +1395,22 @@ MUST cover:
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
+The recovery checks re-run the current-actor rule of {{validation}} (the actor's
+identity and its key proof) and the revocation conditions of the chain-state
+rule, and evaluate the authorization rule against the authority granted at
+issuance, including the defaults applied then, so a later change of policy
+defaults cannot alter the returned grant. The assertion's expiry and the chain's
+fan-out and hop-count accounting are evaluated as of issuance: a reservation
+retained under {{validation-replay}} can be recovered after the assertion's
+`exp`, recovery allocates no new hop and charges no fan-out or hop-count limit
+again, and rate limits still apply.
+
 A presentation matching a RESERVED reservation, whose first presentation has
-not completed, is rejected with `invalid_request` and can be retried once that
-first presentation completes ({{error-response}}). A reservation that does not
-reach ISSUED before `exp` plus the permitted clock skew becomes FAILED, which
-is final: a presentation
-matching a FAILED reservation is rejected with `invalid_request` and the
-client obtains a fresh assertion.
+not completed, MUST be rejected with `invalid_request`; the client can retry
+it once that first presentation completes ({{error-response}}). A reservation
+that does not reach ISSUED before `exp` plus the permitted clock skew becomes
+FAILED, which is final: a presentation matching a FAILED reservation MUST be
+rejected with `invalid_request`, and the client obtains a fresh assertion.
 
 Application idempotency remains out of scope. Realization guidance is in
 {{implementation}}; whether idempotent retry should be mandatory is an open
@@ -1590,8 +1602,8 @@ normative sections.
 
 Continuation is per authorization context, not per call. A workload can reuse
 an access token while it remains valid and covers the requested access, for
-calls under the same source hop and authorization context, user, tenant, actor,
-and key. Another source hop needs its own continuation even within the same
+calls under the same hop and authorization context, user, tenant, actor, and
+key. Another hop needs its own continuation even within the same
 chain: reusing a token obtained from a sibling branch would attach later
 continuation to that branch's lineage and revocation dependencies.
 
@@ -2232,6 +2244,16 @@ because a scope granted at one audience says nothing about a scope at
 another. A deployment that wants the work itself to narrow downstream
 authority expresses that in the governing authorization, not in RAS scopes.
 
+Each requirement serves one property the IdP needs before it issues: acceptance
+evidence by the RAS's own semantics, the lifetime bound, and single-use keep
+that evidence fresh and used once; the CAI's attestation establishes that the
+current actor holds the accepted hop; the canonical actor identity lets the IdP
+authenticate that actor; sender constraint of the assertion and the onward
+ID-JAG proves the key; the authorization rule authorizes the actor, the target,
+and the authority; and the anchor keeps the chain within its lifecycle. Where
+this document offers a choice, such as the form of acceptance evidence, the
+alternatives satisfy the same property.
+
 # Examples {#examples}
 
 This non-normative appendix illustrates three deployment shapes: a tool
@@ -2804,7 +2826,8 @@ ExpenseApp calls ExpenseAPI with AT1. The Expense TTS resolves AT1 against that
 record over its own-domain interface with ExpenseRAS, derives H0, and issues a
 Transaction Token for `expense-service`, the workload that completes the
 request ({{handle-propagation}}). It records the transaction's assignment to
-that workload in authenticated routing state. Neither ExpenseApp nor
+that workload in authenticated routing state, the domain's own record of which
+workload handles a transaction. Neither ExpenseApp nor
 `expense-service` supplies H0.
 
 Intra-domain context (decoded Transaction Token):
@@ -2916,11 +2939,20 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<expense-service client assertion>
 ~~~
 
-The IdP applies {{validation}}, trusting Expense CAI to attest for ExpenseRAS.
-TravelRAS, TravelAPI, and `trips.read` are permitted by the governing
-authorization and current policy. The IdP resolves the user's Travel subject,
-creates H1 as a child of H0, and places `expense-service` atop the root actor
-`expense-app` in the lineage ({{onward-id-jag}}).
+The IdP validates the exchange ({{validation}}):
+
+* Issuer trust: Expense CAI is trusted for ExpenseRAS, the RAS recorded for
+  H0, rather than being that RAS itself.
+* Chain state: H0 names an accepted hop on an active chain.
+* Current actor and binding: `act` names `expense-service`, the authenticated
+  client, and the DPoP proof matches `cnf`.
+* Authorization: TravelRAS, TravelAPI, and `trips.read` are permitted by the
+  governing authorization and current policy.
+
+The IdP never calls ExpenseRAS; the assertion is its evidence of acceptance
+({{hop-activation}}). It resolves the user's Travel subject, creates H1 as a
+child of H0, and places `expense-service` atop the root actor `expense-app`
+in the lineage ({{onward-id-jag}}).
 
 On the wire (decoded ID-JAG):
 
@@ -3239,7 +3271,7 @@ This non-normative appendix lists unresolved design questions.
    commitment carrying the root, parent, RAS, and actor, so that the IdP
    keeps only root, revocation, and reservation state? The proposal must show
    how the IdP recovers a hop's ancestry when the parent record no longer
-   exists, since lineage is derived by walking parent references and an
+   exists, since lineage is derived from each hop's ancestry and an
    ancestor's revocation must be detectable ({{onward-id-jag}},
    {{lifecycle}}); how it does so within the handle's 256-character bound
    ({{chain-id}}) without embedding commitments recursively; and what a
@@ -3342,7 +3374,7 @@ specifications, on whose work this profile builds.
   onward access, and that grant-anchor support is optional.
 
 * Clarified validation and allocation accounting for idempotent recovery,
-  scoped token reuse to the source hop, and specified ancestry integrity
+  scoped token reuse to the hop continued from, and specified ancestry integrity
   without prescribing traversal. Qualified compatibility and bearer-ingress
   consequences, made the example's actor-to-context check explicit, and moved
   the editorial checklist to contributor guidance.
