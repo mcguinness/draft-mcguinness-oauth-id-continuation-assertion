@@ -1032,22 +1032,25 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    N_A (not applicable), and expires_in reflects the assertion's
    lifetime.  This document adds one parameter:
 
-   audience:  REQUIRED.  The issuer identifier of the IdP to which the
-      client presents the assertion.  In this response audience
-      identifies the recipient of the issued assertion and therefore
-      equals its aud claim; because the request carries no audience,
-      this is how the client learns where to present the assertion.
+   identity_continuation_authorization_server:  REQUIRED.  A JSON string
+      containing the issuer identifier ([RFC8414]) of the authorization
+      server at which the client exchanges the assertion for an ID-JAG.
+      The CAI MUST set its value to the assertion's aud claim.  The
+      client uses this parameter to identify the IdP without decoding
+      the assertion.
 
    The client obtains that IdP's token_endpoint from its authorization
    server metadata ([RFC8414]), retrieved with the oauth-authorization-
    server well-known URI suffix under the issuer identifier.  Before
-   using it, the client confirms that the returned issuer exactly
-   matches audience.  Where the IdP publishes no metadata, the client
-   uses configuration bound to that issuer identifier (Section 7).
+   sending the assertion or its own credentials there, the client MUST
+   confirm that the returned issuer exactly matches
+   identity_continuation_authorization_server.  Where the IdP publishes
+   no metadata, the client uses configuration bound to that issuer
+   identifier (Section 7).
 
    The client SHOULD present the assertion only to an IdP it is
-   configured to trust; the audience parameter tells it where, not
-   whether.
+   configured to trust; this parameter identifies the destination but
+   does not establish trust.
 
    The CAI MUST NOT include a refresh_token in the response, which would
    let a client obtain further assertions without presenting a token or
@@ -1062,7 +1065,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<Identity Continuation Assertion, compact JWS>",
   "token_type": "N_A",
-  "audience": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 
@@ -2205,20 +2208,16 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 11.2.  OAuth Parameters Registration
 
-   IANA is requested to update the registration of the audience
-   parameter in the "OAuth Parameters" registry established by
-   [RFC6749].  [RFC8693] registered the parameter for the token request;
-   this document adds the token response usage location and leaves the
-   change controller unchanged, so that the entry reads as follows.
+   IANA is requested to register the following parameter in the "OAuth
+   Parameters" registry established by [RFC6749].
 
-   Parameter name:  audience
+   Parameter name:  identity_continuation_authorization_server
 
-   Parameter usage location:  token request, token response
+   Parameter usage location:  token response
 
    Change controller:  IESG
 
-   Specification Document(s):  Section 2.1 of [RFC8693]; this document,
-      Section 5.4.4
+   Specification Document(s):  This document, Section 5.4.4
 
 11.3.  OAuth URI Registration
 
@@ -3021,12 +3020,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
      "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
      "access_token": "<the assertion below, compact JWS>",
      "token_type": "N_A",
-     "audience": "https://idp.example/",
+     "identity_continuation_authorization_server": "https://idp.example/",
      "expires_in": 120
    }
 
-   The audience tells ToolGateway which IdP the assertion is for; it is
-   where the request for the next ID-JAG goes.
+   The identity_continuation_authorization_server identifies the IdP
+   from which ToolGateway obtains the next ID-JAG.
 
    On the wire (decoded assertion):
 
@@ -3052,11 +3051,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 B.1.5.  ToolGateway Continues to WikiRAS
 
    ToolGateway resolves the token endpoint of https://idp.example/, the
-   audience it was given, from that IdP's metadata and presents the
-   assertion there as the subject_token of a continuation exchange, with
-   client authentication and a DPoP proof of the assertion's cnf key,
-   requesting an ID-JAG for WikiRAS.  The IdP maps the registered client
-   tool-gateway to its canonical actor identity (Section 5.5.2):
+   identity_continuation_authorization_server it was given, using
+   Section 5.4.4, and presents the assertion there as the subject_token
+   of a continuation exchange, with client authentication and a DPoP
+   proof of the assertion's cnf key, requesting an ID-JAG for WikiRAS.
+   The IdP maps the registered client tool-gateway to its canonical
+   actor identity (Section 5.5.2):
 
 POST /token HTTP/1.1
 Host: idp.example
@@ -3656,11 +3656,11 @@ B.3.3.  Each Run: Continuing to CalendarRAS
 
    BriefingAgent exchanges the Transaction Token at Platform CAI's token
    endpoint and presents the assertion to the IdP the response's
-   audience names, with its client credential and a DPoP proof.
-   Platform CAI applies the preconditions of Section 5.4.3 to durable
-   task state rather than to a live user's request: it authenticates
-   briefing-agent, verifies its key and transaction, and rechecks that
-   PlatformRAS's H0 authorization remains active.
+   identity_continuation_authorization_server names, with its client
+   credential and a DPoP proof.  Platform CAI applies Section 5.4.3 to
+   durable task state rather than to a live user's request: it
+   authenticates briefing-agent, verifies its key and transaction, and
+   rechecks that PlatformRAS's H0 authorization remains active.
 
    The assertion and onward ID-JAG have the shapes shown in
    Appendix B.2.3 and Appendix B.2.4, with Platform CAI as the assertion
@@ -3771,13 +3771,7 @@ Appendix C.  Open Items for Working Group Discussion
        rejected second presentation followed by a fresh assertion an
        acceptable recovery path (Section 8)?
 
-   7.  *Response parameter naming.* This document reuses the Token
-       Exchange audience parameter in the assertion issuance response
-       (Section 5.4.4) to name the recipient of the issued assertion.
-       Should a profile-specific response member be defined instead,
-       given that [RFC8693] registers audience for requests only?
-
-   8.  *Numeric bounds.* This document sets a 3600-second ceiling on
+   7.  *Numeric bounds.* This document sets a 3600-second ceiling on
        assertion lifetime (Section 3.2) and requires a finite hop-count
        limit without fixing a default (Section 6.3).  Both are policy
        choices rather than consequences of validation: should the
@@ -3828,7 +3822,10 @@ Document History
    *  Defined assertion issuance as Token Exchange at the CAI's token
       endpoint, with the access token or Transaction Token for the call
       as the subject token.  The CAI verifies the client's DPoP proof
-      and returns a registered audience parameter naming the IdP.
+      and returns the required
+      identity_continuation_authorization_server response parameter
+      naming the IdP, equal to the assertion's aud; the client verifies
+      the metadata issuer before sending the assertion or credentials.
 
    *  Specified acceptance evidence as authoritative by the RAS's own
       authorization semantics, recommended a live recheck, and
@@ -3898,8 +3895,7 @@ Document History
       implementation considerations; rewrote the examples as a gateway,
       a SaaS chain, and a background agent; closed the CAI issuance and
       authorization-basis open items and added items on document
-      factoring, stateless hop commitments, mandatory retry, and
-      response parameter naming.
+      factoring, stateless hop commitments, and mandatory retry.
 
    *  Protocol fixes: the replay reservation is atomic, shared across
       IdP instances for an issuer, and fails closed; assertion lifetime
