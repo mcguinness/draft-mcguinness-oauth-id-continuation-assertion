@@ -141,9 +141,10 @@ Three properties hold throughout:
   ID-JAG.
 
 Each continuation is a new decision by the IdP under the governing
-authorization and the policy in force at that moment. The assertion carries no target authority: it identifies the
-accepted authorization being continued and its current actor, while the
-continuation request selects the target and the requested authority. The
+authorization and the policy in force at that moment. The assertion carries
+no target authority: it identifies the accepted authorization being continued
+and its current actor, while the continuation request selects the target and
+the requested authority. The
 scopes of the access token the workload holds do not bound what the next
 ID-JAG may grant.
 Further calls for the same user under the same chain can reuse the access
