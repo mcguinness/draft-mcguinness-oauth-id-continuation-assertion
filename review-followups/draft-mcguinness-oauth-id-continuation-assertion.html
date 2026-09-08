@@ -2090,8 +2090,8 @@ IdP issues the ID-JAG without a handle, as under the base profile. No request
 parameter asks for a chain, and advertised support (<a href="#metadata-idp" class="auto internal xref">Section 7.1</a>) signals
 capability, not authority.<a href="#section-5.1.2-2" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-3">For every hop it creates, root or child, the IdP <span class="bcp14">MUST</span> record the RAS audience
-placed in the ID-JAG and any other issuers it trusts to attest that RAS's hops,
-from tenant configuration (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-5.1.2-3" class="pilcrow">¶</a></p>
+placed in the ID-JAG; the issuers it trusts to attest that RAS's hops are read
+from current tenant configuration at each exchange (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-5.1.2-3" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-4">Establishment is at-least-once. Retrying a lost response <span class="bcp14">MAY</span> create a second
 chain, and the limits of <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a> apply across every chain rooted
 in one governing authorization.<a href="#section-5.1.2-4" class="pilcrow">¶</a></p>
@@ -2255,9 +2255,11 @@ which credential to present, but cannot supply or override its handle
 separately. A session or subject alone is not enough to select the
 authorization: doing so could attach another user's handle to the call.<a href="#section-5.3-1" class="pilcrow">¶</a></p>
 <p id="section-5.3-2">When the accepting RAS holds the CAI role, it reads the handle directly from
-its authorization state and needs no carrier. Otherwise, a carrier derived
-from the RAS binding conveys the handle within the trust domain
-(<a href="#ras-processing" class="auto internal xref">Section 5.2</a>) and is accepted only within that domain
+its authorization state and needs no carrier, though it may still place the
+handle in its own access token, as the gateway example does
+(<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>). A separate CAI needs a carrier to receive the handle at
+all: a carrier derived from the RAS binding conveys the handle within the
+trust domain (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>) and is accepted only within that domain
 (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-5.3-2" class="pilcrow">¶</a></p>
 <p id="section-5.3-3">What identifies the authorization depends on where the call lands:<a href="#section-5.3-3" class="pilcrow">¶</a></p>
 <ul class="normal">
@@ -2464,8 +2466,8 @@ that token's validity (<a href="#separate-cai" class="auto internal xref">Sectio
 <p id="section-5.4.3-7">The subject token's integrity protection and the authenticated request
 establish fact 1; the DPoP proof, fact 2; client authentication, fact 3; and
 the bound handle and the RAS's acceptance evidence, facts 4 and 5.<a href="#section-5.4.3-7" class="pilcrow">¶</a></p>
-<p id="section-5.4.3-8">Together the facts form the binding chain from ID-JAG to assertion, which
-<a href="#security-pop" class="auto internal xref">Section 9.1</a> traces.<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
+<p id="section-5.4.3-8"><a href="#security-pop" class="auto internal xref">Section 9.1</a> traces the binding chain these facts form from ID-JAG to
+assertion.<a href="#section-5.4.3-8" class="pilcrow">¶</a></p>
 <p id="section-5.4.3-9">A live recheck <span class="bcp14">SHOULD</span> be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
 With self-contained evidence, the CAI stops issuing when that token expires,
@@ -2569,7 +2571,8 @@ type; and<a href="#section-5.4.5-2.2.1" class="pilcrow">¶</a></p>
 that the RAS accepted the hop and still records continuation as permitted,
 from a source authoritative for that RAS within its own domain
 (<a href="#deployment-topologies" class="auto internal xref">Section 8.1</a>): that RAS's authorization state, its introspection
-response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>, or a self-contained token the RAS itself issued. Where
+response <span>[<a href="#RFC7662" class="cite xref">RFC7662</a>]</span>, or a self-contained short-lived token the RAS itself
+issued. Where
 the <code>subject_token</code> is an access token (<a href="#assertion-token-exchange" class="auto internal xref">Section 5.4.1</a>), that
 resolution is introspection or, for a self-contained token, validation of the
 token itself.<a href="#section-5.4.6-1" class="pilcrow">¶</a></p>
@@ -3056,8 +3059,9 @@ hop-count refusal requires a different request; and<a href="#section-5.5.6-2.2.2
                 <li class="normal" id="section-5.5.6-2.2.2.5">
                   <p id="section-5.5.6-2.2.2.5.1"><code>invalid_target</code>, <code>invalid_scope</code>, or <code>invalid_authorization_details</code> for
 requested authority not permitted by the governing authorization or
-current policy, for an authorization detail type the IdP does not
-implement, or for a target at which the IdP can resolve no subject or
+current policy, for an omitted <code>scope</code> with no policy default
+(<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 3.3), for an authorization detail type the IdP does
+not implement, or for a target at which the IdP can resolve no subject or
 client identity for the actor.<a href="#section-5.5.6-2.2.2.5.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
@@ -3417,8 +3421,11 @@ configuration at the IdP.<a href="#section-7.3-4" class="pilcrow">¶</a></p>
 <p id="section-8-1">This section is non-normative. It describes ways an IdP, a RAS, and a CAI can
 realize this document's requirements; conformance depends only on the
 normative sections.<a href="#section-8-1" class="pilcrow">¶</a></p>
-<p id="section-8-2">Reuse of the access token a continuation obtained also requires the same user,
-tenant, actor, and key as the call that obtained it. Another hop needs its own
+<p id="section-8-2">Continuation is per authorization context, not per call: a workload continues
+once to obtain an ID-JAG for a target and then reuses the access token it
+redeems there while that token remains valid and covers the requested access.
+Reuse also requires the same user, tenant, actor, and key as the call that
+obtained it. Another hop needs its own
 continuation even within the same chain: reusing a token obtained from a
 sibling branch would attach later continuation to that branch's lineage and
 revocation dependencies.<a href="#section-8-2" class="pilcrow">¶</a></p>
