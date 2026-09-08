@@ -166,10 +166,9 @@ An ID-JAG deployment can therefore add multi-hop access where a request's path
 is not known in advance, as at a tool gateway for agents, including Model
 Context Protocol (MCP) gateways ({{example-gateway}}).
 
-This document complements OAuth Identity Chaining
-{{I-D.ietf-oauth-identity-chaining}} ({{rationale-idjag}}), and it is not a
-substitute for narrowing an existing token within one trust domain
-({{decision-rule}}).
+This document complements OAuth Identity Chaining {{I-D.ietf-oauth-identity-
+chaining}}, and it is not a substitute for narrowing an existing token within
+one trust domain ({{decision-rule}}).
 
 Its scope is the two exchanges above, the workload's request to the CAI for an
 assertion and its exchange of that assertion at the IdP, together with the
@@ -2071,9 +2070,6 @@ and it has no top-level `sub`. The resulting ID-JAG is the target Resource
 Authorization Server's grant and contains the IdP-resolved subject and, when
 applicable, a continuation handle. The artifacts therefore have different
 issuers, audiences, subjects, and consumers.
-
-This document complements OAuth Identity Chaining
-{{I-D.ietf-oauth-identity-chaining}}.
 
 ## Actor Identity and Target `client_id` {#rationale-client-id}
 
