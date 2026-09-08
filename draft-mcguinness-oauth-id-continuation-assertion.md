@@ -2031,10 +2031,10 @@ Use this profile when a boundary re-mints the user's identity, that is:
 
 Use offline attenuation, in which a party narrows and forwards a credential
 without contacting the IdP, such as {{I-D.li-oauth-delegated-authorization}},
-when the subject and the trusted issuer both stay stable across the boundary
-and offline delegation semantics are acceptable, for example intra-domain
-fan-out under one workload identity. The two compose: offline attenuation inside a
-trust domain, continuation where a boundary re-mints the subject.
+when the subject and the trusted issuer both stay stable across the boundary and
+offline delegation semantics are acceptable, for example intra-domain fan-out
+under one workload identity. The two compose: offline attenuation inside a trust
+domain, continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG {#rationale-idjag}
 
