@@ -135,12 +135,12 @@ Three properties hold throughout:
 * Only the IdP names the user for a new audience.
 * A workload can continue only from a grant that a RAS has redeemed and
   issued an access token for.
-* Only a workload that the IdP has authenticated, that tenant policy permits
-  to continue from that grant, and that proves possession of its own key to
-  the IdP can obtain the next ID-JAG.
+* Only a workload that the IdP has authenticated, that the grant's governing
+  authorization and tenant policy permit to continue from that grant, and
+  that proves possession of its own key to the IdP can obtain the next ID-JAG.
 
-Each continuation is a new decision by the IdP under the policy in force at
-that moment. The assertion carries no target authority: it identifies the
+Each continuation is a new decision by the IdP under the governing
+authorization and the policy in force at that moment. The assertion carries no target authority: it identifies the
 accepted authorization being continued and its current actor, while the
 continuation request selects the target and the requested authority. The
 scopes of the access token the workload holds do not bound what the next
@@ -215,8 +215,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 
 1. As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
    for the gateway's RAS. New: the IdP records that grant as a chain's first
-   hop, H0, together with the tenant policy under which it may continue, read
-   as it stands at each continuation, and carries a handle for H0 in the
+   hop, H0, together with the governing authorization under which it may
+   continue, evaluated with tenant policy as it stands at each continuation,
+   and carries a handle for H0 in the
    ID-JAG's `identity_continuation_handle` claim ({{root-establishment}},
    {{chain-id}}).
 2. As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS and
@@ -567,15 +568,19 @@ use a confidential client applies to a root exchange that establishes a chain.
 
 The IdP MUST associate each chain with the governing authorization under
 which it was established. The IdP records the authenticated user and tenant,
-root actor, authentication context (`auth_time`, `acr`, `amr`), and lifecycle
-anchor. The association and these root facts remain fixed for the chain's
-lifetime; a later request or policy change cannot replace that authorization
-or change those facts.
+root actor, authentication context (`auth_time`, `acr`, `amr`), lifecycle
+anchor, and the restrictions the governing authorization places on which
+actors may continue and what authority they may obtain, in whatever form the
+IdP chooses. The association, these root facts, and those restrictions remain
+fixed for the chain's lifetime; a later request or policy change cannot
+replace that authorization, change those facts, or relax those restrictions.
 
-Each continuation is authorized under that governing authorization and
-current policy ({{validation}}). This document does not define how the IdP
-represents governing authorizations or evaluates policy, including how policy
-changes affect the permissions available under an existing authorization.
+Each continuation is authorized under that governing authorization, evaluated
+as recorded, and current policy, read as it stands at each continuation
+({{validation}}). Policy can therefore narrow what a chain may reach but
+cannot exceed what its governing authorization permits. This document does
+not define how the IdP represents governing authorizations or evaluates
+policy.
 
 The root request's audience and scope describe the root ID-JAG. They do not
 by themselves authorize or limit later targets.
@@ -1245,14 +1250,17 @@ On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
     ({{idempotent-retry}});
   * `invalid_dpop_proof` for a DPoP failure;
   * `unauthorized_client` for an actor that the governing authorization or
-    current policy does not permit to continue from the presented hop, which
-    leaves the chain continuable by other actors;
+    current policy does not permit to continue from the presented hop; this
+    refuses that actor alone and leaves the chain continuable by other
+    actors, whereas withdrawal of the chain's permission to continue as a
+    whole is `invalid_continuation`;
   * `invalid_grant` when the continuation would exceed the chain's
     actor-lineage depth, fan-out, or hop-count limits
     ({{lifecycle-limits}}); and
   * `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for
     requested authority not permitted by the governing authorization or
-    current policy, or a target at which the IdP can resolve no subject or
+    current policy, for an authorization detail type the IdP does not
+    implement, or for a target at which the IdP can resolve no subject or
     client identity for the actor.
 
 DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
@@ -2990,7 +2998,8 @@ BookingAPI with AT3.
 Alice sets up a daily calendar briefing and is absent at every run. Compared
 with the SaaS chain example, this one anchors the chain to a grant rather
 than a session; {{example-background-differences}} lists what differs. It
-also shows a target that tenant policy still excludes being refused.
+also shows a target the grant excludes being refused even though tenant
+policy allows it.
 
 Topology: separate CAI with a Transaction Token carrier.
 
@@ -3260,10 +3269,12 @@ this profile builds.
   token to carry the handle. Registered the handle for introspection and tied
   its propagation to the RAS-bound authorization context.
 * Replaced envelope and authorization-basis semantics with the chain's governing
-  authorization and current policy, retaining fixed root bindings. Removed the
-  MUST NOT on later-added targets in an enumerated envelope and the
-  authorization-basis representation open item; policy representation and
-  update semantics are deployment-specific.
+  authorization and current policy: the restrictions the authorization
+  records are evaluated as recorded for the chain's lifetime, policy is read
+  live, and root bindings stay fixed. Removed the requirement that an
+  enumerated envelope never admit a later-added target and the
+  authorization-basis representation open item; policy representation is
+  deployment-specific.
 * Required authorization checks on effective permissions, including IdP
   defaults; prohibited refresh tokens in continuation responses and preserved
   root authentication context on onward ID-JAGs. Clarified actor-refusal and
