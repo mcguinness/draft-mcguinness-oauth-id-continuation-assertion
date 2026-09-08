@@ -3273,58 +3273,44 @@ for this document.
 
 # Open Items for Working Group Discussion {#open-items}
 
-This non-normative appendix lists unresolved design questions.
+This non-normative appendix identifies questions for Working Group review.
 
 \[\[ To be removed before publication as an RFC ]]
 
-1. **Signed assertion versus a recipient-bound direct profile.**
-   Could the IdP bind a continuation credential to an intended actor, actor
-   class, trust domain, or key and accept it with client authentication and
-   live key proof? Are the CAI's actor/key attestation and domain-local gate
-   worth the added trust configuration ({{rationale-grant-type}})?
+1. **Acceptance attestation.** Could a recipient-bound or target-resolved
+   design replace the CAI assertion while providing sufficient evidence of
+   RAS acceptance and actor-to-context association ({{rationale-grant-type}})?
 
-2. **Mutual-TLS confirmation.** Should this profile define a mutual-TLS
-   confirmation method (`x5t#S256`, {{RFC8705}}) alongside `jkt`, and should
-   it do so together with ID-JAG ({{client-identity}})? With a second proof
-   method available, may the onward ID-JAG be bound to a different proven key
-   than the assertion?
+2. **Sender constraint.** Should mutual-TLS confirmation be defined jointly
+   with ID-JAG? Should the assertion and ID-JAG permit different proven keys,
+   and how should supported methods be advertised ({{client-identity}})?
 
-3. **A client establishment parameter.** Should a client be able to require
-   or suppress chain establishment, or negotiate lifetime, depth, or
-   permitted continuers ({{root-establishment}})?
+3. **Client establishment control.** Should root clients be able to require
+   or suppress chain establishment ({{root-establishment}})?
 
-4. **Document factoring.** Should durable chains ({{lifecycle}},
-   {{example-background}}) become a separate profile, leaving this document
-   with session-bounded continuation, or does one document with a stoppable
-   core serve implementers better?
+4. **Durable chains.** Should grant-anchored chains remain optional in this
+   document or move to a separate profile ({{lifecycle}})?
 
-5. **Stateless hop commitments.** Could a self-verifying handle let the IdP
-   retain only root, revocation, and reservation state while preserving
-   ancestry and ancestor-revocation checks ({{onward-id-jag}}, {{lifecycle}})?
-   How would it fit the handle's recommended 256-character bound
-   ({{chain-id}}), and what would subtree revocation and unlinkability cost
-   ({{privacy}})?
+5. **Stateless handles.** Can self-verifying handles preserve ancestry and
+   subtree revocation within the recommended size bound, and at what privacy
+   and operational cost ({{chain-id}}, {{onward-id-jag}})?
 
-6. **Mandatory idempotent retry.** {{validation-replay}} requires single-use
-   and makes idempotent retry optional; an earlier draft required both. Should
-   retry be mandatory, so that a client can rely on recovering a lost response
-   at any IdP, at the cost of fingerprint state consistent enough to serve a
-   concurrent retry, or is a rejected second presentation followed by a fresh
-   assertion an acceptable recovery path ({{implementation}})?
+6. **Idempotent recovery.** Should every supporting IdP be required to offer
+   idempotent recovery, or should optional support be discoverable
+   ({{idempotent-retry}})?
 
-7. **Numeric bounds.** This document sets a 3600-second ceiling on assertion
-   lifetime ({{assertion-claims}}) and requires a finite hop-count limit without
-   fixing a default ({{lifecycle-limits}}). Both are policy choices rather than
-   consequences of validation: should the ceiling be lower, should a default hop
-   count be specified, and should either be discoverable in IdP metadata?
+7. **Limits.** Which assertion-lifetime and hop-count bounds should be
+   required, and which values should be advertised in metadata
+   ({{assertion-claims}}, {{lifecycle-limits}})?
 
-Further questions are listed here without discussion: nested own-domain `act`
-segments and offline-actor audit ({{I-D.mcguinness-oauth-actor-receipts}},
-{{I-D.mcguinness-oauth-actor-proofs}}); a pull topology with target-side
-resolution ({{rationale-grant-type}}); IdP discovery metadata for accepted proof
-methods ({{metadata}}); a non-user root profile ({{decision-rule}}); and
-RAS-derived narrowing with a signed intersection model
-({{hop-activation}}).
+The project issue tracker also records WG questions on authorization bounds
+(#106), acceptance freshness (#107), actor identity evidence (#108), CAI
+discovery (#109), bearer ingress (#110), and acceptance accountability (#41).
+
+Further extension topics include client-requested limits or permitted actors,
+intra-domain actor lineage and audit ({{I-D.mcguinness-oauth-actor-receipts}},
+{{I-D.mcguinness-oauth-actor-proofs}}), non-user roots, and RAS-derived
+narrowing ({{hop-activation}}).
 
 # Acknowledgments
 {:numbered="false"}
