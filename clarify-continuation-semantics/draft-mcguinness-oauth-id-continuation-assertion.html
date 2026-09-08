@@ -2697,8 +2697,9 @@ the actor obtains a new assertion bound to the new key.<a href="#section-5.5.2-1
 <a href="#section-5.5.3" class="section-number selfRef">5.5.3. </a><a href="#name-request-validation-2" class="section-name selfRef">Request Validation</a>
           </h4>
 <p id="section-5.5.3-1">For a continuation exchange, the IdP <span class="bcp14">MUST</span> reject the request unless every rule
-below holds. Their order is not significant, though one rule's input may come
-from another's resolution.<a href="#section-5.5.3-1" class="pilcrow">¶</a></p>
+below holds. Every rule is required; the order of evaluation matters only for
+which error code a failing request receives, and <a href="#error-response" class="auto internal xref">Section 5.5.6</a> fixes
+that order around the dependencies between rules.<a href="#section-5.5.3-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-5.5.3-2">
 <li id="section-5.5.3-2.1">
               <p id="section-5.5.3-2.1.1"><strong>Request parameters.</strong><a href="#section-5.5.3-2.1.1" class="pilcrow">¶</a></p>
@@ -2797,7 +2798,8 @@ actor-lineage depth bound, which counts lineage entries, not hops; and<a href="#
 </li>
                 <li class="normal" id="section-5.5.3-2.4.2.4">
                   <p id="section-5.5.3-2.4.2.4.1">the continuation is within the fan-out, rate, and hop-count limits of
-the governing authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
+the governing authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>), a condition not
+applied again on an idempotent retry (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2825,7 +2827,8 @@ subject and the actor's client identifier (<a href="#onward-id-jag" class="auto 
 <ul class="normal">
 <li class="normal" id="section-5.5.3-2.6.2.1">
                   <p id="section-5.5.3-2.6.2.1.1"><code>iat</code> is within the IdP's permitted clock skew, <code>exp</code> follows <code>iat</code>, the
-assertion is unexpired within that same skew, and any <code>nbf</code> has passed
+assertion is unexpired within that same skew (evaluated as of issuance on
+an idempotent retry, <a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>), and any <code>nbf</code> has passed
 within it (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, Section 4.1.5). One skew value applies to <code>iat</code>
 as future skew, to <code>exp</code> as past skew, and to reservation retention
 (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>); it <span class="bcp14">SHOULD NOT</span> exceed 60 seconds;<a href="#section-5.5.3-2.6.2.1.1" class="pilcrow">¶</a></p>
@@ -3000,11 +3003,17 @@ IdP:<a href="#section-5.5.5-7" class="pilcrow">¶</a></p>
 <a href="#section-5.5.6" class="section-number selfRef">5.5.6. </a><a href="#name-error-response-and-recovery" class="section-name selfRef">Error Response and Recovery</a>
           </h4>
 <p id="section-5.5.6-1">On failure, the IdP returns an error response (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 5.2;
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2). The IdP evaluates the rules of <a href="#validation" class="auto internal xref">Section 5.5.3</a> in
-order and <span class="bcp14">MUST</span> return the code for the first rule that fails, so a chain-state
-code is returned only for an assertion whose well-formedness, signature, and
-issuer trust have been verified; the contents of an unverified assertion never
-determine the response.<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2). When more than one rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a> fails,
+the IdP <span class="bcp14">MUST</span> return the code for the earliest failure in this order: the
+request-parameter rule; the well-formedness rule, which verifies the signature
+with a configured issuer's key; the existence of the hop the handle names,
+which the issuer-trust rule needs for the hop's RAS and tenant; the
+issuer-trust rule; the chain-state rule, within which a permanently unusable
+hop (ended chain, revoked hop or ancestor, withdrawn permission) precedes a
+limit; the current-actor rule; the freshness rule; and the authorization
+rule. A chain-state code is therefore returned only for an assertion whose
+signature a configured issuer produced, and the contents of an unverified
+assertion never determine the response.<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.6-2.1">
               <p id="section-5.5.6-2.1.1">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 11</a>) when the handle is
@@ -3140,15 +3149,19 @@ serialization is a different request);<a href="#section-5.5.7.1-2.4.1" class="pi
 the fingerprint to the specific assertion and its handle.<a href="#section-5.5.7.1-2.7.1" class="pilcrow">¶</a></p>
 </li>
             </ul>
-<p id="section-5.5.7.1-3">The recovery checks re-run the current-actor rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a> (the actor's
-identity and its key proof) and the revocation conditions of the chain-state
-rule, and evaluate the authorization rule against the authority granted at
-issuance, including the defaults applied then, so a later change of policy
-defaults cannot alter the returned grant. The assertion's expiry and the chain's
-fan-out and hop-count accounting are evaluated as of issuance: a reservation
-retained under <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a> can be recovered after the assertion's
-<code>exp</code>, recovery allocates no new hop and charges no fan-out or hop-count limit
-again, and rate limits still apply.<a href="#section-5.5.7.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.5.7.1-3">The recovery checks are ordinary validation under <a href="#validation" class="auto internal xref">Section 5.5.3</a>, every rule
+included (issuer trust, an active chain with no revoked hop or ancestor, the
+actor's identity and key proof, and authorization), with exactly two exceptions.
+First, the freshness rule's expiry condition is evaluated as of issuance: while
+the reservation is retained under <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>, an assertion past its
+<code>exp</code> can still recover the grant. Second, the chain-state rule's limit
+accounting is not applied again: recovery allocates no new hop and consumes no
+fan-out, hop-count, or rate budget, since it issues nothing new; any throttling
+of repeated requests is a deployment control outside this document. The
+authorization rule is evaluated against the authority granted at issuance,
+including the defaults applied then, so a later change of policy defaults cannot
+alter the returned grant, while withdrawal of the actor's permission, of the
+chain's permission to continue, or of issuer trust rejects the recovery.<a href="#section-5.5.7.1-3" class="pilcrow">¶</a></p>
 <p id="section-5.5.7.1-4">A presentation matching a RESERVED reservation, whose first presentation has
 not completed, <span class="bcp14">MUST</span> be rejected with <code>invalid_request</code>; the client can retry
 it once that first presentation completes (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>). A reservation
@@ -5784,25 +5797,13 @@ document factoring, stateless hop commitments, mandatory retry, and response
 parameter naming.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.17">
-          <p id="appendix-E-3.17.1">Protocol fixes: the (<code>iss</code>, <code>jti</code>) reservation is an atomic first-writer
-decision, scoped per assertion issuer across every IdP instance that accepts
-assertions for that issuer, and an IdP that cannot reach that shared state
-rejects rather than issues; assertion lifetime gained a hard ceiling of 3600
-seconds, proposed by the author for working group review, which also bounds
-the configured maximum, with the numbers stated once in the claims section; a
-finite hop-count limit is now required on every chain while fan-out and rate
-limits stay optional tenant controls, and all three are defined where they are
-configured; the IdP now checks compact serialization and the members <code>act</code>
-forbids, and the CAI checks the subject token against the type it declares;
-the continuation exchange's error mappings became required rather than
-recommended, with <code>invalid_continuation</code> returned only for a permanently
-unusable handle and not otherwise; and a presentation against a reserved or
-failed reservation is rejected as an invalid request, under one clock-skew
-value applied to <code>iat</code>, to <code>exp</code>, and to reservation retention; error codes
-follow rule order, so chain-state codes need a verified assertion; limit
-counters are defined per hop, per chain, or per governing authorization; the
-3600-second ceiling and the finite hop-count requirement are recorded as an
-open item.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.17.1">Protocol fixes: the replay reservation is atomic, shared across IdP instances
+for an issuer, and fails closed; assertion lifetime has a 3600-second ceiling
+and every chain a finite hop-count limit, both recorded as an open item; the
+IdP verifies serialization and the CAI verifies subject-token type; error
+codes are mandatory, with precedence defined around rule dependencies;
+RESERVED and FAILED reservations and a single clock-skew value are specified;
+limit counters are defined per hop, per chain, or per governing authorization.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
