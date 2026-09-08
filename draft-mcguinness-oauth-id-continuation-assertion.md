@@ -878,22 +878,22 @@ A successful response is a Token Exchange response ({{RFC8693}}, Section
 `N_A` (not applicable), and `expires_in` reflects the assertion's lifetime.
 This document adds one parameter:
 
-`audience`:
-: REQUIRED. The issuer identifier of the IdP to which the client presents the
-  assertion. In this response `audience` identifies the recipient of the
-  issued assertion and therefore equals its `aud` claim; because the request
-  carries no `audience`, this is how the client learns where to present the
-  assertion.
+`continuation_authorization_server`:
+: REQUIRED. A JSON string containing the issuer identifier ({{RFC8414}}) of
+  the authorization server at which the client exchanges the assertion for an
+  ID-JAG. The CAI MUST set its value to the assertion's `aud` claim. The client
+  uses this parameter to identify the IdP without decoding the assertion.
 
 The client obtains that IdP's `token_endpoint` from its authorization server
 metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
-well-known URI suffix under the issuer identifier. Before using it, the client
-confirms that the returned `issuer` exactly matches `audience`. Where the IdP
-publishes no metadata, the client uses configuration bound to that issuer
-identifier ({{metadata}}).
+well-known URI suffix under the issuer identifier. Before sending the
+assertion or its own credentials there, the client MUST confirm that the
+returned `issuer` exactly matches `continuation_authorization_server`. Where
+the IdP publishes no metadata, the client uses configuration bound to that
+issuer identifier ({{metadata}}).
 
 The client SHOULD present the assertion only to an IdP it is configured to
-trust; the `audience` parameter tells it where, not whether.
+trust; this parameter identifies the destination but does not establish trust.
 
 The CAI MUST NOT include a `refresh_token` in the response, which would let a
 client obtain further assertions without presenting a token or passing the
@@ -909,7 +909,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<Identity Continuation Assertion, compact JWS>",
   "token_type": "N_A",
-  "audience": "https://idp.example/",
+  "continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 ~~~
@@ -1929,23 +1929,20 @@ Specification Document(s):
 
 ## OAuth Parameters Registration
 
-IANA is requested to update the registration of the `audience` parameter in
-the "OAuth Parameters" registry established by {{RFC6749}}. {{RFC8693}}
-registered the parameter for the token request; this document adds the token
-response usage location and leaves the change controller unchanged, so that
-the entry reads as follows.
+IANA is requested to register the following parameter in the "OAuth
+Parameters" registry established by {{RFC6749}}.
 
 Parameter name:
-: audience
+: continuation_authorization_server
 
 Parameter usage location:
-: token request, token response
+: token response
 
 Change controller:
 : IESG
 
 Specification Document(s):
-: Section 2.1 of {{RFC8693}}; this document, {{assertion-response}}
+: This document, {{assertion-response}}
 
 ## OAuth URI Registration
 
@@ -2532,13 +2529,13 @@ On the wire (issuance response):
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<the assertion below, compact JWS>",
   "token_type": "N_A",
-  "audience": "https://idp.example/",
+  "continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 ~~~
 
-The `audience` tells ToolGateway which IdP the assertion is for; it is where
-the request for the next ID-JAG goes.
+The `continuation_authorization_server` identifies the IdP from which
+ToolGateway obtains the next ID-JAG.
 
 On the wire (decoded assertion):
 
@@ -2566,11 +2563,11 @@ On the wire (decoded assertion):
 ### ToolGateway Continues to WikiRAS {#example-gateway-continue}
 
 ToolGateway resolves the token endpoint of `https://idp.example/`, the
-`audience` it was given, from that IdP's metadata and presents the assertion
-there as the `subject_token` of a continuation exchange, with client
-authentication and a DPoP proof of the assertion's `cnf` key, requesting an
-ID-JAG for WikiRAS. The IdP maps the registered client `tool-gateway` to its
-canonical actor identity ({{client-identity}}):
+`continuation_authorization_server` it was given, using {{assertion-response}},
+and presents the assertion there as the `subject_token` of a continuation
+exchange, with client authentication and a DPoP proof of the assertion's `cnf`
+key, requesting an ID-JAG for WikiRAS. The IdP maps the registered client
+`tool-gateway` to its canonical actor identity ({{client-identity}}):
 
 ~~~
 POST /token HTTP/1.1
@@ -3183,11 +3180,12 @@ assertion, the continuation, and the redemption:
 ~~~
 
 BriefingAgent exchanges the Transaction Token at Platform CAI's token endpoint
-and presents the assertion to the IdP the response's `audience` names, with its
-client credential and a DPoP proof. Platform CAI applies the preconditions of
-{{assertion-preconditions}} to durable task state rather than to a live user's
-request: it authenticates `briefing-agent`, verifies its key and transaction,
-and rechecks that PlatformRAS's H0 authorization remains active.
+and presents the assertion to the IdP the response's
+`continuation_authorization_server` names, with its client credential and a
+DPoP proof. Platform CAI applies {{assertion-preconditions}} to durable task
+state rather than to a live user's request: it authenticates
+`briefing-agent`, verifies its key and transaction, and rechecks that
+PlatformRAS's H0 authorization remains active.
 
 The assertion and onward ID-JAG have the shapes shown in {{example-ica}} and
 {{example-chained}}, with Platform CAI as the assertion issuer.
@@ -3291,13 +3289,7 @@ This non-normative appendix lists unresolved design questions.
    concurrent retry, or is a rejected second presentation followed by a fresh
    assertion an acceptable recovery path ({{implementation}})?
 
-7. **Response parameter naming.** This document reuses the Token Exchange
-   `audience` parameter in the assertion issuance response
-   ({{assertion-response}}) to name the recipient of the issued assertion.
-   Should a profile-specific response member be defined instead, given that
-   {{RFC8693}} registers `audience` for requests only?
-
-8. **Numeric bounds.** This document sets a 3600-second ceiling on assertion
+7. **Numeric bounds.** This document sets a 3600-second ceiling on assertion
    lifetime ({{assertion-claims}}) and requires a finite hop-count limit without
    fixing a default ({{lifecycle-limits}}). Both are policy choices rather than
    consequences of validation: should the ceiling be lower, should a default hop
@@ -3341,8 +3333,10 @@ specifications, on whose work this profile builds.
   trusted for its RAS can attest it as accepted and active.
 * Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
   the access token or Transaction Token for the call as the subject token. The
-  CAI verifies the client's DPoP proof and returns a registered `audience`
-  parameter naming the IdP.
+  CAI verifies the client's DPoP proof and returns the required
+  `continuation_authorization_server` response parameter naming the IdP,
+  equal to the assertion's `aud`; the client verifies the metadata issuer
+  before sending the assertion or credentials.
 * Specified acceptance evidence as authoritative by the RAS's own authorization
   semantics, recommended a live recheck, and recommended capping assertion
   expiry at self-contained evidence expiry.
@@ -3393,8 +3387,7 @@ specifications, on whose work this profile builds.
   boundary; expanded implementation considerations;
   rewrote the examples as a gateway, a SaaS chain, and a background agent;
   closed the CAI issuance and authorization-basis open items and added items on
-  document factoring, stateless hop commitments, mandatory retry, and response
-  parameter naming.
+  document factoring, stateless hop commitments, and mandatory retry.
 
 * Protocol fixes: the replay reservation is atomic, shared across IdP instances
   for an issuer, and fails closed; assertion lifetime has a 3600-second ceiling
