@@ -1687,8 +1687,9 @@ appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶<
 <span class="break"></span><dl class="dlParallel" id="section-2-3">
         <dt id="section-2-3.1">Actor-lineage depth:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.2">
-          <p id="section-2-3.2.1">The number of entries in the actor lineage the onward <code>act</code> would carry
-after consecutive entries for the same actor are merged
+          <p id="section-2-3.2.1">The number of entries in the actor lineage the IdP derives from its own
+hop records, after consecutive entries for the same actor are merged and
+before any narrowing of what the onward <code>act</code> discloses
 (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Tenant policy bounds it per branch
 (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>).<a href="#section-2-3.2.1" class="pilcrow">¶</a></p>
 </dd>
@@ -1833,8 +1834,8 @@ a further service.<a href="#section-2-3.40.1" class="pilcrow">¶</a></p>
       <h2 id="name-the-identity-continuation-a">
 <a href="#section-3" class="section-number selfRef">3. </a><a href="#name-the-identity-continuation-a" class="section-name selfRef">The Identity Continuation Assertion</a>
       </h2>
-<p id="section-3-1">This section defines the Identity Continuation Assertion. A CAI issues one
-under <a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>, and the IdP validates it under <a href="#validation" class="auto internal xref">Section 5.5.3</a>.<a href="#section-3-1" class="pilcrow">¶</a></p>
+<p id="section-3-1">A CAI issues the assertion (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>); the IdP validates it
+(<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-3-1" class="pilcrow">¶</a></p>
 <div id="names">
 <section id="section-3.1">
         <h3 id="name-token-type-and-media-type">
@@ -2068,9 +2069,7 @@ are in these sections:<a href="#section-5-1" class="pilcrow">¶</a></p>
 <a href="#section-5.1" class="section-number selfRef">5.1. </a><a href="#name-establishing-a-chain" class="section-name selfRef">Establishing a Chain</a>
         </h3>
 <p id="section-5.1-1">A chain begins when the IdP issues a continuation-capable ID-JAG on a root
-exchange. This section covers the root request, what the IdP records when it
-establishes a chain, who the root actor is, and the governing authorization
-under which the chain may continue.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
+exchange.<a href="#section-5.1-1" class="pilcrow">¶</a></p>
 <div id="root-request">
 <section id="section-5.1.1">
           <h4 id="name-root-exchange-request">
@@ -3024,8 +3023,10 @@ whole is <code>invalid_continuation</code>;<a href="#section-5.5.6-2.2.2.3.1" cl
 </li>
                 <li class="normal" id="section-5.5.6-2.2.2.4">
                   <p id="section-5.5.6-2.2.2.4.1"><code>invalid_grant</code> when the continuation would exceed the chain's
-actor-lineage depth, fan-out, or hop-count limits
-(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>); and<a href="#section-5.5.6-2.2.2.4.1" class="pilcrow">¶</a></p>
+actor-lineage depth, fan-out, hop-count, or rate limits
+(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>); a rate-limited request may be retried once the
+window the IdP's policy defines has passed, whereas a depth, fan-out, or
+hop-count refusal requires a different request; and<a href="#section-5.5.6-2.2.2.4.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.6-2.2.2.5">
                   <p id="section-5.5.6-2.2.2.5.1"><code>invalid_target</code>, <code>invalid_scope</code>, or <code>invalid_authorization_details</code> for
@@ -3274,9 +3275,8 @@ The actor-lineage depth bound, set by tenant policy, is enforced per branch.<a h
       <h2 id="name-authorization-server-metada">
 <a href="#section-7" class="section-number selfRef">7. </a><a href="#name-authorization-server-metada" class="section-name selfRef">Authorization Server Metadata and Trust Configuration</a>
       </h2>
-<p id="section-7-1">This section defines how an IdP and a Resource Authorization Server advertise
-support for this profile, and the trust configuration the IdP holds for the
-CAIs and actor identity authorities it accepts.<a href="#section-7-1" class="pilcrow">¶</a></p>
+<p id="section-7-1">An IdP and a Resource Authorization Server advertise support in their
+metadata; the IdP configures the CAIs and actor identity authorities it trusts.<a href="#section-7-1" class="pilcrow">¶</a></p>
 <div id="metadata-idp">
 <section id="section-7.1">
         <h3 id="name-idp-authorization-server-me">
@@ -3495,33 +3495,13 @@ introspection occurs and present only when <code>active</code> is <code>true</co
 <a href="#section-9" class="section-number selfRef">9. </a><a href="#name-security-considerations" class="section-name selfRef">Security Considerations</a>
       </h2>
 <p id="section-9-1">This profile assumes TLS, correct IdP subject mapping and authorization
-evaluation, and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. The adversaries the
-following sections consider are:<a href="#section-9-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-9-2.1">
-          <p id="section-9-2.1.1">a party that captures an assertion or an access token;<a href="#section-9-2.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.2">
-          <p id="section-9-2.2.1">a compromised or misdirected workload;<a href="#section-9-2.2.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.3">
-          <p id="section-9-2.3.1">a party that holds a handle but no other credential;<a href="#section-9-2.3.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.4">
-          <p id="section-9-2.4.1">a rogue or over-scoped actor identity authority;<a href="#section-9-2.4.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.5">
-          <p id="section-9-2.5.1">a compromised RAS or CAI;<a href="#section-9-2.5.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.6">
-          <p id="section-9-2.6.1">an actor that forges or grafts lineage to hide itself or impersonate a
-prior actor; and<a href="#section-9-2.6.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-9-2.7">
-          <p id="section-9-2.7.1">an attacker that substitutes token types, algorithms, or verification keys.<a href="#section-9-2.7.1" class="pilcrow">¶</a></p>
-</li>
-      </ul>
-<p id="section-9-3"><a href="#privacy" class="auto internal xref">Section 10</a> addresses correlation and disclosure risks.<a href="#section-9-3" class="pilcrow">¶</a></p>
+evaluation, and the OAuth guidance of <span>[<a href="#RFC9700" class="cite xref">RFC9700</a>]</span>. The adversaries considered
+are a party that captures an assertion or access token, a compromised or
+misdirected workload, a party holding a handle and nothing else, a rogue or
+over-scoped actor identity authority, a compromised RAS or CAI, an actor that
+forges lineage, and an attacker that substitutes token types, algorithms, or
+keys.<a href="#section-9-1" class="pilcrow">¶</a></p>
+<p id="section-9-2"><a href="#privacy" class="auto internal xref">Section 10</a> addresses correlation and disclosure risks.<a href="#section-9-2" class="pilcrow">¶</a></p>
 <div id="security-pop">
 <section id="section-9.1">
         <h3 id="name-sender-constraint-and-proof">

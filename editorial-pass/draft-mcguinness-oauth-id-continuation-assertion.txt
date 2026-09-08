@@ -362,8 +362,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    This document uses the following terms, listed alphabetically:
 
    Actor-lineage depth:  The number of entries in the actor lineage the
-      onward act would carry after consecutive entries for the same
-      actor are merged (Section 5.5.5).  Tenant policy bounds it per
+      IdP derives from its own hop records, after consecutive entries
+      for the same actor are merged and before any narrowing of what the
+      onward act discloses (Section 5.5.5).  Tenant policy bounds it per
       branch (Section 6.3).
 
    Chain:  An IdP-held tree of hops under one governing authorization;
@@ -455,9 +456,8 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 
 3.  The Identity Continuation Assertion
 
-   This section defines the Identity Continuation Assertion.  A CAI
-   issues one under Section 5.4, and the IdP validates it under
-   Section 5.5.3.
+   A CAI issues the assertion (Section 5.4); the IdP validates it
+   (Section 5.5.3).
 
 3.1.  Token Type and Media Type
 
@@ -640,9 +640,7 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 5.1.  Establishing a Chain
 
    A chain begins when the IdP issues a continuation-capable ID-JAG on a
-   root exchange.  This section covers the root request, what the IdP
-   records when it establishes a chain, who the root actor is, and the
-   governing authorization under which the chain may continue.
+   root exchange.
 
 5.1.1.  Root Exchange Request
 
@@ -1472,8 +1470,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
          invalid_continuation;
 
       -  invalid_grant when the continuation would exceed the chain's
-         actor-lineage depth, fan-out, or hop-count limits
-         (Section 6.3); and
+         actor-lineage depth, fan-out, hop-count, or rate limits
+         (Section 6.3); a rate-limited request may be retried once the
+         window the IdP's policy defines has passed, whereas a depth,
+         fan-out, or hop-count refusal requires a different request; and
 
       -  invalid_target, invalid_scope, or invalid_authorization_details
          for requested authority not permitted by the governing
@@ -1686,9 +1686,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 7.  Authorization Server Metadata and Trust Configuration
 
-   This section defines how an IdP and a Resource Authorization Server
-   advertise support for this profile, and the trust configuration the
-   IdP holds for the CAIs and actor identity authorities it accepts.
+   An IdP and a Resource Authorization Server advertise support in their
+   metadata; the IdP configures the CAIs and actor identity authorities
+   it trusts.
 
 7.1.  IdP Authorization Server Metadata
 
@@ -1889,23 +1889,11 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    This profile assumes TLS, correct IdP subject mapping and
    authorization evaluation, and the OAuth guidance of [RFC9700].  The
-   adversaries the following sections consider are:
-
-   *  a party that captures an assertion or an access token;
-
-   *  a compromised or misdirected workload;
-
-   *  a party that holds a handle but no other credential;
-
-   *  a rogue or over-scoped actor identity authority;
-
-   *  a compromised RAS or CAI;
-
-   *  an actor that forges or grafts lineage to hide itself or
-      impersonate a prior actor; and
-
-   *  an attacker that substitutes token types, algorithms, or
-      verification keys.
+   adversaries considered are a party that captures an assertion or
+   access token, a compromised or misdirected workload, a party holding
+   a handle and nothing else, a rogue or over-scoped actor identity
+   authority, a compromised RAS or CAI, an actor that forges lineage,
+   and an attacker that substitutes token types, algorithms, or keys.
 
    Section 10 addresses correlation and disclosure risks.
 
