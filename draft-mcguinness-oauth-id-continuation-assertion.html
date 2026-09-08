@@ -1377,22 +1377,19 @@ the subject.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
             <p id="section-toc.1-1.13.1"><a href="#appendix-A" class="auto internal xref">Appendix A</a>.  <a href="#name-design-rationale" class="internal xref">Design Rationale</a></p>
 <ul class="compact toc ulBare ulEmpty">
 <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.1">
-                <p id="section-toc.1-1.13.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-when-to-use-this-profile-ve" class="internal xref">When to Use This Profile Versus Offline Attenuation</a></p>
+                <p id="section-toc.1-1.13.2.1.1"><a href="#appendix-A.1" class="auto internal xref">A.1</a>.  <a href="#name-idp-mediated-continuation" class="internal xref">IdP-Mediated Continuation</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.2">
-                <p id="section-toc.1-1.13.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-relationship-to-id-jag" class="internal xref">Relationship to ID-JAG</a></p>
+                <p id="section-toc.1-1.13.2.2.1"><a href="#appendix-A.2" class="auto internal xref">A.2</a>.  <a href="#name-cai-attestation-and-id-jag-" class="internal xref">CAI Attestation and ID-JAG Redemption</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.3">
-                <p id="section-toc.1-1.13.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-actor-identity-and-target-c" class="internal xref">Actor Identity and Target <code>client_id</code></a></p>
+                <p id="section-toc.1-1.13.2.3.1"><a href="#appendix-A.3" class="auto internal xref">A.3</a>.  <a href="#name-per-hop-handles" class="internal xref">Per-Hop Handles</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.4">
-                <p id="section-toc.1-1.13.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-choice-of-exchange-and-asse" class="internal xref">Choice of Exchange and Assertion</a></p>
+                <p id="section-toc.1-1.13.2.4.1"><a href="#appendix-A.4" class="auto internal xref">A.4</a>.  <a href="#name-actor-identity-and-target-c" class="internal xref">Actor Identity and Target Client Identity</a></p>
 </li>
               <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.5">
-                <p id="section-toc.1-1.13.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-why-asymmetric-signing-only" class="internal xref">Why Asymmetric Signing Only</a></p>
-</li>
-              <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.13.2.6">
-                <p id="section-toc.1-1.13.2.6.1"><a href="#appendix-A.6" class="auto internal xref">A.6</a>.  <a href="#name-boundary-of-the-profile" class="internal xref">Boundary of the Profile</a></p>
+                <p id="section-toc.1-1.13.2.5.1"><a href="#appendix-A.5" class="auto internal xref">A.5</a>.  <a href="#name-authorization-boundary" class="internal xref">Authorization Boundary</a></p>
 </li>
             </ul>
 </li>
@@ -2237,7 +2234,7 @@ the continuation exchange (<a href="#validation" class="auto internal xref">Sect
 under the chain's governing authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
 RAS-local scopes do not independently authorize that access or define its
 limits: a scope at one audience says nothing about a scope at another
-(<a href="#rationale-boundary" class="auto internal xref">Appendix A.6</a>).<a href="#section-5.2.1-6" class="pilcrow">¶</a></p>
+(<a href="#rationale-boundary" class="auto internal xref">Appendix A.5</a>).<a href="#section-5.2.1-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -2655,7 +2652,7 @@ configuration of the client's credential issuer, not from the client
 authentication method, and <span class="bcp14">MUST NOT</span> accept a self-asserted mapping.<a href="#section-5.5.2-3" class="pilcrow">¶</a></p>
 <p id="section-5.5.2-4">For <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client authentication, the IdP <span class="bcp14">MUST</span> authorize the assertion's
 issuer for the authenticated client. The canonical actor identity remains the
-pair derived from the IdP's configuration (<a href="#rationale-client-id" class="auto internal xref">Appendix A.3</a>).<a href="#section-5.5.2-4" class="pilcrow">¶</a></p>
+pair derived from the IdP's configuration (<a href="#rationale-client-id" class="auto internal xref">Appendix A.4</a>).<a href="#section-5.5.2-4" class="pilcrow">¶</a></p>
 <p id="section-5.5.2-5">This mapping applies to every exchange. On a root exchange, client
 authentication alone identifies the root actor, and a root exchange carries no
 unconditional proof-of-possession requirement (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>). On a
@@ -2688,7 +2685,7 @@ DPoP mechanics it already implements (<span>[<a href="#RFC9449" class="cite xref
 assertion's <code>cnf</code> key and the confirmation key of the resulting ID-JAG; client
 authentication may use an independent credential. That single shared key
 follows from the confirmation method this version defines, not from
-continuation itself (<a href="#rationale-client-id" class="auto internal xref">Appendix A.3</a>). Key rotation takes effect when
+continuation itself (<a href="#open-items" class="auto internal xref">Appendix C</a>). Key rotation takes effect when
 the actor obtains a new assertion bound to the new key.<a href="#section-5.5.2-10" class="pilcrow">¶</a></p>
 </section>
 </div>
@@ -3537,7 +3534,7 @@ common:<a href="#section-8.1-5" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-8.1-6.1">
             <p id="section-8.1-6.1.1">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> can carry the
-handle as request context (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>).<a href="#section-8.1-6.1.1" class="pilcrow">¶</a></p>
+handle as request context (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.2</a>).<a href="#section-8.1-6.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-8.1-6.2">
             <p id="section-8.1-6.2.1">A signed JWT access token <span>[<a href="#RFC9068" class="cite xref">RFC9068</a>]</span> issued by the accepting RAS can carry
@@ -4304,169 +4301,93 @@ this document registers only the
 <p id="appendix-A-1">This non-normative appendix records the principal design choices.<a href="#appendix-A-1" class="pilcrow">¶</a></p>
 <div id="decision-rule">
 <section id="appendix-A.1">
-        <h3 id="name-when-to-use-this-profile-ve">
-<a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-when-to-use-this-profile-ve" class="section-name selfRef">When to Use This Profile Versus Offline Attenuation</a>
+        <h3 id="name-idp-mediated-continuation">
+<a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-idp-mediated-continuation" class="section-name selfRef">IdP-Mediated Continuation</a>
         </h3>
-<p id="appendix-A.1-1">Use this profile when a boundary re-mints the user's identity, that is:<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-A.1-2.1">
-            <p id="appendix-A.1-2.1.1">the next audience uses a pairwise subject only the IdP can resolve;<a href="#appendix-A.1-2.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="appendix-A.1-2.2">
-            <p id="appendix-A.1-2.2.1">the target trusts the IdP, not the previous issuer, to name the user; and<a href="#appendix-A.1-2.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="appendix-A.1-2.3">
-            <p id="appendix-A.1-2.3.1">current revocation and policy must be rechecked at every boundary.<a href="#appendix-A.1-2.3.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
-<p id="appendix-A.1-3">Use offline attenuation, in which a party narrows and forwards a credential
-without contacting the IdP, such as <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>,
-when the subject and the trusted issuer both stay stable across the boundary and
-offline delegation semantics are acceptable, for example intra-domain fan-out
-under one workload identity. The two compose: offline attenuation inside a trust
-domain, continuation where a boundary re-mints the subject.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="rationale-idjag">
-<section id="appendix-A.2">
-        <h3 id="name-relationship-to-id-jag">
-<a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-relationship-to-id-jag" class="section-name selfRef">Relationship to ID-JAG</a>
-        </h3>
-<p id="appendix-A.2-1">The assertion is the continuation exchange's input: its audience is the IdP
-and it has no top-level <code>sub</code>. The resulting ID-JAG is the target Resource
-Authorization Server's grant and contains the IdP-resolved subject and, when
-applicable, a continuation handle. The artifacts therefore have different
-issuers, audiences, subjects, and consumers.<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
-</section>
-</div>
-<div id="rationale-client-id">
-<section id="appendix-A.3">
-        <h3 id="name-actor-identity-and-target-c">
-<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-actor-identity-and-target-c" class="section-name selfRef">Actor Identity and Target <code>client_id</code></a>
-        </h3>
-<p id="appendix-A.3-1"><code>act</code> and <code>client_id</code> answer different questions. <code>act</code> names the actor doing
-the work: the workload the IdP authenticated as its OAuth client on the
-continuation exchange, recorded in the lineage. <code>client_id</code> names the OAuth
-client that may redeem the grant at the target RAS.<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.3-2">Both appear because the artifact this profile produces is an ID-JAG, which the
-base profile defines as a grant a registered client presents; a target RAS
-authenticates that client and applies its policy by <code>client_id</code>, and need not
-understand this continuation profile. So before continuing to a target, the
-current actor needs a client identity resolvable at that target's RAS
-(<a href="#token-exchange" class="auto internal xref">Section 5.5</a>), and the IdP places it in the onward ID-JAG.<a href="#appendix-A.3-2" class="pilcrow">¶</a></p>
-<p id="appendix-A.3-3">That is compatibility with ID-JAG, not the profile's model of delegation: a
-workload with a strong identity and key but no registration at a target
-cannot receive a grant for it because nothing there could redeem the grant,
-not because it is any less the actor. The two identifiers often coincide, as
-when a gateway registers everywhere under one name, but the profile keeps
-them distinct so that lineage records who acted while the grant records who
-may redeem.<a href="#appendix-A.3-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.3-4">The IdP's mapping from client to canonical actor identity does not depend on
-the client authentication method: a client that authenticates with an
-<span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client assertion may have a workload identity in another namespace
-as its canonical actor identity (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>). An extension may define
-additional actor evidence that tenant policy can require, naming the same actor
-as the authenticated client.<a href="#appendix-A.3-4" class="pilcrow">¶</a></p>
-<p id="appendix-A.3-5">The shared key across the assertion and the onward ID-JAG is a consequence of
-a single proof method, not a property continuation requires: continuation
-requires continuity of the actor, and a future confirmation method could bind
-these artifacts to different proven keys (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.3-5" class="pilcrow">¶</a></p>
-<p id="appendix-A.3-6">The <code>may_act</code> claim of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> does not remove the need for this profile.
-It lets an issuer state, inside a token the target already trusts, which party
-may later act for the token's subject: an authorization to act, made in
-advance. Continuation needs the opposite: a party the previous token never
-named must obtain a new token for an audience whose pairwise subject only the
-IdP can produce. <code>may_act</code> could constrain who may continue; it cannot mint
-the subject, so the IdP exchange remains.<a href="#appendix-A.3-6" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-1">This profile serves deployments where the target trusts a common IdP to
+resolve the user's pairwise subject. Each continuation returns to that IdP
+for subject resolution and checks of current authorization and chain state
+(<a href="#validation" class="auto internal xref">Section 5.5.3</a>). RAS-local withdrawal remains subject to the freshness of
+acceptance evidence (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.1-2">Offline attenuation, in which a party narrows and forwards a credential without
+contacting the IdP, such as <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>, suits
+boundaries where existing subject and issuer trust remain usable and offline
+delegation is acceptable. A deployment can attenuate within a trust domain and
+continue across boundaries requiring IdP resolution. Crossing to a target that
+does not trust the common IdP requires a separate trust agreement and profile,
+such as <span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span>.<a href="#appendix-A.1-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-grant-type">
-<section id="appendix-A.4">
-        <h3 id="name-choice-of-exchange-and-asse">
-<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-choice-of-exchange-and-asse" class="section-name selfRef">Choice of Exchange and Assertion</a>
+<section id="appendix-A.2">
+        <h3 id="name-cai-attestation-and-id-jag-">
+<a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-cai-attestation-and-id-jag-" class="section-name selfRef">CAI Attestation and ID-JAG Redemption</a>
         </h3>
-<p id="appendix-A.4-1">The CAI's signed assertion conveys RAS acceptance and the actor's association
-with that authorization context without requiring the IdP to query another
-domain's state. The IdP still authenticates the actor, evaluates authorization,
-and resolves the target's subject (<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Where domain-local
-attestation is unnecessary, a recipient-bound direct grant remains an open
-question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.4-2">A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> carries context
-within a trust domain; it can supply the context from which a CAI issues an
-assertion. Direct propagation and offline attenuation suit a stable subject
-and issuer trust (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>). Neither supplies the IdP-resolved
-pairwise subject required at this profile's boundary.<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
-<p id="appendix-A.4-3">Target-side resolution of a reference at the IdP would instead require a
-back-channel exchange and new target-side grant processing. This profile
-reuses ID-JAG redemption, with additional binding at continuation-source
-RASes. Target-side resolution remains a possible companion profile.<a href="#appendix-A.4-3" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-1">The CAI attests RAS acceptance and the actor's association with that
+context, allowing the IdP to evaluate continuation without querying another
+domain's state. A Transaction Token <span>[<a href="#I-D.ietf-oauth-transaction-tokens" class="cite xref">I-D.ietf-oauth-transaction-tokens</a>]</span> may
+carry the context from which the CAI issues its assertion; its validity alone
+is not RAS acceptance evidence (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>).<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-2">The assertion is addressed to the IdP and carries no top-level user subject.
+The resulting ID-JAG carries the IdP-resolved subject and a fresh child handle,
+including for a terminal target. Reusing ID-JAG preserves the target's grant
+redemption interface. Target-side resolution of a reference would require
+additional target processing; it and a direct recipient-bound credential
+remain open alternatives (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-2" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-3">Asymmetric signing avoids distributing signing secrets between CAIs and IdPs.
+One compact JWS representation reduces implementation choices (<a href="#names" class="auto internal xref">Section 3.1</a>).
+TLS protects transport; the profile does not conceal assertion contents from
+the carrying workload. Encryption and nested JWTs are outside this profile.<a href="#appendix-A.2-3" class="pilcrow">¶</a></p>
 </section>
 </div>
-<div id="rationale-alg">
-<section id="appendix-A.5">
-        <h3 id="name-why-asymmetric-signing-only">
-<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-why-asymmetric-signing-only" class="section-name selfRef">Why Asymmetric Signing Only</a>
+<div id="rationale-handles">
+<section id="appendix-A.3">
+        <h3 id="name-per-hop-handles">
+<a href="#appendix-A.3" class="section-number selfRef">A.3. </a><a href="#name-per-hop-handles" class="section-name selfRef">Per-Hop Handles</a>
         </h3>
-<p id="appendix-A.5-1">This profile requires asymmetric signing and forbids encryption and nested
-signing (<a href="#names" class="auto internal xref">Section 3.1</a>), tighter than RFC 8725 <span>[<a href="#RFC8725" class="cite xref">RFC8725</a>]</span>, which also permits
-verified symmetric algorithms. The restriction is deliberate: asymmetric
-verification avoids distributing a shared secret across domains and the
-key-confusion risk a symmetric key between the CAI and IdP would create
-(<a href="#security-alg" class="auto internal xref">Section 9.7</a>); TLS on every hop and the assertion's minimal contents make
-encryption unnecessary; and a single compact signed form removes an
-interoperability choice between issuers and verifiers.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.3-1">A handle identifies the hop being continued, so the IdP can derive the
+correct ancestry and apply revocation to the appropriate subtree. A
+chain-wide identifier alone would not distinguish sibling branches. The
+handle references IdP-held state without carrying user identity or the
+ancestry itself (<a href="#chain-id" class="auto internal xref">Section 4</a>, <a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>); its visibility still has
+correlation implications (<a href="#privacy" class="auto internal xref">Section 10</a>).<a href="#appendix-A.3-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.3-2">Keeping authorization and lifecycle state at the IdP supports current checks
+at each continuation. The cost is state retained for the chain's lifetime and
+IdP availability for each exchange. Stateless hop commitments remain an open
+question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.3-2" class="pilcrow">¶</a></p>
+</section>
+</div>
+<div id="rationale-client-id">
+<section id="appendix-A.4">
+        <h3 id="name-actor-identity-and-target-c">
+<a href="#appendix-A.4" class="section-number selfRef">A.4. </a><a href="#name-actor-identity-and-target-c" class="section-name selfRef">Actor Identity and Target Client Identity</a>
+        </h3>
+<p id="appendix-A.4-1">The current actor's canonical identity in <code>act</code> records who acted,
+independently of the credential used to authenticate it (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).
+The onward ID-JAG's
+<code>client_id</code> identifies that actor's OAuth client at the target RAS. Keeping
+these identities distinct preserves lineage across target-specific client
+registrations while retaining ID-JAG redemption compatibility. The actor
+therefore needs a client identity resolvable at the target
+(<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#appendix-A.4-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.4-2">The <code>may_act</code> claim (<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 4.4) can inform actor authorization;
+it supplies neither RAS acceptance evidence nor target subject resolution.<a href="#appendix-A.4-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-boundary">
-<section id="appendix-A.6">
-        <h3 id="name-boundary-of-the-profile">
-<a href="#appendix-A.6" class="section-number selfRef">A.6. </a><a href="#name-boundary-of-the-profile" class="section-name selfRef">Boundary of the Profile</a>
+<section id="appendix-A.5">
+        <h3 id="name-authorization-boundary">
+<a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-authorization-boundary" class="section-name selfRef">Authorization Boundary</a>
         </h3>
-<p id="appendix-A.6-1">Continuation serves the Resource Authorization Servers that trust the common
-IdP. A target outside that circle fails in one of two ways: where the IdP
-holds no pairwise subject for it or the governing authorization and current
-policy do not permit access, the exchange fails with <code>invalid_target</code> (the
-current-actor and authorization rules of <a href="#validation" class="auto internal xref">Section 5.5.3</a>); where the IdP could
-issue an ID-JAG regardless, the target rejects it, since it does not trust the
-issuer. That is the profile's edge, not a deployment error.<a href="#appendix-A.6-1" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-2">A separate identity-chaining profile can cross it under a bilateral
-agreement; for example, a workload can present its Transaction Token to its
-own domain's authorization server under
-<span>[<a href="#I-D.fletcher-transaction-token-chaining-profile" class="cite xref">I-D.fletcher-transaction-token-chaining-profile</a>]</span> for a minimized grant to
-the partner. The Transaction Token and the handle stay in the domain.<a href="#appendix-A.6-2" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-3">The profile's other boundary is semantic. It establishes who is continuing
-what:<a href="#appendix-A.6-3" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="appendix-A.6-4.1">
-            <p id="appendix-A.6-4.1.1">the user;<a href="#appendix-A.6-4.1.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="appendix-A.6-4.2">
-            <p id="appendix-A.6-4.2.1">the actor;<a href="#appendix-A.6-4.2.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="appendix-A.6-4.3">
-            <p id="appendix-A.6-4.3.1">the lineage; and<a href="#appendix-A.6-4.3.1" class="pilcrow">¶</a></p>
-</li>
-          <li class="normal" id="appendix-A.6-4.4">
-            <p id="appendix-A.6-4.4.1">the accepted authorization the request descends from.<a href="#appendix-A.6-4.4.1" class="pilcrow">¶</a></p>
-</li>
-        </ul>
-<p id="appendix-A.6-5">It does not establish why. Whether a requested action belongs to the work the
-user or tenant sanctioned is a policy question the IdP answers at each
-continuation under the governing authorization and current policy. This
-profile defines neither a purpose claim nor an agent authorization model.<a href="#appendix-A.6-5" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-6">Acceptance at a RAS is not a ceiling for later targets (<a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>),
-because a scope granted at one audience says nothing about a scope at
-another. A deployment that wants the work itself to narrow downstream
-authority expresses that in the governing authorization, not in RAS scopes.<a href="#appendix-A.6-6" class="pilcrow">¶</a></p>
-<p id="appendix-A.6-7">Each requirement serves one property the IdP needs before it issues: acceptance
-evidence by the RAS's own semantics, the lifetime bound, and single-use keep
-that evidence fresh and used once; the CAI's attestation establishes that the
-current actor holds the accepted hop; the canonical actor identity lets the IdP
-authenticate that actor; sender constraint of the assertion and the onward
-ID-JAG proves the key; the authorization rule authorizes the actor, the target,
-and the authority; and the anchor keeps the chain within its lifecycle. Where
-this document offers a choice, such as the form of acceptance evidence, the
-alternatives satisfy the same property.<a href="#appendix-A.6-7" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-1">Each continuation is authorized under the chain's recorded governing
+authorization and current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance
+establishes the context from which the actor continues; the RAS's local scopes
+do not automatically bound authority at another target. Cross-target
+restrictions belong in the governing authorization and IdP policy.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.5-2">This profile carries identity and lineage and binds continuation to an
+accepted authorization. Whether a requested action serves the work the user
+or tenant authorized remains a deployment policy decision. The profile defines
+neither a purpose claim nor an agent authorization model.<a href="#appendix-A.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5638,7 +5559,7 @@ binds a continuation credential to an intended actor, actor class, trust
 domain, or key, or a target-resolved design replace the CAI assertion while
 still supplying evidence of RAS acceptance and of the actor's association
 with that context, which today only a party in the RAS's domain can provide
-(<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
+(<a href="#rationale-grant-type" class="auto internal xref">Appendix A.2</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.2">
           <p id="appendix-C-3.2.1"><strong>Sender constraint.</strong> Should mutual-TLS confirmation be defined jointly
@@ -5795,8 +5716,9 @@ overview; revised terminology (workload and actor-lineage depth added;
 root-chain envelope, intra-domain carrier, lifecycle anchor, offline
 attenuation, resource server, and root actor removed as defined in their
 sections; pairwise subject); moved the offline-attenuation decision rule to
-the rationale and added rationale on actor identity and the profile's
-boundary; expanded implementation considerations;
+the rationale and condensed the design choices around IdP mediation, CAI
+attestation, per-hop handles, actor identity, and authorization boundaries;
+expanded implementation considerations;
 rewrote the examples as a gateway, a SaaS chain, and a background agent;
 closed the CAI issuance and authorization-basis open items and added items on
 document factoring, stateless hop commitments, and mandatory retry.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
