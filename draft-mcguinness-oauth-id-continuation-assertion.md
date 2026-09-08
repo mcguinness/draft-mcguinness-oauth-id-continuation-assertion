@@ -1053,7 +1053,7 @@ A request carries one DPoP proof, so the key it demonstrates is both the
 assertion's `cnf` key and the confirmation key of the resulting ID-JAG; client
 authentication may use an independent credential. That single shared key
 follows from the confirmation method this version defines, not from
-continuation itself ({{rationale-client-id}}). Key rotation takes effect when
+continuation itself ({{open-items}}). Key rotation takes effect when
 the actor obtains a new assertion bound to the new key.
 
 ### Request Validation {#validation}
@@ -2143,145 +2143,81 @@ this document registers only the
 
 This non-normative appendix records the principal design choices.
 
-## When to Use This Profile Versus Offline Attenuation {#decision-rule}
+## IdP-Mediated Continuation {#decision-rule}
 
-Use this profile when a boundary re-mints the user's identity, that is:
+This profile serves deployments where the target trusts a common IdP to
+resolve the user's pairwise subject. Each continuation returns to that IdP
+for subject resolution and checks of current authorization and chain state
+({{validation}}). RAS-local withdrawal remains subject to the freshness of
+acceptance evidence ({{lifecycle-ending}}).
 
-* the next audience uses a pairwise subject only the IdP can resolve;
-* the target trusts the IdP, not the previous issuer, to name the user; and
-* current revocation and policy must be rechecked at every boundary.
+Offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, suits
+boundaries where existing subject and issuer trust remain usable and offline
+delegation is acceptable. A deployment can attenuate within a trust domain
+and continue across boundaries requiring IdP resolution. Crossing to a target
+that does not trust the common IdP requires a separate trust agreement and
+profile, such as {{I-D.fletcher-transaction-token-chaining-profile}}.
 
-Use offline attenuation, in which a party narrows and forwards a credential
-without contacting the IdP, such as {{I-D.li-oauth-delegated-authorization}},
-when the subject and the trusted issuer both stay stable across the boundary and
-offline delegation semantics are acceptable, for example intra-domain fan-out
-under one workload identity. The two compose: offline attenuation inside a trust
-domain, continuation where a boundary re-mints the subject.
+## CAI Attestation and ID-JAG Redemption {#rationale-grant-type}
 
-## Relationship to ID-JAG {#rationale-idjag}
+The CAI attests RAS acceptance and the actor's association with that
+context, allowing the IdP to evaluate continuation without querying another
+domain's state. A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} may
+carry the context from which the CAI issues its assertion; its validity alone
+is not RAS acceptance evidence ({{assertion-preconditions}}).
 
-The assertion is the continuation exchange's input: its audience is the IdP
-and it has no top-level `sub`. The resulting ID-JAG is the target Resource
-Authorization Server's grant and contains the IdP-resolved subject and, when
-applicable, a continuation handle. The artifacts therefore have different
-issuers, audiences, subjects, and consumers.
+The assertion is addressed to the IdP and carries no top-level user subject.
+The resulting ID-JAG carries the IdP-resolved subject and a fresh child handle,
+including for a terminal target. Reusing ID-JAG preserves the target's grant
+redemption interface. Target-side resolution of a reference would require
+additional target processing; it and a direct recipient-bound credential
+remain open alternatives ({{open-items}}).
 
-## Actor Identity and Target `client_id` {#rationale-client-id}
+Asymmetric signing avoids distributing signing secrets between CAIs and IdPs.
+One compact JWS representation reduces implementation choices ({{names}}).
+TLS protects transport; the profile does not conceal assertion contents from
+the carrying workload. Encryption and nested JWTs are outside this profile.
 
-`act` and `client_id` answer different questions. `act` names the actor doing
-the work: the workload the IdP authenticated as its OAuth client on the
-continuation exchange, recorded in the lineage. `client_id` names the OAuth
-client that may redeem the grant at the target RAS.
+## Per-Hop Handles {#rationale-handles}
 
-Both appear because the artifact this profile produces is an ID-JAG, which the
-base profile defines as a grant a registered client presents; a target RAS
-authenticates that client and applies its policy by `client_id`, and need not
-understand this continuation profile. So before continuing to a target, the
-current actor needs a client identity resolvable at that target's RAS
-({{token-exchange}}), and the IdP places it in the onward ID-JAG.
+A handle identifies the hop being continued, so the IdP can derive the
+correct ancestry and apply revocation to the appropriate subtree. A
+chain-wide identifier alone would not distinguish sibling branches. The
+handle references IdP-held state without carrying user identity or the
+ancestry itself ({{chain-id}}, {{onward-id-jag}}); its visibility still has
+correlation implications ({{privacy}}).
 
-That is compatibility with ID-JAG, not the profile's model of delegation: a
-workload with a strong identity and key but no registration at a target
-cannot receive a grant for it because nothing there could redeem the grant,
-not because it is any less the actor. The two identifiers often coincide, as
-when a gateway registers everywhere under one name, but the profile keeps
-them distinct so that lineage records who acted while the grant records who
-may redeem.
-
-The IdP's mapping from client to canonical actor identity does not depend on
-the client authentication method: a client that authenticates with an
-{{RFC7523}} client assertion may have a workload identity in another namespace
-as its canonical actor identity ({{client-identity}}). An extension may define
-additional actor evidence that tenant policy can require, naming the same actor
-as the authenticated client.
-
-The shared key across the assertion and the onward ID-JAG is a consequence of
-a single proof method, not a property continuation requires: continuation
-requires continuity of the actor, and a future confirmation method could bind
-these artifacts to different proven keys ({{open-items}}).
-
-The `may_act` claim of {{RFC8693}} does not remove the need for this profile.
-It lets an issuer state, inside a token the target already trusts, which party
-may later act for the token's subject: an authorization to act, made in
-advance. Continuation needs the opposite: a party the previous token never
-named must obtain a new token for an audience whose pairwise subject only the
-IdP can produce. `may_act` could constrain who may continue; it cannot mint
-the subject, so the IdP exchange remains.
-
-## Choice of Exchange and Assertion {#rationale-grant-type}
-
-The CAI's signed assertion conveys RAS acceptance and the actor's association
-with that authorization context without requiring the IdP to query another
-domain's state. The IdP still authenticates the actor, evaluates authorization,
-and resolves the target's subject ({{validation}}). Where domain-local
-attestation is unnecessary, a recipient-bound direct grant remains an open
+Keeping authorization and lifecycle state at the IdP supports current checks
+at each continuation. The cost is state retained for the chain's lifetime and
+IdP availability for each exchange. Stateless hop commitments remain an open
 question ({{open-items}}).
 
-A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} carries context
-within a trust domain; it can supply the context from which a CAI issues an
-assertion. Direct propagation and offline attenuation suit a stable subject
-and issuer trust ({{decision-rule}}). Neither supplies the IdP-resolved
-pairwise subject required at this profile's boundary.
+## Actor Identity and Target Client Identity {#rationale-client-id}
 
-Target-side resolution of a reference at the IdP would instead require a
-back-channel exchange and new target-side grant processing. This profile
-reuses ID-JAG redemption, with additional binding at continuation-source
-RASes. Target-side resolution remains a possible companion profile.
+The current actor's canonical identity in `act` records who acted,
+independently of the credential used to authenticate it ({{client-identity}}).
+The onward ID-JAG's
+`client_id` identifies that actor's OAuth client at the target RAS. Keeping
+these identities distinct preserves lineage across target-specific client
+registrations while retaining ID-JAG redemption compatibility. The actor
+therefore needs a client identity resolvable at the target
+({{token-exchange}}).
 
-## Why Asymmetric Signing Only {#rationale-alg}
+The `may_act` claim ({{RFC8693}}, Section 4.4) can inform actor authorization;
+it supplies neither RAS acceptance evidence nor target subject resolution.
 
-This profile requires asymmetric signing and forbids encryption and nested
-signing ({{names}}), tighter than RFC 8725 {{RFC8725}}, which also permits
-verified symmetric algorithms. The restriction is deliberate: asymmetric
-verification avoids distributing a shared secret across domains and the
-key-confusion risk a symmetric key between the CAI and IdP would create
-({{security-alg}}); TLS on every hop and the assertion's minimal contents make
-encryption unnecessary; and a single compact signed form removes an
-interoperability choice between issuers and verifiers.
+## Authorization Boundary {#rationale-boundary}
 
-## Boundary of the Profile {#rationale-boundary}
+Each continuation is authorized under the chain's recorded governing
+authorization and current policy ({{chain-authorization}}). RAS acceptance
+establishes the context from which the actor continues; the RAS's local scopes
+do not automatically bound authority at another target. Cross-target
+restrictions belong in the governing authorization and IdP policy.
 
-Continuation serves the Resource Authorization Servers that trust the common
-IdP. A target outside that circle fails in one of two ways: where the IdP
-holds no pairwise subject for it or the governing authorization and current
-policy do not permit access, the exchange fails with `invalid_target` (the
-current-actor and authorization rules of {{validation}}); where the IdP could
-issue an ID-JAG regardless, the target rejects it, since it does not trust the
-issuer. That is the profile's edge, not a deployment error.
-
-A separate identity-chaining profile can cross it under a bilateral
-agreement; for example, a workload can present its Transaction Token to its
-own domain's authorization server under
-{{I-D.fletcher-transaction-token-chaining-profile}} for a minimized grant to
-the partner. The Transaction Token and the handle stay in the domain.
-
-The profile's other boundary is semantic. It establishes who is continuing
-what:
-
-* the user;
-* the actor;
-* the lineage; and
-* the accepted authorization the request descends from.
-
-It does not establish why. Whether a requested action belongs to the work the
-user or tenant sanctioned is a policy question the IdP answers at each
-continuation under the governing authorization and current policy. This
-profile defines neither a purpose claim nor an agent authorization model.
-
-Acceptance at a RAS is not a ceiling for later targets ({{hop-activation}}),
-because a scope granted at one audience says nothing about a scope at
-another. A deployment that wants the work itself to narrow downstream
-authority expresses that in the governing authorization, not in RAS scopes.
-
-Each requirement serves one property the IdP needs before it issues: acceptance
-evidence by the RAS's own semantics, the lifetime bound, and single-use keep
-that evidence fresh and used once; the CAI's attestation establishes that the
-current actor holds the accepted hop; the canonical actor identity lets the IdP
-authenticate that actor; sender constraint of the assertion and the onward
-ID-JAG proves the key; the authorization rule authorizes the actor, the target,
-and the authority; and the anchor keeps the chain within its lifecycle. Where
-this document offers a choice, such as the form of acceptance evidence, the
-alternatives satisfy the same property.
+This profile carries identity and lineage and binds continuation to an
+accepted authorization. Whether a requested action serves the work the user
+or tenant authorized remains a deployment policy decision. The profile defines
+neither a purpose claim nor an agent authorization model.
 
 # Examples {#examples}
 
@@ -3406,8 +3342,9 @@ specifications, on whose work this profile builds.
   root-chain envelope, intra-domain carrier, lifecycle anchor, offline
   attenuation, resource server, and root actor removed as defined in their
   sections; pairwise subject); moved the offline-attenuation decision rule to
-  the rationale and added rationale on actor identity and the profile's
-  boundary; expanded implementation considerations;
+  the rationale and condensed the design choices around IdP mediation, CAI
+  attestation, per-hop handles, actor identity, and authorization boundaries;
+  expanded implementation considerations;
   rewrote the examples as a gateway, a SaaS chain, and a background agent;
   closed the CAI issuance and authorization-basis open items and added items on
   document factoring, stateless hop commitments, and mandatory retry.
