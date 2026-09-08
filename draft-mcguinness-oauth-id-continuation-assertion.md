@@ -1113,7 +1113,8 @@ that order around the dependencies between rules.
      entries, as the onward `act` will ({{onward-id-jag}}), is within its
      actor-lineage depth bound, which counts lineage entries, not hops; and
    * the continuation is within the fan-out, rate, and hop-count limits of
-     the governing authorization ({{lifecycle-limits}});
+     the governing authorization ({{lifecycle-limits}}), a condition not
+     applied again on an idempotent retry ({{idempotent-retry}});
 
 5. **Current actor and binding.**
    * `act` is present, conforms to the schema of {{assertion-claims}}, and
@@ -1127,7 +1128,8 @@ that order around the dependencies between rules.
 
 6. **Freshness and replay.**
    * `iat` is within the IdP's permitted clock skew, `exp` follows `iat`, the
-     assertion is unexpired within that same skew, and any `nbf` has passed
+     assertion is unexpired within that same skew (evaluated as of issuance on
+     an idempotent retry, {{idempotent-retry}}), and any `nbf` has passed
      within it ({{RFC7519}}, Section 4.1.5). One skew value applies to `iat`
      as future skew, to `exp` as past skew, and to reservation retention
      ({{validation-replay}}); it SHOULD NOT exceed 60 seconds;
@@ -1395,15 +1397,19 @@ MUST cover:
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
-The recovery checks re-run the current-actor rule of {{validation}} (the actor's
-identity and its key proof) and the revocation conditions of the chain-state
-rule, and evaluate the authorization rule against the authority granted at
-issuance, including the defaults applied then, so a later change of policy
-defaults cannot alter the returned grant. The assertion's expiry and the chain's
-fan-out and hop-count accounting are evaluated as of issuance: a reservation
-retained under {{validation-replay}} can be recovered after the assertion's
-`exp`, recovery allocates no new hop and charges no fan-out or hop-count limit
-again, and rate limits still apply.
+The recovery checks are ordinary validation under {{validation}}, every rule
+included (issuer trust, an active chain with no revoked hop or ancestor, the
+actor's identity and key proof, and authorization), with exactly two exceptions.
+First, the freshness rule's expiry condition is evaluated as of issuance: while
+the reservation is retained under {{validation-replay}}, an assertion past its
+`exp` can still recover the grant. Second, the chain-state rule's limit
+accounting is not applied again: recovery allocates no new hop and consumes no
+fan-out, hop-count, or rate budget, since it issues nothing new; any throttling
+of repeated requests is a deployment control outside this document. The
+authorization rule is evaluated against the authority granted at issuance,
+including the defaults applied then, so a later change of policy defaults cannot
+alter the returned grant, while withdrawal of the actor's permission, of the
+chain's permission to continue, or of issuer trust rejects the recovery.
 
 A presentation matching a RESERVED reservation, whose first presentation has
 not completed, MUST be rejected with `invalid_request`; the client can retry
