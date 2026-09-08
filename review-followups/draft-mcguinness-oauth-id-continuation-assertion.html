@@ -2509,25 +2509,24 @@ propagated context expand the authority the IdP may issue (<a href="#validation"
 This document adds one parameter:<a href="#section-5.4.4-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-5.4.4-2">
             <dt id="section-5.4.4-2.1">
-<code>audience</code>:</dt>
+<code>identity_continuation_authorization_server</code>:</dt>
             <dd style="margin-left: 1.5em" id="section-5.4.4-2.2">
-              <p id="section-5.4.4-2.2.1"><span class="bcp14">REQUIRED</span>. The issuer identifier of the IdP to which the client presents the
-assertion. In this response <code>audience</code> identifies the recipient of the
-issued assertion and therefore equals its <code>aud</code> claim; because the request
-carries no <code>audience</code>, this is how the client learns where to present the
-assertion.<a href="#section-5.4.4-2.2.1" class="pilcrow">¶</a></p>
+              <p id="section-5.4.4-2.2.1"><span class="bcp14">REQUIRED</span>. A JSON string containing the issuer identifier (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>) of
+the authorization server at which the client exchanges the assertion for an
+ID-JAG. The CAI <span class="bcp14">MUST</span> set its value to the assertion's <code>aud</code> claim. The client
+uses this parameter to identify the IdP without decoding the assertion.<a href="#section-5.4.4-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 </dl>
 <p id="section-5.4.4-3">The client obtains that IdP's <code>token_endpoint</code> from its authorization server
 metadata (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>), retrieved with the <code>oauth-authorization-server</code>
-well-known URI suffix under the issuer identifier. Before sending the
-assertion or its own credentials there, the client <span class="bcp14">MUST</span> confirm that the
-returned <code>issuer</code> exactly matches <code>audience</code>. Where the IdP publishes no
-metadata, the client uses configuration bound to that issuer identifier
-(<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.4.4-3" class="pilcrow">¶</a></p>
+well-known URI suffix under the issuer identifier. Before sending the assertion
+or its own credentials there, the client <span class="bcp14">MUST</span> confirm that the returned <code>issuer</code>
+exactly matches <code>identity_continuation_authorization_server</code>. Where the IdP
+publishes no metadata, the client uses configuration bound to that issuer
+identifier (<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.4.4-3" class="pilcrow">¶</a></p>
 <p id="section-5.4.4-4">The client <span class="bcp14">SHOULD</span> present the assertion only to an IdP it is configured to
-trust; the <code>audience</code> parameter tells it where, not whether.<a href="#section-5.4.4-4" class="pilcrow">¶</a></p>
+trust; this parameter identifies the destination but does not establish trust.<a href="#section-5.4.4-4" class="pilcrow">¶</a></p>
 <p id="section-5.4.4-5">The CAI <span class="bcp14">MUST NOT</span> include a <code>refresh_token</code> in the response, which would let a
 client obtain further assertions without presenting a token or passing the
 acceptance check.<a href="#section-5.4.4-5" class="pilcrow">¶</a></p>
@@ -2542,7 +2541,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "&lt;Identity Continuation Assertion, compact JWS&gt;",
   "token_type": "N_A",
-  "audience": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 </pre><a href="#section-5.4.4-6" class="pilcrow">¶</a>
@@ -3861,20 +3860,17 @@ Error Registry" established by <span>[<a href="#RFC6749" class="cite xref">RFC67
         <h3 id="name-oauth-parameters-registrati">
 <a href="#section-11.2" class="section-number selfRef">11.2. </a><a href="#name-oauth-parameters-registrati" class="section-name selfRef">OAuth Parameters Registration</a>
         </h3>
-<p id="section-11.2-1">IANA is requested to update the registration of the <code>audience</code> parameter in
-the "OAuth Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>. <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>
-registered the parameter for the token request; this document adds the token
-response usage location and leaves the change controller unchanged, so that
-the entry reads as follows.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
+<p id="section-11.2-1">IANA is requested to register the following parameter in the "OAuth
+Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-11.2-2">
           <dt id="section-11.2-2.1">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.2">
-            <p id="section-11.2-2.2.1">audience<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.2.1">identity_continuation_authorization_server<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.2-2.3">Parameter usage location:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.4">
-            <p id="section-11.2-2.4.1">token request, token response<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.4.1">token response<a href="#section-11.2-2.4.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.2-2.5">Change controller:</dt>
@@ -3884,7 +3880,7 @@ the entry reads as follows.<a href="#section-11.2-1" class="pilcrow">¶</a></p>
           <dd class="break"></dd>
 <dt id="section-11.2-2.7">Specification Document(s):</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.8">
-            <p id="section-11.2-2.8.1">Section 2.1 of <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>; this document, <a href="#assertion-response" class="auto internal xref">Section 5.4.4</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.8.1">This document, <a href="#assertion-response" class="auto internal xref">Section 5.4.4</a><a href="#section-11.2-2.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 </dl>
@@ -4822,13 +4818,13 @@ issues the assertion bound to the proven key (<a href="#assertion-preconditions"
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "&lt;the assertion below, compact JWS&gt;",
   "token_type": "N_A",
-  "audience": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 </pre><a href="#appendix-B.1.4-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-7">The <code>audience</code> tells ToolGateway which IdP the assertion is for; it is where
-the request for the next ID-JAG goes.<a href="#appendix-B.1.4-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.4-7">The <code>identity_continuation_authorization_server</code> identifies the IdP from which
+ToolGateway obtains the next ID-JAG.<a href="#appendix-B.1.4-7" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.4-8">On the wire (decoded assertion):<a href="#appendix-B.1.4-8" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.4-9">
 <pre>
@@ -4860,11 +4856,12 @@ the request for the next ID-JAG goes.<a href="#appendix-B.1.4-7" class="pilcrow"
 <a href="#appendix-B.1.5" class="section-number selfRef">B.1.5. </a><a href="#name-toolgateway-continues-to-wi" class="section-name selfRef">ToolGateway Continues to WikiRAS</a>
           </h4>
 <p id="appendix-B.1.5-1">ToolGateway resolves the token endpoint of <code>https://idp.example/</code>, the
-<code>audience</code> it was given, from that IdP's metadata and presents the assertion
-there as the <code>subject_token</code> of a continuation exchange, with client
-authentication and a DPoP proof of the assertion's <code>cnf</code> key, requesting an
-ID-JAG for WikiRAS. The IdP maps the registered client <code>tool-gateway</code> to its
-canonical actor identity (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>):<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
+<code>identity_continuation_authorization_server</code> it was given, using
+<a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>, and presents the assertion there as the <code>subject_token</code>
+of a continuation exchange, with client authentication and a DPoP proof of the
+assertion's <code>cnf</code> key, requesting an ID-JAG for WikiRAS. The IdP maps the
+registered client <code>tool-gateway</code> to its canonical actor identity
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>):<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1.5-2">
 <pre>
 POST /token HTTP/1.1
@@ -5555,11 +5552,12 @@ assertion, the continuation, and the redemption:<a href="#appendix-B.3.3-1" clas
 </pre><a href="#appendix-B.3.3-2" class="pilcrow">¶</a>
 </div>
 <p id="appendix-B.3.3-3">BriefingAgent exchanges the Transaction Token at Platform CAI's token endpoint
-and presents the assertion to the IdP the response's <code>audience</code> names, with its
-client credential and a DPoP proof. Platform CAI applies the preconditions of
-<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a> to durable task state rather than to a live user's
-request: it authenticates <code>briefing-agent</code>, verifies its key and transaction,
-and rechecks that PlatformRAS's H0 authorization remains active.<a href="#appendix-B.3.3-3" class="pilcrow">¶</a></p>
+and presents the assertion to the IdP the response's
+<code>identity_continuation_authorization_server</code> names, with its client credential
+and a DPoP proof. Platform CAI applies <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a> to durable
+task state rather than to a live user's request: it authenticates
+<code>briefing-agent</code>, verifies its key and transaction, and rechecks that
+PlatformRAS's H0 authorization remains active.<a href="#appendix-B.3.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.3.3-4">The assertion and onward ID-JAG have the shapes shown in <a href="#example-ica" class="auto internal xref">Appendix B.2.3</a> and
 <a href="#example-chained" class="auto internal xref">Appendix B.2.4</a>, with Platform CAI as the assertion issuer.
 <code>briefing-agent</code> is both the root actor and the current actor here, so the
@@ -5693,18 +5691,11 @@ concurrent retry, or is a rejected second presentation followed by a fresh
 assertion an acceptable recovery path (<a href="#implementation" class="auto internal xref">Section 8</a>)?<a href="#appendix-C-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.7">
-          <p id="appendix-C-3.7.1"><strong>Response parameter naming.</strong> This document reuses the Token Exchange
-<code>audience</code> parameter in the assertion issuance response
-(<a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>) to name the recipient of the issued assertion.
-Should a profile-specific response member be defined instead, given that
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> registers <code>audience</code> for requests only?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
-</li>
-        <li id="appendix-C-3.8">
-          <p id="appendix-C-3.8.1"><strong>Numeric bounds.</strong> This document sets a 3600-second ceiling on assertion
+          <p id="appendix-C-3.7.1"><strong>Numeric bounds.</strong> This document sets a 3600-second ceiling on assertion
 lifetime (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>) and requires a finite hop-count limit without
 fixing a default (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>). Both are policy choices rather than
 consequences of validation: should the ceiling be lower, should a default hop
-count be specified, and should either be discoverable in IdP metadata?<a href="#appendix-C-3.8.1" class="pilcrow">¶</a></p>
+count be specified, and should either be discoverable in IdP metadata?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="appendix-C-4">Further questions are listed here without discussion: nested own-domain <code>act</code>
@@ -5758,8 +5749,10 @@ trusted for its RAS can attest it as accepted and active.<a href="#appendix-E-3.
         <li class="normal" id="appendix-E-3.5">
           <p id="appendix-E-3.5.1">Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
 the access token or Transaction Token for the call as the subject token. The
-CAI verifies the client's DPoP proof and returns a registered <code>audience</code>
-parameter naming the IdP.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+CAI verifies the client's DPoP proof and returns the required
+<code>identity_continuation_authorization_server</code> response parameter naming the
+IdP, equal to the assertion's <code>aud</code>; the client verifies the metadata issuer
+before sending the assertion or credentials.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.6">
           <p id="appendix-E-3.6.1">Specified acceptance evidence as authoritative by the RAS's own authorization
@@ -5832,8 +5825,7 @@ the rationale and added rationale on actor identity and the profile's
 boundary; expanded implementation considerations;
 rewrote the examples as a gateway, a SaaS chain, and a background agent;
 closed the CAI issuance and authorization-basis open items and added items on
-document factoring, stateless hop commitments, mandatory retry, and response
-parameter naming.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
+document factoring, stateless hop commitments, and mandatory retry.<a href="#appendix-E-3.16.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.17">
           <p id="appendix-E-3.17.1">Protocol fixes: the replay reservation is atomic, shared across IdP instances
@@ -5851,15 +5843,16 @@ and continuation-permitted state from a source authoritative for the RAS,
 since a Transaction Token's own validity is the token service's word rather
 than the RAS's; the CAI determines from registration or configuration which
 protected resources a client operates; the client now has to confirm that the
-discovered issuer matches the response <code>audience</code>, and the IdP to record each
-hop's RAS audience and the issuers it trusts for it. Stated that a trusted
-CAI's assertion is itself the acceptance attestation, what the IdP does when
-<code>scope</code> or <code>resource</code> is omitted, and that a target gating on <code>acr</code> or <code>amr</code>
-should weigh <code>auth_time</code> too. Gathered the binding chain into Security
-Considerations and handle carriage into Handle Carriers, named the design
-choice, the continuation-aware RAS's obligations, and the three exchanges in
-scope in the Introduction, reworded the stateless-commitment open item as a
-question, and made the DPoP-bound JWT grant reference normative.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
+discovered issuer matches <code>identity_continuation_authorization_server</code>, and
+the IdP to record each hop's RAS audience and the issuers it trusts for it.
+Stated that a trusted CAI's assertion is itself the acceptance attestation,
+what the IdP does when <code>scope</code> or <code>resource</code> is omitted, and that a target
+gating on <code>acr</code> or <code>amr</code> should weigh <code>auth_time</code> too. Gathered the binding
+chain into Security Considerations and handle carriage into Handle Carriers,
+named the design choice, the continuation-aware RAS's obligations, and the
+three exchanges in scope in the Introduction, reworded the
+stateless-commitment open item as a question, and made the DPoP-bound JWT
+grant reference normative.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
