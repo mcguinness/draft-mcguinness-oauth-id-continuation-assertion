@@ -1216,8 +1216,10 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 5.5.3.  Request Validation
 
    For a continuation exchange, the IdP MUST reject the request unless
-   every rule below holds.  Their order is not significant, though one
-   rule's input may come from another's resolution.
+   every rule below holds.  Every rule is required; the order of
+   evaluation matters only for which error code a failing request
+   receives, and Section 5.5.6 fixes that order around the dependencies
+   between rules.
 
    1.  *Request parameters.*
 
@@ -1469,12 +1471,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 5.5.6.  Error Response and Recovery
 
    On failure, the IdP returns an error response ([RFC6749],
-   Section 5.2; [RFC8693], Section 2.2.2).  The IdP evaluates the rules
-   of Section 5.5.3 in order and MUST return the code for the first rule
-   that fails, so a chain-state code is returned only for an assertion
-   whose well-formedness, signature, and issuer trust have been
-   verified; the contents of an unverified assertion never determine the
-   response.
+   Section 5.2; [RFC8693], Section 2.2.2).  When more than one rule of
+   Section 5.5.3 fails, the IdP MUST return the code for the earliest
+   failure in this order: the request-parameter rule; the well-
+   formedness rule, which verifies the signature with a configured
+   issuer's key; the existence of the hop the handle names, which the
+   issuer-trust rule needs for the hop's RAS and tenant; the issuer-
+   trust rule; the chain-state rule, within which a permanently unusable
+   hop (ended chain, revoked hop or ancestor, withdrawn permission)
+   precedes a limit; the current-actor rule; the freshness rule; and the
+   authorization rule.  A chain-state code is therefore returned only
+   for an assertion whose signature a configured issuer produced, and
+   the contents of an unverified assertion never determine the response.
 
    *  The IdP MUST return invalid_continuation (Section 11) when the
       handle is permanently unusable: unknown, on an expired or ended
@@ -3910,28 +3918,15 @@ Document History
       added items on document factoring, stateless hop commitments,
       mandatory retry, and response parameter naming.
 
-   *  Protocol fixes: the (iss, jti) reservation is an atomic first-
-      writer decision, scoped per assertion issuer across every IdP
-      instance that accepts assertions for that issuer, and an IdP that
-      cannot reach that shared state rejects rather than issues;
-      assertion lifetime gained a hard ceiling of 3600 seconds, proposed
-      by the author for working group review, which also bounds the
-      configured maximum, with the numbers stated once in the claims
-      section; a finite hop-count limit is now required on every chain
-      while fan-out and rate limits stay optional tenant controls, and
-      all three are defined where they are configured; the IdP now
-      checks compact serialization and the members act forbids, and the
-      CAI checks the subject token against the type it declares; the
-      continuation exchange's error mappings became required rather than
-      recommended, with invalid_continuation returned only for a
-      permanently unusable handle and not otherwise; and a presentation
-      against a reserved or failed reservation is rejected as an invalid
-      request, under one clock-skew value applied to iat, to exp, and to
-      reservation retention; error codes follow rule order, so chain-
-      state codes need a verified assertion; limit counters are defined
-      per hop, per chain, or per governing authorization; the
-      3600-second ceiling and the finite hop-count requirement are
-      recorded as an open item.
+   *  Protocol fixes: the replay reservation is atomic, shared across
+      IdP instances for an issuer, and fails closed; assertion lifetime
+      has a 3600-second ceiling and every chain a finite hop-count
+      limit, both recorded as an open item; the IdP verifies
+      serialization and the CAI verifies subject-token type; error codes
+      are mandatory, with precedence defined around rule dependencies;
+      RESERVED and FAILED reservations and a single clock-skew value are
+      specified; limit counters are defined per hop, per chain, or per
+      governing authorization.
 
    -01
 
