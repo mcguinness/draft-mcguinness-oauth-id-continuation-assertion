@@ -1555,8 +1555,9 @@ the key-bound ID-JAG using the base profile's DPoP-bound JWT grant
 (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-1-11" class="pilcrow">¶</a></p>
 <p id="section-1-12">The IdP maintains chain records and enforces authorization and replay
 protection in addition to resolving pairwise subjects.<a href="#section-1-12" class="pilcrow">¶</a></p>
-<p id="section-1-13">This supports multi-hop access when the request path is not known in advance,
-as at a Model Context Protocol (MCP) tool gateway (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-13" class="pilcrow">¶</a></p>
+<p id="section-1-13">An ID-JAG deployment can therefore add multi-hop access where a request's path
+is not known in advance, as at a Model Context Protocol (MCP) tool gateway
+(<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-13" class="pilcrow">¶</a></p>
 <p id="section-1-14">This document complements OAuth Identity Chaining
 <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>, and it is not a substitute for narrowing
 an existing token within one trust domain (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-1-14" class="pilcrow">¶</a></p>
@@ -1629,9 +1630,9 @@ and association with the gateway (<a href="#assertion-issuance" class="auto inte
           <li id="section-1.1-5.5">
             <p id="section-1.1-5.5.1"><strong>New:</strong> the gateway presents the assertion to the IdP as the <code>subject_token</code>
 of a continuation exchange, with its own credential and a DPoP proof
-(<a href="#token-exchange" class="auto internal xref">Section 5.5</a>). The IdP evaluates the request under the governing
-authorization and current policy, resolves Alice's subject for the wiki,
-and issues an ID-JAG as hop H1, a child of H0 (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-1.1-5.5.1" class="pilcrow">¶</a></p>
+(<a href="#token-exchange" class="auto internal xref">Section 5.5</a>). The IdP checks the wiki and the gateway against what
+it recorded in step 1 and current policy, resolves Alice's subject for the
+wiki, and issues an ID-JAG as hop H1, a child of H0 (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-1.1-5.5.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.6">
             <p id="section-1.1-5.6.1">As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS and
@@ -2217,8 +2218,8 @@ hops the RAS has ACCEPTED. A RAS acting as CAI attests its own hops; a separate
 CAI confirms acceptance and activity according to the RAS's authorization
 semantics (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-5.2.1-3" class="pilcrow">¶</a></p>
 <p id="section-5.2.1-4">An issued hop cannot be continued without a trusted CAI's attestation. Unless
-the CAI is compromised (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>), a rejected ID-JAG therefore
-cannot be continued.<a href="#section-5.2.1-4" class="pilcrow">¶</a></p>
+the CAI is compromised (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>), no trusted CAI attests an
+issued-but-rejected ID-JAG, so continuation fails closed.<a href="#section-5.2.1-4" class="pilcrow">¶</a></p>
 <p id="section-5.2.1-5">A hop is continuable while a CAI trusted for its RAS can attest it as ACCEPTED
 and still active, and neither it nor any ancestor is revoked; whether a
 particular continuation from it succeeds is decided by the validation rules of
@@ -2655,11 +2656,12 @@ authentication method, and <span class="bcp14">MUST NOT</span> accept a self-ass
 <p id="section-5.5.2-4">For <span>[<a href="#RFC7523" class="cite xref">RFC7523</a>]</span> client authentication, the IdP <span class="bcp14">MUST</span> authorize the assertion's
 issuer for the authenticated client. The canonical actor identity remains the
 pair derived from the IdP's configuration (<a href="#rationale-client-id" class="auto internal xref">Appendix A.4</a>).<a href="#section-5.5.2-4" class="pilcrow">¶</a></p>
-<p id="section-5.5.2-5">This mapping applies to both exchanges. Client authentication identifies the
+<p id="section-5.5.2-5">This mapping applies to every exchange. Client authentication identifies the
 root actor; this profile adds no proof-of-possession requirement to the root
 exchange (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>). On a continuation exchange (<a href="#request" class="auto internal xref">Section 5.5.1</a>),
 the IdP <span class="bcp14">MUST</span> also match the canonical actor identity to the assertion's <code>act</code>.<a href="#section-5.5.2-5" class="pilcrow">¶</a></p>
-<p id="section-5.5.2-6">The IdP compares <code>act</code> with the client's mapped actor identity:<a href="#section-5.5.2-6" class="pilcrow">¶</a></p>
+<p id="section-5.5.2-6">The comparison runs between actor identities, never between a raw OAuth client
+identifier and an <code>act</code> value:<a href="#section-5.5.2-6" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="section-5.5.2-7">
 <pre>
 authenticated OAuth client
@@ -3017,11 +3019,12 @@ permission to continue (<a href="#lifecycle-ending" class="auto internal xref">S
 <p id="section-5.5.6-3">For other failures, the IdP <span class="bcp14">MUST</span> use the following error codes:<a href="#section-5.5.6-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.6-4.1">
-              <p id="section-5.5.6-4.1.1"><code>invalid_request</code>: a malformed, inconsistent, or unacceptable token,
-including failed well-formedness, signature verification, or issuer trust;
-an unknown handle; a lifetime above the accepted maximum; prohibited
-<code>actor_token</code> or <code>actor_token_type</code> parameters; or a reserved assertion that
-cannot be processed as idempotent recovery (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>).<a href="#section-5.5.6-4.1.1" class="pilcrow">¶</a></p>
+              <p id="section-5.5.6-4.1.1"><code>invalid_request</code>: a malformed, inconsistent, or unacceptable token, including
+an assertion that fails the well-formedness rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a> (which
+covers signature verification) or the issuer-trust rule; an unknown handle; a
+lifetime above the accepted maximum; prohibited <code>actor_token</code> or
+<code>actor_token_type</code> parameters; or a reserved assertion that cannot be
+processed as idempotent recovery (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>).<a href="#section-5.5.6-4.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.5.6-4.2">
               <p id="section-5.5.6-4.2.1"><code>invalid_dpop_proof</code>: a DPoP failure.<a href="#section-5.5.6-4.2.1" class="pilcrow">¶</a></p>
@@ -3189,12 +3192,12 @@ recovery support remains an open question (<a href="#open-items" class="auto int
 anchored to a refresh token's grant. A session-anchored chain ends with the
 session; a grant-anchored chain can support an unattended agent after logout
 (<a href="#example-background" class="auto internal xref">Appendix B.3</a>). The ending rules and limits apply to both forms.
-An implementation supporting only session anchors can omit the grant-specific
+A reader implementing session anchors only can skip the grant-specific
 processing and background example.<a href="#section-6-1" class="pilcrow">¶</a></p>
-<p id="section-6-2">A chain is continuable only while active at the IdP. The IdP checks current
-policy at each continuation and rejects continuation from a revoked hop or its
-descendants. Offline-attenuated tokens remain usable for their lifetime
-without contacting an authority.<a href="#section-6-2" class="pilcrow">¶</a></p>
+<p id="section-6-2">A chain is continuable only while active at the IdP. Each continuation is a
+fresh policy check, and revoking a hop stops its descendants at the next
+continuation, fail-closed; an offline-attenuated token, by contrast, stays
+usable for its lifetime without contacting an authority.<a href="#section-6-2" class="pilcrow">¶</a></p>
 <p id="section-6-3">Revocation does not invalidate an already-issued ID-JAG, so the revocation
 window is the ID-JAG's remaining redemption window plus the lifetime of the
 access token a late redemption obtains; any refresh token the RAS issues,
@@ -3568,8 +3571,10 @@ also authenticating as that actor.<a href="#section-9.1-1" class="pilcrow">¶</a
 with DPoP <span>[<a href="#RFC9449" class="cite xref">RFC9449</a>]</span> (<a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#client-identity" class="auto internal xref">Section 5.5.2</a>). Possession of the
 actor's client credential alone is insufficient without that key. The onward
 ID-JAG and the continuation-aware RAS's access token are bound to the same key
-(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#ras-processing" class="auto internal xref">Section 5.2</a>). Each workload boundary introduces
-an authenticated transition to the next actor's key. A terminal RAS follows
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#ras-processing" class="auto internal xref">Section 5.2</a>). Sender constraint is maintained
+across continuation-capable hops rather than demonstrated once at issuance,
+with an authenticated transition to the next actor's key at each workload
+boundary. A terminal RAS follows
 the base profile and may issue a bearer token; the chain ends there.<a href="#section-9.1-2" class="pilcrow">¶</a></p>
 <p id="section-9.1-3">The facts the CAI establishes before issuing (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>) form
 the binding chain from ID-JAG to assertion. In the synchronous flow, the
@@ -4473,7 +4478,10 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
           <h4 id="name-provisioning">
 <a href="#appendix-B.1.1" class="section-number selfRef">B.1.1. </a><a href="#name-provisioning" class="section-name selfRef">Provisioning</a>
           </h4>
-<p id="appendix-B.1.1-1">The example assumes the following configuration.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-1">The exchanges below presuppose the following configuration. Every item is an
+ordinary OAuth or ID-JAG registration except the three the profile adds: the
+IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
+GatewayRAS's advertisement of the continuation profile.<a href="#appendix-B.1.1-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.1-2"><strong>IdP</strong> (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, <a href="#security-trust-model" class="auto internal xref">Section 9.4</a>, <a href="#root-establishment" class="auto internal xref">Section 5.1</a>,
 <a href="#metadata-idp" class="auto internal xref">Section 7.1</a>):<a href="#appendix-B.1.1-2" class="pilcrow">¶</a></p>
 <ul class="normal">
@@ -4496,8 +4504,8 @@ as a CAI and actor identity authority pair for <code>tenant-123</code>.<a href="
 and permit <code>tool-gateway</code> to continue.<a href="#appendix-B.1.1-3.4.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.1.1-3.5">
-              <p id="appendix-B.1.1-3.5.1">Advertise <code>identity_continuation_supported</code> and record <code>tool-gateway</code>'s
-client identifier at WikiRAS for the onward ID-JAG's <code>client_id</code>.<a href="#appendix-B.1.1-3.5.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.1.1-3.5.1">Advertise <code>identity_continuation_supported</code> and hold <code>tool-gateway</code>'s
+client identifier at WikiRAS, placed in the onward ID-JAG's <code>client_id</code>.<a href="#appendix-B.1.1-3.5.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="appendix-B.1.1-4"><strong>GatewayRAS</strong> (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>, <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>):<a href="#appendix-B.1.1-4" class="pilcrow">¶</a></p>
@@ -4851,7 +4859,7 @@ upstream repeats <a href="#example-gateway-ica" class="auto internal xref">Appen
           <h4 id="name-what-a-gateway-implements">
 <a href="#appendix-B.1.7" class="section-number selfRef">B.1.7. </a><a href="#name-what-a-gateway-implements" class="section-name selfRef">What a Gateway Implements</a>
           </h4>
-<p id="appendix-B.1.7-1">The gateway domain adds the following processing:<a href="#appendix-B.1.7-1" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.7-1">The gateway domain adds two things to an ordinary OAuth deployment:<a href="#appendix-B.1.7-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.1.7-2.1">
               <p id="appendix-B.1.7-2.1.1">GatewayRAS binds the handle when it redeems a continuation-capable ID-JAG,
@@ -4866,13 +4874,14 @@ presents that assertion once (<a href="#validation-replay" class="auto internal 
 credential and a DPoP proof, to the IdP for the next ID-JAG.<a href="#appendix-B.1.7-2.2.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="appendix-B.1.7-3">ToolGateway is registered at the IdP and WikiRAS as described in
-<a href="#example-gateway-provisioning" class="auto internal xref">Appendix B.1.1</a>. The onward ID-JAG identifies its client at
-WikiRAS in <code>client_id</code> (<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#appendix-B.1.7-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.7-4">AgentApp and WikiRAS use the base profile unchanged. AgentApp makes no
-proof-of-possession request and does not share Alice's identity assertion with
-the gateway. The IdP establishes the chain and evaluates each continuation
-(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#appendix-B.1.7-4" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.7-3">Both presuppose registrations that ID-JAG already requires: <code>tool-gateway</code> is an
+OAuth client of the IdP, holding a client-authentication credential and the key
+its DPoP proofs use, and a client known to WikiRAS, which the onward ID-JAG
+names as <code>client_id</code> (<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#appendix-B.1.7-3" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.7-4">AgentApp and WikiRAS use the base profile unchanged. AgentApp proves no key
+anywhere and never shares Alice's identity assertion with the gateway. The IdP
+establishes the chain and evaluates each continuation (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>,
+<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#appendix-B.1.7-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
