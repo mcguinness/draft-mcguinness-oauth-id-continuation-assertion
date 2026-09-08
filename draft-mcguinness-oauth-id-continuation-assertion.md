@@ -555,8 +555,8 @@ parameter asks for a chain, and advertised support ({{metadata-idp}}) signals
 capability, not authority.
 
 For every hop it creates, root or child, the IdP MUST record the RAS audience
-placed in the ID-JAG and any other issuers it trusts to attest that RAS's hops,
-from tenant configuration ({{issuer-trust}}).
+placed in the ID-JAG; the issuers it trusts to attest that RAS's hops are read
+from current tenant configuration at each exchange ({{issuer-trust}}).
 
 Establishment is at-least-once. Retrying a lost response MAY create a second
 chain, and the limits of {{lifecycle-limits}} apply across every chain rooted
@@ -680,9 +680,11 @@ separately. A session or subject alone is not enough to select the
 authorization: doing so could attach another user's handle to the call.
 
 When the accepting RAS holds the CAI role, it reads the handle directly from
-its authorization state and needs no carrier. Otherwise, a carrier derived
-from the RAS binding conveys the handle within the trust domain
-({{ras-processing}}) and is accepted only within that domain
+its authorization state and needs no carrier, though it may still place the
+handle in its own access token, as the gateway example does
+({{example-gateway}}). A separate CAI needs a carrier to receive the handle at
+all: a carrier derived from the RAS binding conveys the handle within the
+trust domain ({{ras-processing}}) and is accepted only within that domain
 ({{assertion-issuance}}).
 
 What identifies the authorization depends on where the call lands:
@@ -849,8 +851,8 @@ The subject token's integrity protection and the authenticated request
 establish fact 1; the DPoP proof, fact 2; client authentication, fact 3; and
 the bound handle and the RAS's acceptance evidence, facts 4 and 5.
 
-Together the facts form the binding chain from ID-JAG to assertion, which
-{{security-pop}} traces.
+{{security-pop}} traces the binding chain these facts form from ID-JAG to
+assertion.
 
 A live recheck SHOULD be used where the tenant requires withdrawal of a hop's
 authorization to stop fresh assertions before the RAS's token would expire.
@@ -935,7 +937,8 @@ A CAI that is not the accepting RAS MUST obtain the handle, and the evidence
 that the RAS accepted the hop and still records continuation as permitted,
 from a source authoritative for that RAS within its own domain
 ({{deployment-topologies}}): that RAS's authorization state, its introspection
-response {{RFC7662}}, or a self-contained token the RAS itself issued. Where
+response {{RFC7662}}, or a self-contained short-lived token the RAS itself
+issued. Where
 the `subject_token` is an access token ({{assertion-token-exchange}}), that
 resolution is introspection or, for a self-contained token, validation of the
 token itself.
@@ -1320,8 +1323,9 @@ assertion never determine the response.
     hop-count refusal requires a different request; and
   * `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for
     requested authority not permitted by the governing authorization or
-    current policy, for an authorization detail type the IdP does not
-    implement, or for a target at which the IdP can resolve no subject or
+    current policy, for an omitted `scope` with no policy default
+    ({{RFC6749}}, Section 3.3), for an authorization detail type the IdP does
+    not implement, or for a target at which the IdP can resolve no subject or
     client identity for the actor.
 
 DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
@@ -1608,8 +1612,11 @@ This section is non-normative. It describes ways an IdP, a RAS, and a CAI can
 realize this document's requirements; conformance depends only on the
 normative sections.
 
-Reuse of the access token a continuation obtained also requires the same user,
-tenant, actor, and key as the call that obtained it. Another hop needs its own
+Continuation is per authorization context, not per call: a workload continues
+once to obtain an ID-JAG for a target and then reuses the access token it
+redeems there while that token remains valid and covers the requested access.
+Reuse also requires the same user, tenant, actor, and key as the call that
+obtained it. Another hop needs its own
 continuation even within the same chain: reusing a token obtained from a
 sibling branch would attach later continuation to that branch's lineage and
 revocation dependencies.
