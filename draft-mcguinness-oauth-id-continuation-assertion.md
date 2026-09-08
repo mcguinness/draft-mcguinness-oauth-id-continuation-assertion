@@ -116,7 +116,7 @@ This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) {{RFC7519}} that such a workload
 obtains from a Continuation Assertion Issuer (CAI), a party the IdP trusts to
 report what the RAS that issued the workload's access token has accepted. The
-assertion states two facts:
+assertion states:
 
 * The RAS accepted the referenced ID-JAG, established an authorization from
   it, and that authorization remains active and permits continuation.
@@ -152,7 +152,7 @@ not bound what the next ID-JAG may grant.
 
 Continuation is not required for every API call. Further calls for the same
 user under the same chain can reuse the access token a continuation obtained
-while it remains valid and covers the requested access.
+while it remains valid and covers the requested access ({{implementation}}).
 
 This document is an opt-in extension to ID-JAG. The application that obtains
 the first ID-JAG and any RAS from which no workload continues run unmodified
@@ -260,6 +260,12 @@ wiki.
 {::boilerplate bcp14-tagged}
 
 This document uses the following terms, listed alphabetically:
+
+Actor-lineage depth:
+: The number of entries in the actor lineage the onward `act` would carry
+  after consecutive entries for the same actor are merged
+  ({{onward-id-jag}}). Tenant policy bounds it per branch
+  ({{lifecycle-limits}}).
 
 Chain:
 : An IdP-held tree of hops under one governing authorization; each hop's
@@ -392,9 +398,9 @@ claim set:
     "jkt": "base64url-current-actor-key-thumbprint"
   },
 
-  "iat": 1710000500,
-  "exp": 1710000620,
-  "jti": "k7Qm2Xp9Rf4sLc3vBw8aZ1"
+  "iat": 1710000020,
+  "exp": 1710000200,
+  "jti": "b8Rn5Yx1Qe4Nk2Wf6zVc9d"
 }
 ~~~
 
@@ -508,10 +514,15 @@ are in these sections:
 |---|---|
 | IdP | Establishing a Chain ({{root-establishment}}), Continuation Exchange ({{token-exchange}}), Chain Lifetime and Revocation ({{lifecycle}}), IdP metadata ({{metadata-idp}}), Issuer Trust Configuration ({{issuer-trust}}) |
 | Continuation-aware RAS | RAS Processing ({{ras-processing}}), Handle Carriers ({{handle-propagation}}), RAS metadata ({{metadata-ras}}) |
-| CAI | the assertion it issues ({{assertion-claims}}), Assertion Issuance ({{assertion-issuance}}), Handle Carriers ({{handle-propagation}}) |
+| CAI | the assertion it issues ({{names}}, {{assertion-claims}}), Assertion Issuance and its request validation, responses, and error mapping ({{assertion-issuance}}, {{assertion-client-auth}}, {{assertion-preconditions}}, {{assertion-response}}, {{assertion-error-response}}), Handle Carriers ({{handle-propagation}}), Separate CAI ({{separate-cai}}) |
 | Continuing workload | Assertion Issuance Request, Client Authentication, and Successful Response ({{assertion-token-exchange}}, {{assertion-client-auth}}, {{assertion-response}}); Continuation Request and Client Authentication ({{request}}, {{client-identity}}); Successful Response ({{success-response}}) and Error Response and Recovery ({{error-response}}) |
 
 ## Establishing a Chain {#root-establishment}
+
+A chain begins when the IdP issues a continuation-capable ID-JAG on a root
+exchange. This section covers the root request, what the IdP records when it
+establishes a chain, who the root actor is, and the governing authorization
+under which the chain may continue.
 
 ### Root Exchange Request {#root-request}
 
@@ -776,13 +787,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 ### Client Authentication {#assertion-client-auth}
 
-The client MUST authenticate to the CAI's token endpoint ({{RFC6749}},
-Section 2.3). The client MUST include in the request a DPoP proof {{RFC9449}}
-of the client's own key. The CAI MUST verify that proof; the assertion is
-bound to the proven key in `cnf`. The CAI's verification is defense in depth:
-the actor proves possession of that key again to the IdP at the continuation
-exchange, which is the security boundary for continuation
-({{client-identity}}).
+The client MUST authenticate to the CAI's token endpoint ({{RFC6749}}, Section
+2.3). The client MUST include in the request a DPoP proof {{RFC9449}} of the
+client's own key. The CAI MUST verify that proof and bind the assertion to the
+proven key in `cnf`. The CAI's verification is defense in depth: the actor
+proves possession of that key again to the IdP at the continuation exchange,
+which is the security boundary for continuation ({{client-identity}}).
 
 The CAI MUST issue only for an actor it is authoritative to associate with the
 RAS-accepted authorization, typically one in the RAS's trust domain; actor
@@ -1079,10 +1089,12 @@ from another's resolution.
 4. **Chain state.**
    * the handle identifies a hop the IdP issued, on an active chain, that the
      assertion attests as accepted ({{hop-activation}});
-   * neither the presented hop nor any ancestor is revoked; and
+   * neither the presented hop nor any ancestor is revoked;
    * the actor lineage that results from merging consecutive same-actor
      entries, as the onward `act` will ({{onward-id-jag}}), is within its
-     actor-lineage depth bound, which counts lineage entries, not hops;
+     actor-lineage depth bound, which counts lineage entries, not hops; and
+   * the continuation is within the fan-out, rate, and hop-count limits of
+     the governing authorization ({{lifecycle-limits}});
 
 5. **Current actor and binding.**
    * `act` is present, conforms to the schema of {{assertion-claims}}, and
@@ -1449,7 +1461,7 @@ Revocation of the governing authorization applies to every chain rooted in it.
 Fan-out, rate, or hop-count limits configured for a governing authorization
 likewise apply across every chain rooted in it, so sibling chains share one
 budget; a retried establishment ({{root-establishment}}) MUST NOT evade them.
-The actor-lineage depth bound is enforced per branch.
+The actor-lineage depth bound, set by tenant policy, is enforced per branch.
 
 # Authorization Server Metadata and Trust Configuration {#metadata}
 
@@ -1546,7 +1558,9 @@ The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It retains each assertion's (`iss`, `jti`) reservation as
 {{validation-replay}} requires, expiring it by the same clock it uses to
 evaluate `exp`. The reservation needs an atomic first-writer decision, so that
-concurrent presentations yield only one grant. An IdP that offers idempotent
+concurrent presentations yield only one grant.
+
+An IdP that offers idempotent
 retry also holds the fingerprint and result, in state consistent enough that a
 retry recovers it and that a concurrent presentation under a matching
 fingerprint waits for or retries that result; an IdP that does not offer retry
@@ -1631,7 +1645,9 @@ following sections consider are:
 * a compromised or misdirected workload;
 * a party that holds a handle but no other credential;
 * a rogue or over-scoped actor identity authority;
-* a compromised RAS or CAI; and
+* a compromised RAS or CAI;
+* an actor that forges or grafts lineage to hide itself or impersonate a
+  prior actor; and
 * an attacker that substitutes token types, algorithms, or verification keys.
 
 {{privacy}} addresses correlation and disclosure risks.
@@ -1781,8 +1797,8 @@ history. A compromised actor could try to forge it, to hide its own identity,
 impersonate a more privileged prior actor, or fabricate a delegation that
 never happened. This profile denies that by construction: an assertion names
 only the current actor, and the IdP derives the onward lineage from its own
-hop records ({{onward-id-jag}}). The IdP MUST reject any mismatch between the
-current actor and the assertion's `act`.
+hop records ({{onward-id-jag}}), and it rejects any mismatch between the current
+actor and the assertion's `act` (the current-actor rule of {{validation}}).
 
 A party therefore cannot rewrite history it does not control, and
 offline-attenuation segments, which the IdP does not observe, do not enter
@@ -2847,7 +2863,9 @@ Expense CAI verifies the Transaction Token for its domain and reads H0 from
 it. Being a separate service rather than the RAS itself, it rechecks with
 ExpenseRAS that H0's authorization remains active and that its binding still
 records continuation as permitted, then issues the assertion bound to the
-proven key ({{assertion-preconditions}}). The IdP accepts its assertions for
+proven key ({{assertion-preconditions}}).
+
+The IdP accepts its assertions for
 hops ExpenseRAS accepts because it trusts Expense CAI for that RAS from
 tenant configuration at the IdP; the rest of the conjunctive trust rule
 applies as it does to a co-located RAS ({{issuer-trust}},
