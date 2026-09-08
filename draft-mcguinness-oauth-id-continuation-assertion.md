@@ -273,14 +273,12 @@ Chain:
   authorization bounds its lifetime ({{lifecycle}}).
 
 Continuation Assertion Issuer (CAI):
-: The role trusted by the IdP to issue Identity Continuation Assertions for a
-  tenant; it never resolves the target audience's user subject
-  ({{assertion-issuance}}).
+: The role the IdP trusts to issue Identity Continuation Assertions for a
+  tenant ({{assertion-issuance}}).
 
 Continuation Handle (`identity_continuation_handle`):
-: An opaque, unguessable, IdP-generated reference to one hop of a continuation
-  chain. It correlates a request with the IdP's state for that hop and confers
-  no authority by itself ({{chain-id}}).
+: An opaque, unguessable, IdP-generated reference to one hop of a chain
+  ({{chain-id}}).
 
 Continuation-capable:
 : Describes an ID-JAG that carries the `identity_continuation_handle` claim
@@ -293,17 +291,15 @@ Current actor:
 
 Governing authorization:
 : The tenant's authorization decision for the root exchange, recorded by the
-  IdP and associated with the lifecycle anchor. It governs which actors may
-  continue and what authority they may obtain under current policy
-  ({{chain-authorization}}, {{lifecycle}}).
+  IdP and associated with the chain's anchor ({{lifecycle-anchors}}). It
+  governs which actors may continue and what authority they may obtain under
+  current policy ({{chain-authorization}}).
 
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, with an
   immutable reference to its parent hop unless it is the root
-  ({{onward-id-jag}}). Its hop lineage is its path to the root. A hop becomes
-  ACCEPTED when a RAS redeems its ID-JAG and binds the handle
-  ({{ras-processing}}, {{hop-activation}}); a hop from which no workload
-  continues is terminal, while sibling branches may continue.
+  ({{onward-id-jag}}). Its hop lineage is its path to the root; a hop from
+  which no workload continues is terminal.
 
 ID-JAG:
 : An Identity Assertion JWT Authorization Grant
@@ -317,15 +313,6 @@ IdP Authorization Server (IdP):
 : The authority that authenticates the user, maps the user to each pairwise
   subject, and issues onward grants.
 
-Lifecycle anchor:
-: The IdP session or OAuth grant that the root subject token resolves to and
-  that bounds the chain's lifetime ({{lifecycle-anchors}}).
-
-Offline attenuation:
-: Client-side attenuated delegation, in which a party narrows and forwards a
-  credential without contacting the IdP; contrast the IdP-minted continuation
-  this profile defines ({{decision-rule}}).
-
 Pairwise subject:
 : The subject identifier under which a particular RAS names the user; distinct
   Resource Authorization Servers may name the same user with different
@@ -335,16 +322,6 @@ Resource Authorization Server (RAS):
 : An Authorization Server that protects a particular API, trusts the IdP for
   subject resolution, and exchanges an ID-JAG for an API access token.
   {{I-D.ietf-oauth-identity-assertion-authz-grant}} abbreviates this role (AS).
-
-Resource Server (RS):
-: The server hosting the protected API. It never consumes an Identity
-  Continuation Assertion or uses a continuation handle for authorization.
-
-Root actor:
-: The actor at the root of a chain: the authenticated OAuth client that
-  obtains the first ID-JAG, the Client of
-  {{I-D.ietf-oauth-identity-assertion-authz-grant}} at the root exchange
-  ({{root-actor}}, {{client-identity}}).
 
 Tenant:
 : The administrative boundary within which the chain and CAI trust are
