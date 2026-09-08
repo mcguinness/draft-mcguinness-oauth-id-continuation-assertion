@@ -1703,16 +1703,14 @@ authorization bounds its lifetime (<a href="#lifecycle" class="auto internal xre
         <dd class="break"></dd>
 <dt id="section-2-3.5">Continuation Assertion Issuer (CAI):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.6">
-          <p id="section-2-3.6.1">The role trusted by the IdP to issue Identity Continuation Assertions for a
-tenant; it never resolves the target audience's user subject
-(<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.6.1">The role the IdP trusts to issue Identity Continuation Assertions for a
+tenant (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.7">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.8">
-          <p id="section-2-3.8.1">An opaque, unguessable, IdP-generated reference to one hop of a continuation
-chain. It correlates a request with the IdP's state for that hop and confers
-no authority by itself (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.8.1">An opaque, unguessable, IdP-generated reference to one hop of a chain
+(<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.9">Continuation-capable:</dt>
@@ -1731,19 +1729,17 @@ to the IdP resolves to (<a href="#client-identity" class="auto internal xref">Se
 <dt id="section-2-3.13">Governing authorization:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.14">
           <p id="section-2-3.14.1">The tenant's authorization decision for the root exchange, recorded by the
-IdP and associated with the lifecycle anchor. It governs which actors may
-continue and what authority they may obtain under current policy
-(<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>, <a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
+IdP and associated with the chain's anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). It
+governs which actors may continue and what authority they may obtain under
+current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.15">Hop:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.16">
           <p id="section-2-3.16.1">One link of a chain: the IdP's record of an ID-JAG it issued, with an
 immutable reference to its parent hop unless it is the root
-(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Its hop lineage is its path to the root. A hop becomes
-ACCEPTED when a RAS redeems its ID-JAG and binds the handle
-(<a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>); a hop from which no workload
-continues is terminal, while sibling branches may continue.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
+(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Its hop lineage is its path to the root; a hop from
+which no workload continues is terminal.<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.17">ID-JAG:</dt>
@@ -1764,66 +1760,39 @@ Token Exchange <code>subject_token</code> to obtain an onward ID-JAG (<a href="#
 subject, and issues onward grants.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.23">Lifecycle anchor:</dt>
+<dt id="section-2-3.23">Pairwise subject:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">The IdP session or OAuth grant that the root subject token resolves to and
-that bounds the chain's lifetime (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.25">Offline attenuation:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.26">
-          <p id="section-2-3.26.1">Client-side attenuated delegation, in which a party narrows and forwards a
-credential without contacting the IdP; contrast the IdP-minted continuation
-this profile defines (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.27">Pairwise subject:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.28">
-          <p id="section-2-3.28.1">The subject identifier under which a particular RAS names the user; distinct
+          <p id="section-2-3.24.1">The subject identifier under which a particular RAS names the user; distinct
 Resource Authorization Servers may name the same user with different
-identifiers, and only the IdP holds the map between them.<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
+identifiers, and only the IdP holds the map between them.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.29">Resource Authorization Server (RAS):</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.30">
-          <p id="section-2-3.30.1">An Authorization Server that protects a particular API, trusts the IdP for
+<dt id="section-2-3.25">Resource Authorization Server (RAS):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.26">
+          <p id="section-2-3.26.1">An Authorization Server that protects a particular API, trusts the IdP for
 subject resolution, and exchanges an ID-JAG for an API access token.
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> abbreviates this role (AS).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> abbreviates this role (AS).<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.31">Resource Server (RS):</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.32">
-          <p id="section-2-3.32.1">The server hosting the protected API. It never consumes an Identity
-Continuation Assertion or uses a continuation handle for authorization.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.33">Root actor:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.34">
-          <p id="section-2-3.34.1">The actor at the root of a chain: the authenticated OAuth client that
-obtains the first ID-JAG, the Client of
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> at the root exchange
-(<a href="#root-actor" class="auto internal xref">Section 5.1.3</a>, <a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.35">Tenant:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.36">
-          <p id="section-2-3.36.1">The administrative boundary within which the chain and CAI trust are
+<dt id="section-2-3.27">Tenant:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.28">
+          <p id="section-2-3.28.1">The administrative boundary within which the chain and CAI trust are
 configured; its determination is deployment-defined
-(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
+(<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>).<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.37">Trust domain:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.38">
-          <p id="section-2-3.38.1">An administrative and authentication boundary within which workloads can be
+<dt id="section-2-3.29">Trust domain:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.30">
+          <p id="section-2-3.30.1">An administrative and authentication boundary within which workloads can be
 directly authenticated, comparable to Workload Identity in Multi System
 Environments (WIMSE) <span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is
-deployment-defined.<a href="#section-2-3.38.1" class="pilcrow">¶</a></p>
+deployment-defined.<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.39">Workload:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.40">
-          <p id="section-2-3.40.1">A service that received a request on a user's behalf and may continue it to
-a further service.<a href="#section-2-3.40.1" class="pilcrow">¶</a></p>
+<dt id="section-2-3.31">Workload:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.32">
+          <p id="section-2-3.32.1">A service that received a request on a user's behalf and may continue it to
+a further service.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
 </dl>
@@ -4238,11 +4207,12 @@ this document registers only the
             <p id="appendix-A.1-2.3.1">current revocation and policy must be rechecked at every boundary.<a href="#appendix-A.1-2.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
-<p id="appendix-A.1-3">Use offline attenuation, such as <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>, when
-the subject and the trusted issuer both stay stable across the boundary and
+<p id="appendix-A.1-3">Use offline attenuation, in which a party narrows and forwards a credential
+without contacting the IdP, such as <span>[<a href="#I-D.li-oauth-delegated-authorization" class="cite xref">I-D.li-oauth-delegated-authorization</a>]</span>,
+when the subject and the trusted issuer both stay stable across the boundary and
 offline delegation semantics are acceptable, for example intra-domain fan-out
-under one workload identity. The two compose: offline attenuation inside a
-trust domain, continuation where a boundary re-mints the subject.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
+under one workload identity. The two compose: offline attenuation inside a trust
+domain, continuation where a boundary re-mints the subject.<a href="#appendix-A.1-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-idjag">
@@ -5774,14 +5744,16 @@ it.<a href="#appendix-E-3.13.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.14">
           <p id="appendix-E-3.14.1">Editorial: reorganized around the exchange sequence with a walk-through
-overview; revised terminology (workload and lifecycle anchor added, root-chain
-envelope and intra-domain carrier removed, pairwise subject); moved the
-offline-attenuation decision rule to the rationale and added rationale on
-actor identity, the profile's boundary, and the test for a requirement;
-expanded implementation considerations; rewrote the examples as a gateway, a
-SaaS chain, and a background agent; closed the CAI issuance and authorization-
-basis open items and added items on document factoring, stateless hop
-commitments, mandatory retry, and response parameter naming.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
+overview; revised terminology (workload and actor-lineage depth added;
+root-chain envelope, intra-domain carrier, lifecycle anchor, offline
+attenuation, resource server, and root actor removed as defined in their
+sections; pairwise subject); moved the offline-attenuation decision rule to
+the rationale and added rationale on actor identity, the profile's boundary,
+and the test for a requirement; expanded implementation considerations;
+rewrote the examples as a gateway, a SaaS chain, and a background agent;
+closed the CAI issuance and authorization-basis open items and added items on
+document factoring, stateless hop commitments, mandatory retry, and response
+parameter naming.<a href="#appendix-E-3.14.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
