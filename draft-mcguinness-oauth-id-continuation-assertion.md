@@ -261,8 +261,9 @@ wiki.
 This document uses the following terms, listed alphabetically:
 
 Actor-lineage depth:
-: The number of entries in the actor lineage the onward `act` would carry
-  after consecutive entries for the same actor are merged
+: The number of entries in the actor lineage the IdP derives from its own
+  hop records, after consecutive entries for the same actor are merged and
+  before any narrowing of what the onward `act` discloses
   ({{onward-id-jag}}). Tenant policy bounds it per branch
   ({{lifecycle-limits}}).
 
@@ -362,8 +363,8 @@ Workload:
 
 # The Identity Continuation Assertion {#assertion}
 
-This section defines the Identity Continuation Assertion. A CAI issues one
-under {{assertion-issuance}}, and the IdP validates it under {{validation}}.
+A CAI issues the assertion ({{assertion-issuance}}); the IdP validates it
+({{validation}}).
 
 ## Token Type and Media Type {#names}
 
@@ -519,9 +520,7 @@ are in these sections:
 ## Establishing a Chain {#root-establishment}
 
 A chain begins when the IdP issues a continuation-capable ID-JAG on a root
-exchange. This section covers the root request, what the IdP records when it
-establishes a chain, who the root actor is, and the governing authorization
-under which the chain may continue.
+exchange.
 
 ### Root Exchange Request {#root-request}
 
@@ -1275,8 +1274,10 @@ On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
     actors, whereas withdrawal of the chain's permission to continue as a
     whole is `invalid_continuation`;
   * `invalid_grant` when the continuation would exceed the chain's
-    actor-lineage depth, fan-out, or hop-count limits
-    ({{lifecycle-limits}}); and
+    actor-lineage depth, fan-out, hop-count, or rate limits
+    ({{lifecycle-limits}}); a rate-limited request may be retried once the
+    window the IdP's policy defines has passed, whereas a depth, fan-out, or
+    hop-count refusal requires a different request; and
   * `invalid_target`, `invalid_scope`, or `invalid_authorization_details` for
     requested authority not permitted by the governing authorization or
     current policy, for an authorization detail type the IdP does not
@@ -1464,9 +1465,8 @@ The actor-lineage depth bound, set by tenant policy, is enforced per branch.
 
 # Authorization Server Metadata and Trust Configuration {#metadata}
 
-This section defines how an IdP and a Resource Authorization Server advertise
-support for this profile, and the trust configuration the IdP holds for the
-CAIs and actor identity authorities it accepts.
+An IdP and a Resource Authorization Server advertise support in their
+metadata; the IdP configures the CAIs and actor identity authorities it trusts.
 
 ## IdP Authorization Server Metadata {#metadata-idp}
 
@@ -1637,17 +1637,12 @@ all. Three carriers are common:
 # Security Considerations {#security}
 
 This profile assumes TLS, correct IdP subject mapping and authorization
-evaluation, and the OAuth guidance of {{RFC9700}}. The adversaries the
-following sections consider are:
-
-* a party that captures an assertion or an access token;
-* a compromised or misdirected workload;
-* a party that holds a handle but no other credential;
-* a rogue or over-scoped actor identity authority;
-* a compromised RAS or CAI;
-* an actor that forges or grafts lineage to hide itself or impersonate a
-  prior actor; and
-* an attacker that substitutes token types, algorithms, or verification keys.
+evaluation, and the OAuth guidance of {{RFC9700}}. The adversaries considered
+are a party that captures an assertion or access token, a compromised or
+misdirected workload, a party holding a handle and nothing else, a rogue or
+over-scoped actor identity authority, a compromised RAS or CAI, an actor that
+forges lineage, and an attacker that substitutes token types, algorithms, or
+keys.
 
 {{privacy}} addresses correlation and disclosure risks.
 
