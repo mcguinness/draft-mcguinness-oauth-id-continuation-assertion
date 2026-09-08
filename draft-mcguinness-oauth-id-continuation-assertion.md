@@ -422,10 +422,12 @@ The claims have the following meanings and requirements:
 `iat`, `exp`:
 : REQUIRED. `exp` MUST follow `iat`. The assertion is short-lived: `exp - iat`
   SHOULD NOT exceed 300 seconds. The IdP rejects a lifetime longer than the
-  maximum it accepts, and MUST reject an assertion whose lifetime exceeds 3600
-  seconds whatever maximum it is configured to accept ({{validation}}). That
-  configured maximum SHOULD be no less than 300 seconds, so that a CAI using
-  the recommended bound interoperates, and MUST NOT exceed 3600 seconds.
+  maximum it accepts ({{validation}}); that configured maximum SHOULD be no
+  less than 300 seconds, so that a CAI using the recommended bound
+  interoperates, and MUST NOT exceed 3600 seconds. The ceiling bounds how
+  stale an attestation can be when presented and how long replay state must
+  be retained ({{validation-replay}}); its value is open for Working Group
+  discussion ({{open-items}}).
 
 `nbf`:
 : OPTIONAL. If present, processed as {{RFC7519}} specifies.
@@ -1269,7 +1271,11 @@ IdP:
 ### Error Response and Recovery {#error-response}
 
 On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
-{{RFC8693}}, Section 2.2.2):
+{{RFC8693}}, Section 2.2.2). The IdP evaluates the rules of {{validation}} in
+order and MUST return the code for the first rule that fails, so a chain-state
+code is returned only for an assertion whose well-formedness, signature, and
+issuer trust have been verified; the contents of an unverified assertion never
+determine the response.
 
 * The IdP MUST return `invalid_continuation` ({{iana}}) when the handle is
   permanently unusable: unknown, on an expired or ended chain, on a revoked hop
@@ -1376,7 +1382,8 @@ fingerprint. The fingerprint MUST cover:
 A presentation matching a RESERVED reservation, whose first presentation has
 not completed, is rejected with `invalid_request` and can be retried once that
 first presentation completes ({{error-response}}). A reservation that does not
-reach ISSUED before `exp` becomes FAILED, which is final: a presentation
+reach ISSUED before `exp` plus the permitted clock skew becomes FAILED, which
+is final: a presentation
 matching a FAILED reservation is rejected with `invalid_request` and the
 client obtains a fresh assertion.
 
@@ -1484,19 +1491,22 @@ management for that purpose.
 
 ## Limits {#lifecycle-limits}
 
-Fan-out is the number of child hops continued from one hop. Hop count is the
-total number of hops in a chain across all branches. Rate is the number of
-continuations of a chain within a window tenant policy defines.
-
-Revocation of the governing authorization applies to every chain rooted in it.
-Fan-out, rate, or hop-count limits configured for a governing authorization
-likewise apply across every chain rooted in it, so sibling chains share one
-budget; a retried establishment ({{root-establishment}}) MUST NOT evade them.
-The actor-lineage depth bound, set by tenant policy, is enforced per branch.
+Fan-out is the number of child hops continued from one hop and is counted
+per hop. Hop count is the total number of hops in a chain across all
+branches. Rate is the number of newly issued continuations, not attempts,
+within a window tenant policy defines. Hop count and rate are counted per
+chain and, where the tenant configures one budget for a governing
+authorization, aggregated across every chain rooted in it, so sibling chains
+share that budget; a retried establishment ({{root-establishment}}) MUST NOT
+evade it. Revocation of the governing authorization applies to every chain
+rooted in it. The actor-lineage depth bound, set by tenant policy, is
+enforced per branch.
 
 The IdP MUST enforce a finite hop-count limit on every chain, either the
-tenant's configured value or the IdP's default. Fan-out and rate limits remain
-optional tenant controls.
+tenant's configured value or the IdP's default, so that a workload
+continuing as itself cannot extend a chain without bound. Fan-out and rate
+limits remain optional tenant controls. Whether the profile should fix a
+default is open ({{open-items}}).
 
 # Authorization Server Metadata and Trust Configuration {#metadata}
 
@@ -3295,6 +3305,12 @@ This non-normative appendix lists unresolved design questions.
    Should a profile-specific response member be defined instead, given that
    {{RFC8693}} registers `audience` for requests only?
 
+8. **Numeric bounds.** This document sets a 3600-second ceiling on assertion
+   lifetime ({{assertion-claims}}) and requires a finite hop-count limit without
+   fixing a default ({{lifecycle-limits}}). Both are policy choices rather than
+   consequences of validation: should the ceiling be lower, should a default hop
+   count be specified, and should either be discoverable in IdP metadata?
+
 Further questions are tracked in the project's issue list rather than expanded
 here: nested own-domain `act` segments and offline-actor audit
 ({{I-D.mcguinness-oauth-actor-receipts}},
@@ -3390,14 +3406,18 @@ specifications, on whose work this profile builds.
   seconds, proposed by the author for working group review, which also bounds
   the configured maximum, with the numbers stated once in the claims section; a
   finite hop-count limit is now required on every chain while fan-out and rate
-  limits stay optional tenant controls, and all three are defined where they
-  are configured; the IdP now checks compact serialization and the members
-  `act` forbids, and the CAI checks the subject token against the type it
-  declares; the continuation exchange's error mappings became required rather
-  than recommended, with `invalid_continuation` returned only for a
-  permanently unusable handle and not otherwise; and a presentation against a
-  reserved or failed reservation is rejected as an invalid request, under one
-  clock-skew value applied to `iat`, to `exp`, and to reservation retention.
+  limits stay optional tenant controls, and all three are defined where they are
+  configured; the IdP now checks compact serialization and the members `act`
+  forbids, and the CAI checks the subject token against the type it declares;
+  the continuation exchange's error mappings became required rather than
+  recommended, with `invalid_continuation` returned only for a permanently
+  unusable handle and not otherwise; and a presentation against a reserved or
+  failed reservation is rejected as an invalid request, under one clock-skew
+  value applied to `iat`, to `exp`, and to reservation retention; error codes
+  follow rule order, so chain-state codes need a verified assertion; limit
+  counters are defined per hop, per chain, or per governing authorization; the
+  3600-second ceiling and the finite hop-count requirement are recorded as an
+  open item.
 
 -01
 
