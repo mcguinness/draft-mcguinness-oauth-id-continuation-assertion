@@ -158,15 +158,13 @@ obtained while it remains valid and covers the requested access
 
 This document extends ID-JAG, which it calls the base profile, on an opt-in
 basis. The opt-in is the deployment's, not a capability a client requests: the
-IdP, and the continuing workload with its RAS and CAI, are the parties that
-need support this extension, and the root client sends the base exchange
-unchanged. The RAS advertises support ({{metadata-ras}}), binds handles, and
-sender-constrains access tokens for key-bound ID-JAGs ({{ras-processing}}).
-Chain establishment requires a resolvable session or grant anchor
-({{lifecycle-anchors}}); without one, the IdP issues an ordinary ID-JAG without
-a handle. Every onward target, including a terminal RAS, needs the base
-profile's DPoP-bound JWT grant support ({{onward-id-jag}}). Grant-anchor
-support is optional.
+IdP and the continuing workload with its RAS and CAI need support this extension
+({{ras-processing}}, {{metadata-ras}}), and the root client sends the base
+exchange unchanged. Chain establishment requires a resolvable session or grant
+anchor ({{lifecycle-anchors}}); without one, the IdP issues an ordinary ID-JAG
+without a handle. Every onward target, including a terminal RAS, redeems a
+key-bound ID-JAG under the base profile's DPoP-bound JWT grant
+({{onward-id-jag}}). Grant-anchor support is optional.
 
 The IdP keeps chain records and enforces authorization and replay protection;
 it already resolves pairwise subjects and holds the tenant's policy.
@@ -1068,8 +1066,11 @@ the actor obtains a new assertion bound to the new key.
 
 For a continuation exchange, the IdP MUST reject the request unless every rule
 below holds. Every rule is required; the order of evaluation matters only for
-which error code a failing request receives, and {{error-response}} fixes
-that order around the dependencies between rules.
+which error code a failing request receives, and {{error-response}} fixes that
+order around the dependencies between rules. A presentation whose (`iss`, `jti`)
+matches an ISSUED reservation is processed as recovery under
+{{idempotent-retry}}, a separate path with its own checks; the rules below and
+that error order apply to a first presentation.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -1124,8 +1125,7 @@ that order around the dependencies between rules.
      entries, as the onward `act` will ({{onward-id-jag}}), is within its
      actor-lineage depth bound, which counts lineage entries, not hops; and
    * the continuation is within the fan-out, rate, and hop-count limits of
-     the governing authorization ({{lifecycle-limits}}), a condition not
-     evaluated on recovery ({{idempotent-retry}});
+     the governing authorization ({{lifecycle-limits}});
 
 5. **Current actor and binding.**
    * `act` is present, conforms to the schema of {{assertion-claims}}, and
@@ -1139,16 +1139,16 @@ that order around the dependencies between rules.
 
 6. **Freshness and replay.**
    * `iat` is within the IdP's permitted clock skew, `exp` follows `iat`, the
-     assertion is unexpired within that same skew (not evaluated on recovery,
-     {{idempotent-retry}}), and any `nbf` has passed within it ({{RFC7519}},
-     Section 4.1.5). One skew value applies to `iat` as future skew, to `exp`
-     as past skew, and to reservation retention ({{validation-replay}}); it
-     SHOULD NOT exceed 60 seconds;
+     assertion is unexpired within that same skew, and any `nbf` has passed
+     within it ({{RFC7519}}, Section 4.1.5). One skew value applies to `iat` as
+     future skew, to `exp` as past skew, and to reservation retention
+     ({{validation-replay}}); it SHOULD NOT exceed 60 seconds;
    * the assertion's lifetime does not exceed the maximum the IdP accepts
      ({{assertion-claims}}); and
-   * `jti` is not yet reserved for the assertion issuer or, where the IdP
-     offers idempotent retry ({{idempotent-retry}}), is ISSUED under a
-     fingerprint matching this request; any other reserved `jti` is rejected;
+   * `jti` is not yet reserved for the assertion issuer ({{validation-replay}});
+     a presentation matching an ISSUED reservation is recovery
+     ({{idempotent-retry}}), not a continuation exchange, and any other reserved
+     `jti` is rejected;
 
 7. **Authorization.** The IdP MUST issue an ID-JAG only if the governing
    authorization associated with the referenced hop ({{chain-authorization}})
@@ -1158,8 +1158,7 @@ that order around the dependencies between rules.
    details, including any default scope or other defaults the IdP applies
    under its policy. An omitted `scope` uses a policy default or results in
    `invalid_scope` ({{RFC6749}}, Section 3.3). An omitted `resource` does not
-   by itself require a default. This rule is not evaluated on recovery of an
-   already-issued grant ({{idempotent-retry}}). The IdP MUST reject the
+   by itself require a default. The IdP MUST reject the
    request if it cannot establish that authorization.
 
    The issued ID-JAG carries the `scope`, `resource`, and
@@ -1224,10 +1223,8 @@ DPoP-bound JWT grant, `urn:ietf:params:oauth:grant-type:jwt-dpop`
 the base profile specifies for a key-bound ID-JAG
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}, Section 9.8.1.2.1). The
 target RAS needs nothing from this document to do so: a terminal RAS advertises
-nothing from this profile, and its need to redeem a key-bound ID-JAG under that
-grant follows from the base profile's processing of a key-bound grant, not from
-this profile's metadata, which only a continuation-aware RAS advertises
-({{metadata-ras}}).
+nothing from this document ({{metadata-ras}}) and redeems a key-bound ID-JAG
+under that grant as the base profile requires.
 
 Where the recorded root authentication context contains `auth_time`, `acr`, or
 `amr`, the IdP MUST include them in the onward ID-JAG unchanged. Continuation
@@ -1296,18 +1293,18 @@ IdP:
 ### Error Response and Recovery {#error-response}
 
 On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
-{{RFC8693}}, Section 2.2.2). When more than one rule of {{validation}} fails,
-the IdP MUST return the code for the earliest failure in this order: the
-request-parameter rule; the well-formedness rule, which verifies the signature
-with a configured issuer's key; the existence of the hop the handle names,
-which the issuer-trust rule needs for the hop's RAS and tenant and whose
-absence is `invalid_request`; the issuer-trust rule; the chain-state rule,
+{{RFC8693}}, Section 2.2.2). On a first presentation, when more than one rule of
+{{validation}} fails, the IdP MUST return the code for the earliest failure in
+this order: the request-parameter rule; the well-formedness rule, which verifies
+the signature with a configured issuer's key; the existence of the hop the
+handle names, which the issuer-trust rule needs for the hop's RAS and tenant and
+whose absence is `invalid_request`; the issuer-trust rule; the chain-state rule,
 within which a permanently unusable hop (ended chain, revoked hop or ancestor,
 withdrawn permission) precedes a limit; the current-actor rule; the freshness
-rule; and the authorization rule. A chain-state code is therefore returned
-only for an assertion whose signature a configured issuer produced and whose
-issuer the IdP trusts for that hop's RAS, and the contents of an unverified
-assertion never determine the response.
+rule; and the authorization rule. A chain-state code is therefore returned only
+for an assertion whose signature a configured issuer produced and whose issuer
+the IdP trusts for that hop's RAS, and the contents of an unverified assertion
+never determine the response.
 
 * The IdP MUST return `invalid_continuation` ({{iana}}) when the handle names
   a hop the IdP issued that is permanently unusable: on an expired or ended
@@ -1352,11 +1349,11 @@ a handle disabled by withdrawn permission to continue cannot re-root at all. An
 unknown handle is reported as `invalid_request`, so an assertion whose issuer
 the IdP does not trust for any hop learns nothing about which handles exist.
 
-The other errors leave the chain still continuable, so the client abandons
-only the current request. An actor-lineage depth rejection concerns the
-particular continuation whose resulting lineage would exceed the bound, not
-the hop itself; a continuation that merges into an existing lineage entry, or
-a later policy raising the bound, may still succeed.
+The other errors do not establish that the chain is permanently unusable, so the
+client abandons only the current request. An actor-lineage depth rejection
+concerns the particular continuation whose resulting lineage would exceed the
+bound, not the hop itself; a continuation that merges into an existing lineage
+entry, or a later policy raising the bound, may still succeed.
 
 After a lost response, the client MAY retry the same assertion where the IdP
 offers idempotent retry ({{idempotent-retry}}), or obtain a fresh assertion.
@@ -1402,12 +1399,9 @@ does not itself establish that the hop was accepted.
 An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). The IdP
-MUST reject a presentation that matches no fingerprint. For a presentation
+MUST reject a presentation that matches no fingerprint. A presentation
 matching the fingerprint of an ISSUED reservation within the IdP's retry
-window, the IdP MUST return the previously issued grant unchanged when the
-recovery checks below succeed, and MUST reject the request under
-{{error-response}} otherwise.
-The fingerprint MUST cover:
+window is processed as recovery, defined below. The fingerprint MUST cover:
 
 * `audience` as an exact string;
 * the `resource` values as an order-independent set;
@@ -1422,19 +1416,23 @@ The fingerprint MUST cover:
 An IdP that offers idempotent retry MUST retain the ISSUED reservation, its
 fingerprint, and its result for a retry window it defines, alongside the
 reservation retention of {{validation-replay}}; recovery is available only
-within that window. The window is a deployment choice and MAY be advertised or
-documented.
+within that window and only while the issued grant is unexpired. The window is a
+deployment choice and MAY be advertised or documented.
 
-Recovery is conventional idempotency, not a second run of validation. The IdP
-verifies the requester's client authentication and canonical actor identity,
-the DPoP proof of the `cnf` key (the current-actor rule of {{validation}}), the
-fingerprint match, and that neither the hop nor its chain has been revoked or
-ended since issuance (the chain-state rule). It re-runs no other rule,
-evaluates no policy, and charges no limit: recovery allocates no new hop and
-consumes no fan-out, hop-count, or rate budget, since it issues nothing new,
-and any throttling of repeated requests is a deployment control outside this
-document. Withdrawal of policy or of issuer trust after issuance does not
-refuse recovery of an already-issued grant.
+Recovery is a separate processing path from the rules of {{validation}}. The IdP
+MUST verify the requester's client authentication and canonical actor identity,
+the DPoP proof of the `cnf` key, the fingerprint match, and that the presented
+hop and every ancestor remain unrevoked and the chain has not ended, including
+through anchor expiry or the tenant's withdrawal of the chain's permission to
+continue ({{lifecycle-ending}}); if these hold and the issued grant is
+unexpired, it MUST return that grant unchanged, and otherwise it MUST reject the
+request under {{error-response}}. The IdP never extends or reissues the grant;
+after the grant's `exp`, the client obtains a fresh assertion. Recovery
+evaluates no other rule and no policy: a change to the actor's or target's
+authorization, or to issuer trust, after issuance does not refuse recovery of an
+already-issued grant. Recovery allocates no new hop and consumes no fan-out,
+hop-count, or rate budget; throttling of repeated requests is a deployment
+control outside this document.
 
 A presentation matching a RESERVED reservation, whose first presentation has
 not completed, MUST be rejected with `invalid_request`; the client can retry
@@ -3377,17 +3375,14 @@ specifications, on whose work this profile builds.
   records, made the DPoP grant reference normative, and consolidated binding
   and carriage guidance.
 
-* Removed the 3600-second ceiling on assertion lifetime, leaving the maximum an
-  IdP accepts to deployment with a recommendation to accept 300 seconds, and
-  recommended at least 128 bits of entropy in `jti`. Gave idempotent retry an
-  IdP-defined retry window and conventional recovery semantics: a matching
-  presentation returns the already-issued grant after client authentication,
-  the key proof, the fingerprint, and chain state alone, with no policy
-  re-evaluation. An unknown handle is now `invalid_request` rather than
-  `invalid_continuation`, the RAS-side record is eligibility for continuation,
-  and the opt-in is the deployment's rather than a client request. Trimmed the
-  open items: no document factoring, and idempotent recovery narrowed to
-  whether and how optional support is advertised.
+* Removed the 3600-second ceiling on assertion lifetime (IdPs are recommended to
+  accept 300 seconds) and recommended 128 bits of entropy in `jti`. Made
+  idempotent recovery a separate processing path: within an IdP-defined retry
+  window and before the grant expires, a matching presentation returns the
+  already-issued grant after client authentication, key proof, fingerprint, and
+  chain-state checks alone. An unknown handle is `invalid_request`; the RAS
+  records eligibility for continuation; the opt-in is the deployment's; open
+  items trimmed.
 
 -01
 
