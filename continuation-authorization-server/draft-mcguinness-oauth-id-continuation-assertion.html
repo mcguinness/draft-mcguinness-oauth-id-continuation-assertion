@@ -2496,7 +2496,7 @@ propagated context expand the authority the IdP may issue (<a href="#validation"
 This document adds one parameter:<a href="#section-5.4.4-1" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-5.4.4-2">
             <dt id="section-5.4.4-2.1">
-<code>continuation_authorization_server</code>:</dt>
+<code>identity_continuation_authorization_server</code>:</dt>
             <dd style="margin-left: 1.5em" id="section-5.4.4-2.2">
               <p id="section-5.4.4-2.2.1"><span class="bcp14">REQUIRED</span>. A JSON string containing the issuer identifier (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>) of
 the authorization server at which the client exchanges the assertion for an
@@ -2507,11 +2507,11 @@ uses this parameter to identify the IdP without decoding the assertion.<a href="
 </dl>
 <p id="section-5.4.4-3">The client obtains that IdP's <code>token_endpoint</code> from its authorization server
 metadata (<span>[<a href="#RFC8414" class="cite xref">RFC8414</a>]</span>), retrieved with the <code>oauth-authorization-server</code>
-well-known URI suffix under the issuer identifier. Before sending the
-assertion or its own credentials there, the client <span class="bcp14">MUST</span> confirm that the
-returned <code>issuer</code> exactly matches <code>continuation_authorization_server</code>. Where
-the IdP publishes no metadata, the client uses configuration bound to that
-issuer identifier (<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.4.4-3" class="pilcrow">¶</a></p>
+well-known URI suffix under the issuer identifier. Before sending the assertion
+or its own credentials there, the client <span class="bcp14">MUST</span> confirm that the returned <code>issuer</code>
+exactly matches <code>identity_continuation_authorization_server</code>. Where the IdP
+publishes no metadata, the client uses configuration bound to that issuer
+identifier (<a href="#metadata" class="auto internal xref">Section 7</a>).<a href="#section-5.4.4-3" class="pilcrow">¶</a></p>
 <p id="section-5.4.4-4">The client <span class="bcp14">SHOULD</span> present the assertion only to an IdP it is configured to
 trust; this parameter identifies the destination but does not establish trust.<a href="#section-5.4.4-4" class="pilcrow">¶</a></p>
 <p id="section-5.4.4-5">The CAI <span class="bcp14">MUST NOT</span> include a <code>refresh_token</code> in the response, which would let a
@@ -2528,7 +2528,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "&lt;Identity Continuation Assertion, compact JWS&gt;",
   "token_type": "N_A",
-  "continuation_authorization_server": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 </pre><a href="#section-5.4.4-6" class="pilcrow">¶</a>
@@ -3827,7 +3827,7 @@ Parameters" registry established by <span>[<a href="#RFC6749" class="cite xref">
 <span class="break"></span><dl class="dlParallel" id="section-11.2-2">
           <dt id="section-11.2-2.1">Parameter name:</dt>
           <dd style="margin-left: 1.5em" id="section-11.2-2.2">
-            <p id="section-11.2-2.2.1">continuation_authorization_server<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
+            <p id="section-11.2-2.2.1">identity_continuation_authorization_server<a href="#section-11.2-2.2.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-11.2-2.3">Parameter usage location:</dt>
@@ -4780,12 +4780,12 @@ issues the assertion bound to the proven key (<a href="#assertion-preconditions"
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "&lt;the assertion below, compact JWS&gt;",
   "token_type": "N_A",
-  "continuation_authorization_server": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 </pre><a href="#appendix-B.1.4-6" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.4-7">The <code>continuation_authorization_server</code> identifies the IdP from which
+<p id="appendix-B.1.4-7">The <code>identity_continuation_authorization_server</code> identifies the IdP from which
 ToolGateway obtains the next ID-JAG.<a href="#appendix-B.1.4-7" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.4-8">On the wire (decoded assertion):<a href="#appendix-B.1.4-8" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.1.4-9">
@@ -4818,11 +4818,12 @@ ToolGateway obtains the next ID-JAG.<a href="#appendix-B.1.4-7" class="pilcrow">
 <a href="#appendix-B.1.5" class="section-number selfRef">B.1.5. </a><a href="#name-toolgateway-continues-to-wi" class="section-name selfRef">ToolGateway Continues to WikiRAS</a>
           </h4>
 <p id="appendix-B.1.5-1">ToolGateway resolves the token endpoint of <code>https://idp.example/</code>, the
-<code>continuation_authorization_server</code> it was given, using <a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>,
-and presents the assertion there as the <code>subject_token</code> of a continuation
-exchange, with client authentication and a DPoP proof of the assertion's <code>cnf</code>
-key, requesting an ID-JAG for WikiRAS. The IdP maps the registered client
-<code>tool-gateway</code> to its canonical actor identity (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>):<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
+<code>identity_continuation_authorization_server</code> it was given, using
+<a href="#assertion-response" class="auto internal xref">Section 5.4.4</a>, and presents the assertion there as the <code>subject_token</code>
+of a continuation exchange, with client authentication and a DPoP proof of the
+assertion's <code>cnf</code> key, requesting an ID-JAG for WikiRAS. The IdP maps the
+registered client <code>tool-gateway</code> to its canonical actor identity
+(<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>):<a href="#appendix-B.1.5-1" class="pilcrow">¶</a></p>
 <div class="alignLeft art-text artwork" id="appendix-B.1.5-2">
 <pre>
 POST /token HTTP/1.1
@@ -5514,9 +5515,9 @@ assertion, the continuation, and the redemption:<a href="#appendix-B.3.3-1" clas
 </div>
 <p id="appendix-B.3.3-3">BriefingAgent exchanges the Transaction Token at Platform CAI's token endpoint
 and presents the assertion to the IdP the response's
-<code>continuation_authorization_server</code> names, with its client credential and a
-DPoP proof. Platform CAI applies <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a> to durable task
-state rather than to a live user's request: it authenticates
+<code>identity_continuation_authorization_server</code> names, with its client credential
+and a DPoP proof. Platform CAI applies <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a> to durable
+task state rather than to a live user's request: it authenticates
 <code>briefing-agent</code>, verifies its key and transaction, and rechecks that
 PlatformRAS's H0 authorization remains active.<a href="#appendix-B.3.3-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.3.3-4">The assertion and onward ID-JAG have the shapes shown in <a href="#example-ica" class="auto internal xref">Appendix B.2.3</a> and
@@ -5712,8 +5713,8 @@ trusted for its RAS can attest it as accepted and active.<a href="#appendix-E-3.
           <p id="appendix-E-3.5.1">Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
 the access token or Transaction Token for the call as the subject token. The
 CAI verifies the client's DPoP proof and returns the required
-<code>continuation_authorization_server</code> response parameter naming the IdP,
-equal to the assertion's <code>aud</code>; the client verifies the metadata issuer
+<code>identity_continuation_authorization_server</code> response parameter naming the
+IdP, equal to the assertion's <code>aud</code>; the client verifies the metadata issuer
 before sending the assertion or credentials.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.6">
