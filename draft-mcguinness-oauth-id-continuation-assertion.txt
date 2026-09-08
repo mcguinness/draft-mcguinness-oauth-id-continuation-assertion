@@ -252,6 +252,8 @@ Table of Contents
    support it.  The IdP keeps the chain records and enforces the
    tenant's policy and replay protection, work it is placed for because
    it already resolves the pairwise subject and holds that policy.
+   Support for grant-anchored chains, which outlive the user's session,
+   is optional (Section 6.1).
 
    An ID-JAG deployment can therefore add multi-hop access where a
    request's path is not known in advance, as at a tool gateway for
@@ -703,7 +705,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    governing authorizations or evaluates policy.
 
    The root request's audience and scope describe the root ID-JAG.  They
-   do not by themselves authorize or limit later targets.
+   do not by themselves authorize or limit later targets.  RAS-local
+   permissions and CAI attestation do not independently authorize onward
+   access.
 
 5.2.  Continuation-Aware RAS Processing
 
@@ -716,21 +720,24 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    MUST:
 
    1.  accept the ID-JAG per
-       [I-D.ietf-oauth-identity-assertion-authz-grant]; and
+       [I-D.ietf-oauth-identity-assertion-authz-grant];
 
    2.  bind identity_continuation_handle, the ID-JAG's issuer and
        tenant, and any confirmed key to the authorization state it
        establishes, and record whether continuation is permitted under
-       the RAS's own policy.
+       the RAS's own policy; and
+
+   3.  when the ID-JAG carries cnf, as every onward ID-JAG does
+       (Section 5.5.5) and a root ID-JAG may, issue the access token
+       bound to the confirmed key with token_type DPoP ([RFC9449],
+       Section 5), never as a bearer token.
 
    Base profile processing validates the grant, authenticates the
    presenting client, verifies the sender constraint of an ID-JAG that
    carries cnf, which arrives under the DPoP-bound JWT grant
    (Section 5.5.5), applies local authorization policy, and issues an
-   access token.  The access token is sender-constrained to the
-   confirmed key when the ID-JAG carries cnf, as every onward ID-JAG
-   does (Section 5.5.2); otherwise, as for a root ID-JAG (Section 5.1),
-   the RAS's own policy decides.
+   access token.  When a root ID-JAG lacks cnf (Section 5.1), the RAS's
+   own policy decides whether that access token is sender-constrained.
 
    Three rules govern binding the handle:
 
@@ -971,6 +978,22 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    request establish fact 1; the DPoP proof, fact 2; client
    authentication, fact 3; and the bound handle and the RAS's acceptance
    evidence, facts 4 and 5.
+
+   Together the facts form the binding chain from ID-JAG to assertion.
+   In the synchronous flow, the redeemer proved the ID-JAG's cnf key at
+   the RAS, which bound the handle to its authorization state and the
+   access token to that key (Section 5.2); the caller proved that key on
+   its call to the workload, which verified it as an [RFC9449] resource
+   server; the workload authenticates to the CAI and proves its own key
+   (facts 2 and 3); and the CAI places that key in cnf.  The chain
+   changes key at the call boundary by design: the access token is the
+   caller's credential and the assertion is the callee's, so the CAI
+   does not compare the requester's proof with the access token's key
+   (Section 9.1).  Where the context was forwarded within the domain,
+   carried in a Transaction Token, or derived from durable task state
+   for a scheduled run (Section 5.3), fact 4 substitutes for the call-
+   boundary check.  A bearer access token at a root hop weakens only the
+   caller's link; facts 2 and 3 apply unchanged.
 
    A live recheck SHOULD be used where the tenant requires withdrawal of
    a hop's authorization to stop fresh assertions before the RAS's token
@@ -1602,7 +1625,8 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    SessionIndex are used only for resolution and MUST NOT enter
    assertions or chain context.
 
-   Grant-anchor support is optional.  Without it, base processing of a
+   Support for grant anchors is OPTIONAL; a session-anchored
+   implementation is complete.  Without it, base processing of a
    refresh-token subject is unchanged; any otherwise-authorized ID-JAG
    omits the continuation handle (Section 5.1.2).  Rotation of a refresh
    token does not affect the grant anchor.
@@ -3808,6 +3832,12 @@ Document History
       (authorization enforcement, topology and trust, trust in actor
       identity authorities) and described handle visibility to every
       audience of an access token that carries it.
+
+   *  Required a continuation-aware RAS to issue a DPoP-bound access
+      token when the ID-JAG carries cnf; stated the binding chain from
+      ID-JAG to assertion, that RAS-local permissions and CAI
+      attestation do not independently authorize onward access, and that
+      grant-anchor support is optional.
 
    *  Editorial: reorganized around the exchange sequence with a walk-
       through overview; revised terminology (workload and actor-lineage
