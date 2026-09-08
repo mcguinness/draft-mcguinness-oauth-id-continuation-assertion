@@ -5633,9 +5633,12 @@ for this document.<a href="#appendix-B.3.5-2" class="pilcrow">¶</a></p>
 <p id="appendix-C-2">[[ To be removed before publication as an RFC ]]<a href="#appendix-C-2" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="appendix-C-3">
 <li id="appendix-C-3.1">
-          <p id="appendix-C-3.1.1"><strong>Acceptance attestation.</strong> Could a recipient-bound or target-resolved
-design replace the CAI assertion while providing sufficient evidence of
-RAS acceptance and actor-to-context association (<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.1.1"><strong>Acceptance attestation.</strong> Could a recipient-bound design, in which the IdP
+binds a continuation credential to an intended actor, actor class, trust
+domain, or key, or a target-resolved design replace the CAI assertion while
+still supplying evidence of RAS acceptance and of the actor's association
+with that context, which today only a party in the RAS's domain can provide
+(<a href="#rationale-grant-type" class="auto internal xref">Appendix A.4</a>)?<a href="#appendix-C-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.2">
           <p id="appendix-C-3.2.1"><strong>Sender constraint.</strong> Should mutual-TLS confirmation be defined jointly
@@ -5643,8 +5646,10 @@ with ID-JAG? Should the assertion and ID-JAG permit different proven keys,
 and how should supported methods be advertised (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>)?<a href="#appendix-C-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.3">
-          <p id="appendix-C-3.3.1"><strong>Client establishment control.</strong> Should root clients be able to require
-or suppress chain establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>)?<a href="#appendix-C-3.3.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.3.1"><strong>Client establishment control.</strong> Should root clients be able to require or
+suppress chain establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>)? The author's current
+position is that establishment remains a tenant policy decision, so that
+existing clients need no change to participate in a chain.<a href="#appendix-C-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.4">
           <p id="appendix-C-3.4.1"><strong>Durable chains.</strong> Should grant-anchored chains remain optional in this
@@ -5661,9 +5666,10 @@ idempotent recovery, or should optional support be discoverable
 (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>)?<a href="#appendix-C-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li id="appendix-C-3.7">
-          <p id="appendix-C-3.7.1"><strong>Limits.</strong> Which assertion-lifetime and hop-count bounds should be
-required, and which values should be advertised in metadata
-(<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>)?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
+          <p id="appendix-C-3.7.1"><strong>Limits.</strong> The document currently sets a 3600-second ceiling on assertion
+lifetime and requires a finite hop-count limit without fixing a default
+(<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>, <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>). Should either change, and which
+values should be advertised in metadata?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
       </ol>
 <p id="appendix-C-4">The project issue tracker also records WG questions on authorization bounds
