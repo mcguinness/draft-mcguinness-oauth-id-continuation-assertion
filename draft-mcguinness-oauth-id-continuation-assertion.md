@@ -2205,9 +2205,7 @@ therefore needs a client identity resolvable at the target
 ({{token-exchange}}).
 
 The `may_act` claim ({{RFC8693}}, Section 4.4) can inform actor authorization;
-it supplies neither RAS acceptance evidence nor target subject resolution. An
-extension may define additional actor evidence that tenant policy can require,
-naming the same actor as the authenticated client.
+it supplies neither RAS acceptance evidence nor target subject resolution.
 
 ## Authorization Boundary {#rationale-boundary}
 
@@ -2221,12 +2219,6 @@ This profile carries identity and lineage and binds continuation to an
 accepted authorization. Whether a requested action serves the work the user
 or tenant authorized remains a deployment policy decision. The profile defines
 neither a purpose claim nor an agent authorization model.
-
-Single-use and the lifetime bound serve one property: the acceptance evidence
-behind an assertion is used for one continuation decision and cannot be older
-than the bound allows ({{validation-replay}}). Where this document offers a
-choice, such as the form of acceptance evidence, the alternatives satisfy the
-same property.
 
 # Examples {#examples}
 
