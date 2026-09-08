@@ -1909,10 +1909,12 @@ method: <code>jkt</code>, the JWK SHA-256 thumbprint <span>[<a href="#RFC7638" c
           <dd style="margin-left: 1.5em" id="section-3.2-4.12">
             <p id="section-3.2-4.12.1"><span class="bcp14">REQUIRED</span>. <code>exp</code> <span class="bcp14">MUST</span> follow <code>iat</code>. The assertion is short-lived: <code>exp - iat</code>
               <span class="bcp14">SHOULD NOT</span> exceed 300 seconds. The IdP rejects a lifetime longer than the
-maximum it accepts, and <span class="bcp14">MUST</span> reject an assertion whose lifetime exceeds 3600
-seconds whatever maximum it is configured to accept (<a href="#validation" class="auto internal xref">Section 5.5.3</a>). That
-configured maximum <span class="bcp14">SHOULD</span> be no less than 300 seconds, so that a CAI using
-the recommended bound interoperates, and <span class="bcp14">MUST NOT</span> exceed 3600 seconds.<a href="#section-3.2-4.12.1" class="pilcrow">¶</a></p>
+maximum it accepts (<a href="#validation" class="auto internal xref">Section 5.5.3</a>); that configured maximum <span class="bcp14">SHOULD</span> be no
+less than 300 seconds, so that a CAI using the recommended bound
+interoperates, and <span class="bcp14">MUST NOT</span> exceed 3600 seconds. The ceiling bounds how
+stale an attestation can be when presented and how long replay state must
+be retained (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>); its value is open for Working Group
+discussion (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-3.2-4.12.1" class="pilcrow">¶</a></p>
 </dd>
           <dd class="break"></dd>
 <dt id="section-3.2-4.13">
@@ -2998,7 +3000,11 @@ IdP:<a href="#section-5.5.5-7" class="pilcrow">¶</a></p>
 <a href="#section-5.5.6" class="section-number selfRef">5.5.6. </a><a href="#name-error-response-and-recovery" class="section-name selfRef">Error Response and Recovery</a>
           </h4>
 <p id="section-5.5.6-1">On failure, the IdP returns an error response (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 5.2;
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2):<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2). The IdP evaluates the rules of <a href="#validation" class="auto internal xref">Section 5.5.3</a> in
+order and <span class="bcp14">MUST</span> return the code for the first rule that fails, so a chain-state
+code is returned only for an assertion whose well-formedness, signature, and
+issuer trust have been verified; the contents of an unverified assertion never
+determine the response.<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.6-2.1">
               <p id="section-5.5.6-2.1.1">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 11</a>) when the handle is
@@ -3146,9 +3152,9 @@ again, and rate limits still apply.<a href="#section-5.5.7.1-3" class="pilcrow">
 <p id="section-5.5.7.1-4">A presentation matching a RESERVED reservation, whose first presentation has
 not completed, <span class="bcp14">MUST</span> be rejected with <code>invalid_request</code>; the client can retry
 it once that first presentation completes (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>). A reservation
-that does not reach ISSUED before <code>exp</code> becomes FAILED, which is final: a
-presentation matching a FAILED reservation <span class="bcp14">MUST</span> be rejected with
-<code>invalid_request</code>, and the client obtains a fresh assertion.<a href="#section-5.5.7.1-4" class="pilcrow">¶</a></p>
+that does not reach ISSUED before <code>exp</code> plus the permitted clock skew becomes
+FAILED, which is final: a presentation matching a FAILED reservation <span class="bcp14">MUST</span> be
+rejected with <code>invalid_request</code>, and the client obtains a fresh assertion.<a href="#section-5.5.7.1-4" class="pilcrow">¶</a></p>
 <p id="section-5.5.7.1-5">Application idempotency remains out of scope. Realization guidance is in
 <a href="#implementation" class="auto internal xref">Section 8</a>; whether idempotent retry should be mandatory is an open
 question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-5.5.7.1-5" class="pilcrow">¶</a></p>
@@ -3291,17 +3297,21 @@ management for that purpose.<a href="#section-6.2-8" class="pilcrow">¶</a></p>
         <h3 id="name-limits">
 <a href="#section-6.3" class="section-number selfRef">6.3. </a><a href="#name-limits" class="section-name selfRef">Limits</a>
         </h3>
-<p id="section-6.3-1">Fan-out is the number of child hops continued from one hop. Hop count is the
-total number of hops in a chain across all branches. Rate is the number of
-continuations of a chain within a window tenant policy defines.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
-<p id="section-6.3-2">Revocation of the governing authorization applies to every chain rooted in it.
-Fan-out, rate, or hop-count limits configured for a governing authorization
-likewise apply across every chain rooted in it, so sibling chains share one
-budget; a retried establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) <span class="bcp14">MUST NOT</span> evade them.
-The actor-lineage depth bound, set by tenant policy, is enforced per branch.<a href="#section-6.3-2" class="pilcrow">¶</a></p>
-<p id="section-6.3-3">The IdP <span class="bcp14">MUST</span> enforce a finite hop-count limit on every chain, either the
-tenant's configured value or the IdP's default. Fan-out and rate limits remain
-optional tenant controls.<a href="#section-6.3-3" class="pilcrow">¶</a></p>
+<p id="section-6.3-1">Fan-out is the number of child hops continued from one hop and is counted
+per hop. Hop count is the total number of hops in a chain across all
+branches. Rate is the number of newly issued continuations, not attempts,
+within a window tenant policy defines. Hop count and rate are counted per
+chain and, where the tenant configures one budget for a governing
+authorization, aggregated across every chain rooted in it, so sibling chains
+share that budget; a retried establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) <span class="bcp14">MUST NOT</span>
+evade it. Revocation of the governing authorization applies to every chain
+rooted in it. The actor-lineage depth bound, set by tenant policy, is
+enforced per branch.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
+<p id="section-6.3-2">The IdP <span class="bcp14">MUST</span> enforce a finite hop-count limit on every chain, either the
+tenant's configured value or the IdP's default, so that a workload
+continuing as itself cannot extend a chain without bound. Fan-out and rate
+limits remain optional tenant controls. Whether the profile should fix a
+default is open (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-6.3-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
@@ -5637,6 +5647,13 @@ assertion an acceptable recovery path (<a href="#implementation" class="auto int
 Should a profile-specific response member be defined instead, given that
 <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> registers <code>audience</code> for requests only?<a href="#appendix-C-3.7.1" class="pilcrow">¶</a></p>
 </li>
+        <li id="appendix-C-3.8">
+          <p id="appendix-C-3.8.1"><strong>Numeric bounds.</strong> This document sets a 3600-second ceiling on assertion
+lifetime (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>) and requires a finite hop-count limit without
+fixing a default (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>). Both are policy choices rather than
+consequences of validation: should the ceiling be lower, should a default hop
+count be specified, and should either be discoverable in IdP metadata?<a href="#appendix-C-3.8.1" class="pilcrow">¶</a></p>
+</li>
       </ol>
 <p id="appendix-C-4">Further questions are tracked in the project's issue list rather than expanded
 here: nested own-domain <code>act</code> segments and offline-actor audit
@@ -5774,14 +5791,18 @@ rejects rather than issues; assertion lifetime gained a hard ceiling of 3600
 seconds, proposed by the author for working group review, which also bounds
 the configured maximum, with the numbers stated once in the claims section; a
 finite hop-count limit is now required on every chain while fan-out and rate
-limits stay optional tenant controls, and all three are defined where they
-are configured; the IdP now checks compact serialization and the members
-<code>act</code> forbids, and the CAI checks the subject token against the type it
-declares; the continuation exchange's error mappings became required rather
-than recommended, with <code>invalid_continuation</code> returned only for a
-permanently unusable handle and not otherwise; and a presentation against a
-reserved or failed reservation is rejected as an invalid request, under one
-clock-skew value applied to <code>iat</code>, to <code>exp</code>, and to reservation retention.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
+limits stay optional tenant controls, and all three are defined where they are
+configured; the IdP now checks compact serialization and the members <code>act</code>
+forbids, and the CAI checks the subject token against the type it declares;
+the continuation exchange's error mappings became required rather than
+recommended, with <code>invalid_continuation</code> returned only for a permanently
+unusable handle and not otherwise; and a presentation against a reserved or
+failed reservation is rejected as an invalid request, under one clock-skew
+value applied to <code>iat</code>, to <code>exp</code>, and to reservation retention; error codes
+follow rule order, so chain-state codes need a verified assertion; limit
+counters are defined per hop, per chain, or per governing authorization; the
+3600-second ceiling and the finite hop-count requirement are recorded as an
+open item.<a href="#appendix-E-3.17.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>

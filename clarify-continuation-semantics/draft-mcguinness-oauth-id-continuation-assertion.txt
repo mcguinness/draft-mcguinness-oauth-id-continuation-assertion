@@ -514,11 +514,13 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 
    iat, exp:  REQUIRED. exp MUST follow iat.  The assertion is short-
       lived: exp - iat SHOULD NOT exceed 300 seconds.  The IdP rejects a
-      lifetime longer than the maximum it accepts, and MUST reject an
-      assertion whose lifetime exceeds 3600 seconds whatever maximum it
-      is configured to accept (Section 5.5.3).  That configured maximum
-      SHOULD be no less than 300 seconds, so that a CAI using the
-      recommended bound interoperates, and MUST NOT exceed 3600 seconds.
+      lifetime longer than the maximum it accepts (Section 5.5.3); that
+      configured maximum SHOULD be no less than 300 seconds, so that a
+      CAI using the recommended bound interoperates, and MUST NOT exceed
+      3600 seconds.  The ceiling bounds how stale an attestation can be
+      when presented and how long replay state must be retained
+      (Section 5.5.7); its value is open for Working Group discussion
+      (Appendix C).
 
    nbf:  OPTIONAL.  If present, processed as [RFC7519] specifies.
 
@@ -1468,7 +1470,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 5.5.6.  Error Response and Recovery
 
    On failure, the IdP returns an error response ([RFC6749],
-   Section 5.2; [RFC8693], Section 2.2.2):
+   Section 5.2; [RFC8693], Section 2.2.2).  The IdP evaluates the rules
+   of Section 5.5.3 in order and MUST return the code for the first rule
+   that fails, so a chain-state code is returned only for an assertion
+   whose well-formedness, signature, and issuer trust have been
+   verified; the contents of an unverified assertion never determine the
+   response.
 
    *  The IdP MUST return invalid_continuation (Section 11) when the
       handle is permanently unusable: unknown, on an expired or ended
@@ -1611,9 +1618,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    presentation has not completed, MUST be rejected with
    invalid_request; the client can retry it once that first presentation
    completes (Section 5.5.6).  A reservation that does not reach ISSUED
-   before exp becomes FAILED, which is final: a presentation matching a
-   FAILED reservation MUST be rejected with invalid_request, and the
-   client obtains a fresh assertion.
+   before exp plus the permitted clock skew becomes FAILED, which is
+   final: a presentation matching a FAILED reservation MUST be rejected
+   with invalid_request, and the client obtains a fresh assertion.
 
    Application idempotency remains out of scope.  Realization guidance
    is in Section 8; whether idempotent retry should be mandatory is an
@@ -1729,21 +1736,23 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 6.3.  Limits
 
-   Fan-out is the number of child hops continued from one hop.  Hop
-   count is the total number of hops in a chain across all branches.
-   Rate is the number of continuations of a chain within a window tenant
-   policy defines.
-
-   Revocation of the governing authorization applies to every chain
-   rooted in it.  Fan-out, rate, or hop-count limits configured for a
-   governing authorization likewise apply across every chain rooted in
-   it, so sibling chains share one budget; a retried establishment
-   (Section 5.1) MUST NOT evade them.  The actor-lineage depth bound,
-   set by tenant policy, is enforced per branch.
+   Fan-out is the number of child hops continued from one hop and is
+   counted per hop.  Hop count is the total number of hops in a chain
+   across all branches.  Rate is the number of newly issued
+   continuations, not attempts, within a window tenant policy defines.
+   Hop count and rate are counted per chain and, where the tenant
+   configures one budget for a governing authorization, aggregated
+   across every chain rooted in it, so sibling chains share that budget;
+   a retried establishment (Section 5.1) MUST NOT evade it.  Revocation
+   of the governing authorization applies to every chain rooted in it.
+   The actor-lineage depth bound, set by tenant policy, is enforced per
+   branch.
 
    The IdP MUST enforce a finite hop-count limit on every chain, either
-   the tenant's configured value or the IdP's default.  Fan-out and rate
-   limits remain optional tenant controls.
+   the tenant's configured value or the IdP's default, so that a
+   workload continuing as itself cannot extend a chain without bound.
+   Fan-out and rate limits remain optional tenant controls.  Whether the
+   profile should fix a default is open (Appendix C).
 
 7.  Authorization Server Metadata and Trust Configuration
 
@@ -3751,6 +3760,13 @@ Appendix C.  Open Items for Working Group Discussion
        Should a profile-specific response member be defined instead,
        given that [RFC8693] registers audience for requests only?
 
+   8.  *Numeric bounds.* This document sets a 3600-second ceiling on
+       assertion lifetime (Section 3.2) and requires a finite hop-count
+       limit without fixing a default (Section 6.3).  Both are policy
+       choices rather than consequences of validation: should the
+       ceiling be lower, should a default hop count be specified, and
+       should either be discoverable in IdP metadata?
+
    Further questions are tracked in the project's issue list rather than
    expanded here: nested own-domain act segments and offline-actor audit
    ([I-D.mcguinness-oauth-actor-receipts],
@@ -3885,7 +3901,11 @@ Document History
       permanently unusable handle and not otherwise; and a presentation
       against a reserved or failed reservation is rejected as an invalid
       request, under one clock-skew value applied to iat, to exp, and to
-      reservation retention.
+      reservation retention; error codes follow rule order, so chain-
+      state codes need a verified assertion; limit counters are defined
+      per hop, per chain, or per governing authorization; the
+      3600-second ceiling and the finite hop-count requirement are
+      recorded as an open item.
 
    -01
 
