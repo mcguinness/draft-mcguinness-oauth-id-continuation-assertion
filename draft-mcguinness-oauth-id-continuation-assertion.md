@@ -878,7 +878,7 @@ A successful response is a Token Exchange response ({{RFC8693}}, Section
 `N_A` (not applicable), and `expires_in` reflects the assertion's lifetime.
 This document adds one parameter:
 
-`continuation_authorization_server`:
+`identity_continuation_authorization_server`:
 : REQUIRED. A JSON string containing the issuer identifier ({{RFC8414}}) of
   the authorization server at which the client exchanges the assertion for an
   ID-JAG. The CAI MUST set its value to the assertion's `aud` claim. The client
@@ -886,11 +886,11 @@ This document adds one parameter:
 
 The client obtains that IdP's `token_endpoint` from its authorization server
 metadata ({{RFC8414}}), retrieved with the `oauth-authorization-server`
-well-known URI suffix under the issuer identifier. Before sending the
-assertion or its own credentials there, the client MUST confirm that the
-returned `issuer` exactly matches `continuation_authorization_server`. Where
-the IdP publishes no metadata, the client uses configuration bound to that
-issuer identifier ({{metadata}}).
+well-known URI suffix under the issuer identifier. Before sending the assertion
+or its own credentials there, the client MUST confirm that the returned `issuer`
+exactly matches `identity_continuation_authorization_server`. Where the IdP
+publishes no metadata, the client uses configuration bound to that issuer
+identifier ({{metadata}}).
 
 The client SHOULD present the assertion only to an IdP it is configured to
 trust; this parameter identifies the destination but does not establish trust.
@@ -909,7 +909,7 @@ Pragma: no-cache
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<Identity Continuation Assertion, compact JWS>",
   "token_type": "N_A",
-  "continuation_authorization_server": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 ~~~
@@ -1933,7 +1933,7 @@ IANA is requested to register the following parameter in the "OAuth
 Parameters" registry established by {{RFC6749}}.
 
 Parameter name:
-: continuation_authorization_server
+: identity_continuation_authorization_server
 
 Parameter usage location:
 : token response
@@ -2529,12 +2529,12 @@ On the wire (issuance response):
   "issued_token_type": "urn:ietf:params:oauth:token-type:identity-continuation",
   "access_token": "<the assertion below, compact JWS>",
   "token_type": "N_A",
-  "continuation_authorization_server": "https://idp.example/",
+  "identity_continuation_authorization_server": "https://idp.example/",
   "expires_in": 120
 }
 ~~~
 
-The `continuation_authorization_server` identifies the IdP from which
+The `identity_continuation_authorization_server` identifies the IdP from which
 ToolGateway obtains the next ID-JAG.
 
 On the wire (decoded assertion):
@@ -2563,11 +2563,12 @@ On the wire (decoded assertion):
 ### ToolGateway Continues to WikiRAS {#example-gateway-continue}
 
 ToolGateway resolves the token endpoint of `https://idp.example/`, the
-`continuation_authorization_server` it was given, using {{assertion-response}},
-and presents the assertion there as the `subject_token` of a continuation
-exchange, with client authentication and a DPoP proof of the assertion's `cnf`
-key, requesting an ID-JAG for WikiRAS. The IdP maps the registered client
-`tool-gateway` to its canonical actor identity ({{client-identity}}):
+`identity_continuation_authorization_server` it was given, using
+{{assertion-response}}, and presents the assertion there as the `subject_token`
+of a continuation exchange, with client authentication and a DPoP proof of the
+assertion's `cnf` key, requesting an ID-JAG for WikiRAS. The IdP maps the
+registered client `tool-gateway` to its canonical actor identity
+({{client-identity}}):
 
 ~~~
 POST /token HTTP/1.1
@@ -3181,9 +3182,9 @@ assertion, the continuation, and the redemption:
 
 BriefingAgent exchanges the Transaction Token at Platform CAI's token endpoint
 and presents the assertion to the IdP the response's
-`continuation_authorization_server` names, with its client credential and a
-DPoP proof. Platform CAI applies {{assertion-preconditions}} to durable task
-state rather than to a live user's request: it authenticates
+`identity_continuation_authorization_server` names, with its client credential
+and a DPoP proof. Platform CAI applies {{assertion-preconditions}} to durable
+task state rather than to a live user's request: it authenticates
 `briefing-agent`, verifies its key and transaction, and rechecks that
 PlatformRAS's H0 authorization remains active.
 
@@ -3334,8 +3335,8 @@ specifications, on whose work this profile builds.
 * Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
   the access token or Transaction Token for the call as the subject token. The
   CAI verifies the client's DPoP proof and returns the required
-  `continuation_authorization_server` response parameter naming the IdP,
-  equal to the assertion's `aud`; the client verifies the metadata issuer
+  `identity_continuation_authorization_server` response parameter naming the
+  IdP, equal to the assertion's `aud`; the client verifies the metadata issuer
   before sending the assertion or credentials.
 * Specified acceptance evidence as authoritative by the RAS's own authorization
   semantics, recommended a live recheck, and recommended capping assertion
