@@ -1551,15 +1551,13 @@ obtained while it remains valid and covers the requested access
 (<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-10" class="pilcrow">¶</a></p>
 <p id="section-1-11">This document extends ID-JAG, which it calls the base profile, on an opt-in
 basis. The opt-in is the deployment's, not a capability a client requests: the
-IdP, and the continuing workload with its RAS and CAI, are the parties that
-need support this extension, and the root client sends the base exchange
-unchanged. The RAS advertises support (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>), binds handles, and
-sender-constrains access tokens for key-bound ID-JAGs (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>).
-Chain establishment requires a resolvable session or grant anchor
-(<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>); without one, the IdP issues an ordinary ID-JAG without
-a handle. Every onward target, including a terminal RAS, needs the base
-profile's DPoP-bound JWT grant support (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Grant-anchor
-support is optional.<a href="#section-1-11" class="pilcrow">¶</a></p>
+IdP and the continuing workload with its RAS and CAI need support this extension
+(<a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#metadata-ras" class="auto internal xref">Section 7.2</a>), and the root client sends the base
+exchange unchanged. Chain establishment requires a resolvable session or grant
+anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>); without one, the IdP issues an ordinary ID-JAG
+without a handle. Every onward target, including a terminal RAS, redeems a
+key-bound ID-JAG under the base profile's DPoP-bound JWT grant
+(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Grant-anchor support is optional.<a href="#section-1-11" class="pilcrow">¶</a></p>
 <p id="section-1-12">The IdP keeps chain records and enforces authorization and replay protection;
 it already resolves pairwise subjects and holds the tenant's policy.<a href="#section-1-12" class="pilcrow">¶</a></p>
 <p id="section-1-13">An ID-JAG deployment can therefore add multi-hop access where a request's path
@@ -2704,8 +2702,11 @@ the actor obtains a new assertion bound to the new key.<a href="#section-5.5.2-1
           </h4>
 <p id="section-5.5.3-1">For a continuation exchange, the IdP <span class="bcp14">MUST</span> reject the request unless every rule
 below holds. Every rule is required; the order of evaluation matters only for
-which error code a failing request receives, and <a href="#error-response" class="auto internal xref">Section 5.5.6</a> fixes
-that order around the dependencies between rules.<a href="#section-5.5.3-1" class="pilcrow">¶</a></p>
+which error code a failing request receives, and <a href="#error-response" class="auto internal xref">Section 5.5.6</a> fixes that
+order around the dependencies between rules. A presentation whose (<code>iss</code>, <code>jti</code>)
+matches an ISSUED reservation is processed as recovery under
+<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>, a separate path with its own checks; the rules below and
+that error order apply to a first presentation.<a href="#section-5.5.3-1" class="pilcrow">¶</a></p>
 <ol start="1" type="1" class="normal type-1" id="section-5.5.3-2">
 <li id="section-5.5.3-2.1">
               <p id="section-5.5.3-2.1.1"><strong>Request parameters.</strong><a href="#section-5.5.3-2.1.1" class="pilcrow">¶</a></p>
@@ -2806,8 +2807,7 @@ actor-lineage depth bound, which counts lineage entries, not hops; and<a href="#
 </li>
                 <li class="normal" id="section-5.5.3-2.4.2.4">
                   <p id="section-5.5.3-2.4.2.4.1">the continuation is within the fan-out, rate, and hop-count limits of
-the governing authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>), a condition not
-evaluated on recovery (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
+the governing authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2835,20 +2835,20 @@ subject and the actor's client identifier (<a href="#onward-id-jag" class="auto 
 <ul class="normal">
 <li class="normal" id="section-5.5.3-2.6.2.1">
                   <p id="section-5.5.3-2.6.2.1.1"><code>iat</code> is within the IdP's permitted clock skew, <code>exp</code> follows <code>iat</code>, the
-assertion is unexpired within that same skew (not evaluated on recovery,
-<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>), and any <code>nbf</code> has passed within it (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>,
-Section 4.1.5). One skew value applies to <code>iat</code> as future skew, to <code>exp</code>
-as past skew, and to reservation retention (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>); it
-<span class="bcp14">SHOULD NOT</span> exceed 60 seconds;<a href="#section-5.5.3-2.6.2.1.1" class="pilcrow">¶</a></p>
+assertion is unexpired within that same skew, and any <code>nbf</code> has passed
+within it (<span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span>, Section 4.1.5). One skew value applies to <code>iat</code> as
+future skew, to <code>exp</code> as past skew, and to reservation retention
+(<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>); it <span class="bcp14">SHOULD NOT</span> exceed 60 seconds;<a href="#section-5.5.3-2.6.2.1.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.3-2.6.2.2">
                   <p id="section-5.5.3-2.6.2.2.1">the assertion's lifetime does not exceed the maximum the IdP accepts
 (<a href="#assertion-claims" class="auto internal xref">Section 3.2</a>); and<a href="#section-5.5.3-2.6.2.2.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.3-2.6.2.3">
-                  <p id="section-5.5.3-2.6.2.3.1"><code>jti</code> is not yet reserved for the assertion issuer or, where the IdP
-offers idempotent retry (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>), is ISSUED under a
-fingerprint matching this request; any other reserved <code>jti</code> is rejected;<a href="#section-5.5.3-2.6.2.3.1" class="pilcrow">¶</a></p>
+                  <p id="section-5.5.3-2.6.2.3.1"><code>jti</code> is not yet reserved for the assertion issuer (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>);
+a presentation matching an ISSUED reservation is recovery
+(<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>), not a continuation exchange, and any other reserved
+<code>jti</code> is rejected;<a href="#section-5.5.3-2.6.2.3.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2861,8 +2861,7 @@ evaluation includes the audience, resources, scopes, and authorization
 details, including any default scope or other defaults the IdP applies
 under its policy. An omitted <code>scope</code> uses a policy default or results in
 <code>invalid_scope</code> (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 3.3). An omitted <code>resource</code> does not
-by itself require a default. This rule is not evaluated on recovery of an
-already-issued grant (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>). The IdP <span class="bcp14">MUST</span> reject the
+by itself require a default. The IdP <span class="bcp14">MUST</span> reject the
 request if it cannot establish that authorization.<a href="#section-5.5.3-2.7.1" class="pilcrow">¶</a></p>
 <p id="section-5.5.3-2.7.2">
 The issued ID-JAG carries the <code>scope</code>, <code>resource</code>, and
@@ -2934,10 +2933,8 @@ DPoP-bound JWT grant, <code>urn:ietf:params:oauth:grant-type:jwt-dpop</code>
 the base profile specifies for a key-bound ID-JAG
 (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>, Section 9.8.1.2.1). The
 target RAS needs nothing from this document to do so: a terminal RAS advertises
-nothing from this profile, and its need to redeem a key-bound ID-JAG under that
-grant follows from the base profile's processing of a key-bound grant, not from
-this profile's metadata, which only a continuation-aware RAS advertises
-(<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>).<a href="#section-5.5.5-2" class="pilcrow">¶</a></p>
+nothing from this document (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>) and redeems a key-bound ID-JAG
+under that grant as the base profile requires.<a href="#section-5.5.5-2" class="pilcrow">¶</a></p>
 <p id="section-5.5.5-3">Where the recorded root authentication context contains <code>auth_time</code>, <code>acr</code>, or
 <code>amr</code>, the IdP <span class="bcp14">MUST</span> include them in the onward ID-JAG unchanged. Continuation
 <span class="bcp14">MUST NOT</span> extend or strengthen the authentication context, for example by
@@ -3016,18 +3013,18 @@ IdP:<a href="#section-5.5.5-7" class="pilcrow">¶</a></p>
 <a href="#section-5.5.6" class="section-number selfRef">5.5.6. </a><a href="#name-error-response-and-recovery" class="section-name selfRef">Error Response and Recovery</a>
           </h4>
 <p id="section-5.5.6-1">On failure, the IdP returns an error response (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 5.2;
-<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2). When more than one rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a> fails,
-the IdP <span class="bcp14">MUST</span> return the code for the earliest failure in this order: the
-request-parameter rule; the well-formedness rule, which verifies the signature
-with a configured issuer's key; the existence of the hop the handle names,
-which the issuer-trust rule needs for the hop's RAS and tenant and whose
-absence is <code>invalid_request</code>; the issuer-trust rule; the chain-state rule,
+<span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.2). On a first presentation, when more than one rule of
+<a href="#validation" class="auto internal xref">Section 5.5.3</a> fails, the IdP <span class="bcp14">MUST</span> return the code for the earliest failure in
+this order: the request-parameter rule; the well-formedness rule, which verifies
+the signature with a configured issuer's key; the existence of the hop the
+handle names, which the issuer-trust rule needs for the hop's RAS and tenant and
+whose absence is <code>invalid_request</code>; the issuer-trust rule; the chain-state rule,
 within which a permanently unusable hop (ended chain, revoked hop or ancestor,
 withdrawn permission) precedes a limit; the current-actor rule; the freshness
-rule; and the authorization rule. A chain-state code is therefore returned
-only for an assertion whose signature a configured issuer produced and whose
-issuer the IdP trusts for that hop's RAS, and the contents of an unverified
-assertion never determine the response.<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
+rule; and the authorization rule. A chain-state code is therefore returned only
+for an assertion whose signature a configured issuer produced and whose issuer
+the IdP trusts for that hop's RAS, and the contents of an unverified assertion
+never determine the response.<a href="#section-5.5.6-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.6-2.1">
               <p id="section-5.5.6-2.1.1">The IdP <span class="bcp14">MUST</span> return <code>invalid_continuation</code> (<a href="#iana" class="auto internal xref">Section 11</a>) when the handle names
@@ -3086,11 +3083,11 @@ grant-anchored chain re-roots from its still-valid grant without the user, and
 a handle disabled by withdrawn permission to continue cannot re-root at all. An
 unknown handle is reported as <code>invalid_request</code>, so an assertion whose issuer
 the IdP does not trust for any hop learns nothing about which handles exist.<a href="#section-5.5.6-4" class="pilcrow">¶</a></p>
-<p id="section-5.5.6-5">The other errors leave the chain still continuable, so the client abandons
-only the current request. An actor-lineage depth rejection concerns the
-particular continuation whose resulting lineage would exceed the bound, not
-the hop itself; a continuation that merges into an existing lineage entry, or
-a later policy raising the bound, may still succeed.<a href="#section-5.5.6-5" class="pilcrow">¶</a></p>
+<p id="section-5.5.6-5">The other errors do not establish that the chain is permanently unusable, so the
+client abandons only the current request. An actor-lineage depth rejection
+concerns the particular continuation whose resulting lineage would exceed the
+bound, not the hop itself; a continuation that merges into an existing lineage
+entry, or a later policy raising the bound, may still succeed.<a href="#section-5.5.6-5" class="pilcrow">¶</a></p>
 <p id="section-5.5.6-6">After a lost response, the client <span class="bcp14">MAY</span> retry the same assertion where the IdP
 offers idempotent retry (<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>), or obtain a fresh assertion.
 Expired acceptance evidence can prevent fresh assertion issuance; shared
@@ -3137,12 +3134,9 @@ does not itself establish that the hop was accepted.<a href="#section-5.5.7-4" c
 <p id="section-5.5.7.1-1">An IdP <span class="bcp14">MAY</span> offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>). The IdP
-<span class="bcp14">MUST</span> reject a presentation that matches no fingerprint. For a presentation
+<span class="bcp14">MUST</span> reject a presentation that matches no fingerprint. A presentation
 matching the fingerprint of an ISSUED reservation within the IdP's retry
-window, the IdP <span class="bcp14">MUST</span> return the previously issued grant unchanged when the
-recovery checks below succeed, and <span class="bcp14">MUST</span> reject the request under
-<a href="#error-response" class="auto internal xref">Section 5.5.6</a> otherwise.
-The fingerprint <span class="bcp14">MUST</span> cover:<a href="#section-5.5.7.1-1" class="pilcrow">¶</a></p>
+window is processed as recovery, defined below. The fingerprint <span class="bcp14">MUST</span> cover:<a href="#section-5.5.7.1-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.5.7.1-2.1">
                 <p id="section-5.5.7.1-2.1.1"><code>audience</code> as an exact string;<a href="#section-5.5.7.1-2.1.1" class="pilcrow">¶</a></p>
@@ -3171,18 +3165,22 @@ the fingerprint to the specific assertion and its handle.<a href="#section-5.5.7
 <p id="section-5.5.7.1-3">An IdP that offers idempotent retry <span class="bcp14">MUST</span> retain the ISSUED reservation, its
 fingerprint, and its result for a retry window it defines, alongside the
 reservation retention of <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>; recovery is available only
-within that window. The window is a deployment choice and <span class="bcp14">MAY</span> be advertised or
-documented.<a href="#section-5.5.7.1-3" class="pilcrow">¶</a></p>
-<p id="section-5.5.7.1-4">Recovery is conventional idempotency, not a second run of validation. The IdP
-verifies the requester's client authentication and canonical actor identity,
-the DPoP proof of the <code>cnf</code> key (the current-actor rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>), the
-fingerprint match, and that neither the hop nor its chain has been revoked or
-ended since issuance (the chain-state rule). It re-runs no other rule,
-evaluates no policy, and charges no limit: recovery allocates no new hop and
-consumes no fan-out, hop-count, or rate budget, since it issues nothing new,
-and any throttling of repeated requests is a deployment control outside this
-document. Withdrawal of policy or of issuer trust after issuance does not
-refuse recovery of an already-issued grant.<a href="#section-5.5.7.1-4" class="pilcrow">¶</a></p>
+within that window and only while the issued grant is unexpired. The window is a
+deployment choice and <span class="bcp14">MAY</span> be advertised or documented.<a href="#section-5.5.7.1-3" class="pilcrow">¶</a></p>
+<p id="section-5.5.7.1-4">Recovery is a separate processing path from the rules of <a href="#validation" class="auto internal xref">Section 5.5.3</a>. The IdP
+<span class="bcp14">MUST</span> verify the requester's client authentication and canonical actor identity,
+the DPoP proof of the <code>cnf</code> key, the fingerprint match, and that the presented
+hop and every ancestor remain unrevoked and the chain has not ended, including
+through anchor expiry or the tenant's withdrawal of the chain's permission to
+continue (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>); if these hold and the issued grant is
+unexpired, it <span class="bcp14">MUST</span> return that grant unchanged, and otherwise it <span class="bcp14">MUST</span> reject the
+request under <a href="#error-response" class="auto internal xref">Section 5.5.6</a>. The IdP never extends or reissues the grant;
+after the grant's <code>exp</code>, the client obtains a fresh assertion. Recovery
+evaluates no other rule and no policy: a change to the actor's or target's
+authorization, or to issuer trust, after issuance does not refuse recovery of an
+already-issued grant. Recovery allocates no new hop and consumes no fan-out,
+hop-count, or rate budget; throttling of repeated requests is a deployment
+control outside this document.<a href="#section-5.5.7.1-4" class="pilcrow">¶</a></p>
 <p id="section-5.5.7.1-5">A presentation matching a RESERVED reservation, whose first presentation has
 not completed, <span class="bcp14">MUST</span> be rejected with <code>invalid_request</code>; the client can retry
 it once that first presentation completes (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>). A reservation
@@ -5759,17 +5757,14 @@ records, made the DPoP grant reference normative, and consolidated binding
 and carriage guidance.<a href="#appendix-E-3.18.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.19">
-          <p id="appendix-E-3.19.1">Removed the 3600-second ceiling on assertion lifetime, leaving the maximum an
-IdP accepts to deployment with a recommendation to accept 300 seconds, and
-recommended at least 128 bits of entropy in <code>jti</code>. Gave idempotent retry an
-IdP-defined retry window and conventional recovery semantics: a matching
-presentation returns the already-issued grant after client authentication,
-the key proof, the fingerprint, and chain state alone, with no policy
-re-evaluation. An unknown handle is now <code>invalid_request</code> rather than
-<code>invalid_continuation</code>, the RAS-side record is eligibility for continuation,
-and the opt-in is the deployment's rather than a client request. Trimmed the
-open items: no document factoring, and idempotent recovery narrowed to
-whether and how optional support is advertised.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.19.1">Removed the 3600-second ceiling on assertion lifetime (IdPs are recommended to
+accept 300 seconds) and recommended 128 bits of entropy in <code>jti</code>. Made
+idempotent recovery a separate processing path: within an IdP-defined retry
+window and before the grant expires, a matching presentation returns the
+already-issued grant after client authentication, key proof, fingerprint, and
+chain-state checks alone. An unknown handle is <code>invalid_request</code>; the RAS
+records eligibility for continuation; the opt-in is the deployment's; open
+items trimmed.<a href="#appendix-E-3.19.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
