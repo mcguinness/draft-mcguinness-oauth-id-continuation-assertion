@@ -3277,16 +3277,21 @@ This non-normative appendix identifies questions for Working Group review.
 
 \[\[ To be removed before publication as an RFC ]]
 
-1. **Acceptance attestation.** Could a recipient-bound or target-resolved
-   design replace the CAI assertion while providing sufficient evidence of
-   RAS acceptance and actor-to-context association ({{rationale-grant-type}})?
+1. **Acceptance attestation.** Could a recipient-bound design, in which the IdP
+   binds a continuation credential to an intended actor, actor class, trust
+   domain, or key, or a target-resolved design replace the CAI assertion while
+   still supplying evidence of RAS acceptance and of the actor's association
+   with that context, which today only a party in the RAS's domain can provide
+   ({{rationale-grant-type}})?
 
 2. **Sender constraint.** Should mutual-TLS confirmation be defined jointly
    with ID-JAG? Should the assertion and ID-JAG permit different proven keys,
    and how should supported methods be advertised ({{client-identity}})?
 
-3. **Client establishment control.** Should root clients be able to require
-   or suppress chain establishment ({{root-establishment}})?
+3. **Client establishment control.** Should root clients be able to require or
+   suppress chain establishment ({{root-establishment}})? The author's current
+   position is that establishment remains a tenant policy decision, so that
+   existing clients need no change to participate in a chain.
 
 4. **Durable chains.** Should grant-anchored chains remain optional in this
    document or move to a separate profile ({{lifecycle}})?
@@ -3299,9 +3304,10 @@ This non-normative appendix identifies questions for Working Group review.
    idempotent recovery, or should optional support be discoverable
    ({{idempotent-retry}})?
 
-7. **Limits.** Which assertion-lifetime and hop-count bounds should be
-   required, and which values should be advertised in metadata
-   ({{assertion-claims}}, {{lifecycle-limits}})?
+7. **Limits.** The document currently sets a 3600-second ceiling on assertion
+   lifetime and requires a finite hop-count limit without fixing a default
+   ({{assertion-claims}}, {{lifecycle-limits}}). Should either change, and which
+   values should be advertised in metadata?
 
 The project issue tracker also records WG questions on authorization bounds
 (#106), acceptance freshness (#107), actor identity evidence (#108), CAI
