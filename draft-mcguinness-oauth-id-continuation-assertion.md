@@ -406,8 +406,10 @@ The claims have the following meanings and requirements:
   * Additional members MAY carry further information about the actor but
     MUST NOT affect processing defined by this document unless another
     specification profiles their use.
-  * A recipient MUST ignore members it does not understand, and `exp`,
-    `nbf`, `aud`, `scope`, `cnf`, and nested `act` MUST NOT be present.
+  * A recipient MUST ignore members it does not understand.
+  * `exp`, `nbf`, `aud`, `scope`, `cnf`, and a nested `act` MUST NOT be
+    present; the IdP rejects an assertion whose `act` carries one (the
+    well-formedness rule of {{validation}}).
   * The IdP compares both `iss` and `sub` with the canonical actor identity
     of the authenticated client ({{client-identity}}).
 
@@ -419,8 +421,11 @@ The claims have the following meanings and requirements:
 
 `iat`, `exp`:
 : REQUIRED. `exp` MUST follow `iat`. The assertion is short-lived: `exp - iat`
-  SHOULD NOT exceed 300 seconds, and the IdP rejects a lifetime longer than the
-  maximum it accepts ({{validation}}).
+  SHOULD NOT exceed 300 seconds. The IdP rejects a lifetime longer than the
+  maximum it accepts, and MUST reject an assertion whose lifetime exceeds 3600
+  seconds whatever maximum it is configured to accept ({{validation}}). That
+  configured maximum SHOULD be no less than 300 seconds, so that a CAI using
+  the recommended bound interoperates, and MUST NOT exceed 3600 seconds.
 
 `nbf`:
 : OPTIONAL. If present, processed as {{RFC7519}} specifies.
@@ -780,13 +785,20 @@ authentication is deployment-specific.
 
 ### Request Validation {#assertion-preconditions}
 
-The CAI MUST verify that the `subject_token` is one of the following:
+The CAI MUST verify that the `subject_token` is of the type its
+`subject_token_type` declares ({{assertion-token-exchange}}) and is one of the
+following:
 
-* an access token issued by a RAS whose hops the CAI attests, unexpired, and
-  valid for a protected resource that the authenticated client operates; or
+* an access token the accepting RAS issued, that RAS being one whose hops the
+  CAI attests, unexpired, and valid for a protected resource that the
+  authenticated client operates; or
 * a Transaction Token valid for the CAI's trust domain under
-  {{I-D.ietf-oauth-transaction-tokens}}, Section 12.2, and carrying the hop's
-  handle as chain context ({{handle-propagation}}, {{separate-cai}}).
+  {{I-D.ietf-oauth-transaction-tokens}}, Section 12.2, carrying the `typ`
+  header and issuer that specification defines, and carrying the hop's handle
+  as chain context ({{handle-propagation}}, {{separate-cai}}).
+
+A token of another type presented as `subject_token`, such as an ID-JAG or an
+Identity Continuation Assertion, is unacceptable ({{assertion-error-response}}).
 
 With an access token, the client is a resource server exchanging a token it
 received, the scenario of the example in {{RFC8693}}, Section 2.3. A RAS acting
@@ -903,10 +915,11 @@ Section 5.2, and {{RFC8693}}, Section 2.2.2. This document specifies the
 following error mappings:
 
 * `invalid_request` when the `subject_token` is invalid or unacceptable under
-  policy, including when it is unknown, expired, revoked, not valid for a
-  resource the client operates, has no bound handle, or names an authorization
-  whose binding does not record continuation as permitted, or when the request
-  includes a parameter this document prohibits ({{assertion-token-exchange}});
+  policy, including when it is unknown, expired, revoked, not of the type its
+  `subject_token_type` declares, not valid for a resource the client operates,
+  has no bound handle, or names an authorization whose binding does not record
+  continuation as permitted, or when the request includes a parameter this
+  document prohibits ({{assertion-token-exchange}});
 * `unauthorized_client` when the client is not permitted to use this grant
   type; and
 * `invalid_dpop_proof` ({{RFC9449}}) for a failed proof.
@@ -1057,12 +1070,16 @@ from another's resolution.
 2. **Assertion well-formedness.**
    * the assertion is a JWT whose JOSE `typ` header is
      `oauth-identity-continuation+jwt`;
+   * it is a JWS in Compact Serialization, and is neither a JWE nor a nested
+     JWT ({{names}});
    * it carries exactly one value for each claim required by
      {{assertion-claims}} and none of the claims that section forbids;
    * `iss`, `aud`, `identity_continuation_handle`, and `jti` are non-empty
      strings, `act` and `cnf` are JSON objects with `cnf` naming exactly one
      confirmation method, and `iat`, `exp`, and any `nbf` are NumericDate
      numbers;
+   * `act` carries none of the members {{assertion-claims}} forbids (`exp`,
+     `nbf`, `aud`, `scope`, `cnf`, and a nested `act`);
    * `aud` exactly matches the IdP's issuer identifier;
    * the signature validates with the issuer's resolved signing keys
      ({{metadata}});
@@ -1102,16 +1119,16 @@ from another's resolution.
      subject and the actor's client identifier ({{onward-id-jag}});
 
 6. **Freshness and replay.**
-   * `iat` is within permitted future clock skew (which SHOULD NOT exceed 60
-     seconds), `exp` follows `iat`, the assertion is unexpired, and any `nbf`
-     has passed within the same skew ({{RFC7519}}, Section 4.1.5);
-   * the assertion's lifetime does not exceed the maximum the IdP accepts,
-     which SHOULD be no less than 300 seconds so that a CAI using the
-     recommended bound interoperates ({{assertion-claims}}); and
+   * `iat` is within the IdP's permitted clock skew, `exp` follows `iat`, the
+     assertion is unexpired within that same skew, and any `nbf` has passed
+     within it ({{RFC7519}}, Section 4.1.5). One skew value applies to `iat`
+     as future skew, to `exp` as past skew, and to reservation retention
+     ({{validation-replay}}); it SHOULD NOT exceed 60 seconds;
+   * the assertion's lifetime is within both bounds of {{assertion-claims}}:
+     the maximum the IdP accepts and the ceiling that section sets; and
    * `jti` is not yet reserved for the assertion issuer or, where the IdP
-     offers idempotent retry ({{idempotent-retry}}), is RESERVED or ISSUED
-     under a fingerprint matching this request; any other reserved `jti` is
-     rejected;
+     offers idempotent retry ({{idempotent-retry}}), is ISSUED under a
+     fingerprint matching this request; any other reserved `jti` is rejected;
 
 7. **Authorization.** The IdP MUST issue an ID-JAG only if the governing
    authorization associated with the referenced hop ({{chain-authorization}})
@@ -1254,16 +1271,19 @@ IdP:
 On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
 {{RFC8693}}, Section 2.2.2):
 
-* The IdP MUST return `invalid_continuation` ({{iana}}) only when the handle is
+* The IdP MUST return `invalid_continuation` ({{iana}}) when the handle is
   permanently unusable: unknown, on an expired or ended chain, on a revoked hop
   or ancestor, or on a chain whose permission to continue the tenant has
-  withdrawn ({{lifecycle-ending}}).
-* The IdP SHOULD use:
+  withdrawn ({{lifecycle-ending}}). The IdP MUST NOT return
+  `invalid_continuation` in any other case.
+* The IdP MUST use:
   * `invalid_request` for a malformed, inconsistent, or unacceptable token,
-    including a lifetime above the maximum the IdP accepts, a request
-    carrying `actor_token` or `actor_token_type`, or a second presentation of
-    a reserved assertion where the IdP does not offer idempotent retry
-    ({{idempotent-retry}});
+    including an assertion that fails well-formedness or signature
+    verification (the well-formedness rule of {{validation}}) or issuer trust
+    (the issuer-trust rule), a lifetime above the maximum the IdP accepts, a
+    request carrying `actor_token` or `actor_token_type`, or a second
+    presentation of a reserved assertion that the IdP does not answer from an
+    idempotent retry ({{idempotent-retry}});
   * `invalid_dpop_proof` for a DPoP failure;
   * `unauthorized_client` for an actor that the governing authorization or
     current policy does not permit to continue from the presented hop; this
@@ -1309,12 +1329,16 @@ parameters, require correcting or abandoning the request.
 ### Replay Reservation and Retry {#validation-replay}
 
 The IdP MUST issue at most one grant per assertion, including under concurrent
-presentations: it reserves the assertion's (`iss`, `jti`) once validation
-succeeds and before it issues the grant, and MUST retain the reservation through
-`exp` plus the maximum permitted clock skew. Uniqueness is keyed on (`iss`,
-`jti`), since partitioning by tenant alone would let two assertion issuers in
-one tenant collide on a reused `jti`. Without idempotent retry this needs only
-the set of (`iss`, `jti`) values presented within that window.
+presentations: it reserves the assertion's (`iss`, `jti`) as an atomic
+first-writer decision once validation succeeds and before it issues the grant,
+and MUST retain the reservation through `exp` plus the permitted clock skew
+(one value, per the freshness rule of {{validation}}). Uniqueness is keyed on
+(`iss`, `jti`), since partitioning by tenant alone would let two assertion
+issuers in one tenant collide on a reused `jti`. The reservation MUST be
+visible to every IdP instance that accepts assertions for that issuer, and an
+instance that cannot reach that shared state MUST reject the request rather
+than issue. Without idempotent retry this needs only the set of (`iss`, `jti`)
+values presented within that window.
 
 A request that fails validation creates no reservation and does not modify
 any existing reservation.
@@ -1336,7 +1360,8 @@ An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). Such
 an IdP MUST return the previously issued grant for a presentation matching the
-fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
+fingerprint of an ISSUED reservation, and MUST reject one that matches no
+fingerprint. The fingerprint MUST cover:
 
 * `audience` as an exact string;
 * the `resource` values as an order-independent set;
@@ -1348,8 +1373,12 @@ fingerprint, and MUST reject one that does not. The fingerprint MUST cover:
 * a SHA-256 hash of the exact `subject_token` after form decoding, which binds
   the fingerprint to the specific assertion and its handle.
 
-A reservation that does not reach ISSUED before `exp` becomes FAILED, which is
-final and requires a fresh assertion.
+A presentation matching a RESERVED reservation, whose first presentation has
+not completed, is rejected with `invalid_request` and can be retried once that
+first presentation completes ({{error-response}}). A reservation that does not
+reach ISSUED before `exp` becomes FAILED, which is final: a presentation
+matching a FAILED reservation is rejected with `invalid_request` and the
+client obtains a fresh assertion.
 
 Application idempotency remains out of scope. Realization guidance is in
 {{implementation}}; whether idempotent retry should be mandatory is an open
@@ -1455,11 +1484,19 @@ management for that purpose.
 
 ## Limits {#lifecycle-limits}
 
+Fan-out is the number of child hops continued from one hop. Hop count is the
+total number of hops in a chain across all branches. Rate is the number of
+continuations of a chain within a window tenant policy defines.
+
 Revocation of the governing authorization applies to every chain rooted in it.
 Fan-out, rate, or hop-count limits configured for a governing authorization
 likewise apply across every chain rooted in it, so sibling chains share one
 budget; a retried establishment ({{root-establishment}}) MUST NOT evade them.
 The actor-lineage depth bound, set by tenant policy, is enforced per branch.
+
+The IdP MUST enforce a finite hop-count limit on every chain, either the
+tenant's configured value or the IdP's default. Fan-out and rate limits remain
+optional tenant controls.
 
 # Authorization Server Metadata and Trust Configuration {#metadata}
 
@@ -1554,14 +1591,12 @@ subject.
 The IdP retains hop records for the chain's lifetime and prunes expired or
 revoked hop state. It retains each assertion's (`iss`, `jti`) reservation as
 {{validation-replay}} requires, expiring it by the same clock it uses to
-evaluate `exp`. The reservation needs an atomic first-writer decision, so that
-concurrent presentations yield only one grant.
+evaluate `exp`.
 
-An IdP that offers idempotent
-retry also holds the fingerprint and result, in state consistent enough that a
-retry recovers it and that a concurrent presentation under a matching
-fingerprint waits for or retries that result; an IdP that does not offer retry
-needs no more than the reservation itself.
+An IdP that offers idempotent retry also holds the fingerprint and result, in
+state consistent enough that a retry recovers it and that a concurrent
+presentation under a matching fingerprint retries that result; an IdP that
+does not offer retry needs no more than the reservation itself.
 
 An IdP can derive handles from an internal delegation identifier using a
 keyed one-way function, provided the derived handles still satisfy rules 1
@@ -3347,6 +3382,22 @@ specifications, on whose work this profile builds.
   closed the CAI issuance and authorization-basis open items and added items on
   document factoring, stateless hop commitments, mandatory retry, and response
   parameter naming.
+
+* Protocol fixes: the (`iss`, `jti`) reservation is an atomic first-writer
+  decision, scoped per assertion issuer across every IdP instance that accepts
+  assertions for that issuer, and an IdP that cannot reach that shared state
+  rejects rather than issues; assertion lifetime gained a hard ceiling of 3600
+  seconds, proposed by the author for working group review, which also bounds
+  the configured maximum, with the numbers stated once in the claims section; a
+  finite hop-count limit is now required on every chain while fan-out and rate
+  limits stay optional tenant controls, and all three are defined where they
+  are configured; the IdP now checks compact serialization and the members
+  `act` forbids, and the CAI checks the subject token against the type it
+  declares; the continuation exchange's error mappings became required rather
+  than recommended, with `invalid_continuation` returned only for a
+  permanently unusable handle and not otherwise; and a presentation against a
+  reserved or failed reservation is rejected as an invalid request, under one
+  clock-skew value applied to `iat`, to `exp`, and to reservation retention.
 
 -01
 
