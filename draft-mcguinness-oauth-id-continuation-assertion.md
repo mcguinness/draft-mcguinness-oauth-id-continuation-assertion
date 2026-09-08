@@ -273,14 +273,12 @@ Chain:
   authorization bounds its lifetime ({{lifecycle}}).
 
 Continuation Assertion Issuer (CAI):
-: The role trusted by the IdP to issue Identity Continuation Assertions for a
-  tenant; it never resolves the target audience's user subject
-  ({{assertion-issuance}}).
+: The role the IdP trusts to issue Identity Continuation Assertions for a
+  tenant ({{assertion-issuance}}).
 
 Continuation Handle (`identity_continuation_handle`):
-: An opaque, unguessable, IdP-generated reference to one hop of a continuation
-  chain. It correlates a request with the IdP's state for that hop and confers
-  no authority by itself ({{chain-id}}).
+: An opaque, unguessable, IdP-generated reference to one hop of a chain
+  ({{chain-id}}).
 
 Continuation-capable:
 : Describes an ID-JAG that carries the `identity_continuation_handle` claim
@@ -293,17 +291,15 @@ Current actor:
 
 Governing authorization:
 : The tenant's authorization decision for the root exchange, recorded by the
-  IdP and associated with the lifecycle anchor. It governs which actors may
-  continue and what authority they may obtain under current policy
-  ({{chain-authorization}}, {{lifecycle}}).
+  IdP and associated with the chain's anchor ({{lifecycle-anchors}}). It
+  governs which actors may continue and what authority they may obtain under
+  current policy ({{chain-authorization}}).
 
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, with an
   immutable reference to its parent hop unless it is the root
-  ({{onward-id-jag}}). Its hop lineage is its path to the root. A hop becomes
-  ACCEPTED when a RAS redeems its ID-JAG and binds the handle
-  ({{ras-processing}}, {{hop-activation}}); a hop from which no workload
-  continues is terminal, while sibling branches may continue.
+  ({{onward-id-jag}}). Its hop lineage is its path to the root; a hop from
+  which no workload continues is terminal.
 
 ID-JAG:
 : An Identity Assertion JWT Authorization Grant
@@ -317,15 +313,6 @@ IdP Authorization Server (IdP):
 : The authority that authenticates the user, maps the user to each pairwise
   subject, and issues onward grants.
 
-Lifecycle anchor:
-: The IdP session or OAuth grant that the root subject token resolves to and
-  that bounds the chain's lifetime ({{lifecycle-anchors}}).
-
-Offline attenuation:
-: Client-side attenuated delegation, in which a party narrows and forwards a
-  credential without contacting the IdP; contrast the IdP-minted continuation
-  this profile defines ({{decision-rule}}).
-
 Pairwise subject:
 : The subject identifier under which a particular RAS names the user; distinct
   Resource Authorization Servers may name the same user with different
@@ -335,16 +322,6 @@ Resource Authorization Server (RAS):
 : An Authorization Server that protects a particular API, trusts the IdP for
   subject resolution, and exchanges an ID-JAG for an API access token.
   {{I-D.ietf-oauth-identity-assertion-authz-grant}} abbreviates this role (AS).
-
-Resource Server (RS):
-: The server hosting the protected API. It never consumes an Identity
-  Continuation Assertion or uses a continuation handle for authorization.
-
-Root actor:
-: The actor at the root of a chain: the authenticated OAuth client that
-  obtains the first ID-JAG, the Client of
-  {{I-D.ietf-oauth-identity-assertion-authz-grant}} at the root exchange
-  ({{root-actor}}, {{client-identity}}).
 
 Tenant:
 : The administrative boundary within which the chain and CAI trust are
@@ -2052,11 +2029,12 @@ Use this profile when a boundary re-mints the user's identity, that is:
 * the target trusts the IdP, not the previous issuer, to name the user; and
 * current revocation and policy must be rechecked at every boundary.
 
-Use offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, when
-the subject and the trusted issuer both stay stable across the boundary and
+Use offline attenuation, in which a party narrows and forwards a credential
+without contacting the IdP, such as {{I-D.li-oauth-delegated-authorization}},
+when the subject and the trusted issuer both stay stable across the boundary and
 offline delegation semantics are acceptable, for example intra-domain fan-out
-under one workload identity. The two compose: offline attenuation inside a
-trust domain, continuation where a boundary re-mints the subject.
+under one workload identity. The two compose: offline attenuation inside a trust
+domain, continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG {#rationale-idjag}
 
@@ -3333,14 +3311,16 @@ specifications, on whose work this profile builds.
   described handle visibility to every audience of an access token that carries
   it.
 * Editorial: reorganized around the exchange sequence with a walk-through
-  overview; revised terminology (workload and lifecycle anchor added, root-chain
-  envelope and intra-domain carrier removed, pairwise subject); moved the
-  offline-attenuation decision rule to the rationale and added rationale on
-  actor identity, the profile's boundary, and the test for a requirement;
-  expanded implementation considerations; rewrote the examples as a gateway, a
-  SaaS chain, and a background agent; closed the CAI issuance and authorization-
-  basis open items and added items on document factoring, stateless hop
-  commitments, mandatory retry, and response parameter naming.
+  overview; revised terminology (workload and actor-lineage depth added;
+  root-chain envelope, intra-domain carrier, lifecycle anchor, offline
+  attenuation, resource server, and root actor removed as defined in their
+  sections; pairwise subject); moved the offline-attenuation decision rule to
+  the rationale and added rationale on actor identity, the profile's boundary,
+  and the test for a requirement; expanded implementation considerations;
+  rewrote the examples as a gateway, a SaaS chain, and a background agent;
+  closed the CAI issuance and authorization-basis open items and added items on
+  document factoring, stateless hop commitments, mandatory retry, and response
+  parameter naming.
 
 -01
 
