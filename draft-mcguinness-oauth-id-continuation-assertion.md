@@ -2029,10 +2029,11 @@ Use this profile when a boundary re-mints the user's identity, that is:
 * the target trusts the IdP, not the previous issuer, to name the user; and
 * current revocation and policy must be rechecked at every boundary.
 
-Use offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, when
-the subject and the trusted issuer both stay stable across the boundary and
-offline delegation semantics are acceptable, for example intra-domain fan-out
-under one workload identity. The two compose: offline attenuation inside a
+Use offline attenuation, in which a party narrows and forwards a credential
+without contacting the IdP, such as {{I-D.li-oauth-delegated-authorization}},
+when the subject and the trusted issuer both stay stable across the boundary
+and offline delegation semantics are acceptable, for example intra-domain
+fan-out under one workload identity. The two compose: offline attenuation inside a
 trust domain, continuation where a boundary re-mints the subject.
 
 ## Relationship to ID-JAG {#rationale-idjag}
@@ -3310,14 +3311,16 @@ specifications, on whose work this profile builds.
   described handle visibility to every audience of an access token that carries
   it.
 * Editorial: reorganized around the exchange sequence with a walk-through
-  overview; revised terminology (workload and lifecycle anchor added, root-chain
-  envelope and intra-domain carrier removed, pairwise subject); moved the
-  offline-attenuation decision rule to the rationale and added rationale on
-  actor identity, the profile's boundary, and the test for a requirement;
-  expanded implementation considerations; rewrote the examples as a gateway, a
-  SaaS chain, and a background agent; closed the CAI issuance and authorization-
-  basis open items and added items on document factoring, stateless hop
-  commitments, mandatory retry, and response parameter naming.
+  overview; revised terminology (workload and actor-lineage depth added;
+  root-chain envelope, intra-domain carrier, lifecycle anchor, offline
+  attenuation, resource server, and root actor removed as defined in their
+  sections; pairwise subject); moved the offline-attenuation decision rule to
+  the rationale and added rationale on actor identity, the profile's boundary,
+  and the test for a requirement; expanded implementation considerations;
+  rewrote the examples as a gateway, a SaaS chain, and a background agent;
+  closed the CAI issuance and authorization-basis open items and added items on
+  document factoring, stateless hop commitments, mandatory retry, and response
+  parameter naming.
 
 -01
 
