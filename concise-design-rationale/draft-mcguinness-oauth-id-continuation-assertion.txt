@@ -2633,9 +2633,7 @@ A.4.  Actor Identity and Target Client Identity
 
    The may_act claim ([RFC8693], Section 4.4) can inform actor
    authorization; it supplies neither RAS acceptance evidence nor target
-   subject resolution.  An extension may define additional actor
-   evidence that tenant policy can require, naming the same actor as the
-   authenticated client.
+   subject resolution.
 
 A.5.  Authorization Boundary
 
@@ -2651,12 +2649,6 @@ A.5.  Authorization Boundary
    work the user or tenant authorized remains a deployment policy
    decision.  The profile defines neither a purpose claim nor an agent
    authorization model.
-
-   Single-use and the lifetime bound serve one property: the acceptance
-   evidence behind an assertion is used for one continuation decision
-   and cannot be older than the bound allows (Section 5.5.7).  Where
-   this document offers a choice, such as the form of acceptance
-   evidence, the alternatives satisfy the same property.
 
 Appendix B.  Examples
 
