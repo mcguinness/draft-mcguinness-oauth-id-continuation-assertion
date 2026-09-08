@@ -2151,12 +2151,13 @@ for subject resolution and checks of current authorization and chain state
 ({{validation}}). RAS-local withdrawal remains subject to the freshness of
 acceptance evidence ({{lifecycle-ending}}).
 
-Offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, suits
+Offline attenuation, in which a party narrows and forwards a credential without
+contacting the IdP, such as {{I-D.li-oauth-delegated-authorization}}, suits
 boundaries where existing subject and issuer trust remain usable and offline
-delegation is acceptable. A deployment can attenuate within a trust domain
-and continue across boundaries requiring IdP resolution. Crossing to a target
-that does not trust the common IdP requires a separate trust agreement and
-profile, such as {{I-D.fletcher-transaction-token-chaining-profile}}.
+delegation is acceptable. A deployment can attenuate within a trust domain and
+continue across boundaries requiring IdP resolution. Crossing to a target that
+does not trust the common IdP requires a separate trust agreement and profile,
+such as {{I-D.fletcher-transaction-token-chaining-profile}}.
 
 ## CAI Attestation and ID-JAG Redemption {#rationale-grant-type}
 
@@ -2204,7 +2205,9 @@ therefore needs a client identity resolvable at the target
 ({{token-exchange}}).
 
 The `may_act` claim ({{RFC8693}}, Section 4.4) can inform actor authorization;
-it supplies neither RAS acceptance evidence nor target subject resolution.
+it supplies neither RAS acceptance evidence nor target subject resolution. An
+extension may define additional actor evidence that tenant policy can require,
+naming the same actor as the authenticated client.
 
 ## Authorization Boundary {#rationale-boundary}
 
@@ -2218,6 +2221,12 @@ This profile carries identity and lineage and binds continuation to an
 accepted authorization. Whether a requested action serves the work the user
 or tenant authorized remains a deployment policy decision. The profile defines
 neither a purpose claim nor an agent authorization model.
+
+Single-use and the lifetime bound serve one property: the acceptance evidence
+behind an assertion is used for one continuation decision and cannot be older
+than the bound allows ({{validation-replay}}). Where this document offers a
+choice, such as the form of acceptance evidence, the alternatives satisfy the
+same property.
 
 # Examples {#examples}
 
