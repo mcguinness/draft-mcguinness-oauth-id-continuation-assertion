@@ -1538,13 +1538,13 @@ CAI role itself.<a href="#section-1-4" class="pilcrow">¶</a></p>
 issued an access token for.<a href="#section-1-6.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="section-1-6.3">
-          <p id="section-1-6.3.1">Only a workload that the IdP has authenticated, that tenant policy permits
-to continue from that grant, and that proves possession of its own key to
-the IdP can obtain the next ID-JAG.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
+          <p id="section-1-6.3.1">Only a workload that the IdP has authenticated, that the grant's governing
+authorization and tenant policy permit to continue from that grant, and
+that proves possession of its own key to the IdP can obtain the next ID-JAG.<a href="#section-1-6.3.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-1-7">Each continuation is a new decision by the IdP under the policy in force at
-that moment. The assertion carries no target authority: it identifies the
+<p id="section-1-7">Each continuation is a new decision by the IdP under the governing
+authorization and the policy in force at that moment. The assertion carries no target authority: it identifies the
 accepted authorization being continued and its current actor, while the
 continuation request selects the target and the requested authority. The
 scopes of the access token the workload holds do not bound what the next
@@ -1618,8 +1618,9 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 <li id="section-1.1-5.1">
             <p id="section-1.1-5.1.1">As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
 for the gateway's RAS. New: the IdP records that grant as a chain's first
-hop, H0, together with the tenant policy under which it may continue, read
-as it stands at each continuation, and carries a handle for H0 in the
+hop, H0, together with the governing authorization under which it may
+continue, evaluated with tenant policy as it stands at each continuation,
+and carries a handle for H0 in the
 ID-JAG's <code>identity_continuation_handle</code> claim (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>,
 <a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-1.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
@@ -2123,14 +2124,18 @@ use a confidential client applies to a root exchange that establishes a chain.<a
           </h4>
 <p id="section-5.1.4-1">The IdP <span class="bcp14">MUST</span> associate each chain with the governing authorization under
 which it was established. The IdP records the authenticated user and tenant,
-root actor, authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>), and lifecycle
-anchor. The association and these root facts remain fixed for the chain's
-lifetime; a later request or policy change cannot replace that authorization
-or change those facts.<a href="#section-5.1.4-1" class="pilcrow">¶</a></p>
-<p id="section-5.1.4-2">Each continuation is authorized under that governing authorization and
-current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>). This document does not define how the IdP
-represents governing authorizations or evaluates policy, including how policy
-changes affect the permissions available under an existing authorization.<a href="#section-5.1.4-2" class="pilcrow">¶</a></p>
+root actor, authentication context (<code>auth_time</code>, <code>acr</code>, <code>amr</code>), lifecycle
+anchor, and the restrictions the governing authorization places on which
+actors may continue and what authority they may obtain, in whatever form the
+IdP chooses. The association, these root facts, and those restrictions remain
+fixed for the chain's lifetime; a later request or policy change cannot
+replace that authorization, change those facts, or relax those restrictions.<a href="#section-5.1.4-1" class="pilcrow">¶</a></p>
+<p id="section-5.1.4-2">Each continuation is authorized under that governing authorization, evaluated
+as recorded, and current policy, read as it stands at each continuation
+(<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Policy can therefore narrow what a chain may reach but
+cannot exceed what its governing authorization permits. This document does
+not define how the IdP represents governing authorizations or evaluates
+policy.<a href="#section-5.1.4-2" class="pilcrow">¶</a></p>
 <p id="section-5.1.4-3">The root request's audience and scope describe the root ID-JAG. They do not
 by themselves authorize or limit later targets.<a href="#section-5.1.4-3" class="pilcrow">¶</a></p>
 </section>
@@ -2989,8 +2994,10 @@ a reserved assertion where the IdP does not offer idempotent retry
 </li>
                 <li class="normal" id="section-5.5.6-2.2.2.3">
                   <p id="section-5.5.6-2.2.2.3.1"><code>unauthorized_client</code> for an actor that the governing authorization or
-current policy does not permit to continue from the presented hop, which
-leaves the chain continuable by other actors;<a href="#section-5.5.6-2.2.2.3.1" class="pilcrow">¶</a></p>
+current policy does not permit to continue from the presented hop; this
+refuses that actor alone and leaves the chain continuable by other
+actors, whereas withdrawal of the chain's permission to continue as a
+whole is <code>invalid_continuation</code>;<a href="#section-5.5.6-2.2.2.3.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.6-2.2.2.4">
                   <p id="section-5.5.6-2.2.2.4.1"><code>invalid_grant</code> when the continuation would exceed the chain's
@@ -3000,7 +3007,8 @@ actor-lineage depth, fan-out, or hop-count limits
                 <li class="normal" id="section-5.5.6-2.2.2.5">
                   <p id="section-5.5.6-2.2.2.5.1"><code>invalid_target</code>, <code>invalid_scope</code>, or <code>invalid_authorization_details</code> for
 requested authority not permitted by the governing authorization or
-current policy, or a target at which the IdP can resolve no subject or
+current policy, for an authorization detail type the IdP does not
+implement, or for a target at which the IdP can resolve no subject or
 client identity for the actor.<a href="#section-5.5.6-2.2.2.5.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
@@ -5340,7 +5348,8 @@ under the base profile, and the gateway example shows the floor without it.<a hr
 <p id="appendix-B.3-1">Alice sets up a daily calendar briefing and is absent at every run. Compared
 with the SaaS chain example, this one anchors the chain to a grant rather
 than a session; <a href="#example-background-differences" class="auto internal xref">Appendix B.3.5</a> lists what differs. It
-also shows a target that tenant policy still excludes being refused.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+also shows a target the grant excludes being refused even though tenant
+policy allows it.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.3-2">Topology: separate CAI with a Transaction Token carrier.<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-B.3-3.1">
@@ -5673,10 +5682,12 @@ its propagation to the RAS-bound authorization context.<a href="#appendix-E-3.7.
 </li>
         <li class="normal" id="appendix-E-3.8">
           <p id="appendix-E-3.8.1">Replaced envelope and authorization-basis semantics with the chain's governing
-authorization and current policy, retaining fixed root bindings. Removed the
-<span class="bcp14">MUST NOT</span> on later-added targets in an enumerated envelope and the
-authorization-basis representation open item; policy representation and
-update semantics are deployment-specific.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+authorization and current policy: the restrictions the authorization
+records are evaluated as recorded for the chain's lifetime, policy is read
+live, and root bindings stay fixed. Removed the requirement that an
+enumerated envelope never admit a later-added target and the
+authorization-basis representation open item; policy representation is
+deployment-specific.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.9">
           <p id="appendix-E-3.9.1">Required authorization checks on effective permissions, including IdP
