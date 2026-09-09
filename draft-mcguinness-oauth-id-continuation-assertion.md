@@ -131,10 +131,11 @@ the following ({{assertion-issuance}}):
 
 * The RAS accepted the referenced ID-JAG, established an authorization from
   it, and that authorization remains active and is eligible for continuation.
-* The authenticated workload is associated with that authorization context
-  and controls the key whose possession it will prove to the IdP.
+* The authenticated workload is associated with that authorization context.
 
-The accepting RAS may also perform the CAI role.
+The CAI binds the assertion to the key the workload proves to it
+({{assertion-token-exchange}}). The accepting RAS may also perform the CAI
+role.
 
 The workload presents the assertion to the IdP as the subject token of an
 OAuth 2.0 Token Exchange {{RFC8693}} request. The assertion identifies the
@@ -156,9 +157,8 @@ evaluated under that authorization and current policy
 ({{chain-authorization}}). RAS acceptance enables continuation; incoming
 access-token scopes do not automatically limit authority at another target.
 
-Further calls under the same hop and authorization context can reuse the
-resulting access token while it remains valid and covers the requested
-access ({{implementation}}).
+A workload that continues once can reuse the resulting access token for
+further calls, subject to the conditions in {{implementation}}.
 
 This document extends ID-JAG, referred to as the base profile, and
 complements OAuth Identity Chaining {{I-D.ietf-oauth-identity-chaining}}.
@@ -272,7 +272,7 @@ Chain authorization:
 
 Continuation Assertion Issuer (CAI):
 : The role the IdP trusts to issue Identity Continuation Assertions for a
-  tenant ({{assertion-issuance}}).
+  tenant and the RAS whose hops it attests ({{assertion-issuance}}).
 
 Continuation Handle (`identity_continuation_handle`):
 : An opaque, unguessable, IdP-generated reference to one hop of a chain
@@ -320,8 +320,9 @@ Resource Authorization Server (RAS):
 
 Tenant:
 : The administrative boundary within which the chain and CAI trust are
-  configured; its determination is deployment-defined
-  ({{security-trust-model}}).
+  configured; its determination is deployment-defined, derived from
+  authenticated material, never from requester-supplied input
+  ({{issuer-trust}}).
 
 Trust domain:
 : An administrative and authentication boundary within which workloads can be
@@ -1067,10 +1068,12 @@ assertion bound to the new key.
 
 ### Request Validation {#validation}
 
-A presentation whose (`iss`, `jti`) matches an ISSUED reservation, as
-{{idempotent-retry}} defines, is processed under that section. For a first
-presentation, the IdP MUST reject the request unless every rule below holds.
-{{error-response}} specifies error precedence when multiple rules fail.
+Where the IdP offers idempotent retry, a presentation whose (`iss`, `jti`)
+matches an ISSUED reservation, as {{idempotent-retry}} defines, is processed
+under that section; an IdP that does not offer retry rejects every second
+presentation ({{validation-replay}}). For a first presentation, the IdP MUST
+reject the request unless every rule below holds. {{error-response}} specifies
+error precedence when multiple rules fail.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -1146,9 +1149,9 @@ presentation, the IdP MUST reject the request unless every rule below holds.
    * the assertion's lifetime does not exceed the maximum the IdP accepts
      ({{assertion-claims}}); and
    * `jti` is not yet reserved for the assertion issuer ({{validation-replay}});
-     a presentation matching an ISSUED reservation is recovery
-     ({{idempotent-retry}}), not a continuation exchange, and any other reserved
-     `jti` is rejected;
+     where the IdP offers idempotent retry, a presentation matching an ISSUED
+     reservation is recovery ({{idempotent-retry}}), not a continuation
+     exchange, and any other reserved `jti` is rejected;
 
 7. **Authorization.** The IdP MUST issue an ID-JAG only if the chain
    authorization associated with the referenced hop ({{chain-authorization}})
@@ -1225,13 +1228,14 @@ DPoP-bound JWT grant, `urn:ietf:params:oauth:grant-type:jwt-dpop`
 ({{I-D.parecki-oauth-jwt-dpop-grant}}), and a DPoP proof of the bound key, as
 the base profile specifies for a key-bound ID-JAG
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}, Section 9.8.1.2.1). The
-target RAS needs nothing from this document to do so: a terminal RAS advertises
-nothing from this document ({{metadata-ras}}) and redeems a key-bound ID-JAG
-under that grant as the base profile requires. Whether the access token it
-then issues is sender-constrained is that RAS's own policy under the base
-profile: this document's binding rule ({{ras-processing}}) reaches only a
-continuation-aware RAS, and a terminal RAS runs the base profile alone, which
-this document cannot bind.
+target RAS needs nothing from this document to do so: a RAS that does not
+implement this profile advertises nothing from this document
+({{metadata-ras}}) and redeems a key-bound ID-JAG under that grant as the
+base profile requires. Whether the access token it then issues is
+sender-constrained is that RAS's own policy under the base profile: this
+document's binding rule ({{ras-processing}}) reaches only a
+continuation-aware RAS, and a RAS that does not implement it runs the base
+profile alone, which this document cannot bind.
 
 Where the recorded root authentication context contains `auth_time`, `acr`, or
 `amr`, the IdP MUST include them in the onward ID-JAG unchanged. Continuation
@@ -1334,7 +1338,8 @@ For other failures, the IdP MUST use the following error codes:
   ({{client-identity}}); an unknown handle; a
   lifetime above the accepted maximum; prohibited `actor_token` or
   `actor_token_type` parameters; or a reserved assertion that cannot be
-  processed as idempotent recovery ({{idempotent-retry}}).
+  processed as idempotent recovery ({{idempotent-retry}}), other than one
+  whose hop is permanently unusable, which is `invalid_continuation`.
 * `invalid_dpop_proof`: a DPoP failure.
 * `unauthorized_client`: the chain authorization or current policy does
   not permit this actor to continue from the hop. Other actors may still
@@ -1375,12 +1380,12 @@ fan-out or hop-count limits can prevent a subsequent exchange
 ({{lifecycle-limits}}). A fresh assertion may create an equivalent grant and
 sibling hop but no additional authority.
 
-A client cannot distinguish on the wire a presentation that matches no
-fingerprint from one whose reservation is RESERVED or FAILED: all three return
-`invalid_request` ({{idempotent-retry}}). On `invalid_request` during
-recovery, the client obtains a fresh assertion. Other `invalid_request`
-failures, such as malformed requests or prohibited parameters, require
-correcting or abandoning the request.
+A client cannot distinguish on the wire a presentation whose request does not
+match its reservation's fingerprint from one whose reservation is RESERVED or
+FAILED: all three return `invalid_request` ({{idempotent-retry}}). On
+`invalid_request` during recovery, the client obtains a fresh assertion. Other
+`invalid_request` failures, such as malformed requests or prohibited
+parameters, require correcting or abandoning the request.
 
 ### Replay Reservation and Retry {#validation-replay}
 
@@ -1417,7 +1422,8 @@ An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). These
 names describe the states an IdP distinguishes, not a required representation.
-The IdP MUST reject a presentation that matches no fingerprint. A presentation
+The IdP MUST reject a presentation whose (`iss`, `jti`) matches a reservation
+but whose request does not match that reservation's fingerprint. A presentation
 matching the fingerprint of an ISSUED reservation within the IdP's retry window
 is processed as recovery, defined below. The fingerprint MUST cover:
 
@@ -1784,8 +1790,9 @@ ID-JAG and the continuation-aware RAS's access token are bound to the same key
 ({{client-identity}}, {{ras-processing}}). Sender constraint is maintained
 across continuation-capable hops rather than demonstrated once at issuance,
 with an authenticated transition to the next actor's key at each workload
-boundary. The chain ends at a terminal RAS, whose token binding is its own
-policy under the base profile ({{onward-id-jag}}).
+boundary. Where the chain ends at a RAS that does not implement this profile,
+that RAS's token binding is its own policy under the base profile
+({{onward-id-jag}}).
 
 The facts the CAI establishes before issuing ({{assertion-preconditions}}) form
 the binding chain from ID-JAG to assertion. In the synchronous flow, the
@@ -2869,9 +2876,9 @@ On the wire (decoded ID-JAG):
 ### ExpenseRAS Binds H0; Expense TTS Carries It {#example-context}
 
 ExpenseApp redeems the ID-JAG at ExpenseRAS for an access token, AT1, and
-ExpenseRAS binds H0 to the authorization state behind AT1 and records that
-authorization as eligible for continuation ({{ras-processing}}). The carrier is
-what differs:
+ExpenseRAS binds H0, the issuing IdP, and the tenant it associates with that
+IdP to the authorization state behind AT1, and records that authorization as
+eligible for continuation ({{ras-processing}}). The carrier is what differs:
 the handle stays in this record, and AT1 does not carry it.
 
 Server-side state at ExpenseRAS:
@@ -2882,6 +2889,8 @@ Server-side state at ExpenseRAS:
   "status": "ACCEPTED",
   "continuation_eligible": true,
   "authorization_state": "at1-authz-2f9c",
+  "idp": "https://idp.example/",
+  "tenant": "tenant-123",
   "client_id": "expense-app",
   "bound_at": 1710000010
 }
@@ -3181,15 +3190,16 @@ it keys by its own task identifier; the record holds no bearer credential.
 Server-side state (PlatformRAS task authorization):
 
 ~~~
-task_id:              task-123
-owner:                alice
-actor:                briefing-agent
-continuation_handle:  Pz6vTq1NcY4kM8bJf3RxWa  # H0
-permitted_purpose:    morning-calendar-brief
-schedule:             "0 7 * * *"
-governing_grant:      grant-8f2c19a4  # internal reference
-expiry:               1719450000  # local, not IdP lifetime
-status:               active
+task_id:                      task-123
+owner:                        alice
+actor:                        briefing-agent
+identity_continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa  # H0
+permitted_purpose:            morning-calendar-brief
+schedule:                     "0 7 * * *"
+governing_grant:              grant-8f2c19a4  # internal reference
+expiry:                       1719450000  # local, not IdP lifetime
+status:                       active
+continuation_eligible:        true
 ~~~
 
 Server-side state (Scheduler):
@@ -3338,11 +3348,12 @@ This non-normative appendix identifies questions for Working Group review.
    ({{idempotent-retry}})?
 
 6. **Limits.** The document recommends that an assertion's lifetime not exceed
-   300 seconds, leaves the maximum an IdP accepts to deployment, and requires a
-   finite hop-count limit without fixing a default ({{assertion-claims}},
-   {{lifecycle-limits}}). Should the 300-second recommendation become a
-   requirement, should the profile fix a hop-count default, and should the
-   accepted maximum be advertised in metadata?
+   300 seconds, recommends that IdPs accept lifetimes of up to 300 seconds and
+   leaves the maximum to deployment, and requires a finite hop-count limit
+   without fixing a default ({{assertion-claims}}, {{lifecycle-limits}}).
+   Should the 300-second recommendations become requirements, should the
+   profile fix a hop-count default, and should the accepted maximum be
+   advertised in metadata?
 
 The project issue tracker also records WG questions on authorization bounds
 (#106), acceptance freshness (#107), actor identity evidence (#108), CAI
@@ -3390,8 +3401,10 @@ JWT Authorization Grant specifications, on whose work this profile builds.
   permitted `nbf`; recommended capping assertion expiry at self-contained
   evidence expiry; and registered the handle as an introspection response
   member.
-* Removed RAS nomination of CAIs through `identity_continuation_issuers` and
-  clarified IdP configuration of CAI trust.
+* Removed RAS nomination of CAIs through `identity_continuation_issuers`,
+  clarified IdP configuration of CAI trust, and lifted the -01 restriction of
+  CAI issuance to the RAS's trust domain, which is now typical rather than
+  required.
 * Reorganized the protocol description and security considerations; revised
   the introduction, examples, design rationale, and open items.
 * Added Aaron Parecki as an author.
