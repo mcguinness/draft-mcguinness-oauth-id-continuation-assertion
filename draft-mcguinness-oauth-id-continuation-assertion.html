@@ -5591,80 +5591,53 @@ specifications, on whose work this profile builds.<a href="#appendix-D-1" class=
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Replaced the root-chain envelope and authorization basis with the chain's
-governing authorization, evaluated as recorded plus current policy read live.
-One authorization rule covers the actor, the target, and the requested
-authority including defaults; policy narrows it, never exceeds it.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.1.1">Replaced the root-chain envelope with governing authorization based on
+recorded root facts and current tenant policy.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
-          <p id="appendix-E-3.2.1">Removed <code>actor_token</code> processing from both exchanges: client authentication
-resolves to the canonical actor identity, the (<code>iss</code>, <code>sub</code>) pair the IdP
-derives from its registration of the client. <code>act</code> is the disclosed actor
-lineage, distinct from the IdP's hop lineage, bounded by actor-lineage depth.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.2.1">Removed <code>actor_token</code> processing; client authentication determines the
+canonical actor identity. Distinguished disclosed actor lineage from the
+IdP's hop lineage.<a href="#appendix-E-3.2.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.3">
-          <p id="appendix-E-3.3.1">Replaced the three hop states with two facts, issuance at the IdP and
-acceptance in RAS authorization state, which also records eligibility for
-continuation. A hop is continuable while a CAI trusted for its RAS attests it
-on live or self-contained evidence authoritative by that RAS's semantics.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.3.1">Defined assertion issuance using Token Exchange at the CAI, with an access
+token or Transaction Token and DPoP. Added the
+<code>identity_continuation_authorization_server</code> response parameter and client
+validation against the IdP's metadata issuer.<a href="#appendix-E-3.3.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.4">
-          <p id="appendix-E-3.4.1">Assertion and handle rules: <code>nbf</code> permitted; the 300-second lifetime and
-256-character handle bounds recommended rather than required, with the IdP
-rejecting a lifetime above its maximum; recommended capping assertion expiry
-at self-contained evidence expiry; 128 bits of entropy for <code>jti</code> and for
-handles; the handle registered as an introspection response member.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.4.1">Simplified hop state to IdP issuance and RAS acceptance, with continuation
+eligibility attested by the CAI using live or self-contained evidence.<a href="#appendix-E-3.4.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.5">
-          <p id="appendix-E-3.5.1">Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
-the call's access token or Transaction Token as subject token and the
-requester's DPoP proof verified. The required
-<code>identity_continuation_authorization_server</code> response parameter names the IdP,
-which the client matches to that IdP's metadata issuer before sending.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.5.1">Removed the root exchange's proof-of-possession requirement. Specified
+DPoP-bound redemption of onward ID-JAGs and access-token binding at
+continuation-aware RASes.<a href="#appendix-E-3.5.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.6">
-          <p id="appendix-E-3.6.1">Removed the root exchange's proof-of-possession requirement, so a root ID-JAG
-need not carry <code>cnf</code>. Onward ID-JAGs are redeemed with the DPoP-bound JWT
-grant a continuation-aware RAS advertises, and that RAS binds the access token
-it issues to the confirmed key.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.6.1">Clarified chain lifetime, withdrawal, and limits; made grant-anchor support
+optional and specified base-profile behavior when no anchor can be resolved.<a href="#appendix-E-3.6.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.7">
-          <p id="appendix-E-3.7.1">Kept assertions single-use under an atomic, shared, fail-closed (<code>iss</code>, <code>jti</code>)
-reservation, and made idempotent retry optional: a presentation matching an
-ISSUED reservation's request fingerprint recovers that grant on a separate
-path. Neither response carries a refresh token.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.7.1">Defined optional recovery of an issued grant after a lost response while
+preserving single-use assertions. Clarified error codes and their precedence.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.8">
-          <p id="appendix-E-3.8.1">Required and ordered the error codes: <code>unauthorized_client</code> for an actor not
-permitted, <code>invalid_continuation</code> only for a permanently unusable handle,
-<code>invalid_grant</code> for limits, <code>invalid_target</code> for an unpermitted target,
-<code>invalid_request</code> for an unknown handle.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.8.1">Relaxed assertion lifetime, <code>jti</code> entropy, and handle-length requirements;
+permitted <code>nbf</code>; recommended capping assertion expiry at self-contained
+evidence expiry; and registered the handle as an introspection response
+member.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.9">
-          <p id="appendix-E-3.9.1">Gathered chain lifetime into one section: grant anchors optional and no
-resolved anchor means no handle, a chain never outlives its anchor, an ended
-chain stays ended, every chain has a finite hop-count limit, and a tenant may
-budget limits across one governing authorization's chains.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.9.1">Removed RAS nomination of CAIs through <code>identity_continuation_issuers</code> and
+clarified IdP configuration of CAI trust.<a href="#appendix-E-3.9.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.10">
-          <p id="appendix-E-3.10.1">Removed the RAS <code>identity_continuation_issuers</code> nomination, its registration,
-and the Metadata Disclosure consideration -01 added with it; the IdP
-configures CAI trust per tenant, scoped by issuer, keys, tenant, and the RAS
-attested for, refreshing <code>jwks_uri</code> keys under a bounded cache.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.10.1">Reorganized the protocol description and security considerations; revised
+the introduction, examples, design rationale, and open items.<a href="#appendix-E-3.10.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.11">
-          <p id="appendix-E-3.11.1">Reorganized Security Considerations around the current model, stated the
-binding chain from ID-JAG to assertion and that RAS-local permissions and CAI
-attestation do not independently authorize onward access, and noted the
-handle's visibility to every audience of a carrier that conveys it.<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="appendix-E-3.12">
-          <p id="appendix-E-3.12.1">Editorial: reorganized around the exchange sequence with a walk-through
-overview, revised the terminology, moved the design choices to a rationale
-section, expanded implementation considerations, rewrote the examples as a
-gateway, a SaaS chain, and a background agent, and revised the open items.
-Shortened prose and presented authorization facts, recovery checks, and
-provisioning as lists.<a href="#appendix-E-3.12.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.11.1">Added Aaron Parecki as an author.<a href="#appendix-E-3.11.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="appendix-E-4">-01<a href="#appendix-E-4" class="pilcrow">¶</a></p>
