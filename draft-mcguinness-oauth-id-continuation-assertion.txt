@@ -750,18 +750,17 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
    Two parties hold facts about a hop, neither carried on the wire:
 
-        +==========+===================+==========================+
-        | Fact     | Held by           | Meaning                  |
-        +==========+===================+==========================+
-        | Issued   | IdP               | the IdP issued the ID-   |
-        |          |                   | JAG and recorded the hop |
-        +----------+-------------------+--------------------------+
-        | Accepted | RAS authorization | the RAS redeemed the     |
-        |          | state             | grant, authorized it,    |
-        |          |                   | and bound the handle     |
-        +----------+-------------------+--------------------------+
+   +============+=========+===========================================+
+   | Fact       | Held by | Meaning                                   |
+   +============+=========+===========================================+
+   | Issuance   | IdP     | The IdP issued the ID-JAG and recorded    |
+   |            |         | the hop.                                  |
+   +------------+---------+-------------------------------------------+
+   | Acceptance | RAS     | The RAS accepted the ID-JAG and bound the |
+   |            |         | handle to the resulting authorization.    |
+   +------------+---------+-------------------------------------------+
 
-                                  Table 2
+                                 Table 2
 
    The IdP learns of acceptance through a trusted CAI's attestation and
    maintains no synchronized acceptance state (Section 1.1).  The CAI
