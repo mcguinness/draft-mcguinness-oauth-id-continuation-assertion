@@ -2034,8 +2034,8 @@ remains subject to acceptance-evidence freshness ({{lifecycle-ending}}).
 Offline attenuation, such as {{I-D.li-oauth-delegated-authorization}}, suits
 boundaries where existing subject and issuer trust suffice. Deployments can
 attenuate within a domain and continue across boundaries needing IdP
-resolution. A target outside the common IdP's trust requires another
-agreement and profile, such as
+resolution. A target that does not trust the common IdP requires another
+trust agreement and profile, such as
 {{I-D.fletcher-transaction-token-chaining-profile}}.
 
 ## CAI Attestation and ID-JAG Redemption {#rationale-grant-type}
@@ -2548,8 +2548,9 @@ On the wire (decoded ID-JAG with root H0):
 
 ### ExpenseRAS Binds H0; Expense TTS Carries It {#example-context}
 
-ExpenseRAS redeems the ID-JAG for AT1 and binds H0, the IdP, tenant, and
-continuation eligibility ({{ras-processing}}). AT1 does not carry the handle.
+ExpenseApp redeems the ID-JAG at ExpenseRAS for AT1; ExpenseRAS binds H0,
+the IdP, tenant, and continuation eligibility ({{ras-processing}}). AT1 does
+not carry the handle.
 
 Server-side state at ExpenseRAS:
 
