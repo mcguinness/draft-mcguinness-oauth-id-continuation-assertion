@@ -2144,11 +2144,11 @@ the client's key. The RAS receives the grant as its audience; receipt does
 not authorize the RAS to present it as a different client or replace its key
 binding ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
 
-Similarly, a workload receives an access token as the protected resource.
-The token authorizes the incoming caller's access and, when
-sender-constrained, is bound to that caller's key. Validating the caller's
-proof does not give the workload possession of the key or establish a
-credential for the workload to present at the IdP.
+Similarly, a workload receives an access token as the protected resource. The
+token authorizes the incoming caller's access and, when sender-constrained, is
+bound to that caller's key. Validating the caller's proof does not give the
+workload possession of the key or establish a credential for the workload to
+present at the IdP ({{security-pop}}).
 
 ICA makes this transition explicit. The CAI attests that the receiving
 workload is associated with an accepted, active authorization eligible for
@@ -2157,9 +2157,9 @@ workload's key ({{assertion-preconditions}}). The IdP can then authenticate
 and authorize the continuing workload using its own identity and key
 ({{validation}}).
 
-Direct exchange of either token under {{RFC8693}} would require additional
-rules establishing the receiving party's authority to continue and binding
-the exchange to its identity and key.
+Direct exchange of either token under {{RFC8693}} would require additional rules
+establishing the receiving party's authority to continue and binding the
+exchange to its identity and key ({{open-items}}).
 
 A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} may carry the
 context from which the CAI issues its assertion; its validity alone is not
