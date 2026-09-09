@@ -4327,8 +4327,9 @@ token authorizes the incoming caller's access and, when sender-constrained, is
 bound to that caller's key. Validating the caller's proof does not give the
 workload possession of the key or establish a credential for the workload to
 present at the IdP (<a href="#security-pop" class="auto internal xref">Section 9.1</a>).<a href="#appendix-A.2-2" class="pilcrow">¶</a></p>
-<p id="appendix-A.2-3">ICA makes this transition explicit. The CAI attests that the receiving
-workload is associated with an accepted, active authorization eligible for
+<p id="appendix-A.2-3">The Identity Continuation Assertion makes this transition explicit. The CAI
+attests that the receiving workload is associated with an accepted, active
+authorization eligible for
 continuation, and issues an assertion addressed to the IdP and bound to that
 workload's key (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>). The IdP can then authenticate
 and authorize the continuing workload using its own identity and key
@@ -5256,7 +5257,8 @@ in the lineage (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.
           </h4>
 <p id="appendix-B.2.5-1"><code>expense-service</code> redeems the ID-JAG at TravelRAS for AT2, and TravelRAS binds
 H1 exactly as ExpenseRAS bound H0. The Travel TTS derives H1 into a Transaction
-Token for <code>travel-service</code>; only the handle differs from the Expense token:<a href="#appendix-B.2.5-1" class="pilcrow">¶</a></p>
+Token for <code>travel-service</code>. Within the illustrated
+<code>tctx.identity_continuation</code> object, only the handle changes:<a href="#appendix-B.2.5-1" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.5-2">Intra-domain context (excerpt):<a href="#appendix-B.2.5-2" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="appendix-B.2.5-3">
 <pre>
@@ -5540,12 +5542,11 @@ active.<a href="#appendix-B.3.5-1.3.1" class="pilcrow">¶</a></p>
 previous run's child.<a href="#appendix-B.3.5-1.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="appendix-B.3.5-2">This pattern requires a user-present setup event to root the chain. Where no
-such event exists, for example an administratively mandated agent acting for
-users who never authorized it, there is no delegation to continue and this
-profile does not apply; such deployments need a differently rooted
-authorization, such as administrative policy at the IdP, which is out of scope
-for this document.<a href="#appendix-B.3.5-2" class="pilcrow">¶</a></p>
+<p id="appendix-B.3.5-2">This example uses a user-present setup event. More generally, chain
+establishment requires an authorized root exchange whose subject token
+resolves to an active user session or supported grant anchor
+(<a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). Administrative policy alone,
+without such an anchor, cannot establish a chain.<a href="#appendix-B.3.5-2" class="pilcrow">¶</a></p>
 </section>
 </div>
 </section>
