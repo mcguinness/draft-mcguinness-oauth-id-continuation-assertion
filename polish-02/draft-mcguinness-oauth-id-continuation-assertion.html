@@ -5049,9 +5049,9 @@ the handle stays in this record, and AT1 does not carry it.<a href="#appendix-B.
 <p id="appendix-B.2.2-4">ExpenseApp calls ExpenseAPI with AT1. The Expense TTS resolves AT1 against that
 record over its own-domain interface with ExpenseRAS, derives H0, and issues a
 Transaction Token for <code>expense-service</code>, the workload that completes the
-request (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>); the token's <code>req_wl</code> names <code>expense-api</code>, the
-API workload that received the request, while <code>expense-service</code> is the workload
-that continues it. The TTS records the transaction's assignment to that
+request (<a href="#handle-propagation" class="auto internal xref">Section 5.3</a>). The token's <code>req_wl</code> names <code>expense-api</code>,
+which requested the Transaction Token; <code>expense-service</code> is the workload
+assigned to continue the transaction. The TTS records the assignment to that
 workload in authenticated routing state, the domain's own record of which
 workload handles a transaction. Neither ExpenseApp nor <code>expense-service</code>
 supplies H0.<a href="#appendix-B.2.2-4" class="pilcrow">¶</a></p>
@@ -5641,10 +5641,10 @@ optional and specified base-profile behavior when no anchor can be resolved.<a h
 preserving single-use assertions. Clarified error codes and their precedence.<a href="#appendix-E-3.7.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.8">
-          <p id="appendix-E-3.8.1">Relaxed the assertion lifetime and handle-length requirements; added a
-recommendation of 128 bits of entropy for <code>jti</code>; permitted <code>nbf</code>;
-recommended capping assertion expiry at self-contained evidence expiry; and
-registered the handle as an introspection response member.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
+          <p id="appendix-E-3.8.1">Relaxed assertion lifetime, <code>jti</code> entropy, and handle-length requirements;
+permitted <code>nbf</code>; recommended capping assertion expiry at self-contained
+evidence expiry; and registered the handle as an introspection response
+member.<a href="#appendix-E-3.8.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.9">
           <p id="appendix-E-3.9.1">Removed RAS nomination of CAIs through <code>identity_continuation_issuers</code> and
