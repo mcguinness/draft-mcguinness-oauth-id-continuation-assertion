@@ -14,7 +14,7 @@ workgroup: "Web Authorization Protocol"
 keyword:
  - oauth
  - token exchange
- - identity chaining
+ - identity continuation
  - delegation
  - id-jag
 venue:
@@ -130,19 +130,20 @@ the following ({{assertion-issuance}}):
 
 * The RAS accepted the referenced ID-JAG, established an authorization from
   it, and that authorization remains active and is eligible for continuation.
-* The authenticated workload is acting under that authorization and controls
-  the key whose possession it will prove to the IdP.
+* The authenticated workload is associated with that authorization context.
 
-The accepting RAS may also perform the CAI role.
+The CAI binds the assertion to the key the workload proves to it
+({{assertion-token-exchange}}). The accepting RAS may also perform the CAI
+role.
 
 The workload presents the assertion to the IdP as the subject token of an
 OAuth 2.0 Token Exchange {{RFC8693}} request. The assertion identifies the
-accepted authorization and current actor; the continuation request specifies
-the target and requested authority. The IdP authenticates the workload,
-verifies possession of the assertion's bound key, evaluates the requested
-access, and resolves the user's subject for the target RAS. If authorized, it
-issues an onward ID-JAG that the workload redeems at that RAS
-({{token-exchange}}).
+accepted authorization and the current actor; the continuation request, not
+the assertion, names the target and the requested authority. The IdP
+authenticates the workload, verifies possession of the assertion's bound key,
+evaluates the requested access, and resolves the user's subject for the target
+RAS. If authorized, it issues an onward ID-JAG that the workload redeems at
+that RAS ({{token-exchange}}). The assertion conveys no downstream authority.
 
 Each ID-JAG issued in a chain represents a hop. A root ID-JAG and the hops
 descending from it form a chain. An opaque continuation handle identifies
@@ -150,21 +151,19 @@ each ID-JAG's hop within a chain ({{chain-id}}). The IdP records the
 relationships between hops and associates each chain with the authorization
 established at its root exchange. Each continuation is
 evaluated under that authorization and current policy
-({{chain-authorization}}). RAS acceptance enables continuation but does not
-independently authorize downstream access; incoming access-token scopes do
-not automatically limit authority at another target.
+({{chain-authorization}}). RAS acceptance enables continuation; incoming
+access-token scopes do not automatically limit authority at another target.
 
-Further calls under the same hop and authorization context can reuse the
-resulting access token while it remains valid and covers the requested
-access ({{implementation}}).
+A workload that continues once can reuse the resulting access token for
+further calls, subject to the conditions in {{implementation}}.
 
 This document extends ID-JAG, referred to as the base profile, and
 complements OAuth Identity Chaining {{I-D.ietf-oauth-identity-chaining}}.
 This profile does not replace mechanisms for narrowing an existing token
 within one trust domain ({{decision-rule}}).
 
-The IdP, continuing workload, RAS, and CAI implement this extension.
-Root clients use the base exchange;
+The IdP, the continuing workload, a RAS from which workloads continue, and
+the CAI implement this extension. Root clients use the base exchange;
 chain establishment requires a resolvable session anchor or, optionally, a
 grant anchor ({{lifecycle-anchors}}), and without one the IdP issues an
 ordinary ID-JAG without a handle. A terminal RAS needs only the base
@@ -200,7 +199,7 @@ AgentApp     IdP       GatewayRAS    ToolGateway         WikiRAS
   |           |             |             |                 |
   |           |             | (4) exchange access token: assertion [new]
   |           |             |<------------|                 |
-  |           |             | assertion: H0 active, may continue [new]
+  |           |             | assertion: H0 accepted, active, eligible [new]
   |           |             |------------>|                 |
   |           | (5) exchange assertion for next ID-JAG  [new]
   |           |<--------------------------|                 |
@@ -266,7 +265,7 @@ Chain authorization:
 
 Continuation Assertion Issuer (CAI):
 : The role the IdP trusts to issue Identity Continuation Assertions for a
-  tenant ({{assertion-issuance}}).
+  tenant and the RAS whose hops it attests ({{assertion-issuance}}).
 
 Continuation Handle (`identity_continuation_handle`):
 : An opaque, unguessable, IdP-generated reference to one hop of a chain
@@ -280,6 +279,10 @@ Current actor:
 : The workload presenting the assertion to the IdP, named by `act`. Its
   canonical actor identity is the (`iss`, `sub`) pair that its authentication
   to the IdP resolves to ({{client-identity}}).
+
+Durable chain:
+: A chain anchored to a refresh token's OAuth grant rather than to the user's
+  IdP session, so that it can continue after logout ({{lifecycle-anchors}}).
 
 Hop:
 : One link of a chain: the IdP's record of an ID-JAG it issued, with an
@@ -310,8 +313,9 @@ Resource Authorization Server (RAS):
 
 Tenant:
 : The administrative boundary within which the chain and CAI trust are
-  configured; its determination is deployment-defined
-  ({{security-trust-model}}).
+  configured; its determination is deployment-defined, derived from
+  authenticated material, never from requester-supplied input
+  ({{issuer-trust}}).
 
 Trust domain:
 : An administrative and authentication boundary within which workloads can be
@@ -404,10 +408,10 @@ The claims have the following meanings and requirements:
   {{RFC9449}} ({{security-pop}}).
 
 `iat`, `exp`:
-: REQUIRED. `exp` MUST follow `iat`. The assertion is short-lived: `exp - iat`
-  SHOULD NOT exceed 300 seconds. The IdP rejects a lifetime longer than the
-  maximum it accepts ({{validation}}). IdPs SHOULD accept assertion lifetimes
-  of up to 300 seconds.
+: REQUIRED. `exp` MUST follow `iat`. The assertion is short-lived: a CAI
+  SHOULD NOT issue a lifetime (`exp - iat`) longer than 300 seconds, and an
+  IdP SHOULD accept lifetimes of up to 300 seconds. The IdP rejects a lifetime
+  longer than the maximum it accepts ({{validation}}).
 
 `nbf`:
 : OPTIONAL. If present, processed as {{RFC7519}} specifies.
@@ -424,8 +428,9 @@ The assertion MUST NOT contain:
   `authorization_details`, or `requested_token_type` (these are supplied by
   the request).
 
-The assertion is a subject token whose subject the IdP resolves from the
-referenced hop, not an {{RFC7523}} JWT-profile assertion.
+The assertion occupies the `subject_token` role of Token Exchange {{RFC8693}}:
+it carries no user subject, and the IdP resolves the user from the referenced
+hop. It is not an {{RFC7523}} JWT-profile assertion.
 
 Other top-level claims MAY appear but MUST be ignored for validation,
 authorization, and issuance.
@@ -478,7 +483,7 @@ acceptance, handle propagation, assertion issuance, and continuation exchange
 |---|---|
 | IdP | Establishing a Chain ({{root-establishment}}), Continuation Exchange ({{token-exchange}}), Chain Lifetime and Revocation ({{lifecycle}}), IdP metadata ({{metadata-idp}}), Issuer Trust Configuration ({{issuer-trust}}) |
 | Continuation-aware RAS | RAS Processing ({{ras-processing}}), Handle Carriers ({{handle-propagation}}), RAS metadata ({{metadata-ras}}) |
-| CAI | the assertion it issues ({{names}}, {{assertion-claims}}), Assertion Issuance and its request, client authentication, request validation, responses, and error mapping ({{assertion-issuance}}, {{assertion-token-exchange}}, {{assertion-client-auth}}, {{assertion-preconditions}}, {{assertion-response}}, {{assertion-error-response}}), Handle Carriers ({{handle-propagation}}), Separate CAI ({{separate-cai}}) |
+| CAI | the assertion it issues ({{names}}, {{assertion-claims}}), Assertion Issuance and its subsections ({{assertion-issuance}}), Handle Carriers ({{handle-propagation}}), Separate CAI ({{separate-cai}}) |
 | Continuing workload | Assertion Issuance Request, Client Authentication, and Successful Response ({{assertion-token-exchange}}, {{assertion-client-auth}}, {{assertion-response}}); Continuation Request and Client Authentication ({{request}}, {{client-identity}}); Successful Response ({{success-response}}) and Error Response and Recovery ({{error-response}}) |
 
 ## Establishing a Chain {#root-establishment}
@@ -501,9 +506,9 @@ Content-Type: application/x-www-form-urlencoded
 
 grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &requested_token_type=urn:ietf:params:oauth:token-type:id-jag
-&audience=https://ras.travel.example/
-&resource=https://api.travel.example/
-&scope=trips.read
+&audience=https://ras.gateway.example/
+&resource=https://gateway.example/
+&scope=tools.invoke
 &subject_token=<id_token | refresh_token | SAML assertion>
 &subject_token_type=<normal-subject-token-type>
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
@@ -517,15 +522,14 @@ root actor is the authenticated client ({{root-actor}}).
 
 ### Chain Establishment {#chain-establishment}
 
-The IdP MUST establish a chain when the chain authorization for a root
-exchange permits continuation and the root subject token resolves to a
+The IdP MUST establish a chain when tenant policy permits continuation for
+the root exchange and the root subject token resolves to a
 lifecycle anchor ({{lifecycle-anchors}}). To
 establish a chain, the IdP MUST include the root handle in the ID-JAG. Absent
 permission to continue, the IdP MUST NOT establish a chain or include an
 `identity_continuation_handle`.
 
-Tenant policy determines whether the chain authorization permits
-continuation and may restrict establishment to particular clients, grants,
+Tenant policy may also restrict establishment to particular clients, grants,
 or targets.
 
 The lifecycle anchor is the user's active IdP session or, for a durable chain,
@@ -647,9 +651,6 @@ the continuation exchange ({{validation}}).
 RAS acceptance and recorded eligibility ({{ras-processing}}) are prerequisites
 for CAI issuance. The IdP authorizes downstream access
 under the chain authorization and current policy ({{validation}}).
-RAS-local eligibility and scopes do not independently authorize that access or
-define its limits: scopes at different audiences have independent semantics
-({{rationale-boundary}}).
 
 ## Handle Carriers Within the Domain {#handle-propagation}
 
@@ -664,8 +665,10 @@ authorization: doing so could attach another user's handle to the call.
 When the RAS also acts as CAI, it reads the handle from its authorization
 state. It may also include the handle in its access token
 ({{example-gateway}}). A separate CAI receives the handle through a carrier
-derived from the RAS binding ({{ras-processing}}). The carrier is accepted
-only within that trust domain ({{assertion-issuance}}).
+derived from the RAS binding ({{ras-processing}}). A Transaction Token
+{{I-D.ietf-oauth-transaction-tokens}} is one such carrier, an optional
+intra-domain choice and not a dependency of this profile. The carrier is
+accepted only within that trust domain ({{assertion-issuance}}).
 
 The source of the authorization context depends on the type of call:
 
@@ -684,8 +687,8 @@ The CAI checks acceptance freshness for every carrier
 
 A Resource Server has no obligations under this document. A carrier SHOULD NOT
 expose the handle to a party with no role in continuation. Deployments keep
-this security-sensitive correlation state ({{chain-id}}) out of logs, traces,
-and responses.
+this non-secret but security-sensitive correlation state ({{chain-id}}) out
+of logs, traces, and responses.
 
 ## Assertion Issuance {#assertion-issuance}
 
@@ -696,11 +699,12 @@ MUST NOT accept an IdP audience supplied by the requester.
 
 The CAI attests three facts about its own domain:
 
-* The RAS accepted the hop.
-* The hop is still active and continuable by the RAS's own authorization
-  semantics.
-* The authenticated actor is bound to the authorization context in which it
-  received, or was designated to process, the request that hop authorized.
+* The RAS accepted the ID-JAG for the hop.
+* The authorization the RAS established from it is active and, by the RAS's
+  own authorization semantics, eligible for continuation.
+* The authenticated workload is associated with that authorization context,
+  in which it received, or was designated to process, the request that hop
+  authorized.
 
 Whether that actor may continue, and to what, is the IdP's decision under the
 chain authorization and current policy ({{validation}}).
@@ -715,8 +719,8 @@ one request to implement. Issuance by other means remains deployment-specific
 ({{handle-propagation}}).
 
 A workload obtains assertions from the token endpoint of the CAI its
-deployment designates. For a RAS acting as its own CAI that is the RAS's token
-endpoint, discoverable through the RAS's metadata ({{metadata-ras}}); a
+deployment designates. For a RAS acting as its own CAI, this is the RAS's
+token endpoint, discoverable through the RAS's metadata ({{metadata-ras}}); a
 separate CAI is configured within the trust domain, which this document leaves
 to the deployment ({{handle-propagation}}).
 
@@ -804,7 +808,7 @@ Either `subject_token` type supplies the facts below. The CAI MUST
 authenticate the actor and issue only after establishing these facts:
 
 1. The handle came through an authenticated, confidential,
-   integrity-protected chain path or equivalent authenticated state.
+   integrity-protected channel or equivalent authenticated state.
 
 2. The current actor controls the key placed in `cnf`.
 
@@ -855,7 +859,9 @@ A successful response is a Token Exchange response ({{RFC8693}}, Section
 `issued_token_type` is
 `urn:ietf:params:oauth:token-type:identity-continuation`, `token_type` is
 `N_A` (not applicable), and `expires_in` reflects the assertion's lifetime.
-This document adds one parameter:
+The `access_token` member is the {{RFC8693}} response container; the assertion
+is not an OAuth access token, which `token_type` `N_A` signals. This document
+adds one parameter:
 
 `identity_continuation_authorization_server`:
 : REQUIRED. A JSON string containing the issuer identifier ({{RFC8414}}) of
@@ -889,7 +895,7 @@ Pragma: no-cache
   "access_token": "<Identity Continuation Assertion, compact JWS>",
   "token_type": "N_A",
   "identity_continuation_authorization_server": "https://idp.example/",
-  "expires_in": 120
+  "expires_in": 180
 }
 ~~~
 
@@ -927,8 +933,10 @@ uses introspection or validates a self-contained token.
 
 The handle alone does not convey the originating IdP, tenant, or eligibility
 for continuation. The introspection response's `active` member reports token
-activity, not continuation eligibility ({{RFC7662}}, Section 2.2). These paths
-require deployment-specific evidence or configuration to supply those facts.
+activity, not continuation eligibility ({{RFC7662}}, Section 2.2). A separate
+CAI relying on introspection therefore obtains the eligibility and the
+originating IdP and tenant from deployment-defined evidence or configuration,
+as the requirement above already demands.
 
 With a Transaction Token, the handle arrives through the carrier of
 {{handle-propagation}}. Validating that token alone does not establish RAS
@@ -1042,10 +1050,12 @@ assertion bound to the new key.
 
 ### Request Validation {#validation}
 
-A presentation whose (`iss`, `jti`) matches an ISSUED reservation, as
-{{idempotent-retry}} defines, is processed under that section. For a first
-presentation, the IdP MUST reject the request unless every rule below holds.
-{{error-response}} specifies error precedence when multiple rules fail.
+Where the IdP offers idempotent retry, a presentation whose (`iss`, `jti`)
+matches an ISSUED reservation, as {{idempotent-retry}} defines, is processed
+under that section; an IdP that does not offer retry rejects every second
+presentation ({{validation-replay}}). For a first presentation, the IdP MUST
+reject the request unless every rule below holds. {{error-response}} specifies
+error precedence when multiple rules fail.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -1093,8 +1103,8 @@ presentation, the IdP MUST reject the request unless every rule below holds.
 4. **Chain state.**
    * the handle identifies a hop the IdP issued, on an active chain, that the
      assertion attests as accepted: a valid assertion from a CAI the IdP
-     trusts for that hop's RAS is itself that attestation, which no claim
-     states ({{hop-activation}});
+     trusts for that hop's RAS is itself that attestation; no claim in the
+     assertion carries it ({{hop-activation}});
    * neither the presented hop nor any ancestor is revoked;
    * the actor lineage that results from merging consecutive same-actor
      entries, as the onward `act` will ({{onward-id-jag}}), is within its
@@ -1121,9 +1131,9 @@ presentation, the IdP MUST reject the request unless every rule below holds.
    * the assertion's lifetime does not exceed the maximum the IdP accepts
      ({{assertion-claims}}); and
    * `jti` is not yet reserved for the assertion issuer ({{validation-replay}});
-     a presentation matching an ISSUED reservation is recovery
-     ({{idempotent-retry}}), not a continuation exchange, and any other reserved
-     `jti` is rejected;
+     where the IdP offers idempotent retry, a presentation matching an ISSUED
+     reservation is recovery ({{idempotent-retry}}), not a continuation
+     exchange, and any other reserved `jti` is rejected;
 
 7. **Authorization.** The IdP MUST issue an ID-JAG only if the chain
    authorization associated with the referenced hop ({{chain-authorization}})
@@ -1168,10 +1178,11 @@ Pragma: no-cache
 }
 ~~~
 
-On success, the IdP records a child hop ({{hop-activation}}) of the presented
-hop and issues an ID-JAG carrying the resolved target `sub` and a fresh
-handle. An idempotent retry (the freshness rule; {{idempotent-retry}}) instead
-returns the previously issued grant unchanged, creating no new hop or handle.
+On success, the IdP MUST record a child hop ({{hop-activation}}) of the
+presented hop before returning an ID-JAG carrying the resolved target `sub`
+and the child hop's fresh handle. An idempotent retry (the freshness rule;
+{{idempotent-retry}}) instead returns the previously issued grant unchanged,
+creating no new hop or handle.
 
 The hop reference is delivered as the ID-JAG's `identity_continuation_handle`
 claim ({{chain-id}}), a claim inside `access_token` and not a separate Token
@@ -1197,9 +1208,10 @@ DPoP-bound JWT grant, `urn:ietf:params:oauth:grant-type:jwt-dpop`
 ({{I-D.parecki-oauth-jwt-dpop-grant}}), and a DPoP proof of the bound key, as
 the base profile specifies for a key-bound ID-JAG
 ({{I-D.ietf-oauth-identity-assertion-authz-grant}}, Section 9.8.1.2.1). The
-target RAS needs nothing from this document to do so: a terminal RAS advertises
-nothing from this document ({{metadata-ras}}) and redeems a key-bound ID-JAG
-under that grant as the base profile requires.
+target RAS needs no continuation support to redeem this grant. A RAS that
+does not implement this profile may issue a bearer access token under the
+base profile. A continuation-aware RAS follows the binding requirements of
+{{ras-processing}}, even if no further continuation occurs.
 
 Where the recorded root authentication context contains `auth_time`, `acr`, or
 `amr`, the IdP MUST include them in the onward ID-JAG unchanged. Continuation
@@ -1208,12 +1220,16 @@ raising `acr` or adding `amr` beyond the user's root authentication.
 
 The IdP constructs `act` as follows:
 
-* It places the authenticated current actor atop the presented hop's lineage;
-  it never copies lineage from the assertion, and siblings do not contribute.
+* It places the authenticated current actor atop the presented hop's lineage,
+  whose origin is the authenticated client of the root exchange even if
+  the root ID-JAG carries no `act` ({{root-actor}}); it never copies lineage
+  from the assertion, and siblings do not contribute.
 * A hop's parent reference is immutable. The IdP MUST derive lineage from
   that hop's ancestry to the root, excluding sibling branches. Storage and
   traversal methods are implementation-specific.
-* Consecutive identical actors merge into one entry, though the hop record
+* Consecutive identical actors, those whose canonical actor identities are
+  equal under the comparison rules of {{client-identity}}, both `iss` and
+  `sub`, merge into one entry, though the hop record
   remains; policy MAY limit disclosed depth, narrowing what a target sees
   without changing the actor-lineage depth bound the IdP enforces (the
   chain-state rule of {{validation}}).
@@ -1222,10 +1238,10 @@ The IdP constructs `act` as follows:
   the disclosed actor lineage, not the authoritative history, which only the
   IdP's hop records hold.
 
-The onward ID-JAG's `client_id` is the current actor's identifier at the target
-RAS, which the IdP resolves from its registration of the actor's client
-identities per target; a target for which the actor has none fails with
-`invalid_target` ({{error-response}}).
+The onward ID-JAG's `client_id` identifies the current actor's OAuth client
+at the target RAS and may differ from its client identifier at the IdP.
+If the IdP cannot resolve that target client identity, the request fails
+with `invalid_target` ({{error-response}}).
 
 The following is a non-normative example of the onward ID-JAG issued by the
 IdP:
@@ -1269,15 +1285,23 @@ IdP:
 
 On failure, the IdP returns an error response ({{RFC6749}}, Section 5.2;
 {{RFC8693}}, Section 2.2.2). On a first presentation, when more than one rule
-of {{validation}} fails, the IdP MUST return the code for the earliest failure,
-where request-parameter and well-formedness failures (including signature
-verification) come first, no chain-state code is returned before issuer trust
-for the hop's RAS is established, and among chain-state failures a permanently
-unusable hop precedes a limit. The contents of an unverified assertion never
-determine the response, and a missing hop is `invalid_request`.
+of {{validation}} fails, the IdP MUST return the code for the earliest
+failure. Request-parameter and well-formedness failures (including signature
+verification) come first. No chain-state code is returned before issuer trust
+for the hop's RAS is established, nor before the client authentication and key
+proof of the current-actor rule succeed, so no chain-state code reaches a
+caller that has not authenticated as the current actor and proved the `cnf`
+key. Among chain-state failures a permanently unusable hop precedes a limit.
+The contents of an unverified assertion never determine the response, and a
+missing hop is `invalid_request`, so a caller learns nothing about which
+handles exist.
 
-The IdP MUST return `invalid_continuation` ({{iana}}) when the handle identifies
-an issued hop that is permanently unusable: its chain has expired or ended,
+For recovery, client authentication, key proof, and fingerprint matching
+precede chain-state checks ({{idempotent-retry}}).
+
+On a first presentation or matching ISSUED recovery, the IdP MUST return
+`invalid_continuation` ({{iana}}) when the handle identifies an issued hop
+that is permanently unusable: its chain has expired or ended,
 the hop or an ancestor is revoked, or the tenant has withdrawn the chain's
 permission to continue ({{lifecycle-ending}}). The IdP MUST NOT return
 `invalid_continuation` in any other case.
@@ -1286,10 +1310,14 @@ For other failures, the IdP MUST use the following error codes:
 
 * `invalid_request`: a malformed, inconsistent, or unacceptable token, including
   an assertion that fails the well-formedness rule of {{validation}} (which
-  covers signature verification) or the issuer-trust rule; an unknown handle; a
+  covers signature verification) or the issuer-trust rule; an `act` that does
+  not equal the authenticated client's canonical actor identity
+  ({{client-identity}}); an unknown handle; a
   lifetime above the accepted maximum; prohibited `actor_token` or
   `actor_token_type` parameters; or a reserved assertion that cannot be
-  processed as idempotent recovery ({{idempotent-retry}}).
+  processed as idempotent recovery ({{idempotent-retry}}), other than a
+  matching ISSUED recovery whose hop is permanently unusable, which is
+  `invalid_continuation`.
 * `invalid_dpop_proof`: a DPoP failure.
 * `unauthorized_client`: the chain authorization or current policy does
   not permit this actor to continue from the hop. Other actors may still
@@ -1298,11 +1326,16 @@ For other failures, the IdP MUST use the following error codes:
   hop-count, or rate limits ({{lifecycle-limits}}). A rate-limited request can
   be retried after the policy-defined window; other limit failures require a
   different request.
-* `invalid_target`, `invalid_scope`, or `invalid_authorization_details`:
-  requested authority is not permitted by the chain authorization or
-  current policy; `scope` is omitted and no policy default exists
-  ({{RFC6749}}, Section 3.3); an authorization detail type is unsupported; or
-  the IdP cannot resolve a subject or actor client identity at the target.
+* `invalid_target`: the requested `audience` or a requested `resource` is not
+  permitted by the chain authorization or current policy, or the IdP cannot
+  resolve the user's subject identifier or the actor's client identifier at
+  the target.
+* `invalid_scope`: a requested scope is not permitted by the chain
+  authorization or current policy, or `scope` is omitted and no policy
+  default exists ({{RFC6749}}, Section 3.3).
+* `invalid_authorization_details`: a requested authorization detail is not
+  permitted by the chain authorization or current policy, or its type is one
+  the IdP does not implement.
 
 DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
 {{RFC9449}}.
@@ -1310,12 +1343,10 @@ DPoP nonce processing and the `use_dpop_nonce` error apply unchanged from
 Recovery from `invalid_continuation` requires a new root exchange, authorized
 under current policy and resolving to an active anchor
 ({{root-establishment}}). Establishing a new chain does not reactivate the old
-chain's handles. An unknown handle is reported as `invalid_request`, so an
-assertion whose issuer the IdP does not trust for any hop learns nothing about
-which handles exist.
+chain's handles.
 
-The other errors do not establish that the chain is permanently unusable, so the
-client abandons only the current request. An actor-lineage depth rejection
+Other errors apply to the request and do not establish that the chain is
+permanently unusable. An actor-lineage depth rejection
 concerns the particular continuation whose resulting lineage would exceed the
 bound, not the hop itself; a continuation that merges into an existing lineage
 entry, or a later policy raising the bound, may still succeed.
@@ -1327,10 +1358,13 @@ fan-out or hop-count limits can prevent a subsequent exchange
 ({{lifecycle-limits}}). A fresh assertion may create an equivalent grant and
 sibling hop but no additional authority.
 
-A presentation rejected because its reservation is RESERVED may be repeated
-once the first presentation completes ({{idempotent-retry}}). Other
-`invalid_request` failures, such as malformed requests or prohibited parameters,
-require correcting or abandoning the request.
+A client cannot distinguish on the wire a presentation whose request does not
+match its reservation's fingerprint from one whose reservation is RESERVED or
+FAILED: all three return `invalid_request` ({{idempotent-retry}}). The client
+can retry the original request within the retry window, since pending issuance
+may complete, or obtain a fresh assertion. Other `invalid_request` failures,
+such as malformed requests or prohibited parameters, require correcting or
+abandoning the request.
 
 ### Replay Reservation and Retry {#validation-replay}
 
@@ -1366,7 +1400,8 @@ An IdP MAY offer idempotent retry by binding the reservation to a fingerprint
 of the request first authorized and recording the reservation as RESERVED,
 ISSUED, or FAILED (distinct from the hop facts of {{hop-activation}}). These
 names describe the states an IdP distinguishes, not a required representation.
-The IdP MUST reject a presentation that matches no fingerprint. A presentation
+The IdP MUST reject a presentation whose (`iss`, `jti`) matches a reservation
+but whose request does not match that reservation's fingerprint. A presentation
 matching the fingerprint of an ISSUED reservation within the IdP's retry window
 is processed as recovery, defined below. The fingerprint MUST cover:
 
@@ -1553,12 +1588,13 @@ metadata {{RFC8414}} with the following parameter:
 
 ## Resource Authorization Server Metadata {#metadata-ras}
 
-A Resource Authorization Server advertises support by listing
-the grant profile `urn:ietf:params:oauth:grant-profile:id-jag-continuation` in
+A Resource Authorization Server that binds the
+`identity_continuation_handle` claim to authorization state MUST advertise
+support by listing the grant profile
+`urn:ietf:params:oauth:grant-profile:id-jag-continuation` in
 its `authorization_grant_profiles_supported`
 {{I-D.ietf-oauth-identity-assertion-authz-grant}}. This value indicates that the
-server recognizes continuation-capable ID-JAGs and binds the
-`identity_continuation_handle` claim to authorization state
+server recognizes continuation-capable ID-JAGs and performs that binding
 ({{ras-processing}}). The base ID-JAG grant profile indicates ordinary grant
 processing without handle binding.
 
@@ -1618,10 +1654,10 @@ access to the RAS's acceptance evidence. Offline attenuation can avoid these
 dependencies where the subject and issuer trust remain usable across the
 boundary ({{decision-rule}}); it cannot replace IdP subject resolution.
 
-The IdP retains hop records for the chain's lifetime and prunes expired or
-revoked hop state. It retains each assertion's (`iss`, `jti`) reservation as
-{{validation-replay}} requires, expiring it by the same clock it uses to
-evaluate `exp`.
+The IdP retains hop records for the chain's lifetime and prunes hop state for
+ended chains and revoked hops. It retains each assertion's (`iss`, `jti`)
+reservation as {{validation-replay}} requires, expiring it by the same clock
+it uses to evaluate `exp`.
 
 An IdP that offers idempotent retry also holds the ISSUED reservation, its
 fingerprint, and its result for the retry window it defines, with recovery
@@ -1724,8 +1760,9 @@ ID-JAG and the continuation-aware RAS's access token are bound to the same key
 ({{client-identity}}, {{ras-processing}}). Sender constraint is maintained
 across continuation-capable hops rather than demonstrated once at issuance,
 with an authenticated transition to the next actor's key at each workload
-boundary. A terminal RAS follows
-the base profile and may issue a bearer token; the chain ends there.
+boundary. Where the chain ends at a RAS that does not implement this profile,
+that RAS's token binding is its own policy under the base profile
+({{onward-id-jag}}).
 
 The facts the CAI establishes before issuing ({{assertion-preconditions}}) form
 the binding chain from ID-JAG to assertion. In the synchronous flow, the
@@ -2069,12 +2106,11 @@ Claim Name:
 
 Claim Description:
 : An opaque, IdP-generated reference to one hop of a
-  continuation chain, used to correlate a continuation to its chain
-  and parent hop and to resolve the per-audience subject. This claim
-  appears in an Identity Continuation Assertion and in a continuation-capable
-  ID-JAG, and its value may also travel in intra-domain chain context,
-  including an access token the accepting Resource Authorization Server
-  issues ({{handle-propagation}}).
+  continuation chain, used to resolve the referenced hop and its chain state.
+  This claim appears in an Identity Continuation Assertion and in a
+  continuation-capable ID-JAG, and its value may also travel in intra-domain
+  chain context, including an access token the accepting Resource
+  Authorization Server issues ({{handle-propagation}}).
 
 Change Controller:
 : IETF
@@ -2157,15 +2193,17 @@ present at the IdP ({{security-pop}}).
 
 The Identity Continuation Assertion makes this transition explicit. The CAI
 attests that the receiving workload is associated with an accepted, active
-authorization eligible for
-continuation, and issues an assertion addressed to the IdP and bound to that
-workload's key ({{assertion-preconditions}}). The IdP can then authenticate
-and authorize the continuing workload using its own identity and key
-({{validation}}).
+authorization eligible for continuation, and issues an assertion addressed to
+the IdP and bound to that workload's key ({{assertion-preconditions}}). The
+IdP can then authenticate and authorize the continuing workload using its own
+identity and key ({{validation}}).
 
 Direct exchange of either token under {{RFC8693}} would require additional rules
 establishing the receiving party's authority to continue and binding the
 exchange to its identity and key ({{open-items}}).
+
+Assertion issuance reuses the Token Exchange {{RFC8693}} request and response
+framework at the CAI's token endpoint ({{assertion-token-exchange}}).
 
 A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} may carry the
 context from which the CAI issues its assertion; its validity alone is not
@@ -2199,6 +2237,13 @@ question ({{open-items}}).
 
 ## Actor Identity and Target Client Identity {#rationale-client-id}
 
+In {{RFC8693}}, `act` normally records a delegation relationship, the party
+acting for the subject of the token that carries it. In an Identity
+Continuation Assertion it instead identifies the authenticated actor
+associated with the accepted authorization context, whose continuation request
+the IdP evaluates ({{assertion-claims}}, {{validation}}); it asserts no
+downstream authority.
+
 The current actor's canonical identity in `act` records who acted,
 independently of the credential used to authenticate it ({{client-identity}}).
 The onward ID-JAG's `client_id` identifies that actor's OAuth client at the
@@ -2215,9 +2260,10 @@ it supplies neither RAS acceptance evidence nor target subject resolution.
 
 Each continuation is authorized under the recorded chain
 authorization and current policy ({{chain-authorization}}). RAS acceptance
-establishes the context from which the actor continues; the RAS's local scopes
-do not automatically bound authority at another target. Cross-target
-restrictions belong in the chain authorization and IdP policy.
+establishes the context from which the actor continues, and no more
+({{security-authorization}}): scopes at different audiences have independent
+semantics, so cross-target restrictions belong in the chain authorization and
+IdP policy rather than in a RAS's local scopes.
 
 This profile carries identity and lineage and binds continuation to an
 accepted authorization. Whether a requested action serves the work the user
@@ -2796,9 +2842,9 @@ On the wire (decoded ID-JAG):
 ### ExpenseRAS Binds H0; Expense TTS Carries It {#example-context}
 
 ExpenseApp redeems the ID-JAG at ExpenseRAS for an access token, AT1, and
-ExpenseRAS binds H0 to the authorization state behind AT1 and records that
-authorization as eligible for continuation ({{ras-processing}}). The carrier is
-what differs:
+ExpenseRAS binds H0, the issuing IdP, and the tenant it associates with that
+IdP to the authorization state behind AT1, and records that authorization as
+eligible for continuation ({{ras-processing}}). The carrier is what differs:
 the handle stays in this record, and AT1 does not carry it.
 
 Server-side state at ExpenseRAS:
@@ -2809,6 +2855,8 @@ Server-side state at ExpenseRAS:
   "status": "ACCEPTED",
   "continuation_eligible": true,
   "authorization_state": "at1-authz-2f9c",
+  "idp": "https://idp.example/",
+  "tenant": "tenant-123",
   "client_id": "expense-app",
   "bound_at": 1710000010
 }
@@ -3109,15 +3157,16 @@ it keys by its own task identifier; the record holds no bearer credential.
 Server-side state (PlatformRAS task authorization):
 
 ~~~
-task_id:              task-123
-owner:                alice
-actor:                briefing-agent
-continuation_handle:  Pz6vTq1NcY4kM8bJf3RxWa  # H0
-permitted_purpose:    morning-calendar-brief
-schedule:             "0 7 * * *"
-governing_grant:      grant-8f2c19a4  # internal reference
-expiry:               1719450000  # local, not IdP lifetime
-status:               active
+task_id:                      task-123
+owner:                        alice
+actor:                        briefing-agent
+identity_continuation_handle: Pz6vTq1NcY4kM8bJf3RxWa  # H0
+permitted_purpose:            morning-calendar-brief
+schedule:                     "0 7 * * *"
+governing_grant:              grant-8f2c19a4  # internal reference
+expiry:                       1719450000  # local, not IdP lifetime
+status:                       active
+continuation_eligible:        true
 ~~~
 
 Server-side state (Scheduler):
@@ -3265,15 +3314,17 @@ This non-normative appendix identifies questions for Working Group review.
    ({{idempotent-retry}})?
 
 6. **Limits.** The document recommends that an assertion's lifetime not exceed
-   300 seconds, leaves the maximum an IdP accepts to deployment, and requires a
-   finite hop-count limit without fixing a default ({{assertion-claims}},
-   {{lifecycle-limits}}). Should the 300-second recommendation become a
-   requirement, should the profile fix a hop-count default, and should the
-   accepted maximum be advertised in metadata?
+   300 seconds, recommends that IdPs accept lifetimes of up to 300 seconds and
+   leaves the maximum to deployment, and requires a finite hop-count limit
+   without fixing a default ({{assertion-claims}}, {{lifecycle-limits}}).
+   Should the 300-second recommendations become requirements, should the
+   profile fix a hop-count default, and should the accepted maximum be
+   advertised in metadata?
 
 The project issue tracker also records WG questions on authorization bounds
 (#106), acceptance freshness (#107), actor identity evidence (#108), CAI
-discovery (#109), bearer ingress (#110), and acceptance accountability (#41).
+discovery (#109), bearer ingress (#110), and acceptance accountability (#41):
+https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues
 
 Further extension topics include client-requested limits or permitted actors,
 intra-domain actor lineage and audit ({{I-D.mcguinness-oauth-actor-receipts}},
@@ -3294,8 +3345,10 @@ JWT Authorization Grant specifications, on whose work this profile builds.
 
 -02
 
-* Replaced the root-chain envelope with chain authorization based on
-  recorded root facts and current tenant policy.
+* Replaced the fixed root envelope of -01 with chain authorization based on
+  recorded root facts and current tenant policy. Clarified that the CAI
+  attests acceptance, eligibility, and actor association; the IdP authorizes
+  onward access.
 * Removed `actor_token` processing; client authentication determines the
   canonical actor identity. Distinguished disclosed actor lineage from the
   IdP's hop lineage.
@@ -3316,8 +3369,10 @@ JWT Authorization Grant specifications, on whose work this profile builds.
   permitted `nbf`; recommended capping assertion expiry at self-contained
   evidence expiry; and registered the handle as an introspection response
   member.
-* Removed RAS nomination of CAIs through `identity_continuation_issuers` and
-  clarified IdP configuration of CAI trust.
+* Removed RAS nomination of CAIs through `identity_continuation_issuers`,
+  clarified IdP configuration of CAI trust, and lifted the -01 restriction of
+  CAI issuance to the RAS's trust domain, which is now typical rather than
+  required.
 * Reorganized the protocol description and security considerations; revised
   the introduction, examples, design rationale, and open items.
 * Added Aaron Parecki as an author.
