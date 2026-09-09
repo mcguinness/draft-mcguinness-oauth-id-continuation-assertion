@@ -626,11 +626,11 @@ Two parties hold facts about a hop, neither carried on the wire:
 | Fact | Held by | Meaning |
 |---|---|---|
 | Issued | IdP | the IdP issued the ID-JAG and recorded the hop |
-| ACCEPTED | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
+| Accepted | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
 
 The IdP learns of acceptance through a trusted CAI's attestation and maintains
 no synchronized acceptance state ({{protocol-overview}}). The CAI attests only
-hops the RAS has ACCEPTED. A RAS acting as CAI attests its own hops; a separate
+hops the RAS has accepted. A RAS acting as CAI attests its own hops; a separate
 CAI confirms acceptance and activity according to the RAS's authorization
 semantics ({{assertion-issuance}}).
 
@@ -638,7 +638,7 @@ An issued hop cannot be continued without a trusted CAI's attestation. Unless
 the CAI is compromised ({{security-trust-model}}), no trusted CAI attests an
 issued-but-rejected ID-JAG, so continuation fails closed.
 
-A hop is continuable while a CAI trusted for its RAS can attest it as ACCEPTED
+A hop is continuable while a CAI trusted for its RAS can attest it as accepted
 and still active, and neither it nor any ancestor is revoked; whether a
 particular continuation from it succeeds is decided by the validation rules of
 the continuation exchange ({{validation}}).
