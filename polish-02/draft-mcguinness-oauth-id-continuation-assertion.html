@@ -1604,10 +1604,10 @@ AgentApp     IdP       GatewayRAS    ToolGateway         WikiRAS
 <ol start="1" type="1" class="normal type-1" id="section-1.1-5">
 <li id="section-1.1-5.1">
             <p id="section-1.1-5.1.1">As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
-for the gateway's RAS (GatewayRAS in the figure). New: the IdP records
-the root hop, H0, and its
-governing authorization, and includes H0's handle in the ID-JAG's
-<code>identity_continuation_handle</code> claim (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-1.1-5.1.1" class="pilcrow">¶</a></p>
+for the gateway's RAS (GatewayRAS in the figure). New: the IdP records the
+root hop, H0, and its governing authorization, and includes H0's handle in
+the ID-JAG's <code>identity_continuation_handle</code> claim (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>,
+<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-1.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.2">
             <p id="section-1.1-5.2.1">As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS and
@@ -1632,8 +1632,7 @@ it recorded in step 1 and current policy, resolves Alice's subject for the
 wiki, and issues an ID-JAG as hop H1, a child of H0 (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-1.1-5.5.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.6">
-            <p id="section-1.1-5.6.1">As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS (WikiRAS)
-and
+            <p id="section-1.1-5.6.1">As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS (WikiRAS) and
 receives an access token. New: if that RAS implements this profile it binds
 H1 as in step 2 and the chain can continue; otherwise it ignores the handle
 and the chain ends there.<a href="#section-1.1-5.6.1" class="pilcrow">¶</a></p>
