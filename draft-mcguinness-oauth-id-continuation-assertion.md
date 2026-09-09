@@ -625,8 +625,8 @@ Two parties hold facts about a hop, neither carried on the wire:
 
 | Fact | Held by | Meaning |
 |---|---|---|
-| Issued | IdP | the IdP issued the ID-JAG and recorded the hop |
-| Accepted | RAS authorization state | the RAS redeemed the grant, authorized it, and bound the handle |
+| Issuance | IdP | The IdP issued the ID-JAG and recorded the hop. |
+| Acceptance | RAS | The RAS accepted the ID-JAG and bound the handle to the resulting authorization. |
 
 The IdP learns of acceptance through a trusted CAI's attestation and maintains
 no synchronized acceptance state ({{protocol-overview}}). The CAI attests only
