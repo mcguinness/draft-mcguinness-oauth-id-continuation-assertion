@@ -99,10 +99,9 @@ A trusted issuer attests that a resource authorization server accepted an
 earlier ID-JAG and that the resulting authorization remains active and
 eligible for continuation. The workload exchanges this assertion at the
 identity provider, which evaluates the requested access under the chain
-authorization, the authorization recorded when the chain was established,
-and current policy before issuing an onward ID-JAG. The profile supports
-multi-hop access across resource authorization servers that trust a common
-identity provider.
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider.
 
 --- middle
 
@@ -245,10 +244,6 @@ Alice's subject for the wiki.
 {::boilerplate bcp14-tagged}
 
 This document uses the following terms, listed alphabetically:
-
-Actor lineage:
-: The actors the IdP discloses in an onward ID-JAG's nested `act` claim,
-  derived from its own hop records ({{onward-id-jag}}).
 
 Actor-lineage depth:
 : The number of entries in the actor lineage the IdP derives from its own
@@ -1163,9 +1158,8 @@ error precedence when multiple rules fail.
 ### Successful Response {#success-response}
 
 The response to a continuation exchange follows the base ID-JAG profile: the
-IdP returns the ID-JAG in `access_token`, the {{RFC8693}} response container,
-with `token_type` `N_A` (not applicable; {{RFC8693}}, Section 2.2.1) to signal
-that the ID-JAG is not an OAuth access token. The IdP MUST NOT include a
+IdP returns the ID-JAG in `access_token`, with `token_type` `N_A` (not
+applicable; {{RFC8693}}, Section 2.2.1). The IdP MUST NOT include a
 `refresh_token`: a renewable credential would let the workload obtain further
 grants without fresh CAI attestation, or root a new chain through the
 refresh-token anchor, outside the hop's revocation dependencies.
@@ -1244,13 +1238,10 @@ The IdP constructs `act` as follows:
   the disclosed actor lineage, not the authoritative history, which only the
   IdP's hop records hold.
 
-The onward ID-JAG's `client_id` is determined under the base profile's client
-identifier semantics ({{I-D.ietf-oauth-identity-assertion-authz-grant}}): it
-identifies the current actor's OAuth client at the target RAS, which the IdP
-resolves from its registration of the actor's client identities per target,
-and it may differ from the identifier the actor used to authenticate at the
-IdP. A target for which the actor has no such identity fails with
-`invalid_target` ({{error-response}}).
+The onward ID-JAG's `client_id` identifies the current actor's OAuth client
+at the target RAS and may differ from its client identifier at the IdP.
+If the IdP cannot resolve that target client identity, the request fails
+with `invalid_target` ({{error-response}}).
 
 The following is a non-normative example of the onward ID-JAG issued by the
 IdP:
