@@ -90,14 +90,19 @@ informative:
 
 This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) used as an OAuth 2.0 Token Exchange
-subject token. It enables an IdP Authorization Server (IdP) to issue an onward
-Identity Assertion JWT Authorization Grant (ID-JAG) when a user's request
-crosses service boundaries to an audience for which the requesting workload
-has no suitable credential, including when the user is no longer present. The
-profile targets deployments in which several Resource Authorization Servers
-trust one IdP and use pairwise subject identifiers that only the IdP can
-resolve. It complements offline attenuation for intra-domain fan-out that
-does not change the subject.
+subject token. It enables a workload acting on a user's behalf to obtain an
+Identity Assertion JWT Authorization Grant (ID-JAG) for another service when
+it lacks a suitable credential, including when the user is no longer
+present.
+
+A trusted issuer attests that a resource authorization server accepted an
+earlier ID-JAG and that the resulting authorization remains active and
+eligible for continuation. The workload exchanges this assertion at the
+identity provider, which evaluates the requested access under the governing
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider and use pairwise subject identifiers
+resolved by that provider.
 
 --- middle
 
