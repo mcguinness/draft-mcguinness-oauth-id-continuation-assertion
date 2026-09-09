@@ -6,6 +6,7 @@
 <meta content="initial-scale=1.0" name="viewport">
 <title>Identity Continuation Assertion for OAuth 2.0 Token Exchange</title>
 <meta content="Karl McGuinness" name="author">
+<meta content="Aaron Parecki" name="author">
 <meta content="
        This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) used as an OAuth 2.0 Token Exchange
@@ -1057,8 +1058,8 @@ svg {
 <td class="right">September 2026</td>
 </tr></thead>
 <tfoot><tr>
-<td class="left">McGuinness</td>
-<td class="center">Expires 12 March 2027</td>
+<td class="left">McGuinness &amp; Parecki</td>
+<td class="center">Expires 13 March 2027</td>
 <td class="right">[Page]</td>
 </tr></tfoot>
 </table>
@@ -1071,17 +1072,21 @@ svg {
 <dd class="internet-draft">draft-mcguinness-oauth-id-continuation-assertion-latest</dd>
 <dt class="label-published">Published:</dt>
 <dd class="published">
-<time datetime="2026-09-08" class="published">8 September 2026</time>
+<time datetime="2026-09-09" class="published">9 September 2026</time>
     </dd>
 <dt class="label-intended-status">Intended Status:</dt>
 <dd class="intended-status">Standards Track</dd>
 <dt class="label-expires">Expires:</dt>
-<dd class="expires"><time datetime="2027-03-12">12 March 2027</time></dd>
-<dt class="label-authors">Author:</dt>
+<dd class="expires"><time datetime="2027-03-13">13 March 2027</time></dd>
+<dt class="label-authors">Authors:</dt>
 <dd class="authors">
 <div class="author">
       <div class="author-name">K. McGuinness</div>
 <div class="org">Independent</div>
+</div>
+<div class="author">
+      <div class="author-name">A. Parecki</div>
+<div class="org">Okta</div>
 </div>
 </dd>
 </dl>
@@ -1135,7 +1140,7 @@ does not change the subject.<a href="#section-abstract-1" class="pilcrow">¶</a>
         time. It is inappropriate to use Internet-Drafts as reference
         material or to cite them other than as "work in progress."<a href="#section-boilerplate.1-3" class="pilcrow">¶</a></p>
 <p id="section-boilerplate.1-4">
-        This Internet-Draft will expire on 12 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
+        This Internet-Draft will expire on 13 March 2027.<a href="#section-boilerplate.1-4" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="copyright">
@@ -1477,7 +1482,7 @@ does not change the subject.<a href="#section-abstract-1" class="pilcrow">¶</a>
             <p id="section-toc.1-1.17.1"><a href="#appendix-E" class="auto internal xref"></a><a href="#name-document-history" class="internal xref">Document History</a></p>
 </li>
           <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.18">
-            <p id="section-toc.1-1.18.1"><a href="#appendix-F" class="auto internal xref"></a><a href="#name-authors-address" class="internal xref">Author's Address</a></p>
+            <p id="section-toc.1-1.18.1"><a href="#appendix-F" class="auto internal xref"></a><a href="#name-authors-addresses" class="internal xref">Authors' Addresses</a></p>
 </li>
         </ul>
 </nav>
@@ -1488,22 +1493,24 @@ does not change the subject.<a href="#section-abstract-1" class="pilcrow">¶</a>
       <h2 id="name-introduction">
 <a href="#section-1" class="section-number selfRef">1. </a><a href="#name-introduction" class="section-name selfRef">Introduction</a>
       </h2>
-<p id="section-1-1">In many deployments, applications use a common identity provider for user
-authentication. The Identity Assertion JWT Authorization Grant
-(ID-JAG) <span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> lets an application
-exchange the user's identity assertion at that IdP Authorization Server (IdP)
-for a grant that one downstream Resource Authorization Server (RAS) accepts.
-Each RAS knows the user by a pairwise subject that only the IdP can resolve.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">ID-JAG supports a requester that holds the user's identity assertion. A
-workload receiving a request on the user's behalf may need to access another
-service without such an assertion, including when the user is no longer
-present. The workload cannot resolve the user's subject at the next audience,
-and the next RAS does not accept the access token the workload received.<a href="#section-1-2" class="pilcrow">¶</a></p>
+<p id="section-1-1">The Identity Assertion JWT Authorization Grant (ID-JAG)
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> allows an application to
+exchange the user's identity assertion at the IdP Authorization Server (IdP)
+for a grant that it redeems at a target Resource Authorization Server (RAS)
+for an access token. A service receiving that access token may need to call
+a further service on the user's behalf, including when the user is no longer
+present. It may hold neither the user's identity assertion nor another
+credential accepted by the next authorization server.<a href="#section-1-1" class="pilcrow">¶</a></p>
+<p id="section-1-2">This profile addresses deployments in which RASes trust a common IdP and
+identify the user through pairwise subject identifiers that only the IdP can
+resolve. The receiving workload cannot determine the user's subject at the
+next RAS, and its incoming access token is not accepted there. This profile
+enables multi-hop access when the request's path is not known in advance,
+such as at a Model Context Protocol (MCP) tool gateway (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">This document defines the Identity Continuation Assertion, a short-lived,
-sender-constrained JSON Web Token (JWT) <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> that such a workload
-obtains from a Continuation Assertion Issuer (CAI). The IdP trusts the CAI to
-attest acceptance by the RAS that issued the access token. The
-assertion states:<a href="#section-1-3" class="pilcrow">¶</a></p>
+sender-constrained JSON Web Token (JWT) <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> that the workload obtains
+from a Continuation Assertion Issuer (CAI). The IdP trusts the CAI to attest
+the following (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>):<a href="#section-1-3" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-1-4.1">
           <p id="section-1-4.1.1">The RAS accepted the referenced ID-JAG, established an authorization from
@@ -1514,55 +1521,38 @@ it, and that authorization remains active and is eligible for continuation.<a hr
 the key whose possession it will prove to the IdP.<a href="#section-1-4.2.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-1-5">The workload presents the assertion to the IdP as the subject token of an
-OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The IdP resolves the user's
-identity for the next service, decides under the tenant's policy whether this
-workload may continue to it, and issues the next ID-JAG.<a href="#section-1-5" class="pilcrow">¶</a></p>
-<p id="section-1-6">Each ID-JAG issued in a chain represents a hop. The hops descending from one
-root ID-JAG form the chain. An opaque handle in each ID-JAG identifies its hop
-and links the IdP's and RAS's records. The RAS may also perform the CAI role.<a href="#section-1-6" class="pilcrow">¶</a></p>
-<p id="section-1-7">Three properties hold throughout:<a href="#section-1-7" class="pilcrow">¶</a></p>
-<ul class="normal">
-<li class="normal" id="section-1-8.1">
-          <p id="section-1-8.1.1">Only the IdP names the user for a new audience.<a href="#section-1-8.1.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-1-8.2">
-          <p id="section-1-8.2.1">A workload can continue only from a grant that a RAS has redeemed and
-issued an access token for.<a href="#section-1-8.2.1" class="pilcrow">¶</a></p>
-</li>
-        <li class="normal" id="section-1-8.3">
-          <p id="section-1-8.3.1">The IdP issues the next ID-JAG only after authenticating the workload,
-verifying possession of its key, and authorizing continuation from the
-grant under the governing authorization and current tenant policy.<a href="#section-1-8.3.1" class="pilcrow">¶</a></p>
-</li>
-      </ul>
-<p id="section-1-9">The assertion identifies the accepted authorization and current actor. The
-continuation request specifies the target and requested authority, which the
-IdP evaluates under the governing authorization and current policy. The scopes
-of the access token the workload holds do not bound the next ID-JAG's authority.<a href="#section-1-9" class="pilcrow">¶</a></p>
-<p id="section-1-10">Continuation is not required for every API call. Further calls under the same
-hop and authorization context can reuse the access token a continuation
-obtained while it remains valid and covers the requested access
-(<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-10" class="pilcrow">¶</a></p>
-<p id="section-1-11">This document extends ID-JAG, referred to as the base profile. A deployment
-enables the extension at the IdP and at the continuing workload, RAS, and CAI
-(<a href="#ras-processing" class="auto internal xref">Section 5.2</a>, <a href="#metadata-ras" class="auto internal xref">Section 7.2</a>). The root client uses the base exchange
-without requesting continuation support. Chain establishment requires a
-resolvable session or grant anchor; otherwise, the IdP issues an ordinary
-ID-JAG without a handle. Grant-anchor support is optional
-(<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). Every onward target, including a terminal RAS, redeems
-the key-bound ID-JAG using the base profile's DPoP-bound JWT grant
-(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-1-11" class="pilcrow">¶</a></p>
-<p id="section-1-12">The IdP maintains chain records and enforces authorization and replay
-protection in addition to resolving pairwise subjects.<a href="#section-1-12" class="pilcrow">¶</a></p>
-<p id="section-1-13">An ID-JAG deployment can therefore add multi-hop access where a request's path
-is not known in advance, as at a Model Context Protocol (MCP) tool gateway
-(<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-13" class="pilcrow">¶</a></p>
-<p id="section-1-14">This document complements OAuth Identity Chaining
-<span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>, and it is not a substitute for narrowing
-an existing token within one trust domain (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-1-14" class="pilcrow">¶</a></p>
-<p id="section-1-15">This document specifies chain establishment, assertion issuance, and
-continuation processing. It defines no new access-token format.<a href="#section-1-15" class="pilcrow">¶</a></p>
+<p id="section-1-5">The accepting RAS may also perform the CAI role.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-6">The workload presents the assertion to the IdP as the subject token of an
+OAuth 2.0 Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> request. The assertion identifies the
+accepted authorization and current actor; the continuation request specifies
+the target and requested authority. The IdP authenticates the workload,
+verifies possession of the assertion's bound key, evaluates the requested
+access, and resolves the user's subject for the target RAS. If authorized, it
+issues an onward ID-JAG that the workload redeems at that RAS
+(<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#section-1-6" class="pilcrow">¶</a></p>
+<p id="section-1-7">Each ID-JAG issued in a chain represents a hop. A root ID-JAG and the hops
+descending from it form a chain. An opaque continuation handle identifies
+each ID-JAG's hop within a chain (<a href="#chain-id" class="auto internal xref">Section 4</a>). The IdP records the
+relationships between hops and associates the chain with the governing
+authorization established at the root exchange. Each continuation is
+evaluated under that authorization and current policy
+(<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance enables continuation but does not
+independently authorize downstream access; incoming access-token scopes do
+not automatically limit authority at another target.<a href="#section-1-7" class="pilcrow">¶</a></p>
+<p id="section-1-8">Further calls under the same hop and authorization context can reuse the
+resulting access token while it remains valid and covers the requested
+access (<a href="#implementation" class="auto internal xref">Section 8</a>).<a href="#section-1-8" class="pilcrow">¶</a></p>
+<p id="section-1-9">This document extends ID-JAG, referred to as the base profile, and
+complements OAuth Identity Chaining <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>.
+This profile does not replace mechanisms for narrowing an existing token
+within one trust domain (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-1-9" class="pilcrow">¶</a></p>
+<p id="section-1-10">The IdP, continuing workload, RAS, and CAI implement this extension.
+Root clients use the base exchange;
+chain establishment requires a resolvable session anchor or, optionally, a
+grant anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>), and without one the IdP issues an
+ordinary ID-JAG without a handle. A terminal RAS needs only the base
+profile's support for redeeming a DPoP-bound ID-JAG (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).
+This document defines no new access-token format.<a href="#section-1-10" class="pilcrow">¶</a></p>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">
@@ -5729,8 +5719,8 @@ individual submission.<a href="#appendix-E-5.6.1" class="pilcrow">¶</a></p>
 </div>
 <div id="authors-addresses">
 <section id="appendix-F">
-      <h2 id="name-authors-address">
-<a href="#name-authors-address" class="section-name selfRef">Author's Address</a>
+      <h2 id="name-authors-addresses">
+<a href="#name-authors-addresses" class="section-name selfRef">Authors' Addresses</a>
       </h2>
 <address class="vcard">
         <div dir="auto" class="left"><span class="fn nameRole">Karl McGuinness</span></div>
@@ -5738,6 +5728,14 @@ individual submission.<a href="#appendix-E-5.6.1" class="pilcrow">¶</a></p>
 <div class="email">
 <span>Email:</span>
 <a href="mailto:public@karlmcguinness.com" class="email">public@karlmcguinness.com</a>
+</div>
+</address>
+<address class="vcard">
+        <div dir="auto" class="left"><span class="fn nameRole">Aaron Parecki</span></div>
+<div dir="auto" class="left"><span class="org">Okta</span></div>
+<div class="email">
+<span>Email:</span>
+<a href="mailto:aaron@parecki.com" class="email">aaron@parecki.com</a>
 </div>
 </address>
 </section>
