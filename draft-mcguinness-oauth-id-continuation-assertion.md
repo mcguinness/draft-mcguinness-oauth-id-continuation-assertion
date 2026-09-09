@@ -185,7 +185,7 @@ Steps are numbered as in the figure; "as in ID-JAG" marks what is unchanged
 from the base profile, "new" what this profile adds.
 
 ~~~
-AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
+AgentApp     IdP       GatewayRAS    ToolGateway         WikiRAS
   |           |             |             |                 |
   | (1) exchange ID Token for ID-JAG      |                 |
   |---------->|             |             |                 |
@@ -213,14 +213,15 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 ~~~
 
 1. As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
-   for the gateway's RAS. New: the IdP records the root hop, H0, and its
-   chain authorization, and includes H0's handle in the ID-JAG's
-   `identity_continuation_handle` claim ({{root-establishment}}, {{chain-id}}).
+   for the gateway's RAS (GatewayRAS in the figure). New: the IdP records the
+   root hop, H0, and its chain authorization, and includes H0's handle in the
+   ID-JAG's `identity_continuation_handle` claim ({{root-establishment}},
+   {{chain-id}}).
 2. As in ID-JAG, AgentApp presents the ID-JAG to the gateway's RAS and
    receives an access token. New: the RAS binds the handle to the authorization
    it creates ({{ras-processing}}). A RAS that does not implement this profile
    ignores the claim.
-3. AgentApp calls the gateway with the access token.
+3. AgentApp calls the gateway (ToolGateway) with the access token.
 4. **New:** the gateway exchanges that access token at its RAS's token endpoint
    for an Identity Continuation Assertion ({{assertion}}). The RAS resolves the
    token's hop binding and attests H0's activity, eligibility for continuation,
@@ -230,7 +231,7 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
    ({{token-exchange}}). The IdP checks the wiki and the gateway against what
    it recorded in step 1 and current policy, resolves Alice's subject for the
    wiki, and issues an ID-JAG as hop H1, a child of H0 ({{validation}}).
-6. As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS and
+6. As in ID-JAG, the gateway presents the ID-JAG to the wiki's RAS (WikiRAS) and
    receives an access token. New: if that RAS implements this profile it binds
    H1 as in step 2 and the chain can continue; otherwise it ignores the handle
    and the chain ends there.
@@ -441,7 +442,7 @@ chain. {{privacy}} describes the resulting correlation exposure.
 A handle is non-secret but security-sensitive correlation state: it confers no
 authority by itself, yet a handle together with a CAI trust path and the
 actor's credential is a larger compromise than the actor's credential alone
-({{security-topology}}); {{handle-propagation}} limits where it travels.
+({{security-pop}}); {{handle-propagation}} limits where it travels.
 
 The following rules apply:
 
@@ -477,7 +478,7 @@ acceptance, handle propagation, assertion issuance, and continuation exchange
 |---|---|
 | IdP | Establishing a Chain ({{root-establishment}}), Continuation Exchange ({{token-exchange}}), Chain Lifetime and Revocation ({{lifecycle}}), IdP metadata ({{metadata-idp}}), Issuer Trust Configuration ({{issuer-trust}}) |
 | Continuation-aware RAS | RAS Processing ({{ras-processing}}), Handle Carriers ({{handle-propagation}}), RAS metadata ({{metadata-ras}}) |
-| CAI | the assertion it issues ({{names}}, {{assertion-claims}}), Assertion Issuance and its request validation, responses, and error mapping ({{assertion-issuance}}, {{assertion-client-auth}}, {{assertion-preconditions}}, {{assertion-response}}, {{assertion-error-response}}), Handle Carriers ({{handle-propagation}}), Separate CAI ({{separate-cai}}) |
+| CAI | the assertion it issues ({{names}}, {{assertion-claims}}), Assertion Issuance and its request, client authentication, request validation, responses, and error mapping ({{assertion-issuance}}, {{assertion-token-exchange}}, {{assertion-client-auth}}, {{assertion-preconditions}}, {{assertion-response}}, {{assertion-error-response}}), Handle Carriers ({{handle-propagation}}), Separate CAI ({{separate-cai}}) |
 | Continuing workload | Assertion Issuance Request, Client Authentication, and Successful Response ({{assertion-token-exchange}}, {{assertion-client-auth}}, {{assertion-response}}); Continuation Request and Client Authentication ({{request}}, {{client-identity}}); Successful Response ({{success-response}}) and Error Response and Recovery ({{error-response}}) |
 
 ## Establishing a Chain {#root-establishment}
@@ -807,7 +808,7 @@ authenticate the actor and issue only after establishing these facts:
 
 2. The current actor controls the key placed in `cnf`.
 
-3. `act` names that actor and, if offline attenuation reached the actor, the
+3. `act` names that actor. If offline attenuation reached the actor, the
    attenuated credential it received, the `subject_token` or the carrier that
    conveyed it, is valid ({{decision-rule}}).
 
@@ -826,8 +827,10 @@ authenticate the actor and issue only after establishing these facts:
    that token's validity ({{separate-cai}}).
 
 The subject token's integrity protection and the authenticated request
-establish fact 1; the DPoP proof, fact 2; client authentication, fact 3; and
-the bound handle and the RAS's acceptance evidence, facts 4 and 5.
+establish fact 1; the DPoP proof, fact 2; client authentication, fact 3, whose
+attenuation condition the CAI establishes by validating the attenuated
+credential it received; and the bound handle and the RAS's acceptance evidence,
+facts 4 and 5.
 
 {{security-pop}} traces the binding chain these facts form from ID-JAG to
 assertion.
@@ -1039,10 +1042,10 @@ assertion bound to the new key.
 
 ### Request Validation {#validation}
 
-A presentation whose (`iss`, `jti`) matches an ISSUED reservation is processed
-under {{idempotent-retry}}. For a first presentation, the IdP MUST reject the
-request unless every rule below holds. {{error-response}} specifies error
-precedence when multiple rules fail.
+A presentation whose (`iss`, `jti`) matches an ISSUED reservation, as
+{{idempotent-retry}} defines, is processed under that section. For a first
+presentation, the IdP MUST reject the request unless every rule below holds.
+{{error-response}} specifies error precedence when multiple rules fail.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -1324,7 +1327,8 @@ fan-out or hop-count limits can prevent a subsequent exchange
 ({{lifecycle-limits}}). A fresh assertion may create an equivalent grant and
 sibling hop but no additional authority.
 
-A pending idempotent retry may be repeated ({{idempotent-retry}}). Other
+A presentation rejected because its reservation is RESERVED may be repeated
+once the first presentation completes ({{idempotent-retry}}). Other
 `invalid_request` failures, such as malformed requests or prohibited parameters,
 require correcting or abandoning the request.
 
@@ -1544,8 +1548,8 @@ metadata {{RFC8414}} with the following parameter:
   and issues continuation-capable ID-JAGs. Such an ID-JAG is still the
   `urn:ietf:params:oauth:token-type:id-jag` type; an IdP that sets this flag
   also lists that type in `identity_chaining_requested_token_types_supported`
-  ({{I-D.ietf-oauth-identity-assertion-authz-grant}}). This flag adds only the
-  continuation capability.
+  ({{I-D.ietf-oauth-identity-chaining}}). This flag adds only the continuation
+  capability.
 
 ## Resource Authorization Server Metadata {#metadata-ras}
 
@@ -1583,7 +1587,8 @@ validating once the refresh takes effect.
 
 The IdP evaluates issuer trust and keys against its current trusted issuer
 and key state, so removing an issuer or revoking its keys de-authorizes it
-for existing chains ({{lifecycle-ending}}).
+for existing chains: continuation from such a CAI's assertions is refused at
+the next continuation exchange (the issuer-trust rule of {{validation}}).
 
 CAI trust is provisioned and withdrawn through deployment-specific
 configuration at the IdP.
@@ -1661,10 +1666,10 @@ this document describes.
 The two topologies differ in which party performs the CAI role and how it
 obtains hop state:
 
-| Topology | CAI role held by | CAI handle source | Fits when |
+| Topology | CAI role held by | Source | Fits when |
 |---|---|---|---|
-| Co-located | the accepting RAS | read from RAS state | one operator runs the domain |
-| Separate | a separate CAI the IdP trusts for the RAS | a carrier inside the domain | the RAS is shared infrastructure, the gateway is only an RS, or keys and audit need isolation |
+| Co-located | the accepting RAS | RAS state | one operator runs the domain |
+| Separate | a separate CAI the IdP trusts for the RAS | domain carrier | the RAS is shared infrastructure, the gateway is only a Resource Server, or keys and audit need isolation |
 
 In the baseline co-located deployment, the IdP configures the RAS's issuer
 trust ({{issuer-trust}}), including keys, tenant, and issuer pairings
@@ -1707,8 +1712,8 @@ keys.
 
 ## Sender Constraint and Proof of Possession {#security-pop}
 
-A continuation assertion identifies the current actor. The IdP matches its
-`act` claim to the authenticated client's canonical actor identity
+An Identity Continuation Assertion identifies the current actor. The IdP
+matches its `act` claim to the authenticated client's canonical actor identity
 ({{client-identity}}). An attacker cannot use a captured assertion without
 also authenticating as that actor.
 
@@ -1910,6 +1915,17 @@ limit the depth disclosed to each audience ({{onward-id-jag}}).
 
 # IANA Considerations {#iana}
 
+Note: The token type URI `urn:ietf:params:oauth:token-type:id-jag` referenced by
+this document is registered by
+{{I-D.ietf-oauth-identity-assertion-authz-grant}} and is not registered here.
+
+Note: The `authorization_grant_profiles_supported` metadata parameter and the
+base `urn:ietf:params:oauth:grant-profile:id-jag` value referenced by this
+document are defined and registered by
+{{I-D.ietf-oauth-identity-assertion-authz-grant}} and are not registered here;
+this document registers only the
+`urn:ietf:params:oauth:grant-profile:id-jag-continuation` value.
+
 ## OAuth Extensions Error Registration
 
 IANA is requested to register the following error in the "OAuth Extensions
@@ -1942,7 +1958,7 @@ Parameter usage location:
 : token response
 
 Change controller:
-: IESG
+: IETF
 
 Specification Document(s):
 : This document, {{assertion-response}}
@@ -1961,7 +1977,7 @@ Common Name:
 Change Controller:
 : IETF
 
-Specification Document:
+Specification Document(s):
 : This document, {{names}}
 
 IANA is also requested to register the following grant-profile value in the
@@ -1978,7 +1994,7 @@ Common Name:
 Change Controller:
 : IETF
 
-Specification Document:
+Specification Document(s):
 : This document, {{metadata}}, {{ras-processing}}
 
 ## Media Type Registration
@@ -2038,7 +2054,7 @@ Restrictions on usage:
 : N/A
 
 Author:
-: Karl McGuinness
+: Karl McGuinness, Aaron Parecki
 
 Change controller:
 : IETF
@@ -2080,7 +2096,7 @@ Description:
   exposure within the issuing server's trust domain
 
 Change Controller:
-: IESG
+: IETF
 
 Specification Document(s):
 : This document, {{handle-propagation}}
@@ -2102,17 +2118,6 @@ Change Controller:
 
 Specification Document(s):
 : This document, {{metadata}}
-
-Note: The token type URI `urn:ietf:params:oauth:token-type:id-jag` referenced by
-this document is registered by
-{{I-D.ietf-oauth-identity-assertion-authz-grant}} and is not registered here.
-
-Note: The `authorization_grant_profiles_supported` metadata parameter and the
-base `urn:ietf:params:oauth:grant-profile:id-jag` value referenced by this
-document are defined and registered by
-{{I-D.ietf-oauth-identity-assertion-authz-grant}} and are not registered here;
-this document registers only the
-`urn:ietf:params:oauth:grant-profile:id-jag-continuation` value.
 
 --- back
 
@@ -2296,9 +2301,10 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 ### Provisioning {#example-gateway-provisioning}
 
 The exchanges below presuppose the following configuration. Every item is an
-ordinary OAuth or ID-JAG registration except the three the profile adds: the
-IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, and
-GatewayRAS's advertisement of the continuation profile.
+ordinary OAuth or ID-JAG registration except the four the profile adds: the
+IdP's continuation policy, its trust in GatewayRAS as an assertion issuer, its
+advertisement of `identity_continuation_supported`, and GatewayRAS's
+advertisement of the continuation profile.
 
 **IdP** ({{client-identity}}, {{security-trust-model}}, {{root-establishment}},
 {{metadata-idp}}):
@@ -2495,7 +2501,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 The DPoP proof on this request proves the `tool-gateway` key, which GatewayRAS
 places in the assertion's `cnf`; had the access token been sender-constrained,
 its own `cnf` would not be matched against this proof
-({{assertion-token-exchange}}).
+({{security-pop}}).
 
 GatewayRAS confirms the token is its own, unexpired, and addressed to
 `https://gateway.example/`, the resource `tool-gateway` is registered to
@@ -2672,8 +2678,9 @@ the gateway example.
 Topology: separate CAI with a Transaction Token carrier.
 
 * Expense domain (`expenses.example`): client `expense-app`; ExpenseRAS,
-  Expense TTS, and Expense CAI at `ras.`, `tts.`, and `cai.expenses.example`;
-  and the workload `expense-service` behind ExpenseAPI.
+  Expense Transaction Token Service (TTS), and Expense CAI at `ras.`, `tts.`,
+  and `cai.expenses.example`; and the workload `expense-service` behind
+  ExpenseAPI.
 * Travel domain (`travel.example`): TravelRAS, Travel TTS, and Travel CAI,
   and the workload `travel-service` behind TravelAPI.
 * Booking domain (`booking.example`): BookingRAS in front of BookingAPI. It
@@ -2809,10 +2816,12 @@ Server-side state at ExpenseRAS:
 ExpenseApp calls ExpenseAPI with AT1. The Expense TTS resolves AT1 against that
 record over its own-domain interface with ExpenseRAS, derives H0, and issues a
 Transaction Token for `expense-service`, the workload that completes the
-request ({{handle-propagation}}). It records the transaction's assignment to
-that workload in authenticated routing state, the domain's own record of which
-workload handles a transaction. Neither ExpenseApp nor
-`expense-service` supplies H0.
+request ({{handle-propagation}}). The token's `req_wl` names `expense-api`,
+which requested the Transaction Token; `expense-service` is the workload
+assigned to continue the transaction. The TTS records the assignment to that
+workload in authenticated routing state, the domain's own record of which
+workload handles a transaction. Neither ExpenseApp nor `expense-service`
+supplies H0.
 
 Intra-domain context (decoded Transaction Token):
 
@@ -3242,7 +3251,7 @@ This non-normative appendix identifies questions for Working Group review.
    and how should supported methods be advertised ({{client-identity}})?
 
 3. **Client establishment control.** Should root clients be able to require or
-   suppress chain establishment ({{root-establishment}})? The author's current
+   suppress chain establishment ({{root-establishment}})? The authors' current
    position is that establishment remains a tenant policy decision, so that
    existing clients need no change to participate in a chain.
 
@@ -3254,11 +3263,12 @@ This non-normative appendix identifies questions for Working Group review.
    should an IdP advertise that it offers recovery, the retry window, or both
    ({{idempotent-retry}})?
 
-6. **Limits.** The document leaves the maximum assertion lifetime an IdP
-   accepts to deployment and requires a finite hop-count limit without fixing a
-   default ({{assertion-claims}}, {{lifecycle-limits}}). Should the profile fix
-   a ceiling on assertion lifetime at all, should it fix a hop-count default,
-   and should the accepted maximum be advertised in metadata?
+6. **Limits.** The document recommends that an assertion's lifetime not exceed
+   300 seconds, leaves the maximum an IdP accepts to deployment, and requires a
+   finite hop-count limit without fixing a default ({{assertion-claims}},
+   {{lifecycle-limits}}). Should the 300-second recommendation become a
+   requirement, should the profile fix a hop-count default, and should the
+   accepted maximum be advertised in metadata?
 
 The project issue tracker also records WG questions on authorization bounds
 (#106), acceptance freshness (#107), actor identity evidence (#108), CAI
@@ -3272,9 +3282,9 @@ narrowing ({{hop-activation}}).
 # Acknowledgments
 {:numbered="false"}
 
-The author thanks the authors of the OAuth Identity and Authorization Chaining
-Across Domains and the Identity Assertion JWT Authorization Grant
-specifications, on whose work this profile builds.
+The authors thank the Working Group participants who developed the OAuth
+Identity and Authorization Chaining Across Domains and the Identity Assertion
+JWT Authorization Grant specifications, on whose work this profile builds.
 
 # Document History
 {:numbered="false"}
