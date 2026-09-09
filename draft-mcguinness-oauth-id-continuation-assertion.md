@@ -1619,24 +1619,37 @@ depends on the normative sections.
 A workload continues once per authorization context and target, then reuses
 the resulting access token while valid and sufficient for the requested
 access. Reuse requires the same user, tenant, actor, key, and source hop;
-a sibling branch has different lineage and revocation dependencies. Renewal
-requires a fresh assertion satisfying {{assertion-preconditions}}.
+a sibling branch has different lineage and revocation dependencies.
+
+The first call requires assertion issuance, continuation exchange, and ID-JAG
+redemption. Later calls using the same valid token require no further
+exchanges. Renewal requires a fresh assertion satisfying
+{{assertion-preconditions}}.
 
 Each continuation depends on IdP availability and, for a separate CAI,
 access to RAS acceptance evidence. Offline attenuation can avoid those
 exchanges where existing subject and issuer trust suffice ({{decision-rule}}).
 
 The IdP retains hop records for the chain's lifetime and replay state for
-the periods in {{validation-replay}} and {{idempotent-retry}}. Ancestry caches
-and audit indexes can supplement immutable parent records without changing
-lineage or revocation checks. Handles can be derived with a keyed one-way
-function if they satisfy {{chain-id}} and remain unlinkable.
+the periods in {{validation-replay}} and {{idempotent-retry}}. Optional
+recovery also requires retaining the issued grant and request fingerprint.
+
+Ancestry caches and audit indexes can supplement immutable parent records
+without changing lineage or revocation checks.
+
+Handles can be derived with a keyed one-way function if they satisfy
+{{chain-id}} and remain unlinkable.
 
 A RAS can couple handle binding and token issuance with a local transaction
-or compensate for failed binding by revoking the token. CAI audit records
-cover issuance and limits; the IdP correlates the chain, while each RAS logs
-its local subject. Retries and same-actor continuation remain subject to
-{{validation-replay}} and {{lifecycle-limits}}.
+or compensate for failed binding by revoking the token.
+
+CAI audit records cover issuance and limits; the IdP correlates the chain,
+while each RAS logs its local subject.
+
+Consecutive same-actor continuations do not increase actor-lineage depth;
+hop-count, fan-out, and rate limits still apply ({{lifecycle-limits}}).
+Idempotent recovery creates no hop and consumes none of those budgets
+({{idempotent-retry}}).
 
 Failure paths worth testing:
 
@@ -2040,10 +2053,10 @@ trust agreement and profile, such as
 
 ## CAI Attestation and ID-JAG Redemption {#rationale-grant-type}
 
-An ID-JAG authorizes the `client_id` client to redeem at its `aud` RAS and,
-when sender-constrained, binds redemption to that client's key. Receiving
-it as the audience does not authorize the RAS to change the client or key
-({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
+An ID-JAG authorizes the client named in `client_id` to redeem the grant at
+the RAS named in `aud`. When sender-constrained, it binds redemption to that
+client's key. Receiving it as the audience does not authorize the RAS to
+change the client or key ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
 
 Similarly, a workload receives an access token as the protected resource.
 The token authorizes the caller and may bind to the caller's key. Verifying
@@ -2056,11 +2069,14 @@ IdP-addressed assertion to the workload's key ({{assertion-preconditions}}).
 Direct exchange of either earlier token would need additional rules for
 that authority and binding ({{open-items}}).
 
-Issuance reuses Token Exchange {{RFC8693}}. A Transaction Token can carry the
-issuance context but does not itself prove RAS acceptance. The assertion
-omits the user subject, which the IdP resolves for the onward ID-JAG.
-Returning an ID-JAG preserves the target's redemption interface; reference
-resolution and recipient-bound credentials remain alternatives ({{open-items}}).
+Assertion issuance at the CAI reuses Token Exchange {{RFC8693}}. A
+Transaction Token can carry the issuance context but does not itself prove
+RAS acceptance.
+
+The assertion omits the user subject, which the IdP resolves for the onward
+ID-JAG. Returning an ID-JAG preserves the target's redemption interface;
+reference resolution and recipient-bound credentials remain alternatives
+({{open-items}}).
 
 Asymmetric signing avoids sharing secrets between CAIs and IdPs; one compact
 JWS format reduces implementation choices ({{names}}). TLS protects transport
@@ -2159,17 +2175,25 @@ The deployment uses these registrations and trust settings:
 * Register confidential clients `agent-app` and `tool-gateway` in
   `tenant-123`, with canonical identities (`https://agent.example/`,
   `agent-app`) and (`https://gateway.example/`, `tool-gateway`).
-* Authorize `https://gateway.example/` to issue ToolGateway's credential and
-  pair it with GatewayRAS as CAI. Trust GatewayRAS's issuer and signing keys.
-* Permit ToolGateway to continue with read access to productivity tools;
-  advertise continuation support and record its client identity at WikiRAS.
+* Authorize `https://gateway.example/` to issue ToolGateway's client credential.
+* Trust GatewayRAS's issuer and signing keys to attest its hops.
+* Authorize GatewayRAS as CAI paired with actor identity authority
+  `https://gateway.example/` for `tenant-123`.
+* Permit ToolGateway to continue with read access to productivity tools.
+* Advertise `identity_continuation_supported` ({{metadata-idp}}).
+* Record ToolGateway's client identifier at WikiRAS.
 
-**GatewayRAS:** trust the IdP, advertise continuation, and register
-`tool-gateway` as operating `https://gateway.example/`.
+**GatewayRAS** ({{metadata-ras}}, {{assertion-preconditions}}):
+
+* Trust the IdP as ID-JAG issuer.
+* Advertise the continuation grant profile.
+* Register `tool-gateway` as an OAuth client operating
+  `https://gateway.example/`.
 
 **ToolGateway:** provision a DPoP key and a gateway-domain client credential.
 
-**WikiRAS:** trust the IdP, register ToolGateway, and support jwt-dpop.
+**WikiRAS:** trust the IdP, register ToolGateway, and support the DPoP-bound
+JWT grant ({{onward-id-jag}}).
 
 ToolGateway uses this client assertion at the IdP; its GatewayRAS exchange
 uses a separate assertion addressed there ({{example-gateway-ica}}):
@@ -2372,10 +2396,15 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion=<tool-gateway client assertion>
 ~~~
 
-The IdP applies {{validation}}: GatewayRAS is trusted for H0, the chain is
-active, ToolGateway's identity and key match, and chain authorization and
-current policy permit `wiki.read`. The root `tools.invoke` scope grants no
-independent wiki authority.
+The IdP applies {{validation}}:
+
+* **Issuer trust:** GatewayRAS is trusted to attest H0.
+* **Chain state:** H0 identifies an accepted hop on an active chain.
+* **Actor and key:** `act` matches the authenticated client's canonical
+  identity, and the DPoP proof matches `cnf`.
+* **Authorization:** chain authorization and current policy permit
+  `wiki.read`. The root `tools.invoke` scope grants no independent wiki
+  authority.
 
 The IdP resolves Alice's wiki subject and creates H1 with ToolGateway atop
 AgentApp in the lineage.
@@ -2775,13 +2804,18 @@ Compared with the gateway:
 ## Background Agent Example (Scheduled Continuation) {#example-background}
 
 Alice's daily calendar briefing uses a grant-anchored chain that survives
-logout. PlatformRAS binds H0 to task state; Platform TTS and a separate CAI
-support `briefing-agent`, whose canonical identity is
-(`https://platform.example/`, `briefing-agent`). The Scheduler holds only a
-task identifier.
+logout. The platform uses a separate CAI and Transaction Token carrier:
 
-CalendarRAS is terminal for each run. MailRAS illustrates a later target
-excluded by the grant ({{example-dynamic}}).
+* **Platform:** PlatformRAS binds H0 to task state. Platform TTS and Platform
+  CAI issue credentials for `briefing-agent`.
+* **Scheduler:** an internal platform component that holds only the task
+  identifier and triggers each run.
+* **Calendar:** CalendarRAS protects CalendarAPI and is terminal for each run.
+* **Mail:** MailRAS protects MailAPI, a later target excluded by the grant
+  ({{example-dynamic}}).
+
+BriefingAgent's canonical identity is
+(`https://platform.example/`, `briefing-agent`).
 
 ### Setup: Anchoring the Chain to a Grant {#example-background-setup}
 
