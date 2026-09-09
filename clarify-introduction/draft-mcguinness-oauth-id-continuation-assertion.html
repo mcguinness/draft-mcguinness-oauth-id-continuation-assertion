@@ -1518,20 +1518,26 @@ workload, verifies possession of the assertion's bound key, evaluates the
 requested access, and resolves the user's subject for the target RAS. If
 authorized, it issues an onward ID-JAG that the workload redeems at that RAS
 (<a href="#token-exchange" class="auto internal xref">Section 5.5</a>).<a href="#section-1-4" class="pilcrow">¶</a></p>
-<p id="section-1-5">An opaque continuation handle identifies each ID-JAG's hop within a chain
-(<a href="#chain-id" class="auto internal xref">Section 4</a>). The IdP records the relationships between hops and associates
-the chain with the governing authorization established at the root exchange.
-Each continuation is evaluated under that authorization and current policy
-(<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance enables continuation but does not
-independently authorize downstream access; incoming access-token scopes do
-not automatically limit authority at another target.<a href="#section-1-5" class="pilcrow">¶</a></p>
+<p id="section-1-5">Each ID-JAG issued this way is a hop, and the hops descending from one root
+ID-JAG form a chain. An opaque continuation handle identifies each ID-JAG's hop
+within a chain (<a href="#chain-id" class="auto internal xref">Section 4</a>). The IdP records the relationships between hops
+and associates the chain with the governing authorization established at the
+root exchange. Each continuation is evaluated under that authorization and
+current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance enables continuation
+but does not independently authorize downstream access; incoming access-token
+scopes do not automatically limit authority at another target.<a href="#section-1-5" class="pilcrow">¶</a></p>
 <p id="section-1-6">This document extends ID-JAG, referred to as the base profile, and complements
-OAuth Identity Chaining <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>. The IdP,
-continuing workload, RAS, and CAI implement this extension. Root clients use
-the base exchange; chain establishment remains subject to the session or
-optional grant-anchor requirements (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). A terminal RAS
-needs only the base profile's support for redeeming a DPoP-bound ID-JAG
-(<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). This document defines no new access-token format.<a href="#section-1-6" class="pilcrow">¶</a></p>
+OAuth Identity Chaining <span>[<a href="#I-D.ietf-oauth-identity-chaining" class="cite xref">I-D.ietf-oauth-identity-chaining</a>]</span>; it is not a
+substitute for narrowing an existing token within one trust domain
+(<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>). The IdP, continuing workload, RAS, and CAI implement this
+extension. Root clients use the base exchange; chain establishment requires a
+resolvable session anchor or, optionally, a grant anchor
+(<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>), and without one the IdP issues an ordinary ID-JAG
+without a handle. A terminal RAS needs only the base profile's support for
+redeeming a DPoP-bound ID-JAG (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). This document defines no new
+access-token format. An ID-JAG deployment can therefore add multi-hop access
+where a request's path is not known in advance, as at a Model Context Protocol
+(MCP) tool gateway (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-6" class="pilcrow">¶</a></p>
 <div id="protocol-overview">
 <section id="section-1.1">
         <h3 id="name-protocol-overview">
