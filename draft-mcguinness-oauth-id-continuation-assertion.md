@@ -3255,58 +3255,33 @@ specifications, on whose work this profile builds.
 
 -02
 
-* Replaced the root-chain envelope and authorization basis with the chain's
-  governing authorization, evaluated as recorded plus current policy read live.
-  One authorization rule covers the actor, the target, and the requested
-  authority including defaults; policy narrows it, never exceeds it.
-* Removed `actor_token` processing from both exchanges: client authentication
-  resolves to the canonical actor identity, the (`iss`, `sub`) pair the IdP
-  derives from its registration of the client. `act` is the disclosed actor
-  lineage, distinct from the IdP's hop lineage, bounded by actor-lineage depth.
-* Replaced the three hop states with two facts, issuance at the IdP and
-  acceptance in RAS authorization state, which also records eligibility for
-  continuation. A hop is continuable while a CAI trusted for its RAS attests it
-  on live or self-contained evidence authoritative by that RAS's semantics.
-* Assertion and handle rules: `nbf` permitted; the 300-second lifetime and
-  256-character handle bounds recommended rather than required, with the IdP
-  rejecting a lifetime above its maximum; recommended capping assertion expiry
-  at self-contained evidence expiry; 128 bits of entropy for `jti` and for
-  handles; the handle registered as an introspection response member.
-* Defined assertion issuance as Token Exchange at the CAI's token endpoint, with
-  the call's access token or Transaction Token as subject token and the
-  requester's DPoP proof verified. The required
-  `identity_continuation_authorization_server` response parameter names the IdP,
-  which the client matches to that IdP's metadata issuer before sending.
-* Removed the root exchange's proof-of-possession requirement, so a root ID-JAG
-  need not carry `cnf`. Onward ID-JAGs are redeemed with the DPoP-bound JWT
-  grant a continuation-aware RAS advertises, and that RAS binds the access token
-  it issues to the confirmed key.
-* Kept assertions single-use under an atomic, shared, fail-closed (`iss`, `jti`)
-  reservation, and made idempotent retry optional: a presentation matching an
-  ISSUED reservation's request fingerprint recovers that grant on a separate
-  path. Neither response carries a refresh token.
-* Required and ordered the error codes: `unauthorized_client` for an actor not
-  permitted, `invalid_continuation` only for a permanently unusable handle,
-  `invalid_grant` for limits, `invalid_target` for an unpermitted target,
-  `invalid_request` for an unknown handle.
-* Gathered chain lifetime into one section: grant anchors optional and no
-  resolved anchor means no handle, a chain never outlives its anchor, an ended
-  chain stays ended, every chain has a finite hop-count limit, and a tenant may
-  budget limits across one governing authorization's chains.
-* Removed the RAS `identity_continuation_issuers` nomination, its registration,
-  and the Metadata Disclosure consideration -01 added with it; the IdP
-  configures CAI trust per tenant, scoped by issuer, keys, tenant, and the RAS
-  attested for, refreshing `jwks_uri` keys under a bounded cache.
-* Reorganized Security Considerations around the current model, stated the
-  binding chain from ID-JAG to assertion and that RAS-local permissions and CAI
-  attestation do not independently authorize onward access, and noted the
-  handle's visibility to every audience of a carrier that conveys it.
-* Editorial: reorganized around the exchange sequence with a walk-through
-  overview, revised the terminology, moved the design choices to a rationale
-  section, expanded implementation considerations, rewrote the examples as a
-  gateway, a SaaS chain, and a background agent, and revised the open items.
-  Shortened prose and presented authorization facts, recovery checks, and
-  provisioning as lists.
+* Replaced the root-chain envelope with governing authorization based on
+  recorded root facts and current tenant policy.
+* Removed `actor_token` processing; client authentication determines the
+  canonical actor identity. Distinguished disclosed actor lineage from the
+  IdP's hop lineage.
+* Defined assertion issuance using Token Exchange at the CAI, with an access
+  token or Transaction Token and DPoP. Added the
+  `identity_continuation_authorization_server` response parameter and client
+  validation against the IdP's metadata issuer.
+* Simplified hop state to IdP issuance and RAS acceptance, with continuation
+  eligibility attested by the CAI using live or self-contained evidence.
+* Removed the root exchange's proof-of-possession requirement. Specified
+  DPoP-bound redemption of onward ID-JAGs and access-token binding at
+  continuation-aware RASes.
+* Clarified chain lifetime, withdrawal, and limits; made grant-anchor support
+  optional and specified base-profile behavior when no anchor can be resolved.
+* Defined optional recovery of an issued grant after a lost response while
+  preserving single-use assertions. Clarified error codes and their precedence.
+* Relaxed assertion lifetime, `jti` entropy, and handle-length requirements;
+  permitted `nbf`; recommended capping assertion expiry at self-contained
+  evidence expiry; and registered the handle as an introspection response
+  member.
+* Removed RAS nomination of CAIs through `identity_continuation_issuers` and
+  clarified IdP configuration of CAI trust.
+* Reorganized the protocol description and security considerations; revised
+  the introduction, examples, design rationale, and open items.
+* Added Aaron Parecki as an author.
 
 -01
 
