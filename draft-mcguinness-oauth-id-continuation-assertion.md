@@ -1052,10 +1052,10 @@ assertion bound to the new key.
 
 Where the IdP offers idempotent retry, a presentation whose (`iss`, `jti`)
 matches an ISSUED reservation, as {{idempotent-retry}} defines, is processed
-under that section; an IdP that does not offer retry rejects every second
-presentation ({{validation-replay}}). For a first presentation, the IdP MUST
-reject the request unless every rule below holds. {{error-response}} specifies
-error precedence when multiple rules fail.
+under that section; an IdP that does not offer retry rejects a second
+presentation of a reserved assertion ({{validation-replay}}). For a first
+presentation, the IdP MUST reject the request unless every rule below holds.
+{{error-response}} specifies error precedence when multiple rules fail.
 
 1. **Request parameters.**
    * exactly one each of `grant_type`, `subject_token`, `subject_token_type`,
@@ -1293,8 +1293,7 @@ proof of the current-actor rule succeed, so no chain-state code reaches a
 caller that has not authenticated as the current actor and proved the `cnf`
 key. Among chain-state failures a permanently unusable hop precedes a limit.
 The contents of an unverified assertion never determine the response, and a
-missing hop is `invalid_request`, so a caller learns nothing about which
-handles exist.
+missing hop is `invalid_request`.
 
 For recovery, client authentication, key proof, and fingerprint matching
 precede chain-state checks ({{idempotent-retry}}).
