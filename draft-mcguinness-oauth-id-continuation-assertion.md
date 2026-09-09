@@ -2155,8 +2155,9 @@ bound to that caller's key. Validating the caller's proof does not give the
 workload possession of the key or establish a credential for the workload to
 present at the IdP ({{security-pop}}).
 
-ICA makes this transition explicit. The CAI attests that the receiving
-workload is associated with an accepted, active authorization eligible for
+The Identity Continuation Assertion makes this transition explicit. The CAI
+attests that the receiving workload is associated with an accepted, active
+authorization eligible for
 continuation, and issues an assertion addressed to the IdP and bound to that
 workload's key ({{assertion-preconditions}}). The IdP can then authenticate
 and authorize the continuing workload using its own identity and key
@@ -2988,7 +2989,8 @@ On the wire (decoded ID-JAG):
 
 `expense-service` redeems the ID-JAG at TravelRAS for AT2, and TravelRAS binds
 H1 exactly as ExpenseRAS bound H0. The Travel TTS derives H1 into a Transaction
-Token for `travel-service`; only the handle differs from the Expense token:
+Token for `travel-service`. Within the illustrated
+`tctx.identity_continuation` object, only the handle changes:
 
 Intra-domain context (excerpt):
 
@@ -3226,12 +3228,11 @@ continuable for other authorized targets.
 * Each run creates a sibling child of H0 rather than a descendant of the
   previous run's child.
 
-This pattern requires a user-present setup event to root the chain. Where no
-such event exists, for example an administratively mandated agent acting for
-users who never authorized it, there is no delegation to continue and this
-profile does not apply; such deployments need a differently rooted
-authorization, such as administrative policy at the IdP, which is out of scope
-for this document.
+This example uses a user-present setup event. More generally, chain
+establishment requires an authorized root exchange whose subject token
+resolves to an active user session or supported grant anchor
+({{root-establishment}}, {{lifecycle-anchors}}). Administrative policy alone,
+without such an anchor, cannot establish a chain.
 
 # Open Items for Working Group Discussion {#open-items}
 
