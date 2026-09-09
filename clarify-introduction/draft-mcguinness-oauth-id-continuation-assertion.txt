@@ -4,8 +4,9 @@
 
 Web Authorization Protocol                                 K. McGuinness
 Internet-Draft                                               Independent
-Intended status: Standards Track                        9 September 2026
-Expires: 13 March 2027
+Intended status: Standards Track                              A. Parecki
+Expires: 13 March 2027                                              Okta
+                                                        9 September 2026
 
 
       Identity Continuation Assertion for OAuth 2.0 Token Exchange
@@ -171,7 +172,7 @@ Table of Contents
    Appendix C.  Open Items for Working Group Discussion
    Acknowledgments
    Document History
-   Author's Address
+   Authors' Addresses
 
 1.  Introduction
 
@@ -3773,8 +3774,13 @@ Document History
 
    *  Initial revision
 
-Author's Address
+Authors' Addresses
 
    Karl McGuinness
    Independent
    Email: public@karlmcguinness.com
+
+
+   Aaron Parecki
+   Okta
+   Email: aaron@parecki.com
