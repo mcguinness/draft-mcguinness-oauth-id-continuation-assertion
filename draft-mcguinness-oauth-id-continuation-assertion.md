@@ -2138,15 +2138,36 @@ such as {{I-D.fletcher-transaction-token-chaining-profile}}.
 
 ## CAI Attestation and ID-JAG Redemption {#rationale-grant-type}
 
-The CAI attests RAS acceptance and the actor's association with that
-context, allowing the IdP to evaluate continuation without querying another
-domain's state. A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} may
-carry the context from which the CAI issues its assertion; its validity alone
-is not RAS acceptance evidence ({{assertion-preconditions}}).
+An ID-JAG authorizes the client named in `client_id` to redeem the grant at
+the RAS named in `aud`. When sender-constrained, it also binds that use to
+the client's key. The RAS receives the grant as its audience; receipt does
+not authorize the RAS to present it as a different client or replace its key
+binding ({{I-D.ietf-oauth-identity-assertion-authz-grant}}).
 
-The assertion is addressed to the IdP and carries no top-level user subject.
-The resulting ID-JAG carries the IdP-resolved subject and a fresh child handle,
-including for a terminal target. Reusing ID-JAG preserves the target's grant
+Similarly, a workload receives an access token as the protected resource. The
+token authorizes the incoming caller's access and, when sender-constrained, is
+bound to that caller's key. Validating the caller's proof does not give the
+workload possession of the key or establish a credential for the workload to
+present at the IdP ({{security-pop}}).
+
+ICA makes this transition explicit. The CAI attests that the receiving
+workload is associated with an accepted, active authorization eligible for
+continuation, and issues an assertion addressed to the IdP and bound to that
+workload's key ({{assertion-preconditions}}). The IdP can then authenticate
+and authorize the continuing workload using its own identity and key
+({{validation}}).
+
+Direct exchange of either token under {{RFC8693}} would require additional rules
+establishing the receiving party's authority to continue and binding the
+exchange to its identity and key ({{open-items}}).
+
+A Transaction Token {{I-D.ietf-oauth-transaction-tokens}} may carry the
+context from which the CAI issues its assertion; its validity alone is not
+RAS acceptance evidence ({{assertion-preconditions}}).
+
+The assertion carries no top-level user subject. The resulting ID-JAG
+carries the IdP-resolved subject and a fresh child handle, including for a
+terminal target. Issuing an onward ID-JAG preserves the target's grant
 redemption interface. Target-side resolution of a reference would require
 additional target processing; it and a direct recipient-bound credential
 remain open alternatives ({{open-items}}).
