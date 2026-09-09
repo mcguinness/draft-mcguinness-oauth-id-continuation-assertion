@@ -30,6 +30,10 @@ author:
     fullname: "Karl McGuinness"
     organization: "Independent"
     email: "public@karlmcguinness.com"
+ -
+    fullname: "Aaron Parecki"
+    organization: "Okta"
+    email: "aaron@parecki.com"
 
 normative:
   RFC6749:
