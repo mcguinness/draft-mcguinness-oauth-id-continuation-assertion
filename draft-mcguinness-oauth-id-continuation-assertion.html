@@ -17,7 +17,7 @@ present.
        A trusted issuer attests that a resource authorization server accepted an
 earlier ID-JAG and that the resulting authorization remains active and
 eligible for continuation. The workload exchanges this assertion at the
-identity provider, which evaluates the requested access under the governing
+identity provider, which evaluates the requested access under the chain
 authorization and current policy before issuing an onward ID-JAG. The
 profile supports multi-hop access across resource authorization servers that
 trust a common identity provider. 
@@ -1106,7 +1106,7 @@ present.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 <p id="section-abstract-2">A trusted issuer attests that a resource authorization server accepted an
 earlier ID-JAG and that the resulting authorization remains active and
 eligible for continuation. The workload exchanges this assertion at the
-identity provider, which evaluates the requested access under the governing
+identity provider, which evaluates the requested access under the chain
 authorization and current policy before issuing an onward ID-JAG. The
 profile supports multi-hop access across resource authorization servers that
 trust a common identity provider.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
@@ -1216,7 +1216,7 @@ trust a common identity provider.<a href="#section-abstract-2" class="pilcrow">�
                     <p id="section-toc.1-1.5.2.1.2.3.1"><a href="#section-5.1.3" class="auto internal xref">5.1.3</a>.  <a href="#name-root-actor" class="internal xref">Root Actor</a></p>
 </li>
                   <li class="compact toc ulBare ulEmpty" id="section-toc.1-1.5.2.1.2.4">
-                    <p id="section-toc.1-1.5.2.1.2.4.1"><a href="#section-5.1.4" class="auto internal xref">5.1.4</a>.  <a href="#name-governing-authorization" class="internal xref">Governing Authorization</a></p>
+                    <p id="section-toc.1-1.5.2.1.2.4.1"><a href="#section-5.1.4" class="auto internal xref">5.1.4</a>.  <a href="#name-chain-authorization" class="internal xref">Chain Authorization</a></p>
 </li>
                 </ul>
 </li>
@@ -1539,8 +1539,8 @@ issues an onward ID-JAG that the workload redeems at that RAS
 <p id="section-1-7">Each ID-JAG issued in a chain represents a hop. A root ID-JAG and the hops
 descending from it form a chain. An opaque continuation handle identifies
 each ID-JAG's hop within a chain (<a href="#chain-id" class="auto internal xref">Section 4</a>). The IdP records the
-relationships between hops and associates the chain with the governing
-authorization established at the root exchange. Each continuation is
+relationships between hops and associates each chain with the authorization
+established at its root exchange. Each continuation is
 evaluated under that authorization and current policy
 (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance enables continuation but does not
 independently authorize downstream access; incoming access-token scopes do
@@ -1605,7 +1605,7 @@ AgentApp     IdP       Gateway RAS     Gateway          Wiki RAS
 <li id="section-1.1-5.1">
             <p id="section-1.1-5.1.1">As in ID-JAG, AgentApp exchanges Alice's ID Token at the IdP for an ID-JAG
 for the gateway's RAS. New: the IdP records the root hop, H0, and its
-governing authorization, and includes H0's handle in the ID-JAG's
+chain authorization, and includes H0's handle in the ID-JAG's
 <code>identity_continuation_handle</code> claim (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>, <a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-1.1-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li id="section-1.1-5.2">
@@ -1666,42 +1666,42 @@ before any narrowing of what the onward <code>act</code> discloses
         <dd class="break"></dd>
 <dt id="section-2-3.3">Chain:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.4">
-          <p id="section-2-3.4.1">An IdP-held tree of hops under one governing authorization; each hop's
+          <p id="section-2-3.4.1">An IdP-held tree of hops under one chain authorization; each hop's
 parent reference gives the tree its shape (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>), and the
 authorization bounds its lifetime (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#section-2-3.4.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.5">Continuation Assertion Issuer (CAI):</dt>
+<dt id="section-2-3.5">Chain authorization:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.6">
-          <p id="section-2-3.6.1">The role the IdP trusts to issue Identity Continuation Assertions for a
-tenant (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.6.1">The tenant's authorization decision recorded by the IdP at the root exchange
+and associated with the chain's lifecycle anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).
+It determines which actors may continue and what authority they may obtain,
+subject to current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.7">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
+<dt id="section-2-3.7">Continuation Assertion Issuer (CAI):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.8">
-          <p id="section-2-3.8.1">An opaque, unguessable, IdP-generated reference to one hop of a chain
-(<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.8.1">The role the IdP trusts to issue Identity Continuation Assertions for a
+tenant (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.9">Continuation-capable:</dt>
+<dt id="section-2-3.9">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.10">
-          <p id="section-2-3.10.1">Describes an ID-JAG that carries the <code>identity_continuation_handle</code> claim
+          <p id="section-2-3.10.1">An opaque, unguessable, IdP-generated reference to one hop of a chain
 (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.10.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.11">Current actor:</dt>
+<dt id="section-2-3.11">Continuation-capable:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.12">
-          <p id="section-2-3.12.1">The workload presenting the assertion to the IdP, named by <code>act</code>. Its
-canonical actor identity is the (<code>iss</code>, <code>sub</code>) pair that its authentication
-to the IdP resolves to (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-2-3.12.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.12.1">Describes an ID-JAG that carries the <code>identity_continuation_handle</code> claim
+(<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.12.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.13">Governing authorization:</dt>
+<dt id="section-2-3.13">Current actor:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.14">
-          <p id="section-2-3.14.1">The tenant's authorization decision for the root exchange, recorded by the
-IdP and associated with the chain's anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). It
-governs which actors may continue and what authority they may obtain under
-current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.14.1">The workload presenting the assertion to the IdP, named by <code>act</code>. Its
+canonical actor identity is the (<code>iss</code>, <code>sub</code>) pair that its authentication
+to the IdP resolves to (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.15">Hop:</dt>
@@ -2050,13 +2050,13 @@ root actor is the authenticated client (<a href="#root-actor" class="auto intern
           <h4 id="name-chain-establishment">
 <a href="#section-5.1.2" class="section-number selfRef">5.1.2. </a><a href="#name-chain-establishment" class="section-name selfRef">Chain Establishment</a>
           </h4>
-<p id="section-5.1.2-1">The IdP <span class="bcp14">MUST</span> establish a chain when the governing authorization for a root
+<p id="section-5.1.2-1">The IdP <span class="bcp14">MUST</span> establish a chain when the chain authorization for a root
 exchange permits continuation and the root subject token resolves to a
 lifecycle anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>). To
 establish a chain, the IdP <span class="bcp14">MUST</span> include the root handle in the ID-JAG. Absent
 permission to continue, the IdP <span class="bcp14">MUST NOT</span> establish a chain or include an
 <code>identity_continuation_handle</code>.<a href="#section-5.1.2-1" class="pilcrow">¶</a></p>
-<p id="section-5.1.2-2">Tenant policy determines whether the governing authorization permits
+<p id="section-5.1.2-2">Tenant policy determines whether the chain authorization permits
 continuation and may restrict establishment to particular clients, grants,
 or targets.<a href="#section-5.1.2-2" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-3">The lifecycle anchor is the user's active IdP session or, for a durable chain,
@@ -2069,7 +2069,7 @@ placed in the ID-JAG; the issuers it trusts to attest that RAS's hops are read
 from current tenant configuration at each exchange (<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-5.1.2-4" class="pilcrow">¶</a></p>
 <p id="section-5.1.2-5">Establishment is at-least-once. Retrying a lost response <span class="bcp14">MAY</span> create a second
 chain, and the limits of <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a> apply across every chain rooted
-in one governing authorization.<a href="#section-5.1.2-5" class="pilcrow">¶</a></p>
+in one chain authorization.<a href="#section-5.1.2-5" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="root-actor">
@@ -2088,10 +2088,10 @@ constraint becomes a requirement for an actor that continues
 </div>
 <div id="chain-authorization">
 <section id="section-5.1.4">
-          <h4 id="name-governing-authorization">
-<a href="#section-5.1.4" class="section-number selfRef">5.1.4. </a><a href="#name-governing-authorization" class="section-name selfRef">Governing Authorization</a>
+          <h4 id="name-chain-authorization">
+<a href="#section-5.1.4" class="section-number selfRef">5.1.4. </a><a href="#name-chain-authorization" class="section-name selfRef">Chain Authorization</a>
           </h4>
-<p id="section-5.1.4-1">The IdP <span class="bcp14">MUST</span> associate each chain with the governing authorization under
+<p id="section-5.1.4-1">The IdP <span class="bcp14">MUST</span> associate each chain with the chain authorization under
 which it was established. The IdP records:<a href="#section-5.1.4-1" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-5.1.4-2.1">
@@ -2114,7 +2114,7 @@ which it was established. The IdP records:<a href="#section-5.1.4-1" class="pilc
 and restrictions remain fixed for the chain's lifetime. Later requests or
 policy changes cannot replace the authorization, change those facts, or relax
 those restrictions.<a href="#section-5.1.4-3" class="pilcrow">¶</a></p>
-<p id="section-5.1.4-4">The IdP authorizes each continuation under the recorded governing
+<p id="section-5.1.4-4">The IdP authorizes each continuation under the recorded chain
 authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>). Policy can restrict
 access but cannot exceed that authorization. Policy evaluation is outside
 the scope of this document.<a href="#section-5.1.4-4" class="pilcrow">¶</a></p>
@@ -2221,7 +2221,7 @@ particular continuation from it succeeds is decided by the validation rules of
 the continuation exchange (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.2.1-5" class="pilcrow">¶</a></p>
 <p id="section-5.2.1-6">RAS acceptance and recorded eligibility (<a href="#ras-processing" class="auto internal xref">Section 5.2</a>) are prerequisites
 for CAI issuance. The IdP authorizes downstream access
-under the chain's governing authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
+under the chain authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).
 RAS-local eligibility and scopes do not independently authorize that access or
 define its limits: scopes at different audiences have independent semantics
 (<a href="#rationale-boundary" class="auto internal xref">Appendix A.5</a>).<a href="#section-5.2.1-6" class="pilcrow">¶</a></p>
@@ -2296,7 +2296,7 @@ received, or was designated to process, the request that hop authorized.<a href=
 </li>
         </ul>
 <p id="section-5.4-4">Whether that actor may continue, and to what, is the IdP's decision under the
-governing authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4-4" class="pilcrow">¶</a></p>
+chain authorization and current policy (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.4-4" class="pilcrow">¶</a></p>
 <div id="assertion-token-exchange">
 <section id="section-5.4.1">
           <h4 id="name-assertion-issuance-request">
@@ -2793,7 +2793,7 @@ actor-lineage depth bound, which counts lineage entries, not hops; and<a href="#
 </li>
                 <li class="normal" id="section-5.5.3-2.4.2.4">
                   <p id="section-5.5.3-2.4.2.4.1">the continuation is within the fan-out, rate, and hop-count limits of
-the governing authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
+the chain authorization (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>);<a href="#section-5.5.3-2.4.2.4.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2839,7 +2839,7 @@ a presentation matching an ISSUED reservation is recovery
               </ul>
 </li>
             <li id="section-5.5.3-2.7">
-              <p id="section-5.5.3-2.7.1"><strong>Authorization.</strong> The IdP <span class="bcp14">MUST</span> issue an ID-JAG only if the governing
+              <p id="section-5.5.3-2.7.1"><strong>Authorization.</strong> The IdP <span class="bcp14">MUST</span> issue an ID-JAG only if the chain
 authorization associated with the referenced hop (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>)
 and current policy permit the authenticated actor to continue from that hop
 and permit the authority represented by the resulting ID-JAG. This
@@ -2854,7 +2854,7 @@ The issued ID-JAG carries the <code>scope</code>, <code>resource</code>, and
 <code>authorization_details</code> values that express the granted authority.
 Target or purpose hints reaching the CAI (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>)
 <span class="bcp14">MUST NOT</span> control the IdP's target decision, and propagated context <span class="bcp14">MUST NOT</span>
-expand the authority permitted by the governing authorization and current
+expand the authority permitted by the chain authorization and current
 policy. The IdP evaluates each authorization detail according to its type
 (<span>[<a href="#RFC9396" class="cite xref">RFC9396</a>]</span>) and rejects a type whose authorization semantics it does not
 implement.<a href="#section-5.5.3-2.7.2" class="pilcrow">¶</a></p>
@@ -3025,7 +3025,7 @@ processed as idempotent recovery (<a href="#idempotent-retry" class="auto intern
               <p id="section-5.5.6-4.2.1"><code>invalid_dpop_proof</code>: a DPoP failure.<a href="#section-5.5.6-4.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.5.6-4.3">
-              <p id="section-5.5.6-4.3.1"><code>unauthorized_client</code>: the governing authorization or current policy does
+              <p id="section-5.5.6-4.3.1"><code>unauthorized_client</code>: the chain authorization or current policy does
 not permit this actor to continue from the hop. Other actors may still
 continue; withdrawal of the chain's permission is <code>invalid_continuation</code>.<a href="#section-5.5.6-4.3.1" class="pilcrow">¶</a></p>
 </li>
@@ -3037,7 +3037,7 @@ different request.<a href="#section-5.5.6-4.4.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="section-5.5.6-4.5">
               <p id="section-5.5.6-4.5.1"><code>invalid_target</code>, <code>invalid_scope</code>, or <code>invalid_authorization_details</code>:
-requested authority is not permitted by the governing authorization or
+requested authority is not permitted by the chain authorization or
 current policy; <code>scope</code> is omitted and no policy default exists
 (<span>[<a href="#RFC6749" class="cite xref">RFC6749</a>]</span>, Section 3.3); an authorization detail type is unsupported; or
 the IdP cannot resolve a subject or actor client identity at the target.<a href="#section-5.5.6-4.5.1" class="pilcrow">¶</a></p>
@@ -3276,7 +3276,7 @@ its own lifetime, since redemption is not a continuation.<a href="#section-6.2-3
 <p id="section-6.2-4">The IdP has these duties over chain lifetime:<a href="#section-6.2-4" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-6.2-5.1">
-            <p id="section-6.2-5.1.1">it <span class="bcp14">MUST</span> bound chain lifetime by the governing authorization;<a href="#section-6.2-5.1.1" class="pilcrow">¶</a></p>
+            <p id="section-6.2-5.1.1">it <span class="bcp14">MUST</span> bound chain lifetime by the chain authorization;<a href="#section-6.2-5.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-6.2-5.2">
             <p id="section-6.2-5.2.1">it <span class="bcp14">MUST</span> support administrative revocation of an entire chain and <span class="bcp14">MAY</span>
@@ -3312,10 +3312,10 @@ management for that purpose.<a href="#section-6.2-8" class="pilcrow">¶</a></p>
 per hop. Hop count is the total number of hops in a chain across all
 branches. Rate is the number of newly issued continuations, not attempts,
 within a window tenant policy defines. Hop count and rate are counted per
-chain and, where the tenant configures one budget for a governing
+chain and, where the tenant configures one budget for a chain
 authorization, aggregated across every chain rooted in it, so sibling chains
 share that budget; a retried establishment (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>) <span class="bcp14">MUST NOT</span>
-evade it. Revocation of the governing authorization applies to every chain
+evade it. Revocation of the chain authorization applies to every chain
 rooted in it. The actor-lineage depth bound, set by tenant policy, is
 enforced per branch.<a href="#section-6.3-1" class="pilcrow">¶</a></p>
 <p id="section-6.3-2">The IdP <span class="bcp14">MUST</span> enforce a finite hop-count limit on every chain, either the
@@ -3468,7 +3468,7 @@ this growth.<a href="#section-8-11" class="pilcrow">¶</a></p>
 </li>
       </ul>
 <p id="section-8-14">An IdP can defer materializing chain state until the first continuation,
-provided the handle still resolves to the same root and governing
+provided the handle still resolves to the same root and chain
 authorization; deferral does not relax the replay rules of
 <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>. Whether the hop tree could be replaced by
 self-verifying handles is an open question (<a href="#open-items" class="auto internal xref">Appendix C</a>), not a realization
@@ -3590,7 +3590,7 @@ is the legitimate presenter. Such a token weakens only the caller's link in the
 binding chain; facts 2 and 3 apply unchanged.<a href="#section-9.1-4" class="pilcrow">¶</a></p>
 <p id="section-9.1-5">Because acceptance does not bound downstream authority (<a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>), a
 captured root token can induce continuation to any target permitted by the
-governing authorization and current policy, not only the resource the token
+chain authorization and current policy, not only the resource the token
 was issued for. Token theft is the inherited bearer-token risk; continuation
 can extend its consequences to the downstream authority available under that
 authorization. Sender constraint at ingress prevents use of the token without
@@ -3608,7 +3608,7 @@ and requires the actor's key. The freshness rule bounds the window, and
 single-use (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>) confines a consumed assertion to the one
 grant it first obtained: without it, an actor whose RAS-local authorization
 had lapsed, and whom the CAI would therefore refuse a fresh assertion, could
-keep continuing from a consumed one, to any target the governing authorization
+keep continuing from a consumed one, to any target the chain authorization
 and current policy permit, until it expired. Idempotent recovery after a lost
 response is optional and does not reopen replay (<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a>).<a href="#section-9.1-7" class="pilcrow">¶</a></p>
 </section>
@@ -3618,7 +3618,7 @@ response is optional and does not reopen replay (<a href="#validation-replay" cl
         <h3 id="name-authorization-enforcement">
 <a href="#section-9.2" class="section-number selfRef">9.2. </a><a href="#name-authorization-enforcement" class="section-name selfRef">Authorization Enforcement</a>
         </h3>
-<p id="section-9.2-1">The IdP checks the governing authorization associated with the chain
+<p id="section-9.2-1">The IdP checks the chain authorization associated with the chain
 (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>), not merely whether the user or actor could obtain
 access under another authorization. The CAI's attestation and RAS acceptance
 do not grant onward authority (<a href="#validation" class="auto internal xref">Section 5.5.3</a>, <a href="#hop-activation" class="auto internal xref">Section 5.2.1</a>). The CAI,
@@ -3627,11 +3627,11 @@ not the IdP, checks any offline attenuation segment
 <p id="section-9.2-2">A compromised or misdirected workload can request any target, so broad
 continuation permissions increase the damage it can cause. Policy changes may
 affect active chains, but current policy cannot override a restriction of the
-governing authorization:<a href="#section-9.2-2" class="pilcrow">¶</a></p>
+chain authorization:<a href="#section-9.2-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="section-9.2-3.1">
             <p id="section-9.2-3.1.1">Deployments requiring a fixed set of targets retain that restriction in the
-governing authorization; adding a service to general tenant policy alone
+chain authorization; adding a service to general tenant policy alone
 does not authorize it for such a chain.<a href="#section-9.2-3.1.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-9.2-3.2">
@@ -3640,7 +3640,7 @@ permitted target widens access for every active chain it governs.<a href="#secti
 </li>
           <li class="normal" id="section-9.2-3.3">
             <p id="section-9.2-3.3.1">Likewise, adding a permitted continuer admits a new actor to each such
-chain, subject to any actor restrictions in the governing authorization and
+chain, subject to any actor restrictions in the chain authorization and
 the binding checks in <a href="#validation" class="auto internal xref">Section 5.5.3</a>.<a href="#section-9.2-3.3.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
@@ -3703,7 +3703,7 @@ credential (the current-actor rule of <a href="#validation" class="auto internal
 <a href="#validation" class="auto internal xref">Section 5.5.3</a>); and<a href="#section-9.4-2.3.1" class="pilcrow">¶</a></p>
 </li>
           <li class="normal" id="section-9.4-2.4">
-            <p id="section-9.4-2.4.1">the governing authorization and current policy enforced by the IdP (the
+            <p id="section-9.4-2.4.1">the chain authorization and current policy enforced by the IdP (the
 authorization rule of <a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-9.4-2.4.1" class="pilcrow">¶</a></p>
 </li>
         </ul>
@@ -3728,7 +3728,7 @@ attestation, gated by policy and the acceptance check.<a href="#section-9.5-2" c
 separate CAI reads that state as authoritative. A compromised separate CAI can
 additionally attest a hop the RAS refused. <a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a> describes the
 effects of RAS-local withdrawal, including delayed observation by a separate
-CAI. The governing authorization and current policy still bound the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
+CAI. The chain authorization and current policy still bound the result.<a href="#section-9.5-3" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="security-actor-chain">
@@ -4368,11 +4368,11 @@ it supplies neither RAS acceptance evidence nor target subject resolution.<a hre
         <h3 id="name-authorization-boundary">
 <a href="#appendix-A.5" class="section-number selfRef">A.5. </a><a href="#name-authorization-boundary" class="section-name selfRef">Authorization Boundary</a>
         </h3>
-<p id="appendix-A.5-1">Each continuation is authorized under the chain's recorded governing
+<p id="appendix-A.5-1">Each continuation is authorized under the recorded chain
 authorization and current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>). RAS acceptance
 establishes the context from which the actor continues; the RAS's local scopes
 do not automatically bound authority at another target. Cross-target
-restrictions belong in the governing authorization and IdP policy.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
+restrictions belong in the chain authorization and IdP policy.<a href="#appendix-A.5-1" class="pilcrow">¶</a></p>
 <p id="appendix-A.5-2">This profile carries identity and lineage and binds continuation to an
 accepted authorization. Whether a requested action serves the work the user
 or tenant authorized remains a deployment policy decision. The profile defines
@@ -4568,7 +4568,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;agent-app JWT&gt;
 </pre><a href="#appendix-B.1.2-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.2-3">In this deployment, the governing authorization permits <code>tool-gateway</code> to
+<p id="appendix-B.1.2-3">In this deployment, the chain authorization permits <code>tool-gateway</code> to
 continue on Alice's behalf with read access to productivity services. The
 IdP establishes a chain and embeds H0 (<a href="#root-establishment" class="auto internal xref">Section 5.1</a>).<a href="#appendix-B.1.2-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.1.2-4">The authorization uses the tenant's current classification of productivity
@@ -4785,7 +4785,7 @@ H0's hop, which that rule accepts directly.<a href="#appendix-B.1.5-4.1.1" class
 authenticated client, and the DPoP proof matches <code>cnf</code>.<a href="#appendix-B.1.5-4.3.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.1.5-4.4">
-              <p id="appendix-B.1.5-4.4.1">Authorization: the governing authorization permits <code>tool-gateway</code> to
+              <p id="appendix-B.1.5-4.4.1">Authorization: the chain authorization permits <code>tool-gateway</code> to
 obtain <code>wiki.read</code> for Alice, and current policy classifies the wiki as an
 eligible productivity service. The root <code>tools.invoke</code> scope does not
 independently authorize this access.<a href="#appendix-B.1.5-4.4.1" class="pilcrow">¶</a></p>
@@ -4830,7 +4830,7 @@ independently authorize this access.<a href="#appendix-B.1.5-4.4.1" class="pilcr
 }
 </pre><a href="#appendix-B.1.5-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.5-8">A target not permitted by the governing authorization and current policy
+<p id="appendix-B.1.5-8">A target not permitted by the chain authorization and current policy
 fails with <code>invalid_target</code>; the chain stays continuable and only that tool
 call fails (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>). <a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a> illustrates a grant
 that excludes a newly requested target.<a href="#appendix-B.1.5-8" class="pilcrow">¶</a></p>
@@ -4973,7 +4973,7 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;expense-app JWT&gt;
 </pre><a href="#appendix-B.2.1-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.2.1-3">In this deployment, the governing authorization permits designated
+<p id="appendix-B.2.1-3">In this deployment, the chain authorization permits designated
 workloads to continue to Expense, Travel, and Booking. Current enterprise
 policy also permits that access (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#appendix-B.2.1-3" class="pilcrow">¶</a></p>
 <p id="appendix-B.2.1-4">Server-side state (IdP authorization, illustrative):<a href="#appendix-B.2.1-4" class="pilcrow">¶</a></p>
@@ -5177,7 +5177,7 @@ client, and the DPoP proof matches <code>cnf</code>.<a href="#appendix-B.2.4-4.3
 </li>
             <li class="normal" id="appendix-B.2.4-4.4">
               <p id="appendix-B.2.4-4.4.1">Authorization: TravelRAS, TravelAPI, and <code>trips.read</code> are permitted by the
-governing authorization and current policy.<a href="#appendix-B.2.4-4.4.1" class="pilcrow">¶</a></p>
+chain authorization and current policy.<a href="#appendix-B.2.4-4.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
 <p id="appendix-B.2.4-5">The IdP never calls ExpenseRAS; the assertion is its evidence of acceptance
@@ -5246,7 +5246,7 @@ Token for <code>travel-service</code>; only the handle differs from the Expense 
 <p id="appendix-B.2.5-4"><code>travel-service</code> obtains an assertion for H1 from Travel CAI and exchanges it
 for an ID-JAG with <code>audience=https://ras.booking.example/</code>,
 <code>resource=https://api.booking.example/</code>, and <code>scope=stays.book</code>, all permitted
-by the governing authorization and current policy. It authenticates with its
+by the chain authorization and current policy. It authenticates with its
 own client assertion and proves the key in the continuation assertion's <code>cnf</code>.
 The IdP resolves its canonical actor identity (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>), creates
 H2 under H1, and extends the lineage:<a href="#appendix-B.2.5-4" class="pilcrow">¶</a></p>
@@ -5477,7 +5477,7 @@ Pragma: no-cache
 }
 </pre><a href="#appendix-B.3.4-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.3.4-3">A different governing authorization could permit read access to productivity
+<p id="appendix-B.3.4-3">A different chain authorization could permit read access to productivity
 services selected by current policy, as in <a href="#example-gateway-root" class="auto internal xref">Appendix B.1.2</a>. Under
 that authorization, adding Mail to the eligible services could permit
 <code>mail.read</code> without a new chain. A request for <code>mail.send</code> still fails with
@@ -5599,7 +5599,7 @@ specifications, on whose work this profile builds.<a href="#appendix-D-1" class=
 <p id="appendix-E-2">-02<a href="#appendix-E-2" class="pilcrow">¶</a></p>
 <ul class="normal">
 <li class="normal" id="appendix-E-3.1">
-          <p id="appendix-E-3.1.1">Replaced the root-chain envelope with governing authorization based on
+          <p id="appendix-E-3.1.1">Replaced the root-chain envelope with chain authorization based on
 recorded root facts and current tenant policy.<a href="#appendix-E-3.1.1" class="pilcrow">¶</a></p>
 </li>
         <li class="normal" id="appendix-E-3.2">
