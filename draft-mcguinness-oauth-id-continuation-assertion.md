@@ -132,21 +132,27 @@ requested access, and resolves the user's subject for the target RAS. If
 authorized, it issues an onward ID-JAG that the workload redeems at that RAS
 ({{token-exchange}}).
 
-An opaque continuation handle identifies each ID-JAG's hop within a chain
-({{chain-id}}). The IdP records the relationships between hops and associates
-the chain with the governing authorization established at the root exchange.
-Each continuation is evaluated under that authorization and current policy
-({{chain-authorization}}). RAS acceptance enables continuation but does not
-independently authorize downstream access; incoming access-token scopes do
-not automatically limit authority at another target.
+Each ID-JAG issued this way is a hop, and the hops descending from one root
+ID-JAG form a chain. An opaque continuation handle identifies each ID-JAG's hop
+within a chain ({{chain-id}}). The IdP records the relationships between hops
+and associates the chain with the governing authorization established at the
+root exchange. Each continuation is evaluated under that authorization and
+current policy ({{chain-authorization}}). RAS acceptance enables continuation
+but does not independently authorize downstream access; incoming access-token
+scopes do not automatically limit authority at another target.
 
 This document extends ID-JAG, referred to as the base profile, and complements
-OAuth Identity Chaining {{I-D.ietf-oauth-identity-chaining}}. The IdP,
-continuing workload, RAS, and CAI implement this extension. Root clients use
-the base exchange; chain establishment remains subject to the session or
-optional grant-anchor requirements ({{lifecycle-anchors}}). A terminal RAS
-needs only the base profile's support for redeeming a DPoP-bound ID-JAG
-({{onward-id-jag}}). This document defines no new access-token format.
+OAuth Identity Chaining {{I-D.ietf-oauth-identity-chaining}}; it is not a
+substitute for narrowing an existing token within one trust domain
+({{decision-rule}}). The IdP, continuing workload, RAS, and CAI implement this
+extension. Root clients use the base exchange; chain establishment requires a
+resolvable session anchor or, optionally, a grant anchor
+({{lifecycle-anchors}}), and without one the IdP issues an ordinary ID-JAG
+without a handle. A terminal RAS needs only the base profile's support for
+redeeming a DPoP-bound ID-JAG ({{onward-id-jag}}). This document defines no new
+access-token format. An ID-JAG deployment can therefore add multi-hop access
+where a request's path is not known in advance, as at a Model Context Protocol
+(MCP) tool gateway ({{example-gateway}}).
 
 ## Protocol Overview {#protocol-overview}
 
