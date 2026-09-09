@@ -2201,7 +2201,7 @@ token or another carrier as <a href="#handle-propagation" class="auto internal x
                 <td class="text-left" rowspan="1" colspan="1">the IdP issued the ID-JAG and recorded the hop</td>
               </tr>
               <tr>
-                <td class="text-left" rowspan="1" colspan="1">ACCEPTED</td>
+                <td class="text-left" rowspan="1" colspan="1">Accepted</td>
                 <td class="text-left" rowspan="1" colspan="1">RAS authorization state</td>
                 <td class="text-left" rowspan="1" colspan="1">the RAS redeemed the grant, authorized it, and bound the handle</td>
               </tr>
@@ -2209,13 +2209,13 @@ token or another carrier as <a href="#handle-propagation" class="auto internal x
           </table>
 <p id="section-5.2.1-3">The IdP learns of acceptance through a trusted CAI's attestation and maintains
 no synchronized acceptance state (<a href="#protocol-overview" class="auto internal xref">Section 1.1</a>). The CAI attests only
-hops the RAS has ACCEPTED. A RAS acting as CAI attests its own hops; a separate
+hops the RAS has accepted. A RAS acting as CAI attests its own hops; a separate
 CAI confirms acceptance and activity according to the RAS's authorization
 semantics (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-5.2.1-3" class="pilcrow">¶</a></p>
 <p id="section-5.2.1-4">An issued hop cannot be continued without a trusted CAI's attestation. Unless
 the CAI is compromised (<a href="#security-trust-model" class="auto internal xref">Section 9.4</a>), no trusted CAI attests an
 issued-but-rejected ID-JAG, so continuation fails closed.<a href="#section-5.2.1-4" class="pilcrow">¶</a></p>
-<p id="section-5.2.1-5">A hop is continuable while a CAI trusted for its RAS can attest it as ACCEPTED
+<p id="section-5.2.1-5">A hop is continuable while a CAI trusted for its RAS can attest it as accepted
 and still active, and neither it nor any ancestor is revoked; whether a
 particular continuation from it succeeds is decided by the validation rules of
 the continuation exchange (<a href="#validation" class="auto internal xref">Section 5.5.3</a>).<a href="#section-5.2.1-5" class="pilcrow">¶</a></p>
