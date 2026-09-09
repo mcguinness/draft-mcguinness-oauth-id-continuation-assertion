@@ -64,7 +64,7 @@ When editing the draft, identify which property each requirement protects:
 3. The IdP authenticates that actor.
 4. The actor proves possession of the continuation key.
 5. The IdP authorizes the actor, target, and effective permissions.
-6. The chain remains within its governing authorization and lifecycle.
+6. The chain remains within its chain authorization and lifecycle.
 
 Also check interoperability and recovery behavior. Prefer requirements on
 observable behavior over storage or traversal methods, and keep each obligation
