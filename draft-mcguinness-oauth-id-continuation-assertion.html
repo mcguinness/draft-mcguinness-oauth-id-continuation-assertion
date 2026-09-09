@@ -10,14 +10,17 @@
 <meta content="
        This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) used as an OAuth 2.0 Token Exchange
-subject token. It enables an IdP Authorization Server (IdP) to issue an onward
-Identity Assertion JWT Authorization Grant (ID-JAG) when a user's request
-crosses service boundaries to an audience for which the requesting workload
-has no suitable credential, including when the user is no longer present. The
-profile targets deployments in which several Resource Authorization Servers
-trust one IdP and use pairwise subject identifiers that only the IdP can
-resolve. It complements offline attenuation for intra-domain fan-out that
-does not change the subject. 
+subject token. It enables a workload acting on a user's behalf to obtain an
+Identity Assertion JWT Authorization Grant (ID-JAG) for another service when
+it lacks a suitable credential, including when the user is no longer
+present. 
+       A trusted issuer attests that a resource authorization server accepted an
+earlier ID-JAG and that the resulting authorization remains active and
+eligible for continuation. The workload exchanges this assertion at the
+identity provider, which evaluates the requested access under the governing
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="oauth" name="keyword">
@@ -1096,14 +1099,17 @@ svg {
       <h2 id="abstract"><a href="#abstract" class="selfRef">Abstract</a></h2>
 <p id="section-abstract-1">This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) used as an OAuth 2.0 Token Exchange
-subject token. It enables an IdP Authorization Server (IdP) to issue an onward
-Identity Assertion JWT Authorization Grant (ID-JAG) when a user's request
-crosses service boundaries to an audience for which the requesting workload
-has no suitable credential, including when the user is no longer present. The
-profile targets deployments in which several Resource Authorization Servers
-trust one IdP and use pairwise subject identifiers that only the IdP can
-resolve. It complements offline attenuation for intra-domain fan-out that
-does not change the subject.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+subject token. It enables a workload acting on a user's behalf to obtain an
+Identity Assertion JWT Authorization Grant (ID-JAG) for another service when
+it lacks a suitable credential, including when the user is no longer
+present.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
+<p id="section-abstract-2">A trusted issuer attests that a resource authorization server accepted an
+earlier ID-JAG and that the resulting authorization remains active and
+eligible for continuation. The workload exchanges this assertion at the
+identity provider, which evaluates the requested access under the governing
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
 </section>
 <section class="note rfcEditorRemove" id="section-note.1">
       <h2 id="name-about-this-document">
@@ -1501,11 +1507,11 @@ for an access token. A service receiving that access token may need to call
 a further service on the user's behalf, including when the user is no longer
 present. It may hold neither the user's identity assertion nor another
 credential accepted by the next authorization server.<a href="#section-1-1" class="pilcrow">¶</a></p>
-<p id="section-1-2">This profile addresses deployments in which RASes trust a common IdP and
-identify the user through pairwise subject identifiers that only the IdP can
-resolve. The receiving workload cannot determine the user's subject at the
-next RAS, and its incoming access token is not accepted there. This profile
-enables multi-hop access when the request's path is not known in advance,
+<p id="section-1-2">This profile addresses deployments in which RASes trust a common IdP. The
+receiving workload's incoming access token is not accepted at the next RAS.
+When pairwise subject identifiers are used, the workload may also be unable
+to determine the user's subject at that RAS. This profile enables multi-hop
+access when the request's path is not known in advance,
 such as at a Model Context Protocol (MCP) tool gateway (<a href="#example-gateway" class="auto internal xref">Appendix B.1</a>).<a href="#section-1-2" class="pilcrow">¶</a></p>
 <p id="section-1-3">This document defines the Identity Continuation Assertion, a short-lived,
 sender-constrained JSON Web Token (JWT) <span>[<a href="#RFC7519" class="cite xref">RFC7519</a>]</span> that the workload obtains
@@ -1720,15 +1726,14 @@ Token Exchange <code>subject_token</code> to obtain an onward ID-JAG (<a href="#
         <dd class="break"></dd>
 <dt id="section-2-3.21">IdP Authorization Server (IdP):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.22">
-          <p id="section-2-3.22.1">The authority that authenticates the user, maps the user to each pairwise
-subject, and issues onward grants.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.22.1">The authority that authenticates the user, determines the user's subject
+identifier for each target RAS, and issues onward grants.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.23">Pairwise subject:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">The subject identifier under which a particular RAS names the user; distinct
-Resource Authorization Servers may name the same user with different
-identifiers, and only the IdP holds the map between them.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.24.1">A subject identifier specific to a RAS or group of RASes, allowing the same
+user to have different identifiers at different audiences.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
 <dt id="section-2-3.25">Resource Authorization Server (RAS):</dt>
@@ -2806,8 +2811,8 @@ proof (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>, 
 accepted as a bearer token (<span>[<a href="#RFC7800" class="cite xref">RFC7800</a>]</span>); and<a href="#section-5.5.3-2.5.2.2.1" class="pilcrow">¶</a></p>
 </li>
                 <li class="normal" id="section-5.5.3-2.5.2.3">
-                  <p id="section-5.5.3-2.5.2.3.1">the IdP can resolve, for the requested <code>audience</code>, both the pairwise
-subject and the actor's client identifier (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>);<a href="#section-5.5.3-2.5.2.3.1" class="pilcrow">¶</a></p>
+                  <p id="section-5.5.3-2.5.2.3.1">the IdP can resolve, for the requested <code>audience</code>, both the user's subject
+identifier and the actor's client identifier (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>);<a href="#section-5.5.3-2.5.2.3.1" class="pilcrow">¶</a></p>
 </li>
               </ul>
 </li>
@@ -2905,7 +2910,7 @@ management API.<a href="#section-5.5.4-5" class="pilcrow">¶</a></p>
           </h4>
 <p id="section-5.5.5-1">The onward ID-JAG conforms to the base ID-JAG profile
 (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>) except where this document
-extends it: its <code>sub</code> is the IdP-issued pairwise subject for the target
+extends it: its <code>sub</code> is the IdP-issued subject identifier for the target
 audience, and <code>aud_sub</code> remains available under the base profile where the
 target's native subject namespace differs.<a href="#section-5.5.5-1" class="pilcrow">¶</a></p>
 <p id="section-5.5.5-2">Because the onward ID-JAG carries <code>cnf</code>, the actor redeems it with the
@@ -4289,7 +4294,7 @@ this document registers only the
 <a href="#appendix-A.1" class="section-number selfRef">A.1. </a><a href="#name-idp-mediated-continuation" class="section-name selfRef">IdP-Mediated Continuation</a>
         </h3>
 <p id="appendix-A.1-1">This profile serves deployments where the target trusts a common IdP to
-resolve the user's pairwise subject. Each continuation returns to that IdP
+resolve the user's subject identifier. Each continuation returns to that IdP
 for subject resolution and checks of current authorization and chain state
 (<a href="#validation" class="auto internal xref">Section 5.5.3</a>). RAS-local withdrawal remains subject to the freshness of
 acceptance evidence (<a href="#lifecycle-ending" class="auto internal xref">Section 6.2</a>).<a href="#appendix-A.1-1" class="pilcrow">¶</a></p>
