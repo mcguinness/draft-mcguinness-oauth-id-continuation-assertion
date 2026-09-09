@@ -2622,6 +2622,10 @@ A.5.  Authorization Boundary
    decision.  The profile defines neither a purpose claim nor an agent
    authorization model.
 
+   Single-use limits each assertion to one issued grant.  The lifetime
+   bound limits how long the assertion can authorize a new continuation
+   (Section 5.5.7).
+
 Appendix B.  Examples
 
    This non-normative appendix illustrates three deployments: a tool
