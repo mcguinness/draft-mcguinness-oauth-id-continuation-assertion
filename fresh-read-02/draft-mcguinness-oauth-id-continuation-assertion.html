@@ -18,10 +18,9 @@ present.
 earlier ID-JAG and that the resulting authorization remains active and
 eligible for continuation. The workload exchanges this assertion at the
 identity provider, which evaluates the requested access under the chain
-authorization, the authorization recorded when the chain was established,
-and current policy before issuing an onward ID-JAG. The profile supports
-multi-hop access across resource authorization servers that trust a common
-identity provider. 
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider. 
     " name="description">
 <meta content="xml2rfc 3.34.0" name="generator">
 <meta content="oauth" name="keyword">
@@ -1108,10 +1107,9 @@ present.<a href="#section-abstract-1" class="pilcrow">¶</a></p>
 earlier ID-JAG and that the resulting authorization remains active and
 eligible for continuation. The workload exchanges this assertion at the
 identity provider, which evaluates the requested access under the chain
-authorization, the authorization recorded when the chain was established,
-and current policy before issuing an onward ID-JAG. The profile supports
-multi-hop access across resource authorization servers that trust a common
-identity provider.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
+authorization and current policy before issuing an onward ID-JAG. The
+profile supports multi-hop access across resource authorization servers that
+trust a common identity provider.<a href="#section-abstract-2" class="pilcrow">¶</a></p>
 </section>
 <section class="note rfcEditorRemove" id="section-note.1">
       <h2 id="name-about-this-document">
@@ -1657,126 +1655,120 @@ described in BCP 14 <span>[<a href="#RFC2119" class="cite xref">RFC2119</a>]</s
 appear in all capitals, as shown here.<a href="#section-2-1" class="pilcrow">¶</a></p>
 <p id="section-2-2">This document uses the following terms, listed alphabetically:<a href="#section-2-2" class="pilcrow">¶</a></p>
 <span class="break"></span><dl class="dlParallel" id="section-2-3">
-        <dt id="section-2-3.1">Actor lineage:</dt>
+        <dt id="section-2-3.1">Actor-lineage depth:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.2">
-          <p id="section-2-3.2.1">The actors the IdP discloses in an onward ID-JAG's nested <code>act</code> claim,
-derived from its own hop records (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#section-2-3.2.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.3">Actor-lineage depth:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.4">
-          <p id="section-2-3.4.1">The number of entries in the actor lineage the IdP derives from its own
+          <p id="section-2-3.2.1">The number of entries in the actor lineage the IdP derives from its own
 hop records, after consecutive entries for the same actor are merged and
 before any narrowing of what the onward <code>act</code> discloses
 (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Tenant policy bounds it per branch
-(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>).<a href="#section-2-3.4.1" class="pilcrow">¶</a></p>
+(<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>).<a href="#section-2-3.2.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.5">Chain:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.6">
-          <p id="section-2-3.6.1">An IdP-held tree of hops under one chain authorization; each hop's
+<dt id="section-2-3.3">Chain:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.4">
+          <p id="section-2-3.4.1">An IdP-held tree of hops under one chain authorization; each hop's
 parent reference gives the tree its shape (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>), and the
-authorization bounds its lifetime (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
+authorization bounds its lifetime (<a href="#lifecycle" class="auto internal xref">Section 6</a>).<a href="#section-2-3.4.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.7">Chain authorization:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.8">
-          <p id="section-2-3.8.1">The tenant's authorization decision recorded by the IdP at the root exchange
+<dt id="section-2-3.5">Chain authorization:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.6">
+          <p id="section-2-3.6.1">The tenant's authorization decision recorded by the IdP at the root exchange
 and associated with the chain's lifecycle anchor (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).
 It determines which actors may continue and what authority they may obtain,
-subject to current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+subject to current policy (<a href="#chain-authorization" class="auto internal xref">Section 5.1.4</a>).<a href="#section-2-3.6.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.9">Continuation Assertion Issuer (CAI):</dt>
+<dt id="section-2-3.7">Continuation Assertion Issuer (CAI):</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.8">
+          <p id="section-2-3.8.1">The role the IdP trusts to issue Identity Continuation Assertions for a
+tenant and the RAS whose hops it attests (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.8.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.9">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.10">
-          <p id="section-2-3.10.1">The role the IdP trusts to issue Identity Continuation Assertions for a
-tenant and the RAS whose hops it attests (<a href="#assertion-issuance" class="auto internal xref">Section 5.4</a>).<a href="#section-2-3.10.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.10.1">An opaque, unguessable, IdP-generated reference to one hop of a chain
+(<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.10.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.11">Continuation Handle (<code>identity_continuation_handle</code>):</dt>
+<dt id="section-2-3.11">Continuation-capable:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.12">
-          <p id="section-2-3.12.1">An opaque, unguessable, IdP-generated reference to one hop of a chain
+          <p id="section-2-3.12.1">Describes an ID-JAG that carries the <code>identity_continuation_handle</code> claim
 (<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.12.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.13">Continuation-capable:</dt>
+<dt id="section-2-3.13">Current actor:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.14">
-          <p id="section-2-3.14.1">Describes an ID-JAG that carries the <code>identity_continuation_handle</code> claim
-(<a href="#chain-id" class="auto internal xref">Section 4</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.15">Current actor:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.16">
-          <p id="section-2-3.16.1">The workload presenting the assertion to the IdP, named by <code>act</code>. Its
+          <p id="section-2-3.14.1">The workload presenting the assertion to the IdP, named by <code>act</code>. Its
 canonical actor identity is the (<code>iss</code>, <code>sub</code>) pair that its authentication
-to the IdP resolves to (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
+to the IdP resolves to (<a href="#client-identity" class="auto internal xref">Section 5.5.2</a>).<a href="#section-2-3.14.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.17">Durable chain:</dt>
+<dt id="section-2-3.15">Durable chain:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.16">
+          <p id="section-2-3.16.1">A chain anchored to a refresh token's OAuth grant rather than to the user's
+IdP session, so that it can continue after logout (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).<a href="#section-2-3.16.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.17">Hop:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.18">
-          <p id="section-2-3.18.1">A chain anchored to a refresh token's OAuth grant rather than to the user's
-IdP session, so that it can continue after logout (<a href="#lifecycle-anchors" class="auto internal xref">Section 6.1</a>).<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.19">Hop:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.20">
-          <p id="section-2-3.20.1">One link of a chain: the IdP's record of an ID-JAG it issued, with an
+          <p id="section-2-3.18.1">One link of a chain: the IdP's record of an ID-JAG it issued, with an
 immutable reference to its parent hop unless it is the root
 (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>). Its hop lineage is its path to the root; a hop from
-which no workload continues is terminal.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+which no workload continues is terminal.<a href="#section-2-3.18.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.21">ID-JAG:</dt>
+<dt id="section-2-3.19">ID-JAG:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.20">
+          <p id="section-2-3.20.1">An Identity Assertion JWT Authorization Grant
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> issued for a target RAS.<a href="#section-2-3.20.1" class="pilcrow">¶</a></p>
+</dd>
+        <dd class="break"></dd>
+<dt id="section-2-3.21">Identity Continuation Assertion:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.22">
-          <p id="section-2-3.22.1">An Identity Assertion JWT Authorization Grant
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> issued for a target RAS.<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.22.1">A short-lived, sender-constrained JWT from a CAI, presented to the IdP as a
+Token Exchange <code>subject_token</code> to obtain an onward ID-JAG (<a href="#assertion" class="auto internal xref">Section 3</a>).<a href="#section-2-3.22.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.23">Identity Continuation Assertion:</dt>
+<dt id="section-2-3.23">IdP Authorization Server (IdP):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.24">
-          <p id="section-2-3.24.1">A short-lived, sender-constrained JWT from a CAI, presented to the IdP as a
-Token Exchange <code>subject_token</code> to obtain an onward ID-JAG (<a href="#assertion" class="auto internal xref">Section 3</a>).<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.24.1">The authority that authenticates the user, determines the user's subject
+identifier for each target RAS, and issues onward grants.<a href="#section-2-3.24.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.25">IdP Authorization Server (IdP):</dt>
+<dt id="section-2-3.25">Pairwise subject:</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.26">
-          <p id="section-2-3.26.1">The authority that authenticates the user, determines the user's subject
-identifier for each target RAS, and issues onward grants.<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
+          <p id="section-2-3.26.1">A subject identifier specific to a RAS or group of RASes, allowing the same
+user to have different identifiers at different audiences.<a href="#section-2-3.26.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.27">Pairwise subject:</dt>
+<dt id="section-2-3.27">Resource Authorization Server (RAS):</dt>
         <dd style="margin-left: 1.5em" id="section-2-3.28">
-          <p id="section-2-3.28.1">A subject identifier specific to a RAS or group of RASes, allowing the same
-user to have different identifiers at different audiences.<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
-</dd>
-        <dd class="break"></dd>
-<dt id="section-2-3.29">Resource Authorization Server (RAS):</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.30">
-          <p id="section-2-3.30.1">An Authorization Server that protects a particular API, trusts the IdP for
+          <p id="section-2-3.28.1">An Authorization Server that protects a particular API, trusts the IdP for
 subject resolution, and exchanges an ID-JAG for an API access token.
-<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> abbreviates this role (AS).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
+<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span> abbreviates this role (AS).<a href="#section-2-3.28.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.31">Tenant:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.32">
-          <p id="section-2-3.32.1">The administrative boundary within which the chain and CAI trust are
+<dt id="section-2-3.29">Tenant:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.30">
+          <p id="section-2-3.30.1">The administrative boundary within which the chain and CAI trust are
 configured; its determination is deployment-defined, derived from
 authenticated material, never from requester-supplied input
-(<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
+(<a href="#issuer-trust" class="auto internal xref">Section 7.3</a>).<a href="#section-2-3.30.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.33">Trust domain:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.34">
-          <p id="section-2-3.34.1">An administrative and authentication boundary within which workloads can be
+<dt id="section-2-3.31">Trust domain:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.32">
+          <p id="section-2-3.32.1">An administrative and authentication boundary within which workloads can be
 directly authenticated, comparable to Workload Identity in Multi System
 Environments (WIMSE) <span>[<a href="#I-D.ietf-wimse-arch" class="cite xref">I-D.ietf-wimse-arch</a>]</span>. Its identifier is
-deployment-defined.<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
+deployment-defined.<a href="#section-2-3.32.1" class="pilcrow">¶</a></p>
 </dd>
         <dd class="break"></dd>
-<dt id="section-2-3.35">Workload:</dt>
-        <dd style="margin-left: 1.5em" id="section-2-3.36">
-          <p id="section-2-3.36.1">A service that received a request on a user's behalf and may continue it to
-a further service.<a href="#section-2-3.36.1" class="pilcrow">¶</a></p>
+<dt id="section-2-3.33">Workload:</dt>
+        <dd style="margin-left: 1.5em" id="section-2-3.34">
+          <p id="section-2-3.34.1">A service that received a request on a user's behalf and may continue it to
+a further service.<a href="#section-2-3.34.1" class="pilcrow">¶</a></p>
 </dd>
       <dd class="break"></dd>
 </dl>
@@ -2891,9 +2883,8 @@ implement.<a href="#section-5.5.3-2.7.2" class="pilcrow">¶</a></p>
 <a href="#section-5.5.4" class="section-number selfRef">5.5.4. </a><a href="#name-successful-response-2" class="section-name selfRef">Successful Response</a>
           </h4>
 <p id="section-5.5.4-1">The response to a continuation exchange follows the base ID-JAG profile: the
-IdP returns the ID-JAG in <code>access_token</code>, the <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span> response container,
-with <code>token_type</code> <code>N_A</code> (not applicable; <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.1) to signal
-that the ID-JAG is not an OAuth access token. The IdP <span class="bcp14">MUST NOT</span> include a
+IdP returns the ID-JAG in <code>access_token</code>, with <code>token_type</code> <code>N_A</code> (not
+applicable; <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>, Section 2.2.1). The IdP <span class="bcp14">MUST NOT</span> include a
 <code>refresh_token</code>: a renewable credential would let the workload obtain further
 grants without fresh CAI attestation, or root a new chain through the
 refresh-token anchor, outside the hop's revocation dependencies.<a href="#section-5.5.4-1" class="pilcrow">¶</a></p>
@@ -2979,13 +2970,10 @@ the disclosed actor lineage, not the authoritative history, which only the
 IdP's hop records hold.<a href="#section-5.5.5-5.4.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="section-5.5.5-6">The onward ID-JAG's <code>client_id</code> is determined under the base profile's client
-identifier semantics (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>): it
-identifies the current actor's OAuth client at the target RAS, which the IdP
-resolves from its registration of the actor's client identities per target,
-and it may differ from the identifier the actor used to authenticate at the
-IdP. A target for which the actor has no such identity fails with
-<code>invalid_target</code> (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>).<a href="#section-5.5.5-6" class="pilcrow">¶</a></p>
+<p id="section-5.5.5-6">The onward ID-JAG's <code>client_id</code> identifies the current actor's OAuth client
+at the target RAS and may differ from its client identifier at the IdP.
+If the IdP cannot resolve that target client identity, the request fails
+with <code>invalid_target</code> (<a href="#error-response" class="auto internal xref">Section 5.5.6</a>).<a href="#section-5.5.5-6" class="pilcrow">¶</a></p>
 <p id="section-5.5.5-7">The following is a non-normative example of the onward ID-JAG issued by the
 IdP:<a href="#section-5.5.5-7" class="pilcrow">¶</a></p>
 <div class="lang-json sourcecode" id="section-5.5.5-8">
