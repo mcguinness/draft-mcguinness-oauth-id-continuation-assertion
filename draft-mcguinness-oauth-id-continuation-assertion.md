@@ -2194,6 +2194,10 @@ accepted authorization. Whether a requested action serves the work the user
 or tenant authorized remains a deployment policy decision. The profile defines
 neither a purpose claim nor an agent authorization model.
 
+Single-use limits each assertion to one issued grant. The lifetime bound
+limits how long the assertion can authorize a new continuation
+({{validation-replay}}).
+
 # Examples {#examples}
 
 This non-normative appendix illustrates three deployments: a tool
