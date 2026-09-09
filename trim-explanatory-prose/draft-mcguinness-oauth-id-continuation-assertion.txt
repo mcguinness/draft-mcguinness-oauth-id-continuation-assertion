@@ -1856,8 +1856,12 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    reuses the resulting access token while valid and sufficient for the
    requested access.  Reuse requires the same user, tenant, actor, key,
    and source hop; a sibling branch has different lineage and revocation
-   dependencies.  Renewal requires a fresh assertion satisfying
-   Section 5.4.3.
+   dependencies.
+
+   The first call requires assertion issuance, continuation exchange,
+   and ID-JAG redemption.  Later calls using the same valid token
+   require no further exchanges.  Renewal requires a fresh assertion
+   satisfying Section 5.4.3.
 
    Each continuation depends on IdP availability and, for a separate
    CAI, access to RAS acceptance evidence.  Offline attenuation can
@@ -1865,17 +1869,26 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
    (Appendix A.1).
 
    The IdP retains hop records for the chain's lifetime and replay state
-   for the periods in Section 5.5.7 and Section 5.5.7.1.  Ancestry
-   caches and audit indexes can supplement immutable parent records
-   without changing lineage or revocation checks.  Handles can be
-   derived with a keyed one-way function if they satisfy Section 4 and
-   remain unlinkable.
+   for the periods in Section 5.5.7 and Section 5.5.7.1.  Optional
+   recovery also requires retaining the issued grant and request
+   fingerprint.
+
+   Ancestry caches and audit indexes can supplement immutable parent
+   records without changing lineage or revocation checks.
+
+   Handles can be derived with a keyed one-way function if they satisfy
+   Section 4 and remain unlinkable.
 
    A RAS can couple handle binding and token issuance with a local
    transaction or compensate for failed binding by revoking the token.
+
    CAI audit records cover issuance and limits; the IdP correlates the
-   chain, while each RAS logs its local subject.  Retries and same-actor
-   continuation remain subject to Section 5.5.7 and Section 6.3.
+   chain, while each RAS logs its local subject.
+
+   Consecutive same-actor continuations do not increase actor-lineage
+   depth; hop-count, fan-out, and rate limits still apply (Section 6.3).
+   Idempotent recovery creates no hop and consumes none of those budgets
+   (Section 5.5.7.1).
 
    Failure paths worth testing:
 
@@ -2458,10 +2471,11 @@ A.1.  IdP-Mediated Continuation
 
 A.2.  CAI Attestation and ID-JAG Redemption
 
-   An ID-JAG authorizes the client_id client to redeem at its aud RAS
-   and, when sender-constrained, binds redemption to that client's key.
-   Receiving it as the audience does not authorize the RAS to change the
-   client or key ([I-D.ietf-oauth-identity-assertion-authz-grant]).
+   An ID-JAG authorizes the client named in client_id to redeem the
+   grant at the RAS named in aud.  When sender-constrained, it binds
+   redemption to that client's key.  Receiving it as the audience does
+   not authorize the RAS to change the client or key
+   ([I-D.ietf-oauth-identity-assertion-authz-grant]).
 
    Similarly, a workload receives an access token as the protected
    resource.  The token authorizes the caller and may bind to the
@@ -2474,8 +2488,10 @@ A.2.  CAI Attestation and ID-JAG Redemption
    (Section 5.4.3).  Direct exchange of either earlier token would need
    additional rules for that authority and binding (Appendix C).
 
-   Issuance reuses Token Exchange [RFC8693].  A Transaction Token can
-   carry the issuance context but does not itself prove RAS acceptance.
+   Assertion issuance at the CAI reuses Token Exchange [RFC8693].  A
+   Transaction Token can carry the issuance context but does not itself
+   prove RAS acceptance.
+
    The assertion omits the user subject, which the IdP resolves for the
    onward ID-JAG.  Returning an ID-JAG preserves the target's redemption
    interface; reference resolution and recipient-bound credentials
@@ -2588,21 +2604,35 @@ B.1.1.  Provisioning
       tenant-123, with canonical identities (https://agent.example/,
       agent-app) and (https://gateway.example/, tool-gateway).
 
-   *  Authorize https://gateway.example/ to issue ToolGateway's
-      credential and pair it with GatewayRAS as CAI.  Trust GatewayRAS's
-      issuer and signing keys.
+   *  Authorize https://gateway.example/ to issue ToolGateway's client
+      credential.
+
+   *  Trust GatewayRAS's issuer and signing keys to attest its hops.
+
+   *  Authorize GatewayRAS as CAI paired with actor identity authority
+      https://gateway.example/ for tenant-123.
 
    *  Permit ToolGateway to continue with read access to productivity
-      tools; advertise continuation support and record its client
-      identity at WikiRAS.
+      tools.
 
-   *GatewayRAS:* trust the IdP, advertise continuation, and register
-   tool-gateway as operating https://gateway.example/.
+   *  Advertise identity_continuation_supported (Section 7.1).
+
+   *  Record ToolGateway's client identifier at WikiRAS.
+
+   *GatewayRAS* (Section 7.2, Section 5.4.3):
+
+   *  Trust the IdP as ID-JAG issuer.
+
+   *  Advertise the continuation grant profile.
+
+   *  Register tool-gateway as an OAuth client operating
+      https://gateway.example/.
 
    *ToolGateway:* provision a DPoP key and a gateway-domain client
    credential.
 
-   *WikiRAS:* trust the IdP, register ToolGateway, and support jwt-dpop.
+   *WikiRAS:* trust the IdP, register ToolGateway, and support the DPoP-
+   bound JWT grant (Section 5.5.5).
 
    ToolGateway uses this client assertion at the IdP; its GatewayRAS
    exchange uses a separate assertion addressed there (Appendix B.1.4):
@@ -2788,10 +2818,18 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &client_assertion_type=urn:ietf:params:oauth:client-assertion-type:jwt-bearer
 &client_assertion=<tool-gateway client assertion>
 
-   The IdP applies Section 5.5.3: GatewayRAS is trusted for H0, the
-   chain is active, ToolGateway's identity and key match, and chain
-   authorization and current policy permit wiki.read.  The root
-   tools.invoke scope grants no independent wiki authority.
+   The IdP applies Section 5.5.3:
+
+   *  *Issuer trust:* GatewayRAS is trusted to attest H0.
+
+   *  *Chain state:* H0 identifies an accepted hop on an active chain.
+
+   *  *Actor and key:* act matches the authenticated client's canonical
+      identity, and the DPoP proof matches cnf.
+
+   *  *Authorization:* chain authorization and current policy permit
+      wiki.read.  The root tools.invoke scope grants no independent wiki
+      authority.
 
    The IdP resolves Alice's wiki subject and creates H1 with ToolGateway
    atop AgentApp in the lineage.
@@ -3176,13 +3214,23 @@ B.2.6.  What Differs from the Gateway Example
 B.3.  Background Agent Example (Scheduled Continuation)
 
    Alice's daily calendar briefing uses a grant-anchored chain that
-   survives logout.  PlatformRAS binds H0 to task state; Platform TTS
-   and a separate CAI support briefing-agent, whose canonical identity
-   is (https://platform.example/, briefing-agent).  The Scheduler holds
-   only a task identifier.
+   survives logout.  The platform uses a separate CAI and Transaction
+   Token carrier:
 
-   CalendarRAS is terminal for each run.  MailRAS illustrates a later
-   target excluded by the grant (Appendix B.3.4).
+   *  *Platform:* PlatformRAS binds H0 to task state.  Platform TTS and
+      Platform CAI issue credentials for briefing-agent.
+
+   *  *Scheduler:* an internal platform component that holds only the
+      task identifier and triggers each run.
+
+   *  *Calendar:* CalendarRAS protects CalendarAPI and is terminal for
+      each run.
+
+   *  *Mail:* MailRAS protects MailAPI, a later target excluded by the
+      grant (Appendix B.3.4).
+
+   BriefingAgent's canonical identity is (https://platform.example/,
+   briefing-agent).
 
 B.3.1.  Setup: Anchoring the Chain to a Grant
 

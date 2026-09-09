@@ -3445,43 +3445,51 @@ depends on the normative sections.<a href="#section-8-1" class="pilcrow">¶</a><
 <p id="section-8-2">A workload continues once per authorization context and target, then reuses
 the resulting access token while valid and sufficient for the requested
 access. Reuse requires the same user, tenant, actor, key, and source hop;
-a sibling branch has different lineage and revocation dependencies. Renewal
-requires a fresh assertion satisfying <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>.<a href="#section-8-2" class="pilcrow">¶</a></p>
-<p id="section-8-3">Each continuation depends on IdP availability and, for a separate CAI,
+a sibling branch has different lineage and revocation dependencies.<a href="#section-8-2" class="pilcrow">¶</a></p>
+<p id="section-8-3">The first call requires assertion issuance, continuation exchange, and ID-JAG
+redemption. Later calls using the same valid token require no further
+exchanges. Renewal requires a fresh assertion satisfying
+<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>.<a href="#section-8-3" class="pilcrow">¶</a></p>
+<p id="section-8-4">Each continuation depends on IdP availability and, for a separate CAI,
 access to RAS acceptance evidence. Offline attenuation can avoid those
-exchanges where existing subject and issuer trust suffice (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-8-3" class="pilcrow">¶</a></p>
-<p id="section-8-4">The IdP retains hop records for the chain's lifetime and replay state for
-the periods in <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a> and <a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>. Ancestry caches
-and audit indexes can supplement immutable parent records without changing
-lineage or revocation checks. Handles can be derived with a keyed one-way
-function if they satisfy <a href="#chain-id" class="auto internal xref">Section 4</a> and remain unlinkable.<a href="#section-8-4" class="pilcrow">¶</a></p>
-<p id="section-8-5">A RAS can couple handle binding and token issuance with a local transaction
-or compensate for failed binding by revoking the token. CAI audit records
-cover issuance and limits; the IdP correlates the chain, while each RAS logs
-its local subject. Retries and same-actor continuation remain subject to
-<a href="#validation-replay" class="auto internal xref">Section 5.5.7</a> and <a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>.<a href="#section-8-5" class="pilcrow">¶</a></p>
-<p id="section-8-6">Failure paths worth testing:<a href="#section-8-6" class="pilcrow">¶</a></p>
+exchanges where existing subject and issuer trust suffice (<a href="#decision-rule" class="auto internal xref">Appendix A.1</a>).<a href="#section-8-4" class="pilcrow">¶</a></p>
+<p id="section-8-5">The IdP retains hop records for the chain's lifetime and replay state for
+the periods in <a href="#validation-replay" class="auto internal xref">Section 5.5.7</a> and <a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>. Optional
+recovery also requires retaining the issued grant and request fingerprint.<a href="#section-8-5" class="pilcrow">¶</a></p>
+<p id="section-8-6">Ancestry caches and audit indexes can supplement immutable parent records
+without changing lineage or revocation checks.<a href="#section-8-6" class="pilcrow">¶</a></p>
+<p id="section-8-7">Handles can be derived with a keyed one-way function if they satisfy
+<a href="#chain-id" class="auto internal xref">Section 4</a> and remain unlinkable.<a href="#section-8-7" class="pilcrow">¶</a></p>
+<p id="section-8-8">A RAS can couple handle binding and token issuance with a local transaction
+or compensate for failed binding by revoking the token.<a href="#section-8-8" class="pilcrow">¶</a></p>
+<p id="section-8-9">CAI audit records cover issuance and limits; the IdP correlates the chain,
+while each RAS logs its local subject.<a href="#section-8-9" class="pilcrow">¶</a></p>
+<p id="section-8-10">Consecutive same-actor continuations do not increase actor-lineage depth;
+hop-count, fan-out, and rate limits still apply (<a href="#lifecycle-limits" class="auto internal xref">Section 6.3</a>).
+Idempotent recovery creates no hop and consumes none of those budgets
+(<a href="#idempotent-retry" class="auto internal xref">Section 5.5.7.1</a>).<a href="#section-8-10" class="pilcrow">¶</a></p>
+<p id="section-8-11">Failure paths worth testing:<a href="#section-8-11" class="pilcrow">¶</a></p>
 <ul class="normal">
-<li class="normal" id="section-8-7.1">
-          <p id="section-8-7.1.1">Concurrent redemption of one ID-JAG.<a href="#section-8-7.1.1" class="pilcrow">¶</a></p>
+<li class="normal" id="section-8-12.1">
+          <p id="section-8-12.1.1">Concurrent redemption of one ID-JAG.<a href="#section-8-12.1.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-8-7.2">
-          <p id="section-8-7.2.1">A crash between issuing an ID-JAG and recording its hop.<a href="#section-8-7.2.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-8-12.2">
+          <p id="section-8-12.2.1">A crash between issuing an ID-JAG and recording its hop.<a href="#section-8-12.2.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-8-7.3">
-          <p id="section-8-7.3.1">A policy change between continuations.<a href="#section-8-7.3.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-8-12.3">
+          <p id="section-8-12.3.1">A policy change between continuations.<a href="#section-8-12.3.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-8-7.4">
-          <p id="section-8-7.4.1">A credential from the wrong tenant.<a href="#section-8-7.4.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-8-12.4">
+          <p id="section-8-12.4.1">A credential from the wrong tenant.<a href="#section-8-12.4.1" class="pilcrow">¶</a></p>
 </li>
-        <li class="normal" id="section-8-7.5">
-          <p id="section-8-7.5.1">Local revocation after assertion issuance.<a href="#section-8-7.5.1" class="pilcrow">¶</a></p>
+        <li class="normal" id="section-8-12.5">
+          <p id="section-8-12.5.1">Local revocation after assertion issuance.<a href="#section-8-12.5.1" class="pilcrow">¶</a></p>
 </li>
       </ul>
-<p id="section-8-8">An IdP can defer materializing chain state until first continuation if the
+<p id="section-8-13">An IdP can defer materializing chain state until first continuation if the
 handle still resolves to the same root and chain authorization and replay
 rules remain satisfied. Replacing the hop tree with self-verifying handles
-remains an open question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-8-8" class="pilcrow">¶</a></p>
+remains an open question (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#section-8-13" class="pilcrow">¶</a></p>
 <div id="deployment-topologies">
 <section id="section-8.1">
         <h3 id="name-deployment-topologies">
@@ -4244,10 +4252,10 @@ trust agreement and profile, such as
         <h3 id="name-cai-attestation-and-id-jag-">
 <a href="#appendix-A.2" class="section-number selfRef">A.2. </a><a href="#name-cai-attestation-and-id-jag-" class="section-name selfRef">CAI Attestation and ID-JAG Redemption</a>
         </h3>
-<p id="appendix-A.2-1">An ID-JAG authorizes the <code>client_id</code> client to redeem at its <code>aud</code> RAS and,
-when sender-constrained, binds redemption to that client's key. Receiving
-it as the audience does not authorize the RAS to change the client or key
-(<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>).<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-1">An ID-JAG authorizes the client named in <code>client_id</code> to redeem the grant at
+the RAS named in <code>aud</code>. When sender-constrained, it binds redemption to that
+client's key. Receiving it as the audience does not authorize the RAS to
+change the client or key (<span>[<a href="#I-D.ietf-oauth-identity-assertion-authz-grant" class="cite xref">I-D.ietf-oauth-identity-assertion-authz-grant</a>]</span>).<a href="#appendix-A.2-1" class="pilcrow">¶</a></p>
 <p id="appendix-A.2-2">Similarly, a workload receives an access token as the protected resource.
 The token authorizes the caller and may bind to the caller's key. Verifying
 that proof gives the workload neither the key nor a credential for its own
@@ -4257,14 +4265,16 @@ accepted, active authorization eligible for continuation and binds an
 IdP-addressed assertion to the workload's key (<a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>).
 Direct exchange of either earlier token would need additional rules for
 that authority and binding (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-3" class="pilcrow">¶</a></p>
-<p id="appendix-A.2-4">Issuance reuses Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. A Transaction Token can carry the
-issuance context but does not itself prove RAS acceptance. The assertion
-omits the user subject, which the IdP resolves for the onward ID-JAG.
-Returning an ID-JAG preserves the target's redemption interface; reference
-resolution and recipient-bound credentials remain alternatives (<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-4" class="pilcrow">¶</a></p>
-<p id="appendix-A.2-5">Asymmetric signing avoids sharing secrets between CAIs and IdPs; one compact
+<p id="appendix-A.2-4">Assertion issuance at the CAI reuses Token Exchange <span>[<a href="#RFC8693" class="cite xref">RFC8693</a>]</span>. A
+Transaction Token can carry the issuance context but does not itself prove
+RAS acceptance.<a href="#appendix-A.2-4" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-5">The assertion omits the user subject, which the IdP resolves for the onward
+ID-JAG. Returning an ID-JAG preserves the target's redemption interface;
+reference resolution and recipient-bound credentials remain alternatives
+(<a href="#open-items" class="auto internal xref">Appendix C</a>).<a href="#appendix-A.2-5" class="pilcrow">¶</a></p>
+<p id="appendix-A.2-6">Asymmetric signing avoids sharing secrets between CAIs and IdPs; one compact
 JWS format reduces implementation choices (<a href="#names" class="auto internal xref">Section 3.1</a>). TLS protects transport
-but does not conceal the assertion from the carrying workload.<a href="#appendix-A.2-5" class="pilcrow">¶</a></p>
+but does not conceal the assertion from the carrying workload.<a href="#appendix-A.2-6" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="rationale-handles">
@@ -4395,21 +4405,44 @@ AgentApp        IdP       GatewayRAS/CAI     ToolGateway     WikiRAS/API
 <code>agent-app</code>) and (<code>https://gateway.example/</code>, <code>tool-gateway</code>).<a href="#appendix-B.1.1-3.1.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.1.1-3.2">
-              <p id="appendix-B.1.1-3.2.1">Authorize <code>https://gateway.example/</code> to issue ToolGateway's credential and
-pair it with GatewayRAS as CAI. Trust GatewayRAS's issuer and signing keys.<a href="#appendix-B.1.1-3.2.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.1.1-3.2.1">Authorize <code>https://gateway.example/</code> to issue ToolGateway's client credential.<a href="#appendix-B.1.1-3.2.1" class="pilcrow">¶</a></p>
 </li>
             <li class="normal" id="appendix-B.1.1-3.3">
-              <p id="appendix-B.1.1-3.3.1">Permit ToolGateway to continue with read access to productivity tools;
-advertise continuation support and record its client identity at WikiRAS.<a href="#appendix-B.1.1-3.3.1" class="pilcrow">¶</a></p>
+              <p id="appendix-B.1.1-3.3.1">Trust GatewayRAS's issuer and signing keys to attest its hops.<a href="#appendix-B.1.1-3.3.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-3.4">
+              <p id="appendix-B.1.1-3.4.1">Authorize GatewayRAS as CAI paired with actor identity authority
+<code>https://gateway.example/</code> for <code>tenant-123</code>.<a href="#appendix-B.1.1-3.4.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-3.5">
+              <p id="appendix-B.1.1-3.5.1">Permit ToolGateway to continue with read access to productivity tools.<a href="#appendix-B.1.1-3.5.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-3.6">
+              <p id="appendix-B.1.1-3.6.1">Advertise <code>identity_continuation_supported</code> (<a href="#metadata-idp" class="auto internal xref">Section 7.1</a>).<a href="#appendix-B.1.1-3.6.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-3.7">
+              <p id="appendix-B.1.1-3.7.1">Record ToolGateway's client identifier at WikiRAS.<a href="#appendix-B.1.1-3.7.1" class="pilcrow">¶</a></p>
 </li>
           </ul>
-<p id="appendix-B.1.1-4"><strong>GatewayRAS:</strong> trust the IdP, advertise continuation, and register
-<code>tool-gateway</code> as operating <code>https://gateway.example/</code>.<a href="#appendix-B.1.1-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.1-5"><strong>ToolGateway:</strong> provision a DPoP key and a gateway-domain client credential.<a href="#appendix-B.1.1-5" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.1-6"><strong>WikiRAS:</strong> trust the IdP, register ToolGateway, and support jwt-dpop.<a href="#appendix-B.1.1-6" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.1-7">ToolGateway uses this client assertion at the IdP; its GatewayRAS exchange
-uses a separate assertion addressed there (<a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.4</a>):<a href="#appendix-B.1.1-7" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.1-8">
+<p id="appendix-B.1.1-4"><strong>GatewayRAS</strong> (<a href="#metadata-ras" class="auto internal xref">Section 7.2</a>, <a href="#assertion-preconditions" class="auto internal xref">Section 5.4.3</a>):<a href="#appendix-B.1.1-4" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.1.1-5.1">
+              <p id="appendix-B.1.1-5.1.1">Trust the IdP as ID-JAG issuer.<a href="#appendix-B.1.1-5.1.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-5.2">
+              <p id="appendix-B.1.1-5.2.1">Advertise the continuation grant profile.<a href="#appendix-B.1.1-5.2.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.1-5.3">
+              <p id="appendix-B.1.1-5.3.1">Register <code>tool-gateway</code> as an OAuth client operating
+<code>https://gateway.example/</code>.<a href="#appendix-B.1.1-5.3.1" class="pilcrow">¶</a></p>
+</li>
+          </ul>
+<p id="appendix-B.1.1-6"><strong>ToolGateway:</strong> provision a DPoP key and a gateway-domain client credential.<a href="#appendix-B.1.1-6" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-7"><strong>WikiRAS:</strong> trust the IdP, register ToolGateway, and support the DPoP-bound
+JWT grant (<a href="#onward-id-jag" class="auto internal xref">Section 5.5.5</a>).<a href="#appendix-B.1.1-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-8">ToolGateway uses this client assertion at the IdP; its GatewayRAS exchange
+uses a separate assertion addressed there (<a href="#example-gateway-ica" class="auto internal xref">Appendix B.1.4</a>):<a href="#appendix-B.1.1-8" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.1-9">
 <pre>
 {
   "iss": "https://gateway.example/",
@@ -4419,9 +4452,9 @@ uses a separate assertion addressed there (<a href="#example-gateway-ica" class=
   "exp": 1710000290,
   "jti": "tg-cred-01"
 }
-</pre><a href="#appendix-B.1.1-8" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.1-9" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.1-9">Here <code>iss</code> and <code>sub</code> match its configured canonical actor identity.<a href="#appendix-B.1.1-9" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.1-10">Here <code>iss</code> and <code>sub</code> match its configured canonical actor identity.<a href="#appendix-B.1.1-10" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-root">
@@ -4623,14 +4656,28 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 &amp;client_assertion=&lt;tool-gateway client assertion&gt;
 </pre><a href="#appendix-B.1.5-2" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.5-3">The IdP applies <a href="#validation" class="auto internal xref">Section 5.5.3</a>: GatewayRAS is trusted for H0, the chain is
-active, ToolGateway's identity and key match, and chain authorization and
-current policy permit <code>wiki.read</code>. The root <code>tools.invoke</code> scope grants no
-independent wiki authority.<a href="#appendix-B.1.5-3" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.5-4">The IdP resolves Alice's wiki subject and creates H1 with ToolGateway atop
-AgentApp in the lineage.<a href="#appendix-B.1.5-4" class="pilcrow">¶</a></p>
-<p id="appendix-B.1.5-5">On the wire (decoded ID-JAG for WikiRAS):<a href="#appendix-B.1.5-5" class="pilcrow">¶</a></p>
-<div class="lang-json sourcecode" id="appendix-B.1.5-6">
+<p id="appendix-B.1.5-3">The IdP applies <a href="#validation" class="auto internal xref">Section 5.5.3</a>:<a href="#appendix-B.1.5-3" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.1.5-4.1">
+              <p id="appendix-B.1.5-4.1.1"><strong>Issuer trust:</strong> GatewayRAS is trusted to attest H0.<a href="#appendix-B.1.5-4.1.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.5-4.2">
+              <p id="appendix-B.1.5-4.2.1"><strong>Chain state:</strong> H0 identifies an accepted hop on an active chain.<a href="#appendix-B.1.5-4.2.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.5-4.3">
+              <p id="appendix-B.1.5-4.3.1"><strong>Actor and key:</strong> <code>act</code> matches the authenticated client's canonical
+identity, and the DPoP proof matches <code>cnf</code>.<a href="#appendix-B.1.5-4.3.1" class="pilcrow">¶</a></p>
+</li>
+            <li class="normal" id="appendix-B.1.5-4.4">
+              <p id="appendix-B.1.5-4.4.1"><strong>Authorization:</strong> chain authorization and current policy permit
+<code>wiki.read</code>. The root <code>tools.invoke</code> scope grants no independent wiki
+authority.<a href="#appendix-B.1.5-4.4.1" class="pilcrow">¶</a></p>
+</li>
+          </ul>
+<p id="appendix-B.1.5-5">The IdP resolves Alice's wiki subject and creates H1 with ToolGateway atop
+AgentApp in the lineage.<a href="#appendix-B.1.5-5" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.5-6">On the wire (decoded ID-JAG for WikiRAS):<a href="#appendix-B.1.5-6" class="pilcrow">¶</a></p>
+<div class="lang-json sourcecode" id="appendix-B.1.5-7">
 <pre>
 {
   "iss": "https://idp.example/",
@@ -4664,10 +4711,10 @@ AgentApp in the lineage.<a href="#appendix-B.1.5-4" class="pilcrow">¶</a></p>
   "exp": 1710000535,
   "jti": "idjag-wiki-01"
 }
-</pre><a href="#appendix-B.1.5-6" class="pilcrow">¶</a>
+</pre><a href="#appendix-B.1.5-7" class="pilcrow">¶</a>
 </div>
-<p id="appendix-B.1.5-7">An excluded target returns <code>invalid_target</code> without ending the chain
-(<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>).<a href="#appendix-B.1.5-7" class="pilcrow">¶</a></p>
+<p id="appendix-B.1.5-8">An excluded target returns <code>invalid_target</code> without ending the chain
+(<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>).<a href="#appendix-B.1.5-8" class="pilcrow">¶</a></p>
 </section>
 </div>
 <div id="example-gateway-terminal">
@@ -5080,12 +5127,26 @@ key at redemption and on its API call.<a href="#appendix-B.2.6-2.4.1" class="pil
 <a href="#appendix-B.3" class="section-number selfRef">B.3. </a><a href="#name-background-agent-example-sc" class="section-name selfRef">Background Agent Example (Scheduled Continuation)</a>
         </h3>
 <p id="appendix-B.3-1">Alice's daily calendar briefing uses a grant-anchored chain that survives
-logout. PlatformRAS binds H0 to task state; Platform TTS and a separate CAI
-support <code>briefing-agent</code>, whose canonical identity is
-(<code>https://platform.example/</code>, <code>briefing-agent</code>). The Scheduler holds only a
-task identifier.<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
-<p id="appendix-B.3-2">CalendarRAS is terminal for each run. MailRAS illustrates a later target
-excluded by the grant (<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>).<a href="#appendix-B.3-2" class="pilcrow">¶</a></p>
+logout. The platform uses a separate CAI and Transaction Token carrier:<a href="#appendix-B.3-1" class="pilcrow">¶</a></p>
+<ul class="normal">
+<li class="normal" id="appendix-B.3-2.1">
+            <p id="appendix-B.3-2.1.1"><strong>Platform:</strong> PlatformRAS binds H0 to task state. Platform TTS and Platform
+CAI issue credentials for <code>briefing-agent</code>.<a href="#appendix-B.3-2.1.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.3-2.2">
+            <p id="appendix-B.3-2.2.1"><strong>Scheduler:</strong> an internal platform component that holds only the task
+identifier and triggers each run.<a href="#appendix-B.3-2.2.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.3-2.3">
+            <p id="appendix-B.3-2.3.1"><strong>Calendar:</strong> CalendarRAS protects CalendarAPI and is terminal for each run.<a href="#appendix-B.3-2.3.1" class="pilcrow">¶</a></p>
+</li>
+          <li class="normal" id="appendix-B.3-2.4">
+            <p id="appendix-B.3-2.4.1"><strong>Mail:</strong> MailRAS protects MailAPI, a later target excluded by the grant
+(<a href="#example-dynamic" class="auto internal xref">Appendix B.3.4</a>).<a href="#appendix-B.3-2.4.1" class="pilcrow">¶</a></p>
+</li>
+        </ul>
+<p id="appendix-B.3-3">BriefingAgent's canonical identity is
+(<code>https://platform.example/</code>, <code>briefing-agent</code>).<a href="#appendix-B.3-3" class="pilcrow">¶</a></p>
 <div id="example-background-setup">
 <section id="appendix-B.3.1">
           <h4 id="name-setup-anchoring-the-chain-t">
