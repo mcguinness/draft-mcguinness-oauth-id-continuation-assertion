@@ -2795,9 +2795,9 @@ Server-side state at ExpenseRAS:
 ExpenseApp calls ExpenseAPI with AT1. The Expense TTS resolves AT1 against that
 record over its own-domain interface with ExpenseRAS, derives H0, and issues a
 Transaction Token for `expense-service`, the workload that completes the
-request ({{handle-propagation}}); the token's `req_wl` names `expense-api`, the
-API workload that received the request, while `expense-service` is the workload
-that continues it. The TTS records the transaction's assignment to that
+request ({{handle-propagation}}). The token's `req_wl` names `expense-api`,
+which requested the Transaction Token; `expense-service` is the workload
+assigned to continue the transaction. The TTS records the assignment to that
 workload in authenticated routing state, the domain's own record of which
 workload handles a transaction. Neither ExpenseApp nor `expense-service`
 supplies H0.
@@ -3290,10 +3290,10 @@ JWT Authorization Grant specifications, on whose work this profile builds.
   optional and specified base-profile behavior when no anchor can be resolved.
 * Defined optional recovery of an issued grant after a lost response while
   preserving single-use assertions. Clarified error codes and their precedence.
-* Relaxed the assertion lifetime and handle-length requirements; added a
-  recommendation of 128 bits of entropy for `jti`; permitted `nbf`;
-  recommended capping assertion expiry at self-contained evidence expiry; and
-  registered the handle as an introspection response member.
+* Relaxed assertion lifetime, `jti` entropy, and handle-length requirements;
+  permitted `nbf`; recommended capping assertion expiry at self-contained
+  evidence expiry; and registered the handle as an introspection response
+  member.
 * Removed RAS nomination of CAIs through `identity_continuation_issuers` and
   clarified IdP configuration of CAI trust.
 * Reorganized the protocol description and security considerations; revised
