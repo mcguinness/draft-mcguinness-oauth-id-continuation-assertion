@@ -2452,8 +2452,8 @@ A.1.  IdP-Mediated Continuation
    Offline attenuation, such as [I-D.li-oauth-delegated-authorization],
    suits boundaries where existing subject and issuer trust suffice.
    Deployments can attenuate within a domain and continue across
-   boundaries needing IdP resolution.  A target outside the common IdP's
-   trust requires another agreement and profile, such as
+   boundaries needing IdP resolution.  A target that does not trust the
+   common IdP requires another trust agreement and profile, such as
    [I-D.fletcher-transaction-token-chaining-profile].
 
 A.2.  CAI Attestation and ID-JAG Redemption
@@ -2958,9 +2958,9 @@ grant_type=urn:ietf:params:oauth:grant-type:token-exchange
 
 B.2.2.  ExpenseRAS Binds H0; Expense TTS Carries It
 
-   ExpenseRAS redeems the ID-JAG for AT1 and binds H0, the IdP, tenant,
-   and continuation eligibility (Section 5.2).  AT1 does not carry the
-   handle.
+   ExpenseApp redeems the ID-JAG at ExpenseRAS for AT1; ExpenseRAS binds
+   H0, the IdP, tenant, and continuation eligibility (Section 5.2).  AT1
+   does not carry the handle.
 
    Server-side state at ExpenseRAS:
 
