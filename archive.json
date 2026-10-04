@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-09-10T03:12:24.459893+00:00",
+  "timestamp": "2026-10-04T04:25:23.254491+00:00",
   "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
   "labels": [
     {
@@ -221,6 +221,54 @@
       "body": "PR #82 removed the additional proof-of-possession requirement on the root exchange and allowed the root RAS to apply its own access-token sender-constraint policy. PR #86 made the gateway example show this baseline: an ordinary root client and a bearer access token at the gateway.\n\nThis preserves compatibility with ordinary ID-JAG clients. A continuing actor still authenticates, proves its own key, and obtains CAI attestation tied to the accepted authorization context. However, a party holding a usable bearer ingress token can invoke the gateway under that context; the gateway's onward proof of possession does not prove possession of a root-client key.\n\nFor WG discussion: Should bearer ingress be allowed to initiate continuation, or should continuation-capable root authorization require sender constraint? If stronger binding is required, at which exchange should it be enforced, and what compatibility cost is acceptable?\n",
       "createdAt": "2026-09-08T04:18:42Z",
       "updatedAt": "2026-09-08T04:18:42Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 135,
+      "id": "I_kwDOSyPVJM8AAAABUf6P0Q",
+      "title": "Which code refuses a chain that policy blocks only temporarily?",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/135",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Section 5.5.6 reserves `invalid_continuation` for a hop that is permanently unusable: \"its chain has expired or ended, the hop or an ancestor is revoked, or the tenant has withdrawn the chain's permission to continue\". Section 6.2 adds that an ended chain stays ended. `unauthorized_client` covers the case where \"the chain authorization or current policy does not permit this actor to continue from the hop. Other actors may still continue\".\n\nNeither code fits a temporary, chain-wide hold. Current policy blocks every actor for now, but the chain has not ended, and the same handle can continue once the hold lifts. One example is a suspended authorization behind the chain.\n- `invalid_continuation` tells the client to start a new root exchange, which is wrong here.\n- `unauthorized_client` is phrased per actor.\n- `invalid_grant` is reserved for limits.\n\nAn implementation of -02 returns `unauthorized_client` in this case, so the client retries later rather than re-rooting.\n\nProposal: extend `unauthorized_client` in Section 5.5.6 to cover a temporary refusal by current policy that does not withdraw the chain's permission to continue. For example: \"the chain authorization or current policy does not, at present, permit this actor, or any actor, to continue from the hop\". No new error code or registration is needed.\n\nFor WG discussion: Is broadening `unauthorized_client` the right fix, or should a temporary hold have its own code?\n",
+      "createdAt": "2026-10-01T23:28:31Z",
+      "updatedAt": "2026-10-01T23:28:31Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 136,
+      "id": "I_kwDOSyPVJM8AAAABUf6QZA",
+      "title": "Is a valid DPoP proof for the wrong key invalid_dpop_proof or invalid_request?",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/136",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Rule 5 of Section 5.5.3 requires that \"the request proves possession of the cnf key with a matching DPoP proof\". Section 5.5.6 maps \"invalid_dpop_proof: a DPoP failure\" and, under `invalid_request`, \"a malformed, inconsistent, or unacceptable token\".\n\nA request can carry a DPoP proof that is itself valid but is signed by a key other than the one the assertion's `cnf.jkt` names. It is not clear which code applies:\n- it could be \"a DPoP failure\", because the proof does not match;\n- or an unacceptable token, because the assertion's confirmation is not satisfied and the assertion \"is never accepted as a bearer token\".\n\nTwo implementations can reasonably pick different codes for the same request.\n\nAn implementation of -02 returns `invalid_dpop_proof` for a missing, malformed, or replayed proof, and `invalid_request` for a valid proof whose key does not match `cnf.jkt`.\n\nProposal: name the key-mismatch case explicitly in Section 5.5.6, under whichever code the WG prefers.\n\nFor WG discussion: Is a valid proof for the wrong key a DPoP failure or a token failure?\n",
+      "createdAt": "2026-10-01T23:28:32Z",
+      "updatedAt": "2026-10-01T23:28:32Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 137,
+      "id": "I_kwDOSyPVJM8AAAABUf6Q4A",
+      "title": "Should freshness and replay be checked before chain state?",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/137",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "Section 5.5.6 requires the code for the earliest failing rule of Section 5.5.3, and rule 4 (chain state) comes before rule 6 (freshness and replay). An assertion that is expired, or whose `jti` is already reserved, presented for a hop whose chain has ended therefore returns `invalid_continuation`, not the `invalid_request` its freshness or replay failure would produce.\n\nAn implementation of -02 follows this order exactly.\n\nThis does not open a probing channel: Section 5.5.6 returns no chain-state code before issuer trust, client authentication, and the key proof succeed. It does mean the IdP reports chain state on the basis of an assertion it would otherwise reject as stale or replayed. Many validators check `exp` before acting on a token's contents.\n\nFor WG discussion: Is reporting chain state from an expired or replayed assertion intended? If not, should rule 6 move ahead of rule 4, while staying after the current-actor rule?\n",
+      "createdAt": "2026-10-01T23:28:33Z",
+      "updatedAt": "2026-10-01T23:28:33Z",
       "closedAt": null,
       "comments": []
     }
