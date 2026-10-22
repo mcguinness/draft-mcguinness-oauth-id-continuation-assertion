@@ -1,6 +1,6 @@
 {
   "magic": "E!vIA5L86J2I",
-  "timestamp": "2026-10-18T03:08:06.109812+00:00",
+  "timestamp": "2026-10-22T03:23:45.650865+00:00",
   "repo": "mcguinness/draft-mcguinness-oauth-id-continuation-assertion",
   "labels": [
     {
@@ -391,6 +391,40 @@
       "body": "## Problem\n\nICA bounds an assertion's lifetime (Section 3.2) and a chain's lifetime and size: anchors, hop count, fan-out, and rate (Sections 6.1 to 6.3). Nothing bounds how long after a hop is issued a continuation from that hop may happen.\n\nNormally the CAI's acceptance evidence provides that bound: the CAI attests only an authorization that is still active (Section 5.4.3). But Section 9.5 notes: \"A compromised RAS can fabricate acceptance state in either topology, since a separate CAI reads that state as authoritative.\"\n\nIn the co-located topology, which is the baseline gateway deployment, the gateway operator runs the RAS and the CAI. A compromised operator can therefore sign assertions for every handle its RAS ever bound. It can keep continuing those chains, to any target the chain authorization and current policy permit, until their anchors end. That can be hours for a session anchor and longer for a grant anchor. The continuing workload's key proof does not help, because the compromised operator controls that workload too.\n\n## How this relates to #41\n\n#41 makes a fabricating CAI detectable after the fact. This issue bounds the exposure window regardless of whether the CAI is honest. The two are complementary.\n\n## Proposal sketch\n\n> The IdP SHOULD enforce a configured continuation window: it refuses continuation from a hop more than that window after it issued the hop, as a limit failure (`invalid_grant`, Section 5.5.6). The chain remains continuable from newer hops.\n\n- **Recovery** (Section 5.5.7.1) is unaffected: it returns a grant already issued and consumes no limit.\n- **Precedent:** AWS caps a role session obtained through role chaining at one hour, whatever the original session's duration.\n- The [continuation companion](https://github.com/mcguinness/governed-agent-profiles/blob/main/draft-mcguinness-oauth-governed-agent-continuation.md) adopts this as a SHOULD for governed chains and corrects its own security text, which had claimed that a gateway cannot continue a chain whose token it has not received.\n\n## Tension with scheduled continuation\n\nThe background example continues from the root hop H0 on every run (\"each run receives a fresh child of H0\"). A window measured from H0's issuance would stop those runs once the window passes. Options:\n\n1. Let the chain authorization set the window, so a durable, grant-anchored chain sets a long one.\n2. Measure the window from the most recent accepted continuation from the hop, instead of from its issuance.\n3. Exempt root hops of grant-anchored chains, relying on the CAI's durable task-state checks.\n\n## Questions\n\n1. Should ICA set a default window, and should it differ by anchor type?\n2. Which of the options above fits scheduled continuation best?\n3. Should the IdP advertise the window, so that continuing workloads can expect it?\n",
       "createdAt": "2026-10-15T04:00:00Z",
       "updatedAt": "2026-10-15T04:00:00Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 143,
+      "id": "I_kwDOSyPVJM8AAAABYoaz1Q",
+      "title": "Let an IdP advertise grant-anchor support",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/143",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [
+        "enhancement"
+      ],
+      "body": "## Problem\n\nSection 6.1 makes grant anchors optional:\n\n> Support for grant anchors is OPTIONAL; a session-anchored implementation is complete. Without it, base processing of a refresh-token subject is unchanged; any otherwise-authorized ID-JAG omits the continuation handle.\n\n`identity_continuation_supported` (Section 7.1) indicates only that the IdP \"issues continuation-capable ID-JAGs.\" It does not tell a session-only IdP from one that supports grant anchors.\n\nSo a client that sets up unattended work, as in Appendix B.3, cannot confirm beforehand that its root exchange will establish a durable chain. It finds out only when the handle is missing from the root ID-JAG. If it does not inspect the grant, it may not find out until the first run after the user's session has ended.\n\n## Use case\n\n[AIMS #113](https://github.com/ietf-wg-wimse/draft-ietf-wimse-aims/issues/113): an agent acting for a user runs at 3am, after the user's SSO session has expired. Appendix B.3 is the answer, but only on an IdP that supports grant anchors.\n\nThe [governed continuation companion](https://github.com/mcguinness/governed-agent-profiles/blob/main/draft-mcguinness-oauth-governed-agent-continuation.md) now defines an optional \"grant-anchored continuation\" conformance claim (mcguinness/governed-agent-profiles#26). It establishes that claim through trusted configuration because ICA has no metadata for it.\n\n## Proposal sketch\n\nAdd an IdP metadata parameter:\n\n`identity_continuation_grant_anchors_supported`:\n: OPTIONAL. Boolean, default `false`. It indicates that the IdP establishes chains anchored to a refresh token's grant (Section 6.1). It is meaningful only with `identity_continuation_supported`. As with that flag, it indicates capability and does not authorize establishment.\n\n## Questions\n\n1. A metadata parameter, or leave grant-anchor support to configuration?\n2. Should the root exchange's token response say whether a chain was established, so that a client need not inspect the ID-JAG for `identity_continuation_handle`?\n",
+      "createdAt": "2026-10-20T19:13:47Z",
+      "updatedAt": "2026-10-20T19:13:47Z",
+      "closedAt": null,
+      "comments": []
+    },
+    {
+      "number": 144,
+      "id": "I_kwDOSyPVJM8AAAABYoa1EQ",
+      "title": "Continue from the root when the agent's platform has no accepting RAS (Open Item 1, AIMS #113)",
+      "url": "https://github.com/mcguinness/draft-mcguinness-oauth-id-continuation-assertion/issues/144",
+      "state": "OPEN",
+      "author": "mcguinness",
+      "authorAssociation": "OWNER",
+      "assignees": [],
+      "labels": [],
+      "body": "## Problem\n\nContinuation needs an accepted hop and a CAI in the domain that accepted it. In Appendix B.3, the root ID-JAG targets PlatformRAS, which binds H0 to task state, and Platform CAI attests each run.\n\nMany agent platforms have no resource authorization server of their own that accepts ID-JAGs from the enterprise IdP. Their agents go directly from the IdP to a SaaS RAS, so there is no hop to continue from. For these platforms, the only way to act for a user after the user's session ends is to hold the user's refresh token at the IdP. That is the per-user, long-lived artifact [AIMS #113](https://github.com/ietf-wg-wimse/draft-ietf-wimse-aims/issues/113) wants to replace.\n\n## Use case\n\nAIMS #113: an MCP client platform runs several agents for each user against SaaS systems the user signs into. The agents run when the user is absent. Today the platform holds one refresh token per user for each downstream service and shares it across agents.\n\nOption 1 in that issue is an IdP-held delegation record: the agent authenticates as itself and names the user. Option 2 is a refresh token per (user, agent), sender-constrained to the agent's key. Pieter Kasselman observed in the thread that the two converge: the question is whether the IdP or the agent manages the \"refresh token.\"\n\n## Relation to Open Item 1\n\nOpen Item 1 asks whether a recipient-bound design could replace the CAI assertion. In that design, the IdP binds a continuation credential to an intended actor, actor class, trust domain, or key.\n\nThis use case is the case where nothing has been accepted. With no intermediate hop there is no RAS acceptance to attest, so the IdP's chain authorization is the only basis. A recipient-bound credential issued at the root exchange, bound to the client's key and usable only with its authentication, would let the agent continue from the root itself without a CAI.\n\n## Questions\n\n1. Should ICA support continuing from the root hop with a recipient-bound credential when no RAS has accepted a hop? Or is a continuation-aware RAS and CAI in the agent's own domain the intended answer?\n2. If supported, what does such a credential add over a refresh token at the IdP that is bound to the agent's key and to the chain authorization?\n",
+      "createdAt": "2026-10-20T19:13:48Z",
+      "updatedAt": "2026-10-20T19:13:48Z",
       "closedAt": null,
       "comments": []
     }
